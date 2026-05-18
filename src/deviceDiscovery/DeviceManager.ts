@@ -143,6 +143,7 @@ export class DeviceManager {
     private discoveredDevices: DiscoveredDeviceEntry[] = [];
     private deviceStates = new Map<DeviceStateKey, DeviceStateEntry>();
     private scanNeeded = false;
+    private scanning = false;
     private lastUsedDeviceIp: string | undefined = undefined;
     private networkId: string;
 
@@ -1215,12 +1216,14 @@ export class DeviceManager {
             this.emitDevicesChanged();
         });
 
-        // Forward scan events from RokuFinder
+        // Forward scan events from RokuFinder and track scanning state
         this.finder.on('scan-started', () => {
+            this.scanning = true;
             this.emitter.emit('scan-started');
         });
 
         this.finder.on('scan-ended', () => {
+            this.scanning = false;
             this.emitter.emit('scan-ended');
             // Health check devices that didn't respond to the scan (stale cache)
             this.healthCheckStaleDevices().catch(() => { });
@@ -1282,6 +1285,14 @@ export class DeviceManager {
             this.scanNeeded = true;
             this.emitter.emit('scanNeeded-changed');
         }
+    }
+
+    /**
+     * Returns true if a device scan is currently in progress.
+     * Used by UI components to decide whether to show pending indicators.
+     */
+    public get isScanning(): boolean {
+        return this.scanning;
     }
 
     private emitDevicesChanged = throttleBounce(() => {

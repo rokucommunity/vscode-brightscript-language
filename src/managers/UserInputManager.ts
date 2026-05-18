@@ -273,7 +273,8 @@ export class UserInputManager {
             } else {
                 return new vscode.ThemeIcon('warning', new vscode.ThemeColor('disabledForeground'));
             }
-        } else if (device.deviceState === 'pending') {
+        } else if (device.deviceState === 'pending' && this.deviceManager.isScanning) {
+            // Only show pending dot when a scan is actively in progress
             return new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
         }
         return icons.getDeviceType(device.deviceInfo);
