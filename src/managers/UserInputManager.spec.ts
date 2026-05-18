@@ -8,7 +8,6 @@ import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import type { RokuDevice } from '../deviceDiscovery/DeviceManager';
 import { DeviceManager } from '../deviceDiscovery/DeviceManager';
-import { GlobalStateManager } from '../GlobalStateManager';
 import { icons } from '../icons';
 
 const sinon = createSandbox();
@@ -30,7 +29,6 @@ describe('UserInputManager', () => {
 
     let userInputManager: UserInputManager;
     let deviceManager: DeviceManager;
-    let globalStateManager: GlobalStateManager;
 
     beforeEach(() => {
         fsExtra.emptyDirSync(tempDir);
@@ -40,8 +38,7 @@ describe('UserInputManager', () => {
         sinon.stub(DeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
         sinon.stub(DeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
         sinon.stub(DeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
-        globalStateManager = new GlobalStateManager(vscode.context);
-        deviceManager = new DeviceManager(vscode.context, globalStateManager);
+        deviceManager = new DeviceManager(vscode.context);
         userInputManager = new UserInputManager(deviceManager);
     });
 

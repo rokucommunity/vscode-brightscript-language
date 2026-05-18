@@ -9,7 +9,72 @@ import { util } from '../util';
 
 describe('DeviceManager', () => {
     let manager: DeviceManager;
-    let mockGlobalStateManager: any;
+
+    /**
+     * Helper to get/update global state data for testing.
+     * Uses the mock vscode.context.globalState storage.
+     */
+    const globalStateData = () => vscode.context.globalState['_data'];
+
+    /**
+     * Set a cached device in the global state storage
+     */
+    function setCachedDevice(serialNumber: string, device: any): void {
+        const cache = globalStateData()['deviceCache'] || {};
+        cache[serialNumber] = device;
+        globalStateData()['deviceCache'] = cache;
+    }
+
+    /**
+     * Set IP→serial mapping in the global state storage
+     */
+    function setSerialNumberForIp(networkId: string, ip: string, serialNumber: string): void {
+        const map = globalStateData()['serialNumberByIpForNetwork'] || {};
+        if (!map[networkId]) {
+            map[networkId] = {};
+        }
+        map[networkId][ip] = { serialNumber: serialNumber, timestamp: Date.now() };
+        globalStateData()['serialNumberByIpForNetwork'] = map;
+    }
+
+    /**
+     * Get a cached device from the global state storage
+     */
+    function getCachedDevice(serialNumber: string): any {
+        const cache = globalStateData()['deviceCache'] || {};
+        return cache[serialNumber];
+    }
+
+    /**
+     * Get last seen devices from the global state storage
+     */
+    function getLastSeenDevices(networkId: string): string[] {
+        const networks = globalStateData()['lastSeenDevicesByNetwork'] || {};
+        return networks[networkId]?.serialNumbers ?? [];
+    }
+
+    /**
+     * Set last seen devices in the global state storage
+     */
+    function setLastSeenDevices(networkId: string, serialNumbers: string[]): void {
+        const networks = globalStateData()['lastSeenDevicesByNetwork'] || {};
+        networks[networkId] = { serialNumbers: serialNumbers, lastSeen: Date.now() };
+        globalStateData()['lastSeenDevicesByNetwork'] = networks;
+    }
+
+    /**
+     * Clear device cache from the global state storage
+     */
+    function clearDeviceCache(): void {
+        delete globalStateData()['deviceCache'];
+    }
+
+    /**
+     * Clear IP→serial mapping from the global state storage
+     */
+    function clearSerialNumberByIpForNetwork(): void {
+        delete globalStateData()['serialNumberByIpForNetwork'];
+    }
 
     function createMockDevice(overrides: Partial<RokuDevice> & { deviceInfo?: any; serialNumber?: string | null } = {}): RokuDevice {
         // Explicit null means no serial, undefined means use default
@@ -29,8 +94,8 @@ describe('DeviceManager', () => {
                 ...overrides.deviceInfo,
                 'serial-number': serialNumber // Serial goes in deviceInfo - after spread to not be overwritten
             };
-            // Directly store in cache (setCachedDevice uses callsFake to store in map)
-            mockGlobalStateManager.setCachedDevice(serialNumber, {
+            // Directly store in cache
+            setCachedDevice(serialNumber, {
                 serialNumber: serialNumber,
                 deviceInfo: deviceInfo,
                 createdAt: Date.now()
@@ -39,7 +104,7 @@ describe('DeviceManager', () => {
 
         // Set up IP→serial mapping when serialNumber is provided
         if (serialNumber) {
-            mockGlobalStateManager.setSerialNumberForIp('test-network-hash', ip, serialNumber);
+            setSerialNumberForIp('test-network-hash', ip, serialNumber);
         }
 
         // Compute key same as setDevice
@@ -98,51 +163,6 @@ describe('DeviceManager', () => {
     }
 
     beforeEach(() => {
-        // Map to track IP→serial mappings across the test
-        const ipToSerialMap = new Map<string, string>();
-        // Map to track cached devices
-        const deviceCache = new Map<string, any>();
-
-        // Mock GlobalStateManager
-        mockGlobalStateManager = {
-            getLastSeenDevices: sinon.stub().returns([]),
-            setLastSeenDevices: sinon.stub(),
-            addLastSeenDevice: sinon.stub(),
-            removeLastSeenDevice: sinon.stub(),
-            setLastSeenDeviceIds: sinon.stub(),
-            getCachedDevice: sinon.stub().callsFake((serial) => {
-                return deviceCache.get(serial);
-            }),
-            setCachedDevice: sinon.stub().callsFake((serial, device) => {
-                deviceCache.set(serial, device);
-            }),
-            removeCachedDevice: sinon.stub(),
-            clearExpiredDevices: sinon.stub(),
-            getSerialNumberForIp: sinon.stub().callsFake((ip, networkId) => {
-                return ipToSerialMap.get(`${networkId}:${ip}`);
-            }),
-            setSerialNumberForIp: sinon.stub().callsFake((networkId, ip, serial) => {
-                ipToSerialMap.set(`${networkId}:${ip}`, serial);
-            }),
-            getIpForSerial: sinon.stub().callsFake((serial, networkId) => {
-                // Reverse lookup in ipToSerialMap
-                for (const [key, value] of ipToSerialMap.entries()) {
-                    if (value === serial && key.startsWith(networkId + ':')) {
-                        return key.split(':')[1];
-                    }
-                }
-                return undefined;
-            }),
-            clearLastSeenDevices: sinon.stub(),
-            clearDeviceCache: sinon.stub().callsFake(() => {
-                deviceCache.clear();
-            }),
-            clearSerialNumberByIpForNetwork: sinon.stub().callsFake(() => {
-                ipToSerialMap.clear();
-            }),
-            clearExpiredEntriesSerialNumberByIpForNetwork: sinon.stub()
-        };
-
         // Mock vscode configuration
         sinon.stub(vscode.workspace, 'getConfiguration').returns({
             get: () => undefined,
@@ -168,7 +188,7 @@ describe('DeviceManager', () => {
 
     describe('setScanNeeded', () => {
         it('emits event when scanNeeded is false', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const eventSpy = sinon.spy();
             manager.on('scanNeeded-changed', eventSpy);
@@ -179,7 +199,7 @@ describe('DeviceManager', () => {
         });
 
         it('does not emit event when scanNeeded is already true', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             manager['setScanNeeded'](); // Set to true first
 
             const eventSpy = sinon.spy();
@@ -194,14 +214,14 @@ describe('DeviceManager', () => {
 
     describe('timeSinceLastScan', () => {
         it('returns Infinity when no scan has occurred', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             expect(manager['timeSinceLastScan']).to.equal(Infinity);
         });
 
         it('returns elapsed time after refresh', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 manager.refresh(true);
 
@@ -216,7 +236,7 @@ describe('DeviceManager', () => {
 
     describe('on', () => {
         it('registers handler and returns unsubscribe function', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const handler = sinon.spy();
             const unsubscribe = manager.on('scanNeeded-changed', handler);
@@ -233,7 +253,7 @@ describe('DeviceManager', () => {
         });
 
         it('adds to disposables array if provided', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const disposables: any[] = [];
             manager.on('scanNeeded-changed', () => { }, disposables);
@@ -245,12 +265,12 @@ describe('DeviceManager', () => {
 
     describe('getActiveDevices', () => {
         it('returns empty array when no devices', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             expect(manager.getAllDevices()).to.deep.equal([]);
         });
 
         it('sorts devices: sticks first, then boxes, then TVs', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const tv = createMockDevice({
                 serialNumber: 'tv-1',
@@ -281,7 +301,7 @@ describe('DeviceManager', () => {
         });
 
         it('sorts by name within same form factor', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const boxB = createMockDevice({
                 serialNumber: 'box-b',
@@ -313,7 +333,7 @@ describe('DeviceManager', () => {
 
     describe('refresh', () => {
         it('resets scanNeeded flag (allows event to fire again)', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const eventSpy = sinon.spy();
             manager.on('scanNeeded-changed', eventSpy);
@@ -332,7 +352,7 @@ describe('DeviceManager', () => {
         });
 
         it('sets lastScanDate', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             expect(manager['timeSinceLastScan']).to.equal(Infinity);
 
@@ -343,7 +363,7 @@ describe('DeviceManager', () => {
         });
 
         it('calls healthCheckAllDevices with force flag', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const healthCheckAllDevicesSpy = sinon.stub(manager as any, 'healthCheckAllDevices').resolves();
 
@@ -360,7 +380,7 @@ describe('DeviceManager', () => {
 
     describe('scan', () => {
         it('triggers discovery without health checking', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
             const healthCheckAllDevicesSpy = sinon.spy(manager as any, 'healthCheckAllDevices');
@@ -372,7 +392,7 @@ describe('DeviceManager', () => {
         });
 
         it('respects deviceDiscoveryEnabled when force=false', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => false);
 
             const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
@@ -384,7 +404,7 @@ describe('DeviceManager', () => {
         });
 
         it('ignores deviceDiscoveryEnabled when force=true', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => false);
 
             const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
@@ -398,7 +418,7 @@ describe('DeviceManager', () => {
         it('emits scan-started event', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const scanStartedSpy = sinon.spy();
                 manager.on('scan-started', scanStartedSpy);
@@ -414,7 +434,7 @@ describe('DeviceManager', () => {
 
     describe('healthCheckAllDevices', () => {
         it('sets all devices to pending and checks all when force=true', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const device1 = createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' });
             const device2 = createMockDevice({ serialNumber: 'device-2', ip: '192.168.1.102' });
@@ -429,7 +449,7 @@ describe('DeviceManager', () => {
         });
 
         it('calls resolveDevice for all devices (caching happens in resolveDevice)', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const device1 = createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' });
             const device2 = createMockDevice({ serialNumber: 'device-2', ip: '192.168.1.102' });
@@ -445,7 +465,7 @@ describe('DeviceManager', () => {
         });
 
         it('sets devices to pending before checking when force=false', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const device = createMockDevice();
             addDevice(device);
@@ -463,7 +483,7 @@ describe('DeviceManager', () => {
         });
 
         it('resolveDevice uses cached data when recently fetched', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const device = createMockDevice();
             addDevice(device);
@@ -491,7 +511,7 @@ describe('DeviceManager', () => {
 
     describe('healthCheckDevice with force=false (cooldown)', () => {
         it('skips network fetch if within cooldown period (uses cached data)', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const device = createMockDevice();
             addDevice(device);
@@ -517,7 +537,7 @@ describe('DeviceManager', () => {
         it('fetches again after cooldown expires', async () => {
             const clock = sinon.useFakeTimers(Date.now());
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const device = createMockDevice();
                 addDevice(device);
@@ -547,7 +567,7 @@ describe('DeviceManager', () => {
         });
 
         it('always fetches when force=true regardless of cooldown', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const device = createMockDevice();
             addDevice(device);
@@ -575,7 +595,7 @@ describe('DeviceManager', () => {
         it('emits scan-started when scan begins', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const scanStartedSpy = sinon.spy();
                 manager.on('scan-started', scanStartedSpy);
@@ -591,7 +611,7 @@ describe('DeviceManager', () => {
         it('emits scan-ended after min duration and settle time', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const scanEndedSpy = sinon.spy();
                 manager.on('scan-ended', scanEndedSpy);
@@ -616,7 +636,7 @@ describe('DeviceManager', () => {
         it('does not start new scan if already scanning', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const scanStartedSpy = sinon.spy();
                 manager.on('scan-started', scanStartedSpy);
@@ -635,7 +655,7 @@ describe('DeviceManager', () => {
         it('can start new scan after previous scan ends', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const scanStartedSpy = sinon.spy();
                 const scanEndedSpy = sinon.spy();
@@ -662,7 +682,7 @@ describe('DeviceManager', () => {
         it('emits when device is added', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Wait for initial throttle window from constructor's loadLastSeenDevices
                 clock.tick(400);
@@ -684,7 +704,7 @@ describe('DeviceManager', () => {
         it('emits when device is removed', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Add a device first
                 const device = createMockDevice();
@@ -709,7 +729,7 @@ describe('DeviceManager', () => {
         it('throttles multiple rapid changes', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Wait for initial throttle window from constructor's loadLastSeenDevices
                 clock.tick(400);
@@ -744,7 +764,7 @@ describe('DeviceManager', () => {
 
     describe('healthCheckDevice', () => {
         it('sets device to pending during health check', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             (vscode.window as any).state = { focused: true };
 
             const device = createMockDevice();
@@ -775,7 +795,7 @@ describe('DeviceManager', () => {
         });
 
         it('removes device when health check fails', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             (vscode.window as any).state = { focused: true };
 
             const device = createMockDevice();
@@ -790,7 +810,7 @@ describe('DeviceManager', () => {
         });
 
         it('preserves cache data when device goes offline (for offline display)', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             (vscode.window as any).state = { focused: true };
 
             const device = createMockDevice({
@@ -804,7 +824,7 @@ describe('DeviceManager', () => {
             await manager.healthCheckDevice(device, true);
 
             // Cache should still exist with device info preserved for offline display
-            const cached = mockGlobalStateManager.getCachedDevice('device-123');
+            const cached = getCachedDevice('device-123');
             expect(cached).to.exist;
             expect(cached.deviceInfo['default-device-name']).to.equal('My Roku');
 
@@ -813,7 +833,7 @@ describe('DeviceManager', () => {
         });
 
         it('returns true when device is healthy', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const device = createMockDevice({ serialNumber: 'device-123' });
             addDevice(device);
@@ -830,7 +850,7 @@ describe('DeviceManager', () => {
         });
 
         it('ignores stale health check response when newer check completes first', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             (vscode.window as any).state = { focused: true };
 
             const device = createMockDevice({ serialNumber: 'device-123' });
@@ -881,7 +901,7 @@ describe('DeviceManager', () => {
         });
 
         it('tracks sequence numbers independently per device', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             (vscode.window as any).state = { focused: true };
 
             const device1 = createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' });
@@ -936,7 +956,7 @@ describe('DeviceManager', () => {
         let validateStub: sinon.SinonStub;
 
         beforeEach(() => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             validateStub = sinon.stub(rokuDeploy, 'validateDeveloperPassword');
         });
 
@@ -976,7 +996,7 @@ describe('DeviceManager', () => {
         it('clears lastUsedDeviceIp when removed device matches', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 (vscode.window as any).state = { focused: true };
 
                 const device = createMockDevice();
@@ -996,7 +1016,7 @@ describe('DeviceManager', () => {
         it('does not clear lastUsedDeviceIp when different device is removed', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 (vscode.window as any).state = { focused: true };
 
                 const device1 = createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' });
@@ -1016,22 +1036,26 @@ describe('DeviceManager', () => {
         it('removes device from lastSeenDevices', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 (vscode.window as any).state = { focused: true };
 
                 const device = createMockDevice();
                 addDevice(device);
 
+                // Add device to lastSeenDevices
+                setLastSeenDevices('test-network-hash', [device.serialNumber]);
+
                 manager['removeDiscoveredDevice'](device.ip);
 
-                expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', device.serialNumber)).to.be.true;
+                // Verify device was removed from lastSeenDevices
+                expect(getLastSeenDevices('test-network-hash')).to.not.include(device.serialNumber);
             } finally {
                 clock.restore();
             }
         });
 
         it('does not throw when removing non-existent device', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Should not throw
             expect(() => manager['removeDiscoveredDevice']('192.168.1.100')).to.not.throw();
@@ -1040,15 +1064,15 @@ describe('DeviceManager', () => {
 
     describe('loadLastSeenDevices', () => {
         it('merges cached devices with existing devices', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Add a configured device (configured devices are preserved)
             const existingDevice = createMockDevice({ serialNumber: 'existing', ip: '192.168.1.150', isConfigured: true });
             addDevice(existingDevice);
 
             // Setup cache to return a different device
-            mockGlobalStateManager.getLastSeenDevices.returns(['cached-device']);
-            mockGlobalStateManager.setCachedDevice('cached-device', {
+            setLastSeenDevices('test-network-hash', ['cached-device']);
+            setCachedDevice('cached-device', {
                 serialNumber: 'cached-device',
                 deviceInfo: {
                     'default-device-name': 'Cached Roku',
@@ -1057,14 +1081,7 @@ describe('DeviceManager', () => {
                 createdAt: Date.now()
             });
             // Set IP→serial mapping for cached device (required for loadLastSeenDevices to work)
-            mockGlobalStateManager.setSerialNumberForIp('test-network-hash', '192.168.1.200', 'cached-device');
-            // Mock getIpForSerial to return the IP
-            mockGlobalStateManager.getIpForSerial = sinon.stub().callsFake((serial) => {
-                if (serial === 'cached-device') {
-                    return '192.168.1.200';
-                }
-                return undefined;
-            });
+            setSerialNumberForIp('test-network-hash', '192.168.1.200', 'cached-device');
 
             manager['loadLastSeenDevices']();
 
@@ -1075,10 +1092,10 @@ describe('DeviceManager', () => {
         });
 
         it('loads cached devices as online when cache is fresh (within 5 minutes)', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
-            mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
-            mockGlobalStateManager.getCachedDevice.returns({
+            setLastSeenDevices('test-network-hash', ['device-1']);
+            setCachedDevice('device-1', {
                 serialNumber: 'device-1',
                 deviceInfo: {
                     'default-device-name': 'Test Roku',
@@ -1086,8 +1103,8 @@ describe('DeviceManager', () => {
                 },
                 createdAt: Date.now() // Fresh cache
             });
-            // Mock getIpForSerial to return the IP
-            mockGlobalStateManager.getIpForSerial = sinon.stub().returns('192.168.1.100');
+            // Set IP→serial mapping
+            setSerialNumberForIp('test-network-hash', '192.168.1.100', 'device-1');
 
             manager['loadLastSeenDevices']();
 
@@ -1095,10 +1112,10 @@ describe('DeviceManager', () => {
         });
 
         it('loads cached devices as pending when cache is stale (older than 5 minutes)', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
-            mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
-            mockGlobalStateManager.getCachedDevice.returns({
+            setLastSeenDevices('test-network-hash', ['device-1']);
+            setCachedDevice('device-1', {
                 serialNumber: 'device-1',
                 deviceInfo: {
                     'default-device-name': 'Test Roku',
@@ -1106,8 +1123,8 @@ describe('DeviceManager', () => {
                 },
                 createdAt: Date.now() - (6 * 60 * 1_000) // 6 minutes ago - stale
             });
-            // Mock getIpForSerial to return the IP
-            mockGlobalStateManager.getIpForSerial = sinon.stub().returns('192.168.1.100');
+            // Set IP→serial mapping
+            setSerialNumberForIp('test-network-hash', '192.168.1.100', 'device-1');
 
             manager['loadLastSeenDevices']();
 
@@ -1115,27 +1132,28 @@ describe('DeviceManager', () => {
         });
 
         it('removes stale entries when cache returns undefined', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
-            mockGlobalStateManager.getLastSeenDevices.returns(['stale-device']);
-            mockGlobalStateManager.getCachedDevice.returns(undefined);
+            setLastSeenDevices('test-network-hash', ['stale-device']);
+            // No cached device - simulates stale entry
 
             manager['loadLastSeenDevices']();
 
             expect(manager.getAllDevices().length).to.equal(0);
-            expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', 'stale-device')).to.be.true;
+            // Verify the stale device was removed from lastSeenDevices
+            expect(getLastSeenDevices('test-network-hash')).to.not.include('stale-device');
         });
     });
 
     describe('getDevice', () => {
         it('returns full device with deviceInfo when found', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const device = createMockDevice({ serialNumber: 'target-device' });
             addDevice(device);
 
-            // Mock the cache to return deviceInfo
-            mockGlobalStateManager.getCachedDevice.withArgs('target-device').returns({
+            // Set up the cache with deviceInfo
+            setCachedDevice('target-device', {
                 serialNumber: 'target-device',
                 deviceInfo: {
                     'serial-number': 'target-device',
@@ -1154,7 +1172,7 @@ describe('DeviceManager', () => {
         });
 
         it('returns undefined when not found', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const result = manager.getDevice({ serialNumber: 'nonexistent' });
 
@@ -1176,7 +1194,7 @@ describe('DeviceManager', () => {
                 }
             } as any);
 
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Add device with developer-enabled: false in cached deviceInfo
             const device = createMockDevice({
@@ -1204,7 +1222,7 @@ describe('DeviceManager', () => {
                 }
             } as any);
 
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Add device without developer-enabled in deviceInfo (unknown status)
             manager['discoveredDevices'].push({
@@ -1228,7 +1246,7 @@ describe('DeviceManager', () => {
                 }
             } as any);
 
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Add device with developer-enabled in cached deviceInfo
             const device = createMockDevice({
@@ -1252,7 +1270,7 @@ describe('DeviceManager', () => {
                 }
             } as any);
 
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Add device with developer-enabled: false
             const device = createMockDevice({
@@ -1276,7 +1294,7 @@ describe('DeviceManager', () => {
                 }
             } as any);
 
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Add device without developer-enabled
             manager['discoveredDevices'].push({
@@ -1309,7 +1327,7 @@ describe('DeviceManager', () => {
                     }
                 } as any);
 
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Add a non-developer device
                 const device = createMockDevice({
@@ -1366,7 +1384,7 @@ describe('DeviceManager', () => {
                 }
             } as any);
 
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
 
             // Add device with cached info
@@ -1396,7 +1414,7 @@ describe('DeviceManager', () => {
                 }
             } as any);
 
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
 
             // Trigger device-online without cached device
@@ -1417,7 +1435,7 @@ describe('DeviceManager', () => {
                 }
             } as any);
 
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
 
             manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
@@ -1437,7 +1455,7 @@ describe('DeviceManager', () => {
                 }
             } as any);
 
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
 
             // Add device with cached info
@@ -1466,7 +1484,7 @@ describe('DeviceManager', () => {
 
     describe('fetchDeviceInfo', () => {
         it('always makes network call (no caching in fetchDeviceInfo)', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
                 'device-id': 'device-123',
@@ -1485,7 +1503,7 @@ describe('DeviceManager', () => {
 
     describe('resolveDevice caching', () => {
         it('only makes one network call for rapid successive requests', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const device = createMockDevice();
             addDevice(device);
@@ -1510,7 +1528,7 @@ describe('DeviceManager', () => {
         it('makes a new network call after cache TTL expires', async () => {
             const clock = sinon.useFakeTimers(Date.now());
             try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const device = createMockDevice();
                 addDevice(device);
@@ -1540,7 +1558,7 @@ describe('DeviceManager', () => {
         });
 
         it('caches different serial numbers separately', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const device1 = createMockDevice({ ip: '192.168.1.100', serialNumber: 'device-100' });
             const device2 = createMockDevice({ ip: '192.168.1.101', serialNumber: 'device-101' });
@@ -1585,7 +1603,7 @@ describe('DeviceManager', () => {
         });
 
         it('refetches on network change when serial unknown (IP→serial mapping is network-specific)', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Device with unknown serial (only IP known) - like a newly discovered device
             const deviceIpOnly = { ip: '192.168.1.100' };
@@ -1619,7 +1637,7 @@ describe('DeviceManager', () => {
         });
 
         it('uses cached data on network change when serial is known', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Device with known serial (from config or previous discovery)
             const device = createMockDevice();
@@ -1659,7 +1677,7 @@ describe('DeviceManager', () => {
 
     describe('network change handling', () => {
         it('updates networkId when NetworkChangeMonitor triggers callback', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Change the network hash
             (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
@@ -1672,7 +1690,7 @@ describe('DeviceManager', () => {
         });
 
         it('reloads devices when network changes', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Add a discovered device to verify it gets cleared on network change
             manager['discoveredDevices'].push({
@@ -1693,7 +1711,7 @@ describe('DeviceManager', () => {
         });
 
         it('calls setScanNeeded when network changes', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             const setScanNeededSpy = sinon.spy(manager as any, 'setScanNeeded');
 
@@ -1707,7 +1725,7 @@ describe('DeviceManager', () => {
         });
 
         it('clears discovered devices when network changes', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Add discovered devices
             manager['discoveredDevices'].push({
@@ -1733,7 +1751,7 @@ describe('DeviceManager', () => {
         });
 
         it('preserves configured devices when network changes', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
 
             // Add a configured device
             manager['configuredDevices'].push({
@@ -1767,7 +1785,7 @@ describe('DeviceManager', () => {
     describe('configured devices', () => {
         describe('merging configured and discovered', () => {
             it('merges configured and discovered entries by serialNumber', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Add configured device
                 addConfiguredDevice(createMockDevice({
@@ -1792,7 +1810,7 @@ describe('DeviceManager', () => {
             });
 
             it('merges configured and discovered entries by IP when no serial match', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Add configured device (no serial yet - not resolved)
                 manager['configuredDevices'].push({
@@ -1819,10 +1837,10 @@ describe('DeviceManager', () => {
             });
 
             it('preserves configuredName separately from deviceInfo', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Set up cache with deviceInfo
-                mockGlobalStateManager.getCachedDevice.withArgs('device-123').returns({
+                setCachedDevice('device-123', {
                     serialNumber: 'device-123',
                     deviceInfo: { 'user-device-name': 'Discovered Name' },
                     createdAt: Date.now()
@@ -1845,7 +1863,7 @@ describe('DeviceManager', () => {
 
         describe('healthCheckDevice with failed network calls', () => {
             it('marks configured device as offline when health check fails and cache exists', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
                 sinon.stub(manager as any, 'refresh').resolves();
 
@@ -1856,7 +1874,7 @@ describe('DeviceManager', () => {
                 addDevice(device);
 
                 // Simulate cache exists
-                mockGlobalStateManager.getCachedDevice.returns({
+                setCachedDevice('device-123', {
                     serialNumber: 'device-123',
                     deviceInfo: { 'serial-number': 'device-123' },
                     createdAt: Date.now()
@@ -1873,7 +1891,7 @@ describe('DeviceManager', () => {
             });
 
             it('marks configured device as offline when health check fails and no cache exists', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
                 sinon.stub(manager as any, 'refresh').resolves();
 
@@ -1883,8 +1901,8 @@ describe('DeviceManager', () => {
                 });
                 addDevice(device);
 
-                // Simulate no cache - view layer uses hasDeviceCache() to show warning icon
-                mockGlobalStateManager.getCachedDevice.returns(undefined);
+                // Simulate no cache - clear any cache that might have been set
+                clearDeviceCache();
 
                 // Stub to simulate network failure
                 sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Device not responding'));
@@ -1900,7 +1918,7 @@ describe('DeviceManager', () => {
             });
 
             it('removes discovered-only device when health check fails', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
                 sinon.stub(manager as any, 'refresh').resolves();
 
@@ -1922,7 +1940,7 @@ describe('DeviceManager', () => {
 
         describe('isDiscovered flag', () => {
             it('sets isDiscovered true when device comes from discovery', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Simulate SSDP discovery - just adds to discoveredDevices
                 manager['setDiscoveredDevice']('192.168.1.100', 'ABC123');
@@ -1932,7 +1950,7 @@ describe('DeviceManager', () => {
             });
 
             it('sets isDiscovered false when health check fails on configured device', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
                 sinon.stub(manager as any, 'refresh').resolves();
 
@@ -1955,7 +1973,7 @@ describe('DeviceManager', () => {
             });
 
             it('removes discovered-only device when health check fails', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
                 sinon.stub(manager as any, 'refresh').resolves();
 
@@ -1978,7 +1996,7 @@ describe('DeviceManager', () => {
 
         describe('getAllDevices sorting', () => {
             it('sorts by form factor, then name, then serial number', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Add TV (priority 2) with Z name
                 addDiscoveredDevice(createMockDevice({
@@ -2024,7 +2042,7 @@ describe('DeviceManager', () => {
                     }
                 });
 
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Add configured device with real device info (was resolved from network)
                 addDevice(createMockDevice({
@@ -2065,7 +2083,7 @@ describe('DeviceManager', () => {
                     }
                 });
 
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Add configured device that was never resolved (no serial)
                 addConfiguredDevice(createMockDevice({
@@ -2102,7 +2120,7 @@ describe('DeviceManager', () => {
                     }
                 });
 
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 await manager['loadConfiguredDevices']();
 
@@ -2140,7 +2158,7 @@ describe('DeviceManager', () => {
                     }
                 });
 
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
 
                 await manager['loadConfiguredDevices']();
@@ -2185,7 +2203,7 @@ describe('DeviceManager', () => {
                     }
                 });
 
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 await manager['loadConfiguredDevices']();
 
                 expect(manager.getAllDevices().length).to.equal(1);
@@ -2215,7 +2233,7 @@ describe('DeviceManager', () => {
 
         describe('loadLastSeenDevices', () => {
             it('preserves configured devices and removes discovered-only', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Add configured device
                 addConfiguredDevice(createMockDevice({
@@ -2242,7 +2260,7 @@ describe('DeviceManager', () => {
 
         describe('resolveDevice', () => {
             it('preserves isConfigured after successful resolution', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const device = createMockDevice({
                     serialNumber: 'device-123',
@@ -2268,7 +2286,7 @@ describe('DeviceManager', () => {
         describe('clearAllCache', () => {
             describe('timestamp clearing', () => {
                 it('resets lastScanDate to null', () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager = new DeviceManager(vscode.context);
 
                     // Simulate a scan having occurred
                     manager['lastScanDate'] = new Date();
@@ -2280,7 +2298,7 @@ describe('DeviceManager', () => {
                 });
 
                 it('makes timeSinceLastScan return Infinity after clear', () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager = new DeviceManager(vscode.context);
 
                     // Simulate a scan having occurred
                     manager['lastScanDate'] = new Date();
@@ -2292,7 +2310,7 @@ describe('DeviceManager', () => {
                 });
 
                 it('clears globalStateManager device cache (enables fresh fetch)', async () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager = new DeviceManager(vscode.context);
 
                     const device = createMockDevice();
                     addDevice(device);
@@ -2326,7 +2344,7 @@ describe('DeviceManager', () => {
                 });
 
                 it('clears resolveDeviceSequence map', () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager = new DeviceManager(vscode.context);
 
                     const device = createMockDevice();
 
@@ -2342,7 +2360,7 @@ describe('DeviceManager', () => {
 
             describe('scan state handling', () => {
                 it('calls finder.stop() to handle any in-progress scan', () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager = new DeviceManager(vscode.context);
 
                     const finderStopSpy = sinon.spy(manager['finder'], 'stop');
 
@@ -2356,7 +2374,7 @@ describe('DeviceManager', () => {
                 it('allows immediate rescan after clear', () => {
                     const clock = sinon.useFakeTimers();
                     try {
-                        manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                        manager = new DeviceManager(vscode.context);
 
                         // Simulate recent scan
                         manager['lastScanDate'] = new Date();
@@ -2378,7 +2396,7 @@ describe('DeviceManager', () => {
                 });
 
                 it('health check runs immediately after clear', async () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager = new DeviceManager(vscode.context);
 
                     const device = createMockDevice();
                     const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
@@ -2396,7 +2414,7 @@ describe('DeviceManager', () => {
                 });
 
                 it('ignores concurrent health check results after clear', async () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager = new DeviceManager(vscode.context);
 
                     const device = createMockDevice();
 
@@ -2426,7 +2444,7 @@ describe('DeviceManager', () => {
                 });
 
                 it('handles multiple rapid clears safely', () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager = new DeviceManager(vscode.context);
 
                     manager['lastScanDate'] = new Date();
 
@@ -2441,25 +2459,29 @@ describe('DeviceManager', () => {
                 });
             });
 
-            describe('integration with globalStateManager', () => {
-                it('calls globalStateManager.clearLastSeenDevices', () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            describe('integration with deviceStorage', () => {
+                it('clears lastSeenDevices', () => {
+                    manager = new DeviceManager(vscode.context);
 
-                    mockGlobalStateManager.clearLastSeenDevices = sinon.stub();
+                    // Set up some data first
+                    setLastSeenDevices('test-network-hash', ['device-1', 'device-2']);
 
                     manager.clearAllCache();
 
-                    expect(mockGlobalStateManager.clearLastSeenDevices.calledOnce).to.be.true;
+                    // Verify cleared
+                    expect(globalStateData()['lastSeenDevicesByNetwork']).to.be.undefined;
                 });
 
-                it('calls globalStateManager.clearDeviceCache', () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                it('clears deviceCache', () => {
+                    manager = new DeviceManager(vscode.context);
 
-                    mockGlobalStateManager.clearDeviceCache = sinon.stub();
+                    // Set up some data first
+                    setCachedDevice('device-1', { serialNumber: 'device-1', deviceInfo: {}, createdAt: Date.now() });
 
                     manager.clearAllCache();
 
-                    expect(mockGlobalStateManager.clearDeviceCache.calledOnce).to.be.true;
+                    // Verify cleared
+                    expect(globalStateData()['deviceCache']).to.be.undefined;
                 });
             });
         });
@@ -2468,7 +2490,7 @@ describe('DeviceManager', () => {
     describe('device key encoding/decoding', () => {
         describe('key encoding', () => {
             it('uses serial-based key (s:...) when serial exists', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const device = createMockDevice({
                     serialNumber: 'ABC123',
@@ -2483,7 +2505,7 @@ describe('DeviceManager', () => {
             });
 
             it('uses IP-based key (i:...) when no serial exists', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Create device without serial - manually add to discovered array
                 manager['discoveredDevices'].push({
@@ -2498,7 +2520,7 @@ describe('DeviceManager', () => {
             });
 
             it('includes key in getAllDevices() results', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const device = createMockDevice({
                     serialNumber: 'DEF456',
@@ -2515,7 +2537,7 @@ describe('DeviceManager', () => {
 
         describe('key decoding/lookup', () => {
             it('getDevice("s:ABC123") finds device by serial', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const device = createMockDevice({
                     serialNumber: 'ABC123',
@@ -2532,7 +2554,7 @@ describe('DeviceManager', () => {
             });
 
             it('getDevice("i:192.168.1.100") finds device by IP', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const device = createMockDevice({
                     serialNumber: 'XYZ789',
@@ -2549,7 +2571,7 @@ describe('DeviceManager', () => {
             });
 
             it('IP-based lookup still works after device gains serial (stale key)', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Device initially added by IP, then gains serial
                 const device = createMockDevice({
@@ -2571,7 +2593,7 @@ describe('DeviceManager', () => {
 
         describe('edge cases', () => {
             it('returns undefined for unprefixed string (rejects invalid format)', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const device = createMockDevice({
                     serialNumber: 'ABC123',
@@ -2586,7 +2608,7 @@ describe('DeviceManager', () => {
             });
 
             it('returns undefined for empty key after prefix', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const device = createMockDevice({
                     serialNumber: 'ABC123',
@@ -2599,7 +2621,7 @@ describe('DeviceManager', () => {
             });
 
             it('returns undefined for empty string', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const result = manager.getDevice('');
 
@@ -2607,7 +2629,7 @@ describe('DeviceManager', () => {
             });
 
             it('returns undefined for unknown serial key', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const device = createMockDevice({
                     serialNumber: 'ABC123',
@@ -2621,7 +2643,7 @@ describe('DeviceManager', () => {
             });
 
             it('returns undefined for unknown IP key', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const device = createMockDevice({
                     serialNumber: 'ABC123',
@@ -2637,7 +2659,7 @@ describe('DeviceManager', () => {
 
         describe('key transition', () => {
             it('device key changes from IP-based to serial-based when re-set with serial', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Start with device that has no serial
                 manager['discoveredDevices'].push({
@@ -2665,7 +2687,7 @@ describe('DeviceManager', () => {
     describe('serial-based deduplication (DHCP IP change)', () => {
         describe('setDiscoveredDevice', () => {
             it('removes old entry when same serial discovered at new IP', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Device exists at old IP
                 const oldDevice = createMockDevice({
@@ -2686,7 +2708,7 @@ describe('DeviceManager', () => {
             });
 
             it('preserves configured properties when device changes IP', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Configured device exists at old IP
                 const oldDevice = createMockDevice({
@@ -2712,7 +2734,7 @@ describe('DeviceManager', () => {
             });
 
             it('transfers lastUsedDeviceIp when device changes IP', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Device exists at old IP and is the last used device
                 const oldDevice = createMockDevice({
@@ -2734,7 +2756,7 @@ describe('DeviceManager', () => {
 
         describe('resolveDevice', () => {
             it('removes old entry when same serial resolved at new IP', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
 
                 // Device exists at old IP
@@ -2773,7 +2795,7 @@ describe('DeviceManager', () => {
             });
 
             it('preserves configured properties when resolving at new IP', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
 
                 // Configured device exists at old IP
@@ -2818,7 +2840,7 @@ describe('DeviceManager', () => {
 
         describe('same serial configured at multiple IPs', () => {
             it('collapses to single entry when resolved', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
 
                 // Two configured entries for same serial at different IPs
@@ -2859,7 +2881,7 @@ describe('DeviceManager', () => {
 
         describe('cross-state preservation', () => {
             it('keeps discovered IP when config has stale IP for same serial', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Device discovered at IP1 (real network location)
                 addDiscoveredDevice(createMockDevice({
@@ -2888,7 +2910,7 @@ describe('DeviceManager', () => {
             });
 
             it('preserves isConfigured when configured device gets discovered at new IP', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Configured-only device at old IP (not yet discovered on network)
                 const oldDevice = createMockDevice({
@@ -2917,7 +2939,7 @@ describe('DeviceManager', () => {
 
         describe('edge cases', () => {
             it('does not dedupe when serial is undefined', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Device without serial at old IP
                 const oldDevice = createMockDevice({
@@ -2936,7 +2958,7 @@ describe('DeviceManager', () => {
             });
 
             it('does not remove device at same IP (not a duplicate)', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Device exists with fresh cache (deviceInfo provided populates cache)
                 const device = createMockDevice({
@@ -2963,39 +2985,39 @@ describe('DeviceManager', () => {
     describe('serial mismatch detection', () => {
         describe('checkForSerialMismatch', () => {
             it('returns false when no new serial is provided', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 const result = manager['checkForSerialMismatch']('192.168.1.100', undefined);
                 expect(result).to.be.false;
             });
 
             it('returns false when no stored serial exists for IP', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-                mockGlobalStateManager.getSerialNumberForIp.returns(undefined);
+                manager = new DeviceManager(vscode.context);
+                // No serial mapping set up - default state
 
                 const result = manager['checkForSerialMismatch']('192.168.1.100', 'NEW-SERIAL');
                 expect(result).to.be.false;
             });
 
             it('returns false when stored serial matches new serial', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-                mockGlobalStateManager.getSerialNumberForIp.returns('ABC123');
+                manager = new DeviceManager(vscode.context);
+                setSerialNumberForIp('test-network-hash', '192.168.1.100', 'ABC123');
 
                 const result = manager['checkForSerialMismatch']('192.168.1.100', 'ABC123');
                 expect(result).to.be.false;
             });
 
             it('returns true when stored serial differs from new serial', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-                mockGlobalStateManager.getSerialNumberForIp.returns('OLD-SERIAL');
+                manager = new DeviceManager(vscode.context);
+                setSerialNumberForIp('test-network-hash', '192.168.1.100', 'OLD-SERIAL');
 
                 const result = manager['checkForSerialMismatch']('192.168.1.100', 'NEW-SERIAL');
                 expect(result).to.be.true;
             });
 
             it('returns false when configured device has different serial (avoids reload loop)', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-                mockGlobalStateManager.getSerialNumberForIp.returns(undefined);
+                manager = new DeviceManager(vscode.context);
+                // No serial mapping set up
 
                 // Add configured device with serial - this is a user misconfiguration
                 // We intentionally don't trigger mismatch here because reloading
@@ -3011,8 +3033,8 @@ describe('DeviceManager', () => {
             });
 
             it('returns true when discovered device has different serial', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-                mockGlobalStateManager.getSerialNumberForIp.returns(undefined);
+                manager = new DeviceManager(vscode.context);
+                // No serial mapping set up
 
                 // Add discovered device with serial
                 manager['discoveredDevices'].push({
@@ -3027,11 +3049,11 @@ describe('DeviceManager', () => {
 
         describe('config reload on mismatch', () => {
             it('reloads configured devices when resolveDevice detects serial mismatch', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
 
                 // Set up: stored serial for this IP
-                mockGlobalStateManager.getSerialNumberForIp.returns('OLD-SERIAL');
+                setSerialNumberForIp('test-network-hash', '192.168.1.100', 'OLD-SERIAL');
 
                 // Spy on loadConfiguredDevices
                 const loadConfigSpy = sinon.spy(manager as any, 'loadConfiguredDevices');
@@ -3059,10 +3081,10 @@ describe('DeviceManager', () => {
             });
 
             it('reloads configured devices when SSDP finds device with different serial at known IP', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Set up: stored serial for this IP
-                mockGlobalStateManager.getSerialNumberForIp.returns('OLD-SERIAL');
+                setSerialNumberForIp('test-network-hash', '192.168.1.100', 'OLD-SERIAL');
 
                 // Spy on loadConfiguredDevices
                 const loadConfigSpy = sinon.spy(manager as any, 'loadConfiguredDevices');
@@ -3075,11 +3097,11 @@ describe('DeviceManager', () => {
             });
 
             it('does not reload when serial matches', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
 
                 // Set up: stored serial for this IP
-                mockGlobalStateManager.getSerialNumberForIp.returns('SAME-SERIAL');
+                setSerialNumberForIp('test-network-hash', '192.168.1.100', 'SAME-SERIAL');
 
                 // Spy on loadConfiguredDevices
                 const loadConfigSpy = sinon.spy(manager as any, 'loadConfiguredDevices');
@@ -3100,21 +3122,13 @@ describe('DeviceManager', () => {
         });
 
         describe('configured device with mismatched serial at IP', () => {
-            let ipToSerialMap: Map<string, string>;
-
             beforeEach(() => {
-                // Reset the IP→serial tracking map and restore callsFake behavior
-                ipToSerialMap = new Map();
-                mockGlobalStateManager.getSerialNumberForIp.callsFake((ip: string, networkId: string) => {
-                    return ipToSerialMap.get(`${networkId}:${ip}`);
-                });
-                mockGlobalStateManager.setSerialNumberForIp.callsFake((networkId: string, ip: string, serial: string) => {
-                    ipToSerialMap.set(`${networkId}:${ip}`, serial);
-                });
+                // Clear serial mapping for each test
+                clearSerialNumberByIpForNetwork();
             });
 
             it('shows two devices when configured serial differs from device at IP', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
                 sinon.stub(manager as any, 'randomDelay').resolves();
 
                 // User configured device with serial ABC at this IP
@@ -3188,26 +3202,26 @@ describe('DeviceManager', () => {
 
         it('returns undefined when setting is missing', () => {
             stubConfig(undefined);
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             expect(manager.getDefaultPassword()).to.be.undefined;
         });
 
         it('returns undefined when setting is an empty string', () => {
             stubConfig('');
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             expect(manager.getDefaultPassword()).to.be.undefined;
         });
 
         it('returns the configured value when setting is a non-empty string', () => {
             stubConfig('hunter2');
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager = new DeviceManager(vscode.context);
             expect(manager.getDefaultPassword()).to.equal('hunter2');
         });
 
         describe('getDevice fallback', () => {
             it('applies defaultPassword to a device missing configuredPassword', () => {
                 stubConfig('hunter2');
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 manager['discoveredDevices'].push({
                     serialNumber: 'abc',
@@ -3221,7 +3235,7 @@ describe('DeviceManager', () => {
 
             it('preserves a device-specific configuredPassword over defaultPassword', () => {
                 stubConfig('hunter2');
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Add a configured device with a specific password
                 manager['configuredDevices'].push({
@@ -3236,7 +3250,7 @@ describe('DeviceManager', () => {
 
             it('leaves configuredPassword undefined when no default and no per-device password', () => {
                 stubConfig(undefined);
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 manager['discoveredDevices'].push({
                     serialNumber: 'abc',
@@ -3252,7 +3266,7 @@ describe('DeviceManager', () => {
         describe('getAllDevices fallback', () => {
             it('applies defaultPassword to every device missing a per-device password', () => {
                 stubConfig('hunter2');
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 // Discovered device without password
                 manager['discoveredDevices'].push({
@@ -3277,7 +3291,7 @@ describe('DeviceManager', () => {
 
             it('does not mutate the underlying device entry when applying the fallback', () => {
                 stubConfig('hunter2');
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context);
 
                 manager['discoveredDevices'].push({
                     serialNumber: 'abc',

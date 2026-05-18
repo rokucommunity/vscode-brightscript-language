@@ -10,7 +10,6 @@ import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import { DeviceManager } from './deviceDiscovery/DeviceManager';
-import { GlobalStateManager } from './GlobalStateManager';
 import { rokuDeploy } from 'roku-deploy';
 import { CredentialStore } from './managers/CredentialStore';
 
@@ -52,8 +51,7 @@ describe('BrightScriptConfigurationProvider', () => {
         sinon.stub(DeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
         sinon.stub(DeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
         sinon.stub(DeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
-        const globalStateManager = new GlobalStateManager(vscode.context);
-        deviceManager = new DeviceManager(vscode.context, globalStateManager);
+        deviceManager = new DeviceManager(vscode.context);
         userInputManager = new UserInputManager(deviceManager);
         credentialStore = new CredentialStore(vscode.context);
 

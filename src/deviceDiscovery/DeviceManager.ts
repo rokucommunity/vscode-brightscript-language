@@ -4,21 +4,21 @@ import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
 import { rokuDeploy, DeviceUnreachableError, type DeviceInfoRaw } from 'roku-deploy';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
-import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
+import { DeviceStorageManager, type HeartbeatProvider } from './DeviceStorageManager';
 import { util } from '../util';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { debounce } from 'lodash';
 
-export class DeviceManager {
+export class DeviceManager implements HeartbeatProvider {
     // #region constructor
     constructor(
         private context: vscode.ExtensionContext,
-        private globalStateManager: GlobalStateManager,
         private extensionOutputChannel?: vscode.OutputChannel
     ) {
+        this.deviceStorage = new DeviceStorageManager(context);
         this.networkId = getNetworkHash();
 
         this.setupConfiguration();
@@ -26,6 +26,17 @@ export class DeviceManager {
         this.setupMonitors();
         this.initialize();
         this.context.subscriptions.push(this);
+    }
+
+    private deviceStorage: DeviceStorageManager;
+
+    // HeartbeatProvider implementation - pass through to deviceStorage
+    public getLastAliveTimestamp(key: string): number | undefined {
+        return this.deviceStorage.getLastAliveTimestamp(key);
+    }
+
+    public setLastAliveTimestamp(key: string, timestamp: number): void {
+        this.deviceStorage.setLastAliveTimestamp(key, timestamp);
     }
 
     private setupConfiguration() {
@@ -111,7 +122,7 @@ export class DeviceManager {
 
     private initialize() {
         //clear any deviceInfo entries older than our max age
-        this.globalStateManager.clearExpiredDevices();
+        this.deviceStorage.clearExpiredDevices();
 
         // Load configured devices and cached devices (order doesn't matter due to setDevice merge logic)
         this.loadConfiguredDevices().catch(() => { });
@@ -125,7 +136,7 @@ export class DeviceManager {
             this.systemSleepMonitor.start();
 
             this.activateMonitoring().then(() => {
-                const lastSeenDeviceIds = this.globalStateManager.getLastSeenDevices(this.networkId);
+                const lastSeenDeviceIds = this.deviceStorage.getLastSeenDevices(this.networkId);
                 if (lastSeenDeviceIds.length === 0) {
                     this.refresh();
                 } else {
@@ -149,7 +160,7 @@ export class DeviceManager {
     private emitter = new EventEmitter();
     private systemSleepMonitor: SystemSleepMonitor;
     private networkChangeMonitor: NetworkChangeMonitor;
-    private finder = new RokuFinder(this.globalStateManager, this.makeFinderLogger());
+    private finder = new RokuFinder(this, this.makeFinderLogger());
 
     // Health check tracking and cooldowns
     private resolveDeviceSequence = new Map<string, number>();
@@ -394,7 +405,7 @@ export class DeviceManager {
                 resolvedState = 'online';
             } else if (lookup.serialNumber) {
                 // Check cache freshness to determine state
-                const cached = this.globalStateManager.getCachedDevice(lookup.serialNumber);
+                const cached = this.deviceStorage.getCachedDevice(lookup.serialNumber);
                 if (cached && now - cached.createdAt < this.FRESH_CACHE_THRESHOLD_MS) {
                     resolvedState = 'online';
                 } else {
@@ -425,7 +436,7 @@ export class DeviceManager {
      * Used by view providers to determine icon: warning (no cache) vs disconnect (has cache).
      */
     public hasDeviceCache(serialNumber: string): boolean {
-        return !!this.globalStateManager.getCachedDevice(serialNumber);
+        return !!this.deviceStorage.getCachedDevice(serialNumber);
     }
 
     /**
@@ -472,9 +483,16 @@ export class DeviceManager {
         }
 
         //clear the cache for the current list of devices
-        this.globalStateManager.setLastSeenDevices(this.networkId, []);
+        this.deviceStorage.setLastSeenDevices(this.networkId, []);
 
         this.emitDevicesChanged();
+    }
+
+    /**
+     * Clear just the last seen devices (without clearing the full device cache)
+     */
+    public clearLastSeenDevices(): void {
+        this.deviceStorage.clearLastSeenDevices();
     }
 
     public clearAllCache() {
@@ -482,9 +500,9 @@ export class DeviceManager {
         this.finder.stop();
 
         // Clear persisted global state
-        this.globalStateManager.clearLastSeenDevices();
-        this.globalStateManager.clearDeviceCache();
-        this.globalStateManager.clearSerialNumberByIpForNetwork();
+        this.deviceStorage.clearLastSeenDevices();
+        this.deviceStorage.clearDeviceCache();
+        this.deviceStorage.clearSerialNumberByIpForNetwork();
 
         // Clear all timestamps and per-device state
         this.lastScanDate = null;
@@ -632,22 +650,22 @@ export class DeviceManager {
         this.discoveredDevices = [];
 
         // Load cached devices for current network - add to discoveredDevices with 'pending' state
-        const lastSeenDevices = this.globalStateManager.getLastSeenDevices(this.networkId);
+        const lastSeenDevices = this.deviceStorage.getLastSeenDevices(this.networkId);
         for (const serialNumber of lastSeenDevices) {
-            const cached = this.globalStateManager.getCachedDevice(serialNumber);
+            const cached = this.deviceStorage.getCachedDevice(serialNumber);
             if (cached && typeof cached === 'object' && !Array.isArray(cached)) {
                 // Get IP from ip-to-serial mapping
-                const ip = this.globalStateManager.getIpForSerial(serialNumber, this.networkId);
+                const ip = this.deviceStorage.getIpForSerial(serialNumber, this.networkId);
                 if (!ip) {
                     // No IP mapping found - remove stale entry
-                    this.globalStateManager.removeLastSeenDevice(this.networkId, serialNumber);
+                    this.deviceStorage.removeLastSeenDevice(this.networkId, serialNumber);
                     continue;
                 }
                 // Add to discoveredDevices array (state determined from cache freshness)
                 this.setDiscoveredDevice(ip, serialNumber);
             } else {
                 // No cached info - remove stale entry
-                this.globalStateManager.removeLastSeenDevice(this.networkId, serialNumber);
+                this.deviceStorage.removeLastSeenDevice(this.networkId, serialNumber);
             }
         }
     }
@@ -748,8 +766,8 @@ export class DeviceManager {
         let deviceInfo: DeviceInfoRaw | undefined;
 
         // Try to find cached data via serial number
-        const serialForCache = knownSerial ?? this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
-        const cached = serialForCache ? this.globalStateManager.getCachedDevice(serialForCache) : undefined;
+        const serialForCache = knownSerial ?? this.deviceStorage.getSerialNumberForIp(device.ip, this.networkId);
+        const cached = serialForCache ? this.deviceStorage.getCachedDevice(serialForCache) : undefined;
         const cacheIsFresh = cached && (Date.now() - cached.createdAt < this.DEVICE_INFO_CACHE_MS);
 
         // Use cache only if:
@@ -791,7 +809,7 @@ export class DeviceManager {
 
             if (serial) {
                 // Add to last seen devices (successfully resolved with serial)
-                this.globalStateManager.addLastSeenDevice(this.networkId, serial);
+                this.deviceStorage.addLastSeenDevice(this.networkId, serial);
             }
 
             // Update discoveredDevices array (handles mismatch detection internally)
@@ -843,7 +861,7 @@ export class DeviceManager {
         }
 
         // Check what serial we have stored for this IP in the IP→serial map
-        const storedSerial = this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
+        const storedSerial = this.deviceStorage.getSerialNumberForIp(ip, this.networkId);
 
         if (storedSerial && storedSerial !== newSerial) {
             // Different device is now at this IP
@@ -921,7 +939,7 @@ export class DeviceManager {
                 // No serial = no cache, consider stale
                 return true;
             }
-            const cached = this.globalStateManager.getCachedDevice(device.serialNumber);
+            const cached = this.deviceStorage.getCachedDevice(device.serialNumber);
             if (!cached) {
                 return true;
             }
@@ -949,12 +967,12 @@ export class DeviceManager {
                 timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
             });
             if (info['serial-number']) {
-                this.globalStateManager.setCachedDevice(info['serial-number'], {
+                this.deviceStorage.setCachedDevice(info['serial-number'], {
                     serialNumber: info['serial-number'],
                     deviceInfo: info,
                     createdAt: Date.now()
                 });
-                this.globalStateManager.setSerialNumberForIp(this.networkId, ip, info['serial-number']);
+                this.deviceStorage.setSerialNumberForIp(this.networkId, ip, info['serial-number']);
             }
 
             return info;
@@ -1048,7 +1066,7 @@ export class DeviceManager {
 
         // Remove from lastSeenDevices if we have a serial
         if (device?.serialNumber) {
-            this.globalStateManager.removeLastSeenDevice(this.networkId, device.serialNumber);
+            this.deviceStorage.removeLastSeenDevice(this.networkId, device.serialNumber);
         }
     }
 
@@ -1129,7 +1147,7 @@ export class DeviceManager {
         // cache is fallback for initial load before discovery runs
         const serialNumber = configuredEntry?.serialNumber ??
             discoveredEntry?.serialNumber ??
-            this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
+            this.deviceStorage.getSerialNumberForIp(ip, this.networkId);
 
         const deviceState = this.getDeviceState({ serialNumber: serialNumber, ip: ip }).state;
 
@@ -1137,7 +1155,7 @@ export class DeviceManager {
         const key = serialNumber ? `s:${serialNumber}` : `i:${ip}`;
 
         // Hydrate deviceInfo from cache
-        const cached = serialNumber ? this.globalStateManager.getCachedDevice(serialNumber) : undefined;
+        const cached = serialNumber ? this.deviceStorage.getCachedDevice(serialNumber) : undefined;
 
         return {
             ip: ip,
@@ -1163,11 +1181,11 @@ export class DeviceManager {
         }
 
         // Get actual serial number from IP→serial mapping (more reliable than SSDP hint)
-        const actualSerial = this.globalStateManager.getSerialNumberForIp(ip, this.networkId) ?? serialNumber;
+        const actualSerial = this.deviceStorage.getSerialNumberForIp(ip, this.networkId) ?? serialNumber;
 
         // Get cached device directly from globalStateManager
         const cachedDevice = actualSerial
-            ? this.globalStateManager.getCachedDevice(actualSerial)
+            ? this.deviceStorage.getCachedDevice(actualSerial)
             : undefined;
 
         // Get display name from cache
@@ -1236,7 +1254,7 @@ export class DeviceManager {
         const oldFinder = this.finder;
 
         // Create new finder instance
-        this.finder = new RokuFinder(this.globalStateManager, this.makeFinderLogger());
+        this.finder = new RokuFinder(this, this.makeFinderLogger());
 
         // Re-attach event listeners
         this.setupFinderListeners();
