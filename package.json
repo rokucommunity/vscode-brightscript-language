@@ -1257,9 +1257,9 @@
                 "id": "jsonc",
                 "filenamePatterns": [
                     "bsconfig.json",
-                    "*bsconfig.json",
+                    "*bsconfig*.json",
                     "brsconfig.json",
-                    "*brsconfig.json"
+                    "*brsconfig*.json"
                 ]
             },
             {
@@ -1320,11 +1320,11 @@
         ],
         "jsonValidation": [
             {
-                "fileMatch": "*bsconfig.json",
+                "fileMatch": "*bsconfig*.json",
                 "url": "./dist/bsconfig.schema.json"
             },
             {
-                "fileMatch": "*brsconfig.json",
+                "fileMatch": "*brsconfig*.json",
                 "url": "./dist/bsconfig.schema.json"
             }
         ],
