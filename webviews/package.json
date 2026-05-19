@@ -10,7 +10,7 @@
     "audit": "npm audit"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "@sveltejs/vite-plugin-svelte": "^5.1.1",
     "@tsconfig/svelte": "^5.0.8",
     "@vscode/webview-ui-toolkit": "^1.2.2",
     "svelte": "^5.55.8",
@@ -18,6 +18,6 @@
     "svelte-codicons": "^0.21.0",
     "tslib": "^2.4.1",
     "typescript": "^5.5.4",
-    "vite": "^8.0.13"
+    "vite": "^6.4.2"
   }
 }
