@@ -247,6 +247,30 @@ export class DeviceManager {
     }
 
     /**
+     * Generate a display name for a device.
+     * Handles missing device info gracefully (no ugly " - - - " strings).
+     * @param device - The device to generate a name for
+     * @param includeIp - Whether to always append IP at the end (default: false, IP only used as fallback)
+     */
+    public getDeviceDisplayName(device: RokuDevice, includeIp = false): string {
+        const displayName = device.configuredName || device.deviceInfo['user-device-name'];
+        const modelNumber = device.deviceInfo['model-number'];
+        const softwareVersion = device.deviceInfo['software-version'];
+
+        const parts = [
+            modelNumber,
+            displayName,
+            softwareVersion ? `OS ${softwareVersion}` : undefined
+        ].filter(Boolean);
+
+        if (includeIp && device.ip) {
+            parts.push(device.ip);
+        }
+
+        return parts.join(' – ') || device.ip;
+    }
+
+    /**
      * Build all devices from configuredDevices and discoveredDevices arrays.
      * Deduplication by serial number (preferred) or IP (fallback).
      */
