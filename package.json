@@ -32,7 +32,7 @@
         "build": "npm run copy-schema && tsc -p ./ && npm run build-webviews",
         "build-webviews": "cd ./webviews && npm run build && cd ..",
         "lint": "eslint \"./src/**/*.ts\"",
-        "audit": "npm audit || audit-ci --config ./audit-ci.jsonc",
+        "audit": "npm audit || audit-ci --config ./audit-ci.jsonc && cd webviews && npm run audit",
         "watch": "npm run copy-schema && tsc -w -p ./",
         "watch-webviews": "cd ./webviews && npm run watch",
         "watch-all": "ts-node ./scripts/watch-all.ts",
