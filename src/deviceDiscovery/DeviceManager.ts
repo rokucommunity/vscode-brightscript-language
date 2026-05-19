@@ -895,24 +895,28 @@ export class DeviceManager {
     }
 
     private async healthCheckAllDevices(force = false, doSyntheticDelay = true): Promise<void> {
-        // Get all devices
-        const devices = this.getAllDevices();
+        // Collect all unique IPs from both sources (same serial at different IPs = different entries to check)
+        const discoveredIpSet = new Set(this.discoveredDevices.map(entry => entry.ip));
+        const allIps = new Set([
+            ...this.configuredDevices.map(entry => entry.resolvedIp ?? entry.host),
+            ...discoveredIpSet
+        ]);
 
-        if (devices.length === 0) {
+        if (allIps.size === 0) {
             return;
         }
 
         // Set all to pending and emit before async work
-        for (const device of devices) {
-            this.setDeviceState({ ip: device.ip, serialNumber: device.serialNumber }, 'pending');
+        for (const ip of allIps) {
+            this.setDeviceState({ ip: ip }, 'pending');
         }
         this.emitDevicesChanged();
 
-        // Check all devices (force flag bypasses fetch cache)
+        // Health check all devices - if any discovered device is unhealthy, trigger a scan
         let needsScan = false;
-        await Promise.all(devices.map(async (device) => {
-            const isHealthy = await this.resolveDevice(device, doSyntheticDelay, force);
-            if (!isHealthy && device.isDiscovered) {
+        await Promise.all([...allIps].map(async (ip) => {
+            const isHealthy = await this.resolveDevice({ ip: ip }, doSyntheticDelay, force);
+            if (!isHealthy && discoveredIpSet.has(ip)) {
                 needsScan = true;
             }
         }));
@@ -925,33 +929,41 @@ export class DeviceManager {
     /**
      * Health check devices that didn't respond to a scan.
      * Called after scan-ended. Checks devices whose cache is older than STALE_DEVICE_AFTER_SCAN_MS.
+     * Iterates over both source arrays to ensure all devices are checked even when
+     * the same serial exists at multiple IPs.
      */
     private async healthCheckStaleDevices() {
         const now = Date.now();
-        const staleDevices = this.getAllDevices().filter(device => {
-            // Skip devices that are already offline - no point health checking them
-            if (device.deviceState === 'offline') {
-                return false;
-            }
 
-            if (!device.serialNumber) {
-                // No serial = no cache, consider stale
-                return true;
+        // Helper to check if a device with given serial is stale
+        const isStale = (serialNumber: string | undefined): boolean => {
+            if (!serialNumber) {
+                return true; // No serial = no cache, consider stale
             }
-            const cached = this.globalStateManager.getCachedDevice(device.serialNumber);
+            const cached = this.globalStateManager.getCachedDevice(serialNumber);
             if (!cached) {
                 return true;
             }
             const cacheAge = now - cached.createdAt;
             return cacheAge > this.STALE_DEVICE_AFTER_SCAN_MS;
-        });
+        };
 
-        if (staleDevices.length === 0) {
+        // Collect unique stale IPs from both source arrays
+        const staleIps = new Set([
+            ...this.configuredDevices
+                .filter(entry => entry.state !== 'offline' && isStale(entry.serialNumber))
+                .map(entry => entry.resolvedIp ?? entry.host),
+            ...this.discoveredDevices
+                .filter(entry => entry.state !== 'offline' && isStale(entry.serialNumber))
+                .map(entry => entry.ip)
+        ]);
+
+        if (staleIps.size === 0) {
             return;
         }
 
         // Cooldown is handled by fetchDeviceInfo cache
-        await Promise.all(staleDevices.map(device => this.resolveDevice(device, false)));
+        await Promise.all([...staleIps].map(ip => this.resolveDevice({ ip: ip }, false)));
     }
 
     /**
