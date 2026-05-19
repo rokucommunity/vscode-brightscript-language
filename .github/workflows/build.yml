@@ -18,11 +18,10 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "18.18.2"
+          node-version: "18.20.4"
       - run: npm ci
       - run: npm run build
       - run: npm run lint
+      - run: npm run audit
       - run: npm run test
-      # disable coverage for now (because coveralls is down right now)
-      #- run: npm run publish-coverage
       - run: npm run create-package

@@ -1,7 +1,7 @@
 # BrightScript Language extension for VSCode
 
 [![build status](https://img.shields.io/github/actions/workflow/status/rokucommunity/vscode-brightscript-language/build.yml?logo=github&branch=master)](https://github.com/rokucommunity/vscode-brightscript-language/actions/workflows/build.yml)
-[![coverage status](https://img.shields.io/coveralls/github/rokucommunity/vscode-brightscript-language?logo=coveralls)](https://coveralls.io/github/rokucommunity/vscode-brightscript-language?branch=master)
+<!-- [![coverage status](https://img.shields.io/coveralls/github/rokucommunity/vscode-brightscript-language?logo=coveralls)](https://coveralls.io/github/rokucommunity/vscode-brightscript-language?branch=master) -->
 [![Visual Studio Marketplace](https://vsmarketplacebadges.dev/installs-short/RokuCommunity.brightscript.png?logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/RokuCommunity.brightscript.svg?logo=visual-studio-code&label=VSCode)](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
 [![OpenVSX](https://img.shields.io/open-vsx/v/RokuCommunity/brightscript.svg?label=OpenVSX)](https://open-vsx.org/extension/RokuCommunity/brightscript)
@@ -59,6 +59,10 @@ For a full list of features and settings, please see our [documentation website]
 ## Contributing
 
 The majority of this extension's language feature support depends on the [BrighterScript](https://github.com/RokuCommunity/brighterscript) project, which contributes the language server. The debugging functionality comes from the [roku-debug](https://github.com/RokuCommunity/roku-debug) project. If you would like to contribute please see our [contributing guide](https://rokucommunity.github.io/vscode-brightscript-language/contributing.html)
+
+## Accepted security advisories
+
+Dependencies flagged by `npm audit` that we have reviewed and chosen not to upgrade are tracked in [audit-ci.jsonc](https://github.com/RokuCommunity/vscode-brightscript-language/blob/master/audit-ci.jsonc). Each entry includes the advisory ID, the date it was added, and the reason it does not apply to this project.
 
 ## Changelog
 
