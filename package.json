@@ -84,7 +84,7 @@
         "source-map": "^0.7.3",
         "strip-ansi": "^5.2.0",
         "thenby": "^1.3.4",
-        "undent": "^0.1.0",
+        "undent": "^1.0.1",
         "uuid": "^9.0.1",
         "vscode-languageclient": "^7.0.0",
         "vscode-uri": "^1.0.6",
@@ -4650,7 +4650,8 @@
         ],
         "reporter": [
             "text-summary",
-            "html"
+            "html",
+            "lcovonly"
         ],
         "sourceMap": true,
         "instrument": true,
