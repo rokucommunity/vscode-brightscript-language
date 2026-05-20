@@ -247,6 +247,41 @@ export class DeviceManager {
     }
 
     /**
+     * Generate a display name for a device.
+     * Handles missing device info gracefully (no ugly " - - - " strings).
+     * @param device - The device to generate a name for
+     * @param includeIp - Whether to always append IP at the end (default: false, IP only used as fallback)
+     */
+    public getDeviceDisplayName(device: RokuDevice, includeIp = false): string {
+        // Coerce to a trimmed string, or undefined when the value is missing/blank.
+        // Whitespace-only values would otherwise pass `Boolean` and render as empty segments.
+        const clean = (value: unknown): string | undefined => {
+            if (value === null || value === undefined || typeof value !== 'string') {
+                return undefined;
+            }
+            const str = value.trim();
+            return str.length > 0 ? str : undefined;
+        };
+
+        const displayName = clean(device.configuredName) ?? clean(device.deviceInfo['user-device-name']);
+        const modelNumber = clean(device.deviceInfo['model-number']);
+        const softwareVersion = clean(device.deviceInfo['software-version']);
+        const ip = clean(device.ip);
+
+        const parts = [
+            modelNumber,
+            displayName,
+            softwareVersion ? `OS ${softwareVersion}` : undefined
+        ].filter(Boolean);
+
+        if (includeIp && ip) {
+            parts.push(ip);
+        }
+
+        return parts.join(' – ') || ip || '';
+    }
+
+    /**
      * Build all devices from configuredDevices and discoveredDevices arrays.
      * Deduplication by serial number (preferred) or IP (fallback).
      */
