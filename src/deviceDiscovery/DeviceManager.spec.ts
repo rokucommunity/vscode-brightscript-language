@@ -1485,6 +1485,275 @@ describe('DeviceManager', () => {
 
             expect(showTimedStub.calledTwice).to.be.true;
         });
+
+        describe('uncached device resolution on focus', () => {
+            it('triggers resolveUncachedDiscoveredDevices when focused and no cache exists', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100', 'YN00AB123456');
+
+                expect(resolveStub.calledOnce).to.be.true;
+            });
+
+            it('does not trigger resolveUncachedDiscoveredDevices when focused but device already has cache', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Cache the device so hasDeviceCache returns true
+                const device = createMockDevice({
+                    serialNumber: 'YN00AB123456',
+                    ip: '192.168.1.100',
+                    deviceInfo: mockDeviceInfo
+                });
+                addDevice(device);
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100', 'YN00AB123456');
+
+                expect(resolveStub.called).to.be.false;
+            });
+
+            it('does not trigger resolveUncachedDiscoveredDevices when not focused, even if no cache', () => {
+                (vscode.window as any).state = { focused: false };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100', 'YN00AB123456');
+
+                expect(resolveStub.called).to.be.false;
+            });
+
+            it('uses IP→serial mapping to detect cache when no serial is provided', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Seed mapping AND cache so hasDeviceCache returns true via the mapped serial
+                mockGlobalStateManager.setSerialNumberForIp('test-network-hash', '192.168.1.100', 'MAPPED-SERIAL');
+                mockGlobalStateManager.setCachedDevice('MAPPED-SERIAL', {
+                    serialNumber: 'MAPPED-SERIAL',
+                    deviceInfo: { 'default-device-name': 'Mapped Roku' },
+                    createdAt: Date.now()
+                });
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100');
+
+                // The mapped serial has cache, so resolution should NOT trigger
+                expect(resolveStub.called).to.be.false;
+            });
+
+            it('prefers the provided serial over the IP→serial mapping when checking cache', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Cache the MAPPED serial. The provided serial is different & uncached.
+                mockGlobalStateManager.setSerialNumberForIp('test-network-hash', '192.168.1.100', 'MAPPED-SERIAL');
+                mockGlobalStateManager.setCachedDevice('MAPPED-SERIAL', {
+                    serialNumber: 'MAPPED-SERIAL',
+                    deviceInfo: {},
+                    createdAt: Date.now()
+                });
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100', 'PROVIDED-SERIAL');
+
+                // Provided serial wins → no cache for it → should trigger resolution
+                expect(resolveStub.calledOnce).to.be.true;
+            });
+
+            it('triggers resolveUncachedDiscoveredDevices when neither serial provided nor mapped', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100');
+
+                // No serial → hasCache=false → focused → triggers resolution
+                expect(resolveStub.calledOnce).to.be.true;
+            });
+
+            it('swallows errors from resolveUncachedDiscoveredDevices so the caller is not affected', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').rejects(new Error('network down'));
+
+                // Should not throw
+                expect(() => manager['handleDeviceOnline']('192.168.1.100', 'YN00AB123456')).to.not.throw();
+            });
+        });
+    });
+
+    describe('notifyFocusGained / resolveUncachedDiscoveredDevices', () => {
+        it('health-checks discovered devices that have no serial number', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['discoveredDevices'].push({ ip: '192.168.1.100' });
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.calledOnce).to.be.true;
+            expect(healthCheckStub.firstCall.args[0]).to.deep.equal({ ip: '192.168.1.100', serialNumber: undefined });
+            expect(healthCheckStub.firstCall.args[1]).to.equal(false);
+            expect(healthCheckStub.firstCall.args[2]).to.equal(false);
+        });
+
+        it('health-checks discovered devices that have a serial but no cache entry', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['discoveredDevices'].push({ ip: '192.168.1.101', serialNumber: 'no-cache-serial' });
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.calledOnce).to.be.true;
+            expect(healthCheckStub.firstCall.args[0]).to.deep.equal({ ip: '192.168.1.101', serialNumber: 'no-cache-serial' });
+        });
+
+        it('skips discovered devices that already have a cache entry', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Cache a device, then add it to discoveredDevices
+            mockGlobalStateManager.setCachedDevice('cached-serial', {
+                serialNumber: 'cached-serial',
+                deviceInfo: { 'default-device-name': 'Cached Roku' },
+                createdAt: Date.now()
+            });
+            manager['discoveredDevices'].push({ ip: '192.168.1.102', serialNumber: 'cached-serial' });
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.called).to.be.false;
+        });
+
+        it('health-checks only the uncached entries when both cached and uncached exist', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // One cached, one uncached, one without serial
+            mockGlobalStateManager.setCachedDevice('cached-serial', {
+                serialNumber: 'cached-serial',
+                deviceInfo: { 'default-device-name': 'Cached Roku' },
+                createdAt: Date.now()
+            });
+            manager['discoveredDevices'].push(
+                { ip: '192.168.1.100', serialNumber: 'cached-serial' },
+                { ip: '192.168.1.101', serialNumber: 'uncached-serial' },
+                { ip: '192.168.1.102' }
+            );
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.calledTwice).to.be.true;
+            const ips = healthCheckStub.getCalls().map(c => (c.args[0] as any).ip).sort();
+            expect(ips).to.deep.equal(['192.168.1.101', '192.168.1.102']);
+        });
+
+        it('does nothing when there are no discovered devices', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.called).to.be.false;
+        });
+
+        it('does nothing when all discovered devices are cached', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            mockGlobalStateManager.setCachedDevice('serial-a', {
+                serialNumber: 'serial-a', deviceInfo: {}, createdAt: Date.now()
+            });
+            mockGlobalStateManager.setCachedDevice('serial-b', {
+                serialNumber: 'serial-b', deviceInfo: {}, createdAt: Date.now()
+            });
+            manager['discoveredDevices'].push(
+                { ip: '192.168.1.100', serialNumber: 'serial-a' },
+                { ip: '192.168.1.101', serialNumber: 'serial-b' }
+            );
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.called).to.be.false;
+        });
+
+        it('runs health checks in parallel (does not await one before starting the next)', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['discoveredDevices'].push(
+                { ip: '192.168.1.100' },
+                { ip: '192.168.1.101' },
+                { ip: '192.168.1.102' }
+            );
+
+            // Resolve health checks only after all three have been kicked off
+            let resolveAll: () => void;
+            const allKickedOff = new Promise<void>(resolve => {
+                resolveAll = resolve;
+            });
+
+            let inFlight = 0;
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').callsFake(async () => {
+                inFlight++;
+                if (inFlight === 3) {
+                    resolveAll();
+                }
+                await allKickedOff;
+                return true;
+            });
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.callCount).to.equal(3);
+        });
+
+        it('continues resolving other devices even if one healthCheck rejects', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['discoveredDevices'].push(
+                { ip: '192.168.1.100' },
+                { ip: '192.168.1.101' }
+            );
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice');
+            healthCheckStub.onFirstCall().rejects(new Error('boom'));
+            healthCheckStub.onSecondCall().resolves(true);
+
+            // Should not reject
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.calledTwice).to.be.true;
+        });
+
+        it('is triggered by notifyFocusGained', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['discoveredDevices'].push({ ip: '192.168.1.100' });
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            manager['notifyFocusGained']();
+
+            expect(healthCheckStub.calledOnce).to.be.true;
+            expect(healthCheckStub.firstCall.args[0]).to.deep.equal({ ip: '192.168.1.100', serialNumber: undefined });
+        });
     });
 
     describe('fetchDeviceInfo', () => {

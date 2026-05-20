@@ -1165,7 +1165,7 @@ export class DeviceManager {
         // Health check if VS Code is focused and device has no cache
         const hasCache = actualSerial ? this.hasDeviceCache(actualSerial) : false;
         if (vscode.window.state.focused && !hasCache) {
-            this.healthCheckDevice({ ip: ip, serialNumber: actualSerial }, false, false).catch(() => { });
+            this.resolveUncachedDiscoveredDevices().catch(() => { });
         }
 
         if (!this.showInfoMessages) {
