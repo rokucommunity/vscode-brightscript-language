@@ -273,19 +273,11 @@ export class UserInputManager {
             } else {
                 return new vscode.ThemeIcon('warning', new vscode.ThemeColor('disabledForeground'));
             }
-        } else if (device.deviceState === 'pending') {
+        } else if (device.deviceState === 'pending' && this.deviceManager.isScanning) {
+            // Only show pending dot when a scan is actively in progress
             return new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
         }
         return icons.getDeviceType(device.deviceInfo);
-    }
-
-    private createHostLabel(device: RokuDevice) {
-        return [
-            device.deviceInfo['model-number'] || '',
-            device.deviceInfo['user-device-name'] || '',
-            `OS ${device.deviceInfo['software-version'] || ''}`,
-            device.ip
-        ].join(' – ');
     }
 
     /**
@@ -314,7 +306,7 @@ export class UserInputManager {
 
             //add the device
             items.push({
-                label: this.createHostLabel(lastUsedDevice),
+                label: this.deviceManager.getDeviceDisplayName(lastUsedDevice, true),
                 device: lastUsedDevice,
                 iconPath: this.getDeviceIcon(lastUsedDevice)
             } as any);
@@ -331,7 +323,7 @@ export class UserInputManager {
             for (const device of devices) {
                 //add the device
                 items.push({
-                    label: this.createHostLabel(device),
+                    label: this.deviceManager.getDeviceDisplayName(device, true),
                     device: device,
                     iconPath: this.getDeviceIcon(device)
                 });

@@ -127,18 +127,6 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     private devices: Array<RokuDevice>;
 
-    private makeName(device: RokuDevice) {
-        // Use configuredName if available, otherwise fall back to user-device-name
-        const displayName = device.configuredName || device.deviceInfo['user-device-name'] || device.ip;
-        const softwareVersion = device.deviceInfo['software-version'];
-        const parts = [
-            device.deviceInfo['model-number'],
-            displayName,
-            softwareVersion ? `OS ${softwareVersion}` : undefined
-        ].filter(Boolean);
-        return parts.join(' – ') || device.ip;
-    }
-
     async getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): Promise<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
@@ -151,7 +139,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 for (const device of this.devices) {
                     // Make a rook item for each device
                     let treeItem = new DeviceTreeItem(
-                        this.makeName(device),
+                        this.deviceManager.getDeviceDisplayName(device),
                         vscode.TreeItemCollapsibleState.Collapsed,
                         device.key,
                         device.deviceInfo
@@ -173,7 +161,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         } else {
                             treeItem.iconPath = new vscode.ThemeIcon('question', new vscode.ThemeColor('disabledForeground'));
                         }
-                    } else if (device.deviceState === 'pending') {
+                    } else if (device.deviceState === 'pending' && this.deviceManager.isScanning) {
+                        // Only show pending dot when a scan is actively in progress
                         treeItem.iconPath = new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
                     } else {
                         treeItem.iconPath = icons.getDeviceType(device.deviceInfo);

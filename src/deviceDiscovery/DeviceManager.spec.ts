@@ -656,6 +656,29 @@ describe('DeviceManager', () => {
                 clock.restore();
             }
         });
+
+        it('isScanning is true during scan and false after', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Initially not scanning
+                expect(manager.isScanning).to.be.false;
+
+                manager.refresh(true);
+
+                // Now scanning
+                expect(manager.isScanning).to.be.true;
+
+                // Complete the scan
+                clock.tick(3_000);
+
+                // No longer scanning
+                expect(manager.isScanning).to.be.false;
+            } finally {
+                clock.restore();
+            }
+        });
     });
 
     describe('devices-changed event', () => {
@@ -3395,6 +3418,198 @@ describe('DeviceManager', () => {
                 // Internal discoveredDevices entry should not have configuredPassword field
                 expect((manager['discoveredDevices'][0] as any).configuredPassword).to.be.undefined;
             });
+        });
+    });
+
+    describe('getDeviceDisplayName', () => {
+        function makeDevice(overrides: Partial<RokuDevice> & { deviceInfo?: Record<string, any> } = {}): RokuDevice {
+            const { deviceInfo: deviceInfoOverrides, ...rest } = overrides;
+            return {
+                ip: '192.168.1.100',
+                serialNumber: 'abc',
+                key: 's:abc',
+                deviceState: 'online',
+                isConfigured: false,
+                isDiscovered: true,
+                ...rest,
+                deviceInfo: {
+                    'model-number': '4660X',
+                    'user-device-name': 'Living Room',
+                    'software-version': '12.5.0',
+                    ...(deviceInfoOverrides ?? {})
+                }
+            } as RokuDevice;
+        }
+
+        beforeEach(() => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+        });
+
+        it('joins model, name, and OS version with en-dashes', () => {
+            const device = makeDevice();
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('prefers configuredName over user-device-name', () => {
+            const device = makeDevice({ configuredName: 'My Custom Name' });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – My Custom Name – OS 12.5.0');
+        });
+
+        it('falls back to user-device-name when configuredName is missing', () => {
+            const device = makeDevice({ configuredName: undefined });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('falls back to user-device-name when configuredName is empty string', () => {
+            const device = makeDevice({ configuredName: '' });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('omits model-number when missing', () => {
+            const device = makeDevice({ deviceInfo: { 'model-number': undefined } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('Living Room – OS 12.5.0');
+        });
+
+        it('omits name when both configuredName and user-device-name are missing', () => {
+            const device = makeDevice({ deviceInfo: { 'user-device-name': undefined } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – OS 12.5.0');
+        });
+
+        it('omits OS version when software-version is missing', () => {
+            const device = makeDevice({ deviceInfo: { 'software-version': undefined } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room');
+        });
+
+        it('prefixes software-version with "OS "', () => {
+            const device = makeDevice({ deviceInfo: { 'software-version': '11.0' } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 11.0');
+        });
+
+        it('returns just the IP when no other info is available', () => {
+            const device = makeDevice({
+                ip: '10.0.0.42',
+                deviceInfo: {
+                    'model-number': undefined,
+                    'user-device-name': undefined,
+                    'software-version': undefined
+                }
+            });
+            expect(manager.getDeviceDisplayName(device)).to.equal('10.0.0.42');
+        });
+
+        it('does not append IP by default when other info exists', () => {
+            const device = makeDevice({ ip: '10.0.0.42' });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('appends IP when includeIp=true', () => {
+            const device = makeDevice({ ip: '10.0.0.42' });
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('4660X – Living Room – OS 12.5.0 – 10.0.0.42');
+        });
+
+        it('appends IP when includeIp=true even with partial info', () => {
+            const device = makeDevice({
+                ip: '10.0.0.42',
+                deviceInfo: {
+                    'model-number': undefined,
+                    'software-version': undefined
+                }
+            });
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('Living Room – 10.0.0.42');
+        });
+
+        it('returns IP when includeIp=true and no other info exists', () => {
+            const device = makeDevice({
+                ip: '10.0.0.42',
+                deviceInfo: {
+                    'model-number': undefined,
+                    'user-device-name': undefined,
+                    'software-version': undefined
+                }
+            });
+            // parts has only the ip in it (from the includeIp push), joined produces the ip
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('10.0.0.42');
+        });
+
+        it('does not append IP when includeIp=true but ip is missing', () => {
+            const device = makeDevice({ ip: '' });
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('treats whitespace-only model, name, and version as missing (no "– – OS – ip" garbage)', () => {
+            const device = makeDevice({
+                ip: '192.168.1.31',
+                configuredName: '   ',
+                deviceInfo: {
+                    'model-number': '   ',
+                    'user-device-name': '   ',
+                    'software-version': '   '
+                }
+            });
+            // Without the fix, this would render as "   –    – OS    – 192.168.1.31"
+            // which displays as "– – OS – 192.168.1.31"
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('192.168.1.31');
+            expect(manager.getDeviceDisplayName(device, false)).to.equal('192.168.1.31');
+        });
+
+        it('treats whitespace-only model-number as missing', () => {
+            const device = makeDevice({ deviceInfo: { 'model-number': '   ' } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('Living Room – OS 12.5.0');
+        });
+
+        it('treats whitespace-only software-version as missing (no bare "OS" segment)', () => {
+            const device = makeDevice({ deviceInfo: { 'software-version': '   ' } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room');
+        });
+
+        it('treats whitespace-only configuredName as missing and falls back to user-device-name', () => {
+            const device = makeDevice({ configuredName: '   ' });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('treats whitespace-only configuredName AND user-device-name as missing', () => {
+            const device = makeDevice({
+                configuredName: '   ',
+                deviceInfo: { 'user-device-name': '   ' }
+            });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – OS 12.5.0');
+        });
+
+        it('treats null fields the same as missing', () => {
+            const device = makeDevice({
+                configuredName: null as any,
+                deviceInfo: {
+                    'model-number': null,
+                    'user-device-name': null,
+                    'software-version': null
+                }
+            });
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('192.168.1.100');
+        });
+
+        it('trims surrounding whitespace from non-empty values', () => {
+            const device = makeDevice({
+                configuredName: '  My TV  ',
+                deviceInfo: {
+                    'model-number': '  4660X  ',
+                    'software-version': '  12.5.0  '
+                }
+            });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – My TV – OS 12.5.0');
+        });
+
+        it('returns empty string when both ip and all fields are blank', () => {
+            const device = makeDevice({
+                ip: '   ',
+                configuredName: '   ',
+                deviceInfo: {
+                    'model-number': '   ',
+                    'user-device-name': '   ',
+                    'software-version': '   '
+                }
+            });
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('');
+            expect(manager.getDeviceDisplayName(device, false)).to.equal('');
         });
     });
 });

@@ -1,0 +1,12 @@
+{
+    "name": "docs",
+    "private": true,
+    "version": "0.0.0",
+    "scripts": {
+        "build": "statigen -s . -o ../.tmp/docs",
+        "watch": "statigen -s . -o ../.tmp/docs --watch"
+    },
+    "devDependencies": {
+        "statigen": "^0.5.2"
+    }
+}

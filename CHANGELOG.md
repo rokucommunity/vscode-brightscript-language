@@ -6,6 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.65.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.64.0...v2.65.0) - 2026-05-12
+### Added
+ - Add ManifestProjectProvider for Roku channel detection ([#780](https://github.com/rokucommunity/vscode-brightscript-language/pull/780))
+ - Add restartDevApplication command ([#782](https://github.com/rokucommunity/vscode-brightscript-language/pull/782))
+### Changed
+ - Configured device bug fixes ([#747](https://github.com/rokucommunity/vscode-brightscript-language/pull/747))
+ - Suppress device-online notifications for routine Roku heartbeats ([#778](https://github.com/rokucommunity/vscode-brightscript-language/pull/778))
+ - Document bs:disable / bs:enable block directives and suppression quick fixes ([#779](https://github.com/rokucommunity/vscode-brightscript-language/pull/779))
+ - upgrade to [brighterscript@0.72.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0721---2026-05-11). Notable changes since 0.72.0:
+     - Recover from mismatched loop terminators with quick fixes ([#1696](https://github.com/rokucommunity/brighterscript/pull/1696))
+     - Add diagnosticReporter config option ([#1701](https://github.com/rokucommunity/brighterscript/pull/1701))
+     - Diagnose reserved BrightScript builtins used as values ([#1697](https://github.com/rokucommunity/brighterscript/pull/1697))
+     - Add bs:disable / bs:enable block directives and diagnostic suppression quick fixes ([#1699](https://github.com/rokucommunity/brighterscript/pull/1699))
+     - feat: add `validate` bsconfig flag to skip validation phase ([#1687](https://github.com/rokucommunity/brighterscript/pull/1687))
+     - feat: allow line continuation in .brs files when minFirmwareVersion >= 15.3 ([#1693](https://github.com/rokucommunity/brighterscript/pull/1693))
+     - Reload projects when manifest file changes ([#1700](https://github.com/rokucommunity/brighterscript/pull/1700))
+     - Set up Copilot coding agent instructions ([#1695](https://github.com/rokucommunity/brighterscript/pull/1695))
+ - upgrade to [brighterscript-formatter@1.7.25](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1725---2026-05-11). Notable changes since 1.7.24:
+ - upgrade to [roku-debug@0.23.7](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0237---2026-05-11). Notable changes since 0.23.6:
+     - Bump ip-address from 10.1.0 to 10.2.0 ([#336](https://github.com/rokucommunity/roku-debug/pull/336))
+ - upgrade to [roku-deploy@3.17.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3172---2026-05-05). Notable changes since 3.17.1:
+     - Expanded the default files array to include the locale folder ([#237](https://github.com/rokucommunity/roku-deploy/pull/237))
+
+
+
 ## [2.64.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.7...v2.64.0) - 2026-04-30
 ### Added
  - Auto-discover Roku projects and generate debug configs ([#761](https://github.com/rokucommunity/vscode-brightscript-language/pull/761))
