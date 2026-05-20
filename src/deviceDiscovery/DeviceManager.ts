@@ -1221,15 +1221,21 @@ export class DeviceManager {
 
     /**
      * Handle device-online event from RokuFinder.
-     * Shows a notification if showInfoMessages is enabled.
+     * Health checks the device if focused and no cache, and shows notification if enabled.
      */
     private handleDeviceOnline(ip: string, serialNumber?: string): void {
+        // Use provided serial, fall back to IP→serial mapping if not provided
+        const actualSerial = serialNumber ?? this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
+
+        // Health check if VS Code is focused and device has no cache
+        const hasCache = actualSerial ? this.hasDeviceCache(actualSerial) : false;
+        if (vscode.window.state.focused && !hasCache) {
+            this.resolveUncachedDiscoveredDevices().catch(() => { });
+        }
+
         if (!this.showInfoMessages) {
             return;
         }
-
-        // Get actual serial number from IP→serial mapping (more reliable than SSDP hint)
-        const actualSerial = this.globalStateManager.getSerialNumberForIp(ip, this.networkId) ?? serialNumber;
 
         // Get cached device directly from globalStateManager
         const cachedDevice = actualSerial
@@ -1335,6 +1341,27 @@ export class DeviceManager {
 
     private notifyFocusGained() {
         this.networkChangeMonitor.start();
+        // Resolve any discovered devices without cache that appeared while unfocused
+        this.resolveUncachedDiscoveredDevices().catch(() => { });
+    }
+
+    /**
+     * Health check discovered devices that don't have cached info.
+     * Called on focus gain to resolve devices that appeared while VS Code was unfocused.
+     */
+    private async resolveUncachedDiscoveredDevices(): Promise<void> {
+        const uncached = this.discoveredDevices.filter(entry => {
+            return !entry.serialNumber || !this.hasDeviceCache(entry.serialNumber);
+        });
+
+        if (uncached.length === 0) {
+            return;
+        }
+
+        // Health check each uncached device in parallel
+        await Promise.all(
+            uncached.map(entry => this.healthCheckDevice({ ip: entry.ip, serialNumber: entry.serialNumber }, false, false).catch(() => { }))
+        );
     }
 
     private notifyFocusLost() {
