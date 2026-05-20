@@ -1,0 +1,55 @@
+{
+  "name": "http-auth-connect",
+  "description": "Connect framework integration with http-auth module.",
+  "version": "1.0.6",
+  "author": "Gevorg Harutyunyan (http://github.com/gevorg)",
+  "maintainers": [
+    {
+      "name": "gevorg",
+      "email": "gevorg.ha@gmail.com"
+    }
+  ],
+  "homepage": "https://github.com/http-auth/http-auth-connect",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/http-auth/http-auth-connect.git"
+  },
+  "main": "./src/index.js",
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://github.com/http-auth/http-auth-connect/blob/master/LICENSE"
+    }
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "http://github.com/http-auth/http-auth-connect/issues"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.10.0",
+    "eslint-plugin-node": "^11.0.0",
+    "eslint-plugin-prettier": "^3.1.2",
+    "express": "^4.17.1",
+    "http-auth": "^4.1.2",
+    "mocha": "^7.0.1",
+    "prettier": "^1.19.1",
+    "request": "^2.88.0"
+  },
+  "engines": {
+    "node": ">=8"
+  },
+  "scripts": {
+    "test": "mocha",
+    "pretest": "eslint --ignore-path .gitignore ."
+  },
+  "keywords": [
+    "connect",
+    "http",
+    "basic",
+    "digest",
+    "access",
+    "authentication"
+  ]
+}
