@@ -253,9 +253,20 @@ export class DeviceManager {
      * @param includeIp - Whether to always append IP at the end (default: false, IP only used as fallback)
      */
     public getDeviceDisplayName(device: RokuDevice, includeIp = false): string {
-        const displayName = device.configuredName || device.deviceInfo['user-device-name'];
-        const modelNumber = device.deviceInfo['model-number'];
-        const softwareVersion = device.deviceInfo['software-version'];
+        // Coerce to a trimmed string, or undefined when the value is missing/blank.
+        // Whitespace-only values would otherwise pass `Boolean` and render as empty segments.
+        const clean = (value: unknown): string | undefined => {
+            if (value === null || value === undefined || typeof value !== 'string') {
+                return undefined;
+            }
+            const str = value.trim();
+            return str.length > 0 ? str : undefined;
+        };
+
+        const displayName = clean(device.configuredName) ?? clean(device.deviceInfo['user-device-name']);
+        const modelNumber = clean(device.deviceInfo['model-number']);
+        const softwareVersion = clean(device.deviceInfo['software-version']);
+        const ip = clean(device.ip);
 
         const parts = [
             modelNumber,
@@ -263,11 +274,11 @@ export class DeviceManager {
             softwareVersion ? `OS ${softwareVersion}` : undefined
         ].filter(Boolean);
 
-        if (includeIp && device.ip) {
-            parts.push(device.ip);
+        if (includeIp && ip) {
+            parts.push(ip);
         }
 
-        return parts.join(' – ') || device.ip;
+        return parts.join(' – ') || ip || '';
     }
 
     /**
