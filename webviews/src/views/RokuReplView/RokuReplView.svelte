@@ -105,19 +105,21 @@
 return 1 + 1" rows="10" resize="both" on:input={onReplCodeChange} value={replCode} />
 
         <table>
-            <tr>
-                <td>
-                    <vscode-button id="runButton" on:click={sendReplRequest}>Run</vscode-button>
-                </td>
-                <td>&nbsp;&nbsp;&nbsp;</td>
-                <td>
-                    {#if loading}
-                        <vscode-progress-ring />
-                    {:else}
-                        {replTimeTaken >= 0 ? `Last run took ${replTimeTaken}ms` : ''}
-                    {/if}
-                </td>
-            </tr>
+            <tbody>
+                <tr>
+                    <td>
+                        <vscode-button id="runButton" on:click={sendReplRequest}>Run</vscode-button>
+                    </td>
+                    <td>&nbsp;&nbsp;&nbsp;</td>
+                    <td>
+                        {#if loading}
+                            <vscode-progress-ring />
+                        {:else}
+                            {replTimeTaken >= 0 ? `Last run took ${replTimeTaken}ms` : ''}
+                        {/if}
+                    </td>
+                </tr>
+            </tbody>
         </table>
 
         {#if !loading && (replResponse !== undefined || replError !== '')}
