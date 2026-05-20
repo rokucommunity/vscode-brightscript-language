@@ -656,29 +656,6 @@ describe('DeviceManager', () => {
                 clock.restore();
             }
         });
-
-        it('isScanning is true during scan and false after', () => {
-            const clock = sinon.useFakeTimers();
-            try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                // Initially not scanning
-                expect(manager.isScanning).to.be.false;
-
-                manager.refresh(true);
-
-                // Now scanning
-                expect(manager.isScanning).to.be.true;
-
-                // Complete the scan
-                clock.tick(3_000);
-
-                // No longer scanning
-                expect(manager.isScanning).to.be.false;
-            } finally {
-                clock.restore();
-            }
-        });
     });
 
     describe('devices-changed event', () => {
@@ -1120,7 +1097,7 @@ describe('DeviceManager', () => {
             expect(manager['getDeviceState']({ ip: '192.168.1.100', serialNumber: 'device-1' }).state).to.equal('online');
         });
 
-        it('loads cached devices as pending when cache is stale (older than 5 minutes)', () => {
+        it('loads cached devices as unknown when cache is stale (older than 5 minutes)', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
@@ -1137,7 +1114,7 @@ describe('DeviceManager', () => {
 
             manager['loadLastSeenDevices']();
 
-            expect(manager.getAllDevices()[0].deviceState).to.equal('pending');
+            expect(manager.getAllDevices()[0].deviceState).to.equal('unknown');
         });
 
         it('removes stale entries when cache returns undefined', () => {

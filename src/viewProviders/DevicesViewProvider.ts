@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { ConfiguredDevice, DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import type { CredentialStore } from '../managers/CredentialStore';
-import { icons } from '../icons';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
 
@@ -149,24 +148,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     // Set resourceUri to enable FileDecorationProvider for text coloring
                     // Use the device key which is serial-based when available, IP-based as fallback
                     treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`);
-
-                    // Set icon based on device state
-                    if (device.deviceState === 'offline') {
-                        // For offline devices, check cache to distinguish:
-                        // - warning icon: never successfully contacted (no cache)
-                        // - disconnect icon: was online before (has cache)
-                        const hasCache = device.serialNumber && this.deviceManager.hasDeviceCache(device.serialNumber);
-                        if (hasCache) {
-                            treeItem.iconPath = new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
-                        } else {
-                            treeItem.iconPath = new vscode.ThemeIcon('question', new vscode.ThemeColor('disabledForeground'));
-                        }
-                    } else if (device.deviceState === 'pending' && this.deviceManager.isScanning) {
-                        // Only show pending dot when a scan is actively in progress
-                        treeItem.iconPath = new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
-                    } else {
-                        treeItem.iconPath = icons.getDeviceType(device.deviceInfo);
-                    }
+                    treeItem.iconPath = this.deviceManager.getIconPath(device);
 
                     // Set contextValue for context menu actions
                     // Values: device, device-user, device-workspace, device-user-workspace
@@ -501,7 +483,7 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
         const deviceKey = uri.path.slice(1); // Remove leading slash (key is "s:..." or "i:...")
         const state = this.deviceStates.get(deviceKey);
 
-        if (state === 'pending' || state === 'offline') {
+        if (state !== 'online') {
             return {
                 color: new vscode.ThemeColor('disabledForeground')
             };

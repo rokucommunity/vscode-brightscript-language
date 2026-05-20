@@ -258,29 +258,6 @@ export class UserInputManager {
     }
 
     /**
-     * Generate the label used when showing "host" entries in a quick picker
-     * @param device the device containing all the info
-     * @returns a properly formatted host string
-     */
-    private getDeviceIcon(device: RokuDevice) {
-        if (device.deviceState === 'offline') {
-            // For offline devices, check cache to distinguish:
-            // - warning icon: never successfully contacted (no cache)
-            // - disconnect icon: was online before (has cache)
-            const hasCache = device.serialNumber && this.deviceManager.hasDeviceCache(device.serialNumber);
-            if (hasCache) {
-                return new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
-            } else {
-                return new vscode.ThemeIcon('warning', new vscode.ThemeColor('disabledForeground'));
-            }
-        } else if (device.deviceState === 'pending' && this.deviceManager.isScanning) {
-            // Only show pending dot when a scan is actively in progress
-            return new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
-        }
-        return icons.getDeviceType(device.deviceInfo);
-    }
-
-    /**
      * Generate the item list for the `this.promptForHost()` call
      */
     private createHostQuickPickList(
@@ -308,7 +285,7 @@ export class UserInputManager {
             items.push({
                 label: this.deviceManager.getDeviceDisplayName(lastUsedDevice, true),
                 device: lastUsedDevice,
-                iconPath: this.getDeviceIcon(lastUsedDevice)
+                iconPath: this.deviceManager.getIconPath(lastUsedDevice)
             } as any);
         }
 
@@ -325,7 +302,7 @@ export class UserInputManager {
                 items.push({
                     label: this.deviceManager.getDeviceDisplayName(device, true),
                     device: device,
-                    iconPath: this.getDeviceIcon(device)
+                    iconPath: this.deviceManager.getIconPath(device)
                 });
             }
         }
