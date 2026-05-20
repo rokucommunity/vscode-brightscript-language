@@ -656,29 +656,6 @@ describe('DeviceManager', () => {
                 clock.restore();
             }
         });
-
-        it('isScanning is true during scan and false after', () => {
-            const clock = sinon.useFakeTimers();
-            try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                // Initially not scanning
-                expect(manager.isScanning).to.be.false;
-
-                manager.refresh(true);
-
-                // Now scanning
-                expect(manager.isScanning).to.be.true;
-
-                // Complete the scan
-                clock.tick(3_000);
-
-                // No longer scanning
-                expect(manager.isScanning).to.be.false;
-            } finally {
-                clock.restore();
-            }
-        });
     });
 
     describe('devices-changed event', () => {

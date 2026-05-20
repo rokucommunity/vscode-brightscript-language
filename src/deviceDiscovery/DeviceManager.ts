@@ -11,6 +11,7 @@ import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { debounce } from 'lodash';
+import { icons } from '../icons';
 
 export class DeviceManager {
     // #region constructor
@@ -95,9 +96,9 @@ export class DeviceManager {
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
 
-            //reset all configured device states to pending - need to re-verify on new network
+            //reset all configured device states to unknown - need to re-verify on new network
             for (const entry of this.configuredDevices) {
-                entry.state = 'pending';
+                entry.state = 'unknown';
                 entry.stateLastUpdated = Date.now();
             }
 
@@ -145,7 +146,6 @@ export class DeviceManager {
     private configuredDevices: ConfiguredDeviceEntry[] = [];
     private discoveredDevices: DiscoveredDeviceEntry[] = [];
     private scanNeeded = false;
-    private scanning = false;
     private lastUsedDeviceIp: string | undefined = undefined;
     private networkId: string;
 
@@ -284,6 +284,30 @@ export class DeviceManager {
     }
 
     /**
+     * Generate the label used when showing "host" entries in a quick picker
+     * @param device the device containing all the info
+     * @returns a properly formatted host string
+     */
+    public getIconPath(device: RokuDevice) {
+        const hasCache = device.serialNumber && this.hasDeviceCache(device.serialNumber);
+
+        if (device.deviceState === 'pending') {
+            return new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
+        }
+
+        if (device.deviceState === 'offline') {
+            const iconId = hasCache ? 'debug-disconnect' : 'warning';
+            return new vscode.ThemeIcon(iconId, new vscode.ThemeColor('disabledForeground'));
+        }
+
+        if (device.deviceState === 'unknown' && !hasCache) {
+            return new vscode.ThemeIcon('warning', new vscode.ThemeColor('disabledForeground'));
+        }
+
+        return icons.getDeviceType(device.deviceInfo);
+    }
+
+    /**
      * Build all devices from configuredDevices and discoveredDevices arrays.
      * Deduplication by serial number (preferred) or IP (fallback).
      */
@@ -372,10 +396,10 @@ export class DeviceManager {
     // #region Device State Management
     /**
      * Get device state from inline state on entries.
-     * Priority: discovered > configured > default pending
+     * Priority: discovered > configured > default unknown
      * Searches by IP first (if provided), then by serial number
      * @param lookup - Device lookup by serial and/or IP
-     * @returns The device state, defaulting to 'pending' if not found
+     * @returns The device state, defaulting to 'unknown' if not found
      */
     public getDeviceState(lookup: { serialNumber?: string; ip?: string }): DeviceStateEntry {
         // Find discovered entry (by IP first, then by serial)
@@ -400,7 +424,7 @@ export class DeviceManager {
             return { state: configuredEntry.state, lastUpdated: configuredEntry.stateLastUpdated ?? Date.now() };
         }
 
-        return { state: 'pending', lastUpdated: Date.now() };
+        return { state: 'unknown', lastUpdated: Date.now() };
     }
 
     /**
@@ -408,7 +432,7 @@ export class DeviceManager {
      * Updates all configured and discovered entries at the given IP.
      * When called without explicit state, uses intelligent defaults:
      * - If already online, stays online
-     * - Else checks cache freshness (5 min threshold) to determine online vs pending
+     * - Else checks cache freshness (5 min threshold) to determine online vs unknown
      *
      * @param lookup - Device lookup by IP (and optionally serial for cache lookup)
      * @param state - Explicit state to set, or undefined for intelligent default
@@ -417,25 +441,18 @@ export class DeviceManager {
         const now = Date.now();
         let resolvedState: DeviceState;
 
+        //if we were given a state, use it
         if (state !== undefined) {
-            // Explicit state provided
             resolvedState = state;
         } else {
-            // Intelligent default: check current state and cache freshness
             const currentState = this.getDeviceState(lookup).state;
             if (currentState === 'online') {
-                // Already online, keep it online
                 resolvedState = 'online';
-            } else if (lookup.serialNumber) {
-                // Check cache freshness to determine state
-                const cached = this.globalStateManager.getCachedDevice(lookup.serialNumber);
-                if (cached && now - cached.createdAt < this.FRESH_CACHE_THRESHOLD_MS) {
-                    resolvedState = 'online';
-                } else {
-                    resolvedState = 'pending';
-                }
             } else {
-                resolvedState = 'pending';
+                // For non-online devices, check cache freshness
+                const cached = lookup.serialNumber ? this.globalStateManager.getCachedDevice(lookup.serialNumber) : undefined;
+                const isFreshCache = cached && (now - cached.createdAt < this.FRESH_CACHE_THRESHOLD_MS);
+                resolvedState = isFreshCache ? 'online' : 'unknown';
             }
         }
 
@@ -534,9 +551,9 @@ export class DeviceManager {
         this.lastScanDate = null;
         this.resolveDeviceSequence.clear();
 
-        // Reset configured device states to pending
+        // Reset configured device states to unknown
         for (const entry of this.configuredDevices) {
-            entry.state = 'pending';
+            entry.state = 'unknown';
             entry.stateLastUpdated = Date.now();
         }
 
@@ -680,7 +697,7 @@ export class DeviceManager {
         // Clear discovered devices (ephemeral - reload from network)
         this.discoveredDevices = [];
 
-        // Load cached devices for current network - add to discoveredDevices with 'pending' state
+        // Load cached devices for current network - add to discoveredDevices (state determined by cache freshness)
         const lastSeenDevices = this.globalStateManager.getLastSeenDevices(this.networkId);
         for (const serialNumber of lastSeenDevices) {
             const cached = this.globalStateManager.getCachedDevice(serialNumber);
@@ -1196,8 +1213,8 @@ export class DeviceManager {
             discoveredEntry?.serialNumber ??
             this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
 
-        // Determine state: discovered > configured > pending (discovered is ground truth)
-        const deviceState = discoveredEntry?.state ?? configuredEntry?.state ?? 'pending';
+        // Determine state: discovered > configured > unknown (discovered is ground truth)
+        const deviceState = discoveredEntry?.state ?? configuredEntry?.state ?? 'unknown';
 
         // Build key
         const key = serialNumber ? `s:${serialNumber}` : `i:${ip}`;
@@ -1287,14 +1304,12 @@ export class DeviceManager {
             this.emitDevicesChanged();
         });
 
-        // Forward scan events from RokuFinder and track scanning state
+        // Forward scan events from RokuFinder
         this.finder.on('scan-started', () => {
-            this.scanning = true;
             this.emitter.emit('scan-started');
         });
 
         this.finder.on('scan-ended', () => {
-            this.scanning = false;
             this.emitter.emit('scan-ended');
             // Health check devices that didn't respond to the scan (stale cache)
             this.healthCheckStaleDevices().catch(() => { });
@@ -1379,14 +1394,6 @@ export class DeviceManager {
         }
     }
 
-    /**
-     * Returns true if a device scan is currently in progress.
-     * Used by UI components to decide whether to show pending indicators.
-     */
-    public get isScanning(): boolean {
-        return this.scanning;
-    }
-
     private emitDevicesChanged = throttleBounce(() => {
         this.emitter.emit('devices-changed');
     }, this.DEVICES_CHANGED_DEBOUNCE_MS);
@@ -1397,7 +1404,7 @@ export class DeviceManager {
     }
 }
 
-export type DeviceState = 'offline' | 'pending' | 'online';
+export type DeviceState = 'offline' | 'unknown' | 'pending' | 'online';
 
 export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
 
@@ -1486,7 +1493,7 @@ export interface RokuDevice {
      */
     key: string;
     /**
-     * Computed state: online > offline > pending (from both sources)
+     * Device state: online, offline, pending (currently checking), or unknown (never checked)
      */
     deviceState: DeviceState;
     /**
