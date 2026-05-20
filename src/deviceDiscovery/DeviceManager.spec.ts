@@ -1097,7 +1097,7 @@ describe('DeviceManager', () => {
             expect(manager['getDeviceState']({ ip: '192.168.1.100', serialNumber: 'device-1' }).state).to.equal('online');
         });
 
-        it('loads cached devices as pending when cache is stale (older than 5 minutes)', () => {
+        it('loads cached devices as unknown when cache is stale (older than 5 minutes)', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
@@ -1114,7 +1114,7 @@ describe('DeviceManager', () => {
 
             manager['loadLastSeenDevices']();
 
-            expect(manager.getAllDevices()[0].deviceState).to.equal('pending');
+            expect(manager.getAllDevices()[0].deviceState).to.equal('unknown');
         });
 
         it('removes stale entries when cache returns undefined', () => {
