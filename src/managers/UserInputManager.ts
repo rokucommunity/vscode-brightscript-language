@@ -237,7 +237,7 @@ export class UserInputManager {
             if (button.tooltip === SCAN_FOR_DEVICES) {
                 this.deviceManager.refresh(true);
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
-                this.deviceManager.clearCurrentDeviceList();
+                this.deviceManager.clearCurrentDeviceList().catch(() => { });
                 void util.showTimedNotification('Clearing device list');
             } else if (button.tooltip === ENABLE_DEVICE_DISCOVERY) {
                 void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
@@ -280,15 +280,6 @@ export class UserInputManager {
         return icons.getDeviceType(device.deviceInfo);
     }
 
-    private createHostLabel(device: RokuDevice) {
-        return [
-            device.deviceInfo['model-number'] || '',
-            device.deviceInfo['user-device-name'] || '',
-            `OS ${device.deviceInfo['software-version'] || ''}`,
-            device.ip
-        ].join(' – ');
-    }
-
     /**
      * Generate the item list for the `this.promptForHost()` call
      */
@@ -315,7 +306,7 @@ export class UserInputManager {
 
             //add the device
             items.push({
-                label: this.createHostLabel(lastUsedDevice),
+                label: this.deviceManager.getDeviceDisplayName(lastUsedDevice, true),
                 device: lastUsedDevice,
                 iconPath: this.getDeviceIcon(lastUsedDevice)
             } as any);
@@ -332,7 +323,7 @@ export class UserInputManager {
             for (const device of devices) {
                 //add the device
                 items.push({
-                    label: this.createHostLabel(device),
+                    label: this.deviceManager.getDeviceDisplayName(device, true),
                     device: device,
                     iconPath: this.getDeviceIcon(device)
                 });

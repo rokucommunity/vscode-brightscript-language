@@ -1,0 +1,15 @@
+{
+    // Fail on moderate severity and above. See README "Accepted security advisories" for
+    // why each allowlisted entry is safe to defer.
+    "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
+    "moderate": true,
+    "allowlist": [
+        {
+            "GHSA-2p57-rm9w-gvfp": {
+                // Added: 2026-05-19
+                "active": true,
+                "notes": "`ip` (via `node-ssdp`): no fixed version published. `ip` is only used by `node-ssdp` for local-network Roku discovery; no untrusted input flows into `ip.isPublic()` in any path we control."
+            }
+        }
+    ]
+}

@@ -283,6 +283,7 @@
 
     {#if !showEditor}
     <table>
+    <tbody>
     {#each steps as step, index}
         <tr>
             <td>
@@ -335,6 +336,7 @@
                 <vscode-button appearance="icon" title="Add Step" aria-label="Add Step" on:click={addStep}><Add /></vscode-button>
             </td>
         </tr>
+    </tbody>
     </table>
     {/if}
 </div>
