@@ -63,7 +63,8 @@ describe('DeviceManager', () => {
     function addDiscoveredDevice(device: RokuDevice): void {
         manager['discoveredDevices'].push({
             ip: device.ip,
-            serialNumber: device.serialNumber
+            serialNumber: device.serialNumber,
+            networkId: manager['networkId']
         });
         // Set the device state in the separate state map
         manager['setDeviceState']({ ip: device.ip, serialNumber: device.serialNumber }, device.deviceState === 'offline' ? 'pending' : device.deviceState);
@@ -1212,7 +1213,8 @@ describe('DeviceManager', () => {
             // Add device without developer-enabled in deviceInfo (unknown status)
             manager['discoveredDevices'].push({
                 ip: '192.168.1.100',
-                serialNumber: 'ABC123'
+                serialNumber: 'ABC123',
+                networkId: manager['networkId']
             });
             manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
 
@@ -1284,7 +1286,8 @@ describe('DeviceManager', () => {
             // Add device without developer-enabled
             manager['discoveredDevices'].push({
                 ip: '192.168.1.100',
-                serialNumber: 'ABC123'
+                serialNumber: 'ABC123',
+                networkId: manager['networkId']
             });
             manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
 
@@ -1576,7 +1579,7 @@ describe('DeviceManager', () => {
         it('health-checks discovered devices that have no serial number', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            manager['discoveredDevices'].push({ ip: '192.168.1.100' });
+            manager['discoveredDevices'].push({ ip: '192.168.1.100', networkId: manager['networkId'] });
 
             const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
 
@@ -1591,7 +1594,7 @@ describe('DeviceManager', () => {
         it('health-checks discovered devices that have a serial but no cache entry', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            manager['discoveredDevices'].push({ ip: '192.168.1.101', serialNumber: 'no-cache-serial' });
+            manager['discoveredDevices'].push({ ip: '192.168.1.101', serialNumber: 'no-cache-serial', networkId: manager['networkId'] });
 
             const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
 
@@ -1610,7 +1613,7 @@ describe('DeviceManager', () => {
                 deviceInfo: { 'default-device-name': 'Cached Roku' },
                 createdAt: Date.now()
             });
-            manager['discoveredDevices'].push({ ip: '192.168.1.102', serialNumber: 'cached-serial' });
+            manager['discoveredDevices'].push({ ip: '192.168.1.102', serialNumber: 'cached-serial', networkId: manager['networkId'] });
 
             const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
 
@@ -1629,9 +1632,9 @@ describe('DeviceManager', () => {
                 createdAt: Date.now()
             });
             manager['discoveredDevices'].push(
-                { ip: '192.168.1.100', serialNumber: 'cached-serial' },
-                { ip: '192.168.1.101', serialNumber: 'uncached-serial' },
-                { ip: '192.168.1.102' }
+                { ip: '192.168.1.100', serialNumber: 'cached-serial', networkId: manager['networkId'] },
+                { ip: '192.168.1.101', serialNumber: 'uncached-serial', networkId: manager['networkId'] },
+                { ip: '192.168.1.102', networkId: manager['networkId'] }
             );
 
             const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
@@ -1663,8 +1666,8 @@ describe('DeviceManager', () => {
                 serialNumber: 'serial-b', deviceInfo: {}, createdAt: Date.now()
             });
             manager['discoveredDevices'].push(
-                { ip: '192.168.1.100', serialNumber: 'serial-a' },
-                { ip: '192.168.1.101', serialNumber: 'serial-b' }
+                { ip: '192.168.1.100', serialNumber: 'serial-a', networkId: manager['networkId'] },
+                { ip: '192.168.1.101', serialNumber: 'serial-b', networkId: manager['networkId'] }
             );
 
             const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
@@ -1678,9 +1681,9 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             manager['discoveredDevices'].push(
-                { ip: '192.168.1.100' },
-                { ip: '192.168.1.101' },
-                { ip: '192.168.1.102' }
+                { ip: '192.168.1.100', networkId: manager['networkId'] },
+                { ip: '192.168.1.101', networkId: manager['networkId'] },
+                { ip: '192.168.1.102', networkId: manager['networkId'] }
             );
 
             // Resolve health checks only after all three have been kicked off
@@ -1708,8 +1711,8 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             manager['discoveredDevices'].push(
-                { ip: '192.168.1.100' },
-                { ip: '192.168.1.101' }
+                { ip: '192.168.1.100', networkId: manager['networkId'] },
+                { ip: '192.168.1.101', networkId: manager['networkId'] }
             );
 
             const healthCheckStub = sinon.stub(manager, 'healthCheckDevice');
@@ -1725,7 +1728,7 @@ describe('DeviceManager', () => {
         it('is triggered by notifyFocusGained', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            manager['discoveredDevices'].push({ ip: '192.168.1.100' });
+            manager['discoveredDevices'].push({ ip: '192.168.1.100', networkId: manager['networkId'] });
 
             const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
 
@@ -1945,16 +1948,18 @@ describe('DeviceManager', () => {
             expect(manager['networkId']).to.equal('new-network-hash');
         });
 
-        it('reloads devices when network changes', () => {
+        it('marks discovered devices as pending when network changes', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            // Add a discovered device to verify it gets cleared on network change
+            // Add a discovered device to verify it gets marked pending on network change
             manager['discoveredDevices'].push({
                 serialNumber: 'device-123',
-                ip: '192.168.1.100'
+                ip: '192.168.1.100',
+                networkId: manager['networkId']
             });
             manager['setDeviceState']({ serialNumber: 'device-123', ip: '192.168.1.100' }, 'online');
             expect(manager['discoveredDevices'].length).to.equal(1);
+            expect(manager['discoveredDevices'][0].state).to.equal('online');
 
             // Change the network hash
             (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
@@ -1962,8 +1967,9 @@ describe('DeviceManager', () => {
             // Trigger the network change callback directly
             manager['networkChangeMonitor']['onNetworkChanged']();
 
-            // Discovered device should be removed (loadLastSeenDevices clears discoveredDevices)
-            expect(manager['discoveredDevices'].length).to.equal(0);
+            // Discovered device should be marked pending (health check will verify reachability)
+            expect(manager['discoveredDevices'].length).to.equal(1);
+            expect(manager['discoveredDevices'][0].state).to.equal('pending');
         });
 
         it('calls setScanNeeded when network changes', () => {
@@ -1980,18 +1986,20 @@ describe('DeviceManager', () => {
             expect(setScanNeededSpy.calledOnce).to.be.true;
         });
 
-        it('clears discovered devices when network changes', () => {
+        it('marks all discovered devices as pending when network changes', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             // Add discovered devices
             manager['discoveredDevices'].push({
                 serialNumber: 'device-123',
-                ip: '192.168.1.100'
+                ip: '192.168.1.100',
+                networkId: manager['networkId']
             });
             manager['setDeviceState']({ serialNumber: 'device-123', ip: '192.168.1.100' }, 'online');
             manager['discoveredDevices'].push({
                 serialNumber: 'device-456',
-                ip: '192.168.1.101'
+                ip: '192.168.1.101',
+                networkId: manager['networkId']
             });
             manager['setDeviceState']({ serialNumber: 'device-456', ip: '192.168.1.101' }, 'online');
             expect(manager['discoveredDevices'].length).to.equal(2);
@@ -2002,11 +2010,13 @@ describe('DeviceManager', () => {
             // Trigger the network change callback directly
             manager['networkChangeMonitor']['onNetworkChanged']();
 
-            // Discovered devices should be cleared
-            expect(manager['discoveredDevices'].length).to.equal(0);
+            // Discovered devices should be marked pending (not immediately cleared)
+            expect(manager['discoveredDevices'].length).to.equal(2);
+            expect(manager['discoveredDevices'][0].state).to.equal('pending');
+            expect(manager['discoveredDevices'][1].state).to.equal('pending');
         });
 
-        it('preserves configured devices when network changes', () => {
+        it('marks configured and discovered devices as pending when network changes', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             // Add a configured device
@@ -2019,7 +2029,8 @@ describe('DeviceManager', () => {
             // Add a discovered device
             manager['discoveredDevices'].push({
                 serialNumber: 'device-123',
-                ip: '192.168.1.101'
+                ip: '192.168.1.101',
+                networkId: manager['networkId']
             });
             manager['setDeviceState']({ serialNumber: 'device-123', ip: '192.168.1.101' }, 'online');
 
@@ -2032,9 +2043,27 @@ describe('DeviceManager', () => {
             // Trigger the network change callback directly
             manager['networkChangeMonitor']['onNetworkChanged']();
 
-            // Configured device should persist, discovered should be cleared
+            // Both should persist but be marked pending
             expect(manager['configuredDevices'].length).to.equal(1);
-            expect(manager['discoveredDevices'].length).to.equal(0);
+            expect(manager['configuredDevices'][0].state).to.equal('pending');
+            expect(manager['discoveredDevices'].length).to.equal(1);
+            expect(manager['discoveredDevices'][0].state).to.equal('pending');
+        });
+
+        it('calls healthCheckAllDevices when network changes', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const healthCheckAllStub = sinon.stub(manager as any, 'healthCheckAllDevices').resolves();
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            expect(healthCheckAllStub.calledOnce).to.be.true;
+            expect(healthCheckAllStub.firstCall.args[0]).to.equal(true); // force = true
+            expect(healthCheckAllStub.firstCall.args[1]).to.equal(false); // doSyntheticDelay = false
         });
     });
 
@@ -2762,7 +2791,8 @@ describe('DeviceManager', () => {
                 // Create device without serial - manually add to discovered array
                 manager['discoveredDevices'].push({
                     ip: '192.168.1.100',
-                    serialNumber: undefined
+                    serialNumber: undefined,
+                    networkId: manager['networkId']
                 });
                 manager['setDeviceState']({ ip: '192.168.1.100' }, 'online');
 
@@ -2916,7 +2946,8 @@ describe('DeviceManager', () => {
                 // Start with device that has no serial
                 manager['discoveredDevices'].push({
                     ip: '192.168.1.100',
-                    serialNumber: undefined
+                    serialNumber: undefined,
+                    networkId: manager['networkId']
                 });
                 manager['setDeviceState']({ ip: '192.168.1.100' }, 'online');
 
@@ -3391,7 +3422,8 @@ describe('DeviceManager', () => {
                 // Add discovered device with serial
                 manager['discoveredDevices'].push({
                     ip: '192.168.1.100',
-                    serialNumber: 'DISCOVERED-SERIAL'
+                    serialNumber: 'DISCOVERED-SERIAL',
+                    networkId: manager['networkId']
                 });
 
                 const result = manager['checkForSerialMismatch']('192.168.1.100', 'NEW-SERIAL');
@@ -3585,7 +3617,8 @@ describe('DeviceManager', () => {
 
                 manager['discoveredDevices'].push({
                     serialNumber: 'abc',
-                    ip: '10.0.0.5'
+                    ip: '10.0.0.5',
+                    networkId: manager['networkId']
                 });
                 manager['setDeviceState']({ serialNumber: 'abc', ip: '10.0.0.5' }, 'online');
 
@@ -3614,7 +3647,8 @@ describe('DeviceManager', () => {
 
                 manager['discoveredDevices'].push({
                     serialNumber: 'abc',
-                    ip: '10.0.0.5'
+                    ip: '10.0.0.5',
+                    networkId: manager['networkId']
                 });
                 manager['setDeviceState']({ serialNumber: 'abc', ip: '10.0.0.5' }, 'online');
 
@@ -3631,7 +3665,8 @@ describe('DeviceManager', () => {
                 // Discovered device without password
                 manager['discoveredDevices'].push({
                     serialNumber: 'no-pw',
-                    ip: '10.0.0.5'
+                    ip: '10.0.0.5',
+                    networkId: manager['networkId']
                 });
                 manager['setDeviceState']({ serialNumber: 'no-pw', ip: '10.0.0.5' }, 'online');
                 // Configured device with specific password
@@ -3655,7 +3690,8 @@ describe('DeviceManager', () => {
 
                 manager['discoveredDevices'].push({
                     serialNumber: 'abc',
-                    ip: '10.0.0.5'
+                    ip: '10.0.0.5',
+                    networkId: manager['networkId']
                 });
                 manager['setDeviceState']({ serialNumber: 'abc', ip: '10.0.0.5' }, 'online');
 

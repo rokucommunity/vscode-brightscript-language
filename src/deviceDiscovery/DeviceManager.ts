@@ -96,19 +96,13 @@ export class DeviceManager {
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
 
-            //reset all configured device states to unknown - need to re-verify on new network
-            for (const entry of this.configuredDevices) {
-                entry.state = 'unknown';
-                entry.stateLastUpdated = Date.now();
-            }
-
-            //clear and reload discovered devices anytime this network changes (state goes with them)
-            this.discoveredDevices = [];
-            this.loadLastSeenDevices();
-
+            //restart finder for new network interfaces
             this.restartRokuFinder();
 
-            //this is important for telling the devices view to refresh and health check its devices
+            //health check all devices (sets them to pending, unreachable ones will be removed)
+            this.healthCheckAllDevices(true, false).catch(() => {});
+
+            //trigger scan to find devices on new network
             this.setScanNeeded();
         });
     }
@@ -1087,16 +1081,18 @@ export class DeviceManager {
         const existing = existingIdx >= 0 ? this.discoveredDevices[existingIdx] : undefined;
 
         if (existing) {
-            // Update existing entry
+            // Update existing entry (update networkId to current network)
             this.discoveredDevices[existingIdx] = {
                 ip: ip,
-                serialNumber: serialNumber ?? existing.serialNumber
+                serialNumber: serialNumber ?? existing.serialNumber,
+                networkId: this.networkId
             };
         } else {
             // Add new entry
             this.discoveredDevices.push({
                 ip: ip,
-                serialNumber: serialNumber
+                serialNumber: serialNumber,
+                networkId: this.networkId
             });
         }
 
@@ -1465,6 +1461,10 @@ interface DiscoveredDeviceEntry {
      * Timestamp of last state update
      */
     stateLastUpdated?: number;
+    /**
+     * Network ID where this device was discovered
+     */
+    networkId: string;
 }
 
 /**
