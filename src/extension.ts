@@ -16,7 +16,7 @@ import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './viewProviders/RendezvousViewProvider';
-import { DevicesViewProvider, DEVICES_VIEW_FILTER_KEYS } from './viewProviders/DevicesViewProvider';
+import { DevicesViewProvider, DEVICE_FILTER_KEYS } from './viewProviders/DevicesViewProvider';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
@@ -139,7 +139,7 @@ export class Extension {
         // Each facet has two command variants — the unchecked one and a `.active` one with
         // a `$(check)` prefix in its title. The submenu picks which to render via a `when`
         // clause on the per-facet context key; both call the same toggle handler.
-        for (const key of DEVICES_VIEW_FILTER_KEYS) {
+        for (const key of DEVICE_FILTER_KEYS) {
             const handler = () => devicesViewProvider.toggleFilter(key);
             context.subscriptions.push(vscode.commands.registerCommand(`extension.brightscript.devicesView.toggleFilter.${key}`, handler));
             context.subscriptions.push(vscode.commands.registerCommand(`extension.brightscript.devicesView.toggleFilter.${key}.active`, handler));
@@ -244,7 +244,7 @@ export class Extension {
 
         //register all commands for this extension
         this.brightScriptCommands.registerCommands();
-        sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel);
+        sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel, userInputManager);
 
         vscode.debug.onDidStartDebugSession((e) => {
             //if this is a brightscript debug session

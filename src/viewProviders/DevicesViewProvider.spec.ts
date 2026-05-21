@@ -15,7 +15,7 @@ Module.prototype.require = function hijacked(file) {
 };
 
 import { DevicesViewProvider } from './DevicesViewProvider';
-import type { DevicesViewFilters } from './DevicesViewProvider';
+import type { DeviceFilters } from './DevicesViewProvider';
 
 if (!(vscode as any).TreeItemCollapsibleState) {
     (vscode as any).TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 };
@@ -31,7 +31,7 @@ function ensureConfigStore(): Record<string, any> {
     return (vscode.workspace as any)._configuration;
 }
 
-function seedFilters(partial: Partial<DevicesViewFilters>): void {
+function seedFilters(partial: Partial<DeviceFilters>): void {
     const store = ensureConfigStore();
     for (const [key, value] of Object.entries(partial)) {
         store[`${FILTERS_SECTION}.${key}`] = value;

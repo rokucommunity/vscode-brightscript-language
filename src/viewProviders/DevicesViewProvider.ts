@@ -4,6 +4,13 @@ import type { ConfiguredDevice, DeviceManager, RokuDevice } from '../deviceDisco
 import type { CredentialStore } from '../managers/CredentialStore';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
+import {
+    DEFAULT_DEVICE_FILTERS,
+    DEVICE_FILTER_KEYS,
+    applyDeviceFilters,
+    loadDeviceFilters,
+    type DeviceFilters
+} from '../deviceFilters';
 
 /**
  * A sequence used to generate unique IDs for tree items that don't care about having a key
@@ -27,41 +34,10 @@ const DEVICES_VIEW_FILTERS_SECTION = 'brightscript.devicesView.filters';
  */
 const DEVICES_VIEW_FILTER_CONTEXT_KEY_PREFIX = 'brightscript.devicesView.filter.';
 
-export interface DevicesViewFilters {
-    devModeEnabled: boolean;
-    devModeDisabled: boolean;
-    tv: boolean;
-    setTopBox: boolean;
-    stick: boolean;
-    online: boolean;
-    offline: boolean;
-    userDefined: boolean;
-    autoDetected: boolean;
-}
-
-export const DEVICES_VIEW_FILTER_KEYS: Array<keyof DevicesViewFilters> = [
-    'devModeEnabled',
-    'devModeDisabled',
-    'tv',
-    'setTopBox',
-    'stick',
-    'online',
-    'offline',
-    'userDefined',
-    'autoDetected'
-];
-
-const DEFAULT_FILTERS: DevicesViewFilters = {
-    devModeEnabled: true,
-    devModeDisabled: false,
-    tv: true,
-    setTopBox: true,
-    stick: true,
-    online: true,
-    offline: false,
-    userDefined: true,
-    autoDetected: true
-};
+// Re-export the filter shape so downstream callers (extension.ts, tests) can use them
+// without importing from both modules.
+export type { DeviceFilters };
+export { DEVICE_FILTER_KEYS };
 
 export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -69,7 +45,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     private decorationProvider: DeviceDecorationProvider;
 
-    private filters: DevicesViewFilters;
+    private filters: DeviceFilters;
 
     constructor(
         private deviceManager: DeviceManager,
@@ -485,83 +461,18 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
     }
 
-    /**
-     * Filter the device list to only those matching every enabled facet
-     * (form factor, connectivity, dev-mode). Unchecking any facet strictly
-     * hides devices with that attribute.
-     */
     private applyFilters(devices: RokuDevice[]): RokuDevice[] {
-        const filters = this.filters;
-        return devices.filter(device => {
-            const info = device.deviceInfo ?? {};
-            const isTv = info['is-tv'] === 'true';
-            const isStick = info['is-stick'] === 'true';
-            const isSetTopBox = !isTv && !isStick;
-            if (isTv && !filters.tv) {
-                return false;
-            }
-            if (isStick && !filters.stick) {
-                return false;
-            }
-            if (isSetTopBox && !filters.setTopBox) {
-                return false;
-            }
-
-            // A device is "effectively online" when it's actually online, or when it's mid-handshake
-            // (pending) and was online the last time we checked. A pending device with no prior online
-            // result is treated as offline so first-load probing doesn't briefly show unverified devices.
-            const isEffectivelyOnline = device.deviceState === 'online' ||
-                (device.deviceState === 'pending' && device.lastDeviceState === 'online');
-            if (!isEffectivelyOnline && !filters.offline) {
-                return false;
-            }
-            if (isEffectivelyOnline && !filters.online) {
-                return false;
-            }
-
-            // developer-enabled may be missing on older firmware or before the first health check;
-            // treat unknown as enabled so we don't hide working devices.
-            const devEnabled = info['developer-enabled'] !== 'false';
-            if (devEnabled && !filters.devModeEnabled) {
-                return false;
-            }
-            if (!devEnabled && !filters.devModeDisabled) {
-                return false;
-            }
-
-            // A device that appears in both settings and the network scan is treated as user-defined.
-            if (device.isConfigured && !filters.userDefined) {
-                return false;
-            }
-            if (!device.isConfigured && !filters.autoDetected) {
-                return false;
-            }
-
-            return true;
-        });
+        return applyDeviceFilters(devices, this.filters);
     }
 
-    /**
-     * Read each filter's persisted value from user settings. Missing keys fall back to
-     * the in-code defaults; the package.json defaults provide the matching values shown
-     * in the Settings UI.
-     */
-    private loadFilters(): DevicesViewFilters {
-        const config = vscode.workspace.getConfiguration(DEVICES_VIEW_FILTERS_SECTION);
-        const result = { ...DEFAULT_FILTERS };
-        for (const filterKey of DEVICES_VIEW_FILTER_KEYS) {
-            const value = config.get<boolean>(filterKey);
-            if (typeof value === 'boolean') {
-                result[filterKey] = value;
-            }
-        }
-        return result;
+    private loadFilters(): DeviceFilters {
+        return loadDeviceFilters(DEVICES_VIEW_FILTERS_SECTION);
     }
 
     private reloadFiltersFromSettings(): void {
         const next = this.loadFilters();
         // Skip redundant work when our own update triggered the change event.
-        const unchanged = DEVICES_VIEW_FILTER_KEYS.every(filterKey => this.filters[filterKey] === next[filterKey]);
+        const unchanged = DEVICE_FILTER_KEYS.every(filterKey => this.filters[filterKey] === next[filterKey]);
         if (unchanged) {
             return;
         }
@@ -576,7 +487,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      */
     private pushFilterContextKeys(): Thenable<unknown> {
         const tasks: Thenable<unknown>[] = [];
-        for (const key of DEVICES_VIEW_FILTER_KEYS) {
+        for (const key of DEVICE_FILTER_KEYS) {
             tasks.push(vscode.commands.executeCommand('setContext', `${DEVICES_VIEW_FILTER_CONTEXT_KEY_PREFIX}${key}`, this.filters[key]));
         }
         return Promise.all(tasks);
@@ -587,8 +498,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      * Writing to the user-settings scope means the value syncs across windows via VS Code's
      * config change events and across machines via Settings Sync.
      */
-    public async toggleFilter(key: keyof DevicesViewFilters): Promise<void> {
-        if (!DEVICES_VIEW_FILTER_KEYS.includes(key)) {
+    public async toggleFilter(key: keyof DeviceFilters): Promise<void> {
+        if (!DEVICE_FILTER_KEYS.includes(key)) {
             return;
         }
         const nextValue = !this.filters[key];
@@ -596,7 +507,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
         const config = vscode.workspace.getConfiguration(DEVICES_VIEW_FILTERS_SECTION);
         // Toggling back to a default value clears the user-settings entry instead of storing it explicitly.
-        const valueToWrite = nextValue === DEFAULT_FILTERS[key] ? undefined : nextValue;
+        const valueToWrite = nextValue === DEFAULT_DEVICE_FILTERS[key] ? undefined : nextValue;
         try {
             await config.update(key, valueToWrite, vscode.ConfigurationTarget.Global);
         } catch {
@@ -611,12 +522,12 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      * Restore every filter facet to its default by clearing the user-settings entry for each key.
      */
     public async resetFilters(): Promise<void> {
-        this.filters = { ...DEFAULT_FILTERS };
+        this.filters = { ...DEFAULT_DEVICE_FILTERS };
 
         const config = vscode.workspace.getConfiguration(DEVICES_VIEW_FILTERS_SECTION);
         try {
             await Promise.all(
-                DEVICES_VIEW_FILTER_KEYS.map(key => config.update(key, undefined, vscode.ConfigurationTarget.Global))
+                DEVICE_FILTER_KEYS.map(key => config.update(key, undefined, vscode.ConfigurationTarget.Global))
             );
         } catch {
             // Best-effort persistence — filter state is not critical.

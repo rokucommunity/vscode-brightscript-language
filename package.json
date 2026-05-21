@@ -2525,6 +2525,66 @@
                 }
             },
             {
+                "id": "deviceQuickPick",
+                "title": "Device Quick Pick",
+                "properties": {
+                    "brightscript.deviceQuickPick.filters.devModeEnabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show devices with developer mode enabled in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.devModeDisabled": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Show devices with developer mode disabled in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.tv": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show TV devices in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.setTopBox": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show set-top boxes in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.stick": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show streaming sticks in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.online": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show online devices in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.offline": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Show offline devices in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.userDefined": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show user-defined devices (devices listed in your settings) in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.autoDetected": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show auto-detected devices (discovered on the network) in the device quick pick.",
+                        "scope": "application"
+                    }
+                }
+            },
+            {
                 "id": "debug",
                 "title": "Debugging",
                 "properties": {
