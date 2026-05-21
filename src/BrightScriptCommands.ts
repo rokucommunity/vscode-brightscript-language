@@ -801,10 +801,7 @@ export class BrightScriptCommands {
             this.host = config.get('host');
             // eslint-disable-next-line no-template-curly-in-string
             if ((!this.host || this.host === '${promptForHost}') && showPrompt) {
-                this.host = await vscode.window.showInputBox({
-                    placeHolder: 'The IP address of your Roku device',
-                    value: ''
-                });
+                this.host = await this.userInputManager.promptForHost();
             }
         }
         if (!this.host) {
