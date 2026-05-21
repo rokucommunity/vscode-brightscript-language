@@ -403,9 +403,14 @@ export class DeviceManager {
      * @returns The device state, defaulting to 'unknown' if not found
      */
     public getDeviceState(lookup: { serialNumber?: string; ip?: string }): DeviceStateEntry {
+        // When both fields are supplied, an IP match with a conflicting serial is the wrong device.
+        // Without this guard, changing a configured device's serial to a new value at an IP that
+        // already hosts an online device would briefly inherit that online state.
+        const serialConflicts = (entrySerial: string | undefined) => !!(lookup.serialNumber && entrySerial && entrySerial !== lookup.serialNumber);
+
         // Find discovered entry (by IP first, then by serial)
         let discoveredEntry = lookup.ip
-            ? this.discoveredDevices.find(d => d.ip === lookup.ip)
+            ? this.discoveredDevices.find(d => d.ip === lookup.ip && !serialConflicts(d.serialNumber))
             : undefined;
         if (!discoveredEntry && lookup.serialNumber) {
             discoveredEntry = this.discoveredDevices.find(d => d.serialNumber === lookup.serialNumber);
@@ -416,7 +421,7 @@ export class DeviceManager {
 
         // Find configured entry (by IP first, then by serial)
         let configuredEntry = lookup.ip
-            ? this.configuredDevices.find(d => d.host === lookup.ip || d.resolvedIp === lookup.ip)
+            ? this.configuredDevices.find(d => (d.host === lookup.ip || d.resolvedIp === lookup.ip) && !serialConflicts(d.serialNumber))
             : undefined;
         if (!configuredEntry && lookup.serialNumber) {
             configuredEntry = this.configuredDevices.find(d => d.serialNumber === lookup.serialNumber);
@@ -457,25 +462,32 @@ export class DeviceManager {
             }
         }
 
-        // Update configured entries at this IP that match the serial (or have no serial conflict)
+        // Update configured entries at this IP that match the serial (or have no serial conflict).
+        // stateLastUpdated bumps on every call so consumers see the latest check time, but
+        // lastState/state only move when the state actually changes.
         for (const entry of this.configuredDevices) {
             const ipMatches = entry.host === lookup.ip || entry.resolvedIp === lookup.ip;
             // Only update if IP matches AND (no serial conflict OR serials match)
             const serialConflict = lookup.serialNumber && entry.serialNumber && entry.serialNumber !== lookup.serialNumber;
             if (ipMatches && !serialConflict) {
-                entry.lastState = entry.state;
-                entry.state = resolvedState;
+                if (entry.state !== resolvedState) {
+                    entry.lastState = entry.state;
+                    entry.state = resolvedState;
+                }
                 entry.stateLastUpdated = now;
             }
         }
 
-        // Update discovered entries at this IP that match the serial (or have no serial conflict)
+        // Update discovered entries at this IP that match the serial (or have no serial conflict).
+        // Same nested guard as the configured loop above.
         for (const entry of this.discoveredDevices) {
             const ipMatches = entry.ip === lookup.ip;
             const serialConflict = lookup.serialNumber && entry.serialNumber && entry.serialNumber !== lookup.serialNumber;
             if (ipMatches && !serialConflict) {
-                entry.lastState = entry.state;
-                entry.state = resolvedState;
+                if (entry.state !== resolvedState) {
+                    entry.lastState = entry.state;
+                    entry.state = resolvedState;
+                }
                 entry.stateLastUpdated = now;
             }
         }

@@ -214,6 +214,187 @@ describe('DeviceManager', () => {
         });
     });
 
+    describe('setDeviceState', () => {
+        describe('lastState tracking', () => {
+            it('records the prior state on transition for a discovered entry', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager['discoveredDevices'].push({ ip: '192.168.1.100', serialNumber: 'ABC123' });
+
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+                expect(manager['discoveredDevices'][0].state).to.equal('online');
+                expect(manager['discoveredDevices'][0].lastState).to.be.undefined;
+
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'offline');
+                expect(manager['discoveredDevices'][0].state).to.equal('offline');
+                expect(manager['discoveredDevices'][0].lastState).to.equal('online');
+            });
+
+            it('records the prior state on transition for a configured entry', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager['configuredDevices'].push({ host: '192.168.1.100', serialNumber: 'ABC123' } as any);
+
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+                expect(manager['configuredDevices'][0].state).to.equal('online');
+                expect(manager['configuredDevices'][0].lastState).to.be.undefined;
+
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'pending');
+                expect(manager['configuredDevices'][0].state).to.equal('pending');
+                expect(manager['configuredDevices'][0].lastState).to.equal('online');
+            });
+        });
+
+        describe('no-op guard', () => {
+            it('does not move lastState when the new state matches the current state', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager['discoveredDevices'].push({ ip: '192.168.1.100', serialNumber: 'ABC123' });
+
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'offline');
+                expect(manager['discoveredDevices'][0].lastState).to.equal('online');
+
+                // Re-applying the same 'offline' state must not clobber lastState back to 'offline'
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'offline');
+                expect(manager['discoveredDevices'][0].state).to.equal('offline');
+                expect(manager['discoveredDevices'][0].lastState).to.equal('online');
+            });
+
+            it('still bumps stateLastUpdated when the new state matches the current state', () => {
+                const clock = sinon.useFakeTimers({ now: 1_000_000 });
+                try {
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager['discoveredDevices'].push({ ip: '192.168.1.100', serialNumber: 'ABC123' });
+
+                    manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+                    const firstTimestamp = manager['discoveredDevices'][0].stateLastUpdated;
+
+                    clock.tick(5_000);
+
+                    manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+                    expect(manager['discoveredDevices'][0].stateLastUpdated).to.equal(firstTimestamp + 5_000);
+                } finally {
+                    clock.restore();
+                }
+            });
+
+            it('updates lastState only on entries whose state actually changes', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Two entries at the same IP — one online, one already pending
+                manager['discoveredDevices'].push({ ip: '192.168.1.100', serialNumber: 'ABC123', state: 'online' });
+                manager['configuredDevices'].push({ host: '192.168.1.100', state: 'pending' } as any);
+
+                manager['setDeviceState']({ ip: '192.168.1.100' }, 'pending');
+
+                // The discovered entry transitioned online → pending, so lastState records online
+                expect(manager['discoveredDevices'][0].state).to.equal('pending');
+                expect(manager['discoveredDevices'][0].lastState).to.equal('online');
+
+                // The configured entry was already pending — lastState must stay undefined
+                expect(manager['configuredDevices'][0].state).to.equal('pending');
+                expect(manager['configuredDevices'][0].lastState).to.be.undefined;
+            });
+        });
+    });
+
+    describe('getDeviceState', () => {
+        describe('serial conflict guard', () => {
+            it('skips an IP-matching discovered entry that has a conflicting serial', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager['discoveredDevices'].push({ ip: '192.168.1.100', serialNumber: 'ABC123' });
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+
+                // Looking up the same IP with a different serial must NOT inherit the ABC123 online state
+                expect(manager.getDeviceState({ ip: '192.168.1.100', serialNumber: 'ZZZZZ' }).state).to.equal('unknown');
+            });
+
+            it('falls back to a serial-only match when the IP-match is filtered by serial conflict', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Online device with serial ABC123 lives at 192.168.1.99
+                manager['discoveredDevices'].push({ ip: '192.168.1.99', serialNumber: 'ABC123' });
+                manager['setDeviceState']({ ip: '192.168.1.99', serialNumber: 'ABC123' }, 'online');
+
+                // Another (offline) device sits at the stale IP 192.168.1.5 with a different serial
+                manager['discoveredDevices'].push({ ip: '192.168.1.5', serialNumber: 'ZZZZZ' });
+                manager['setDeviceState']({ ip: '192.168.1.5', serialNumber: 'ZZZZZ' }, 'offline');
+
+                // Lookup with ABC123 + the stale IP should still resolve to the online entry via serial
+                expect(manager.getDeviceState({ ip: '192.168.1.5', serialNumber: 'ABC123' }).state).to.equal('online');
+            });
+
+            it('matches by IP alone when no serial is supplied in the lookup', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager['discoveredDevices'].push({ ip: '192.168.1.100', serialNumber: 'ABC123' });
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+
+                // No serial in the lookup → conflict guard is a no-op
+                expect(manager.getDeviceState({ ip: '192.168.1.100' }).state).to.equal('online');
+            });
+
+            it('applies the conflict guard to configured entries', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager['configuredDevices'].push({ host: '192.168.1.100', serialNumber: 'ABC123' } as any);
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+
+                expect(manager.getDeviceState({ ip: '192.168.1.100', serialNumber: 'ZZZZZ' }).state).to.equal('unknown');
+            });
+
+            it('does not flash a configured device online when its serial is changed to a value not present at that IP', async () => {
+                // Discovered: real device ABC123 is online at 192.168.1.100
+                (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    inspect: () => ({
+                        workspaceValue: [],
+                        globalValue: [{ host: '192.168.1.100', serialNumber: 'ZZZZZ', name: 'Mislabeled' }]
+                    }),
+                    deviceDiscovery: {
+                        enabled: false,
+                        includeNonDeveloperDevices: true
+                    }
+                });
+
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager['discoveredDevices'].push({ ip: '192.168.1.100', serialNumber: 'ABC123' });
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+
+                await manager['loadConfiguredDevices']();
+
+                const configured = manager['configuredDevices'].find(d => d.serialNumber === 'ZZZZZ');
+                expect(configured?.state).to.not.equal('online');
+            });
+        });
+    });
+
+    describe('setDiscoveredDevice', () => {
+        it('preserves state on a re-discovered entry (does not wipe state back to unknown)', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['setDiscoveredDevice']('192.168.1.100', 'ABC123');
+            manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+            expect(manager['discoveredDevices'][0].state).to.equal('online');
+
+            // Re-discovering the same IP/serial — without preserving fields, setDeviceState's
+            // intelligent default would see no prior state and downgrade to 'unknown'
+            manager['setDiscoveredDevice']('192.168.1.100', 'ABC123');
+
+            expect(manager['discoveredDevices'].length).to.equal(1);
+            expect(manager['discoveredDevices'][0].state).to.equal('online');
+        });
+
+        it('preserves lastState on a re-discovered entry', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['setDiscoveredDevice']('192.168.1.100', 'ABC123');
+            manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'offline');
+            manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+            expect(manager['discoveredDevices'][0].lastState).to.equal('offline');
+
+            manager['setDiscoveredDevice']('192.168.1.100', 'ABC123');
+
+            // The re-discovery path keeps lastState intact rather than dropping it on the floor
+            expect(manager['discoveredDevices'][0].lastState).to.equal('offline');
+        });
+    });
+
     describe('on', () => {
         it('registers handler and returns unsubscribe function', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
@@ -2036,6 +2217,20 @@ describe('DeviceManager', () => {
             expect(manager['configuredDevices'].length).to.equal(1);
             expect(manager['discoveredDevices'].length).to.equal(0);
         });
+
+        it('records lastState on configured entries before resetting to unknown', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['configuredDevices'].push({ host: '192.168.1.100', serialNumber: 'ABC123' } as any);
+            manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            const entry = manager['configuredDevices'][0];
+            expect(entry.state).to.equal('unknown');
+            expect(entry.lastState).to.equal('online');
+        });
     });
 
     describe('configured devices', () => {
@@ -2540,6 +2735,22 @@ describe('DeviceManager', () => {
             });
         });
         describe('clearAllCache', () => {
+            it('records lastState on configured entries before resetting to unknown', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Stub the async health check so it doesn't immediately flip state back to 'pending'
+                sinon.stub(manager as any, 'healthCheckAllDevices').resolves();
+
+                manager['configuredDevices'].push({ host: '192.168.1.100', serialNumber: 'ABC123' } as any);
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+
+                manager.clearAllCache();
+
+                const entry = manager['configuredDevices'][0];
+                expect(entry.state).to.equal('unknown');
+                expect(entry.lastState).to.equal('online');
+            });
+
             describe('timestamp clearing', () => {
                 it('resets lastScanDate to null', () => {
                     manager = new DeviceManager(vscode.context, mockGlobalStateManager);
