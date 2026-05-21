@@ -237,7 +237,7 @@ export class UserInputManager {
             if (button.tooltip === SCAN_FOR_DEVICES) {
                 this.deviceManager.refresh(true);
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
-                this.deviceManager.clearCurrentDeviceList();
+                this.deviceManager.clearCurrentDeviceList().catch(() => { });
                 void util.showTimedNotification('Clearing device list');
             } else if (button.tooltip === ENABLE_DEVICE_DISCOVERY) {
                 void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
@@ -255,37 +255,6 @@ export class UserInputManager {
         } else {
             return result?.ip;
         }
-    }
-
-    /**
-     * Generate the label used when showing "host" entries in a quick picker
-     * @param device the device containing all the info
-     * @returns a properly formatted host string
-     */
-    private getDeviceIcon(device: RokuDevice) {
-        if (device.deviceState === 'offline') {
-            // For offline devices, check cache to distinguish:
-            // - warning icon: never successfully contacted (no cache)
-            // - disconnect icon: was online before (has cache)
-            const hasCache = device.serialNumber && this.deviceManager.hasDeviceCache(device.serialNumber);
-            if (hasCache) {
-                return new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
-            } else {
-                return new vscode.ThemeIcon('warning', new vscode.ThemeColor('disabledForeground'));
-            }
-        } else if (device.deviceState === 'pending') {
-            return new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
-        }
-        return icons.getDeviceType(device.deviceInfo);
-    }
-
-    private createHostLabel(device: RokuDevice) {
-        return [
-            device.deviceInfo['model-number'] || '',
-            device.deviceInfo['user-device-name'] || '',
-            `OS ${device.deviceInfo['software-version'] || ''}`,
-            device.ip
-        ].join(' – ');
     }
 
     /**
@@ -314,9 +283,9 @@ export class UserInputManager {
 
             //add the device
             items.push({
-                label: this.createHostLabel(lastUsedDevice),
+                label: this.deviceManager.getDeviceDisplayName(lastUsedDevice, true),
                 device: lastUsedDevice,
-                iconPath: this.getDeviceIcon(lastUsedDevice)
+                iconPath: this.deviceManager.getIconPath(lastUsedDevice)
             } as any);
         }
 
@@ -331,9 +300,9 @@ export class UserInputManager {
             for (const device of devices) {
                 //add the device
                 items.push({
-                    label: this.createHostLabel(device),
+                    label: this.deviceManager.getDeviceDisplayName(device, true),
                     device: device,
-                    iconPath: this.getDeviceIcon(device)
+                    iconPath: this.deviceManager.getIconPath(device)
                 });
             }
         }

@@ -339,8 +339,9 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('clearCurrentDeviceList', async () => {
-            this.deviceManager.clearCurrentDeviceList();
-            await util.showTimedNotification('Clearing device list');
+            const toatsPromise = util.showTimedNotification('Clearing device list');
+            await this.deviceManager.clearCurrentDeviceList();
+            await toatsPromise;
         });
 
         this.registerCommand('enableDeviceDiscovery', async () => {
@@ -732,10 +733,9 @@ export class BrightScriptCommands {
                 return;
             }
 
-            // First call suspends if dev is foregrounded with Instant Resume; second call terminates.
-            // Both are harmless if dev isn't running — the device just returns FAILED in the body.
-            await this.ecpPost(host, 'exit-app/dev');
-            await this.ecpPost(host, 'exit-app/dev');
+            // `/true` forces a full terminate even if the channel is suspended in the background via Instant Resume.
+            // Harmless if dev isn't running — the device just returns FAILED in the body.
+            await this.ecpPost(host, 'exit-app/dev/true');
 
             const launchResponse = await this.ecpPost(host, 'launch/dev');
             if (launchResponse.statusCode !== 200) {

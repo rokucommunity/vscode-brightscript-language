@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { ConfiguredDevice, DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import type { CredentialStore } from '../managers/CredentialStore';
-import { icons } from '../icons';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
 
@@ -174,18 +173,6 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     private devices: Array<RokuDevice>;
 
-    private makeName(device: RokuDevice) {
-        // Use configuredName if available, otherwise fall back to user-device-name
-        const displayName = device.configuredName || device.deviceInfo['user-device-name'] || device.ip;
-        const softwareVersion = device.deviceInfo['software-version'];
-        const parts = [
-            device.deviceInfo['model-number'],
-            displayName,
-            softwareVersion ? `OS ${softwareVersion}` : undefined
-        ].filter(Boolean);
-        return parts.join(' – ') || device.ip;
-    }
-
     async getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): Promise<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
@@ -199,7 +186,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 for (const device of visibleDevices) {
                     // Make a rook item for each device
                     let treeItem = new DeviceTreeItem(
-                        this.makeName(device),
+                        this.deviceManager.getDeviceDisplayName(device),
                         vscode.TreeItemCollapsibleState.Collapsed,
                         device.key,
                         device.deviceInfo
@@ -209,23 +196,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     // Set resourceUri to enable FileDecorationProvider for text coloring
                     // Use the device key which is serial-based when available, IP-based as fallback
                     treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`);
-
-                    // Set icon based on device state
-                    if (device.deviceState === 'offline') {
-                        // For offline devices, check cache to distinguish:
-                        // - warning icon: never successfully contacted (no cache)
-                        // - disconnect icon: was online before (has cache)
-                        const hasCache = device.serialNumber && this.deviceManager.hasDeviceCache(device.serialNumber);
-                        if (hasCache) {
-                            treeItem.iconPath = new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
-                        } else {
-                            treeItem.iconPath = new vscode.ThemeIcon('question', new vscode.ThemeColor('disabledForeground'));
-                        }
-                    } else if (device.deviceState === 'pending') {
-                        treeItem.iconPath = new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
-                    } else {
-                        treeItem.iconPath = icons.getDeviceType(device.deviceInfo);
-                    }
+                    treeItem.iconPath = this.deviceManager.getIconPath(device);
 
                     // Set contextValue for context menu actions
                     // Values: device, device-user, device-workspace, device-user-workspace
@@ -646,7 +617,7 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
         const deviceKey = uri.path.slice(1); // Remove leading slash (key is "s:..." or "i:...")
         const state = this.deviceStates.get(deviceKey);
 
-        if (state === 'pending' || state === 'offline') {
+        if (state !== 'online') {
             return {
                 color: new vscode.ThemeColor('disabledForeground')
             };

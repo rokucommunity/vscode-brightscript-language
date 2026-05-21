@@ -793,8 +793,11 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             (vscode.window as any).state = { focused: true };
 
+            // Use a configured-only device so it persists when offline (discovered-only devices are removed)
             const device = createMockDevice({
                 serialNumber: 'device-123',
+                isConfigured: true,
+                isDiscovered: false,
                 deviceInfo: { 'default-device-name': 'My Roku' }
             });
             addDevice(device);
@@ -808,7 +811,7 @@ describe('DeviceManager', () => {
             expect(cached).to.exist;
             expect(cached.deviceInfo['default-device-name']).to.equal('My Roku');
 
-            // Device should be offline
+            // Device should be offline (configured devices persist with state)
             expect(manager.getDeviceState({ serialNumber: 'device-123' }).state).to.equal('offline');
         });
 
@@ -1094,7 +1097,7 @@ describe('DeviceManager', () => {
             expect(manager['getDeviceState']({ ip: '192.168.1.100', serialNumber: 'device-1' }).state).to.equal('online');
         });
 
-        it('loads cached devices as pending when cache is stale (older than 5 minutes)', () => {
+        it('loads cached devices as unknown when cache is stale (older than 5 minutes)', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
@@ -1111,7 +1114,7 @@ describe('DeviceManager', () => {
 
             manager['loadLastSeenDevices']();
 
-            expect(manager.getAllDevices()[0].deviceState).to.equal('pending');
+            expect(manager.getAllDevices()[0].deviceState).to.equal('unknown');
         });
 
         it('removes stale entries when cache returns undefined', () => {
@@ -1462,6 +1465,275 @@ describe('DeviceManager', () => {
 
             expect(showTimedStub.calledTwice).to.be.true;
         });
+
+        describe('uncached device resolution on focus', () => {
+            it('triggers resolveUncachedDiscoveredDevices when focused and no cache exists', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100', 'YN00AB123456');
+
+                expect(resolveStub.calledOnce).to.be.true;
+            });
+
+            it('does not trigger resolveUncachedDiscoveredDevices when focused but device already has cache', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Cache the device so hasDeviceCache returns true
+                const device = createMockDevice({
+                    serialNumber: 'YN00AB123456',
+                    ip: '192.168.1.100',
+                    deviceInfo: mockDeviceInfo
+                });
+                addDevice(device);
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100', 'YN00AB123456');
+
+                expect(resolveStub.called).to.be.false;
+            });
+
+            it('does not trigger resolveUncachedDiscoveredDevices when not focused, even if no cache', () => {
+                (vscode.window as any).state = { focused: false };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100', 'YN00AB123456');
+
+                expect(resolveStub.called).to.be.false;
+            });
+
+            it('uses IP→serial mapping to detect cache when no serial is provided', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Seed mapping AND cache so hasDeviceCache returns true via the mapped serial
+                mockGlobalStateManager.setSerialNumberForIp('test-network-hash', '192.168.1.100', 'MAPPED-SERIAL');
+                mockGlobalStateManager.setCachedDevice('MAPPED-SERIAL', {
+                    serialNumber: 'MAPPED-SERIAL',
+                    deviceInfo: { 'default-device-name': 'Mapped Roku' },
+                    createdAt: Date.now()
+                });
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100');
+
+                // The mapped serial has cache, so resolution should NOT trigger
+                expect(resolveStub.called).to.be.false;
+            });
+
+            it('prefers the provided serial over the IP→serial mapping when checking cache', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Cache the MAPPED serial. The provided serial is different & uncached.
+                mockGlobalStateManager.setSerialNumberForIp('test-network-hash', '192.168.1.100', 'MAPPED-SERIAL');
+                mockGlobalStateManager.setCachedDevice('MAPPED-SERIAL', {
+                    serialNumber: 'MAPPED-SERIAL',
+                    deviceInfo: {},
+                    createdAt: Date.now()
+                });
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100', 'PROVIDED-SERIAL');
+
+                // Provided serial wins → no cache for it → should trigger resolution
+                expect(resolveStub.calledOnce).to.be.true;
+            });
+
+            it('triggers resolveUncachedDiscoveredDevices when neither serial provided nor mapped', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const resolveStub = sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').resolves();
+
+                manager['handleDeviceOnline']('192.168.1.100');
+
+                // No serial → hasCache=false → focused → triggers resolution
+                expect(resolveStub.calledOnce).to.be.true;
+            });
+
+            it('swallows errors from resolveUncachedDiscoveredDevices so the caller is not affected', () => {
+                (vscode.window as any).state = { focused: true };
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                sinon.stub(manager as any, 'resolveUncachedDiscoveredDevices').rejects(new Error('network down'));
+
+                // Should not throw
+                expect(() => manager['handleDeviceOnline']('192.168.1.100', 'YN00AB123456')).to.not.throw();
+            });
+        });
+    });
+
+    describe('notifyFocusGained / resolveUncachedDiscoveredDevices', () => {
+        it('health-checks discovered devices that have no serial number', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['discoveredDevices'].push({ ip: '192.168.1.100' });
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.calledOnce).to.be.true;
+            expect(healthCheckStub.firstCall.args[0]).to.deep.equal({ ip: '192.168.1.100', serialNumber: undefined });
+            expect(healthCheckStub.firstCall.args[1]).to.equal(false);
+            expect(healthCheckStub.firstCall.args[2]).to.equal(false);
+        });
+
+        it('health-checks discovered devices that have a serial but no cache entry', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['discoveredDevices'].push({ ip: '192.168.1.101', serialNumber: 'no-cache-serial' });
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.calledOnce).to.be.true;
+            expect(healthCheckStub.firstCall.args[0]).to.deep.equal({ ip: '192.168.1.101', serialNumber: 'no-cache-serial' });
+        });
+
+        it('skips discovered devices that already have a cache entry', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Cache a device, then add it to discoveredDevices
+            mockGlobalStateManager.setCachedDevice('cached-serial', {
+                serialNumber: 'cached-serial',
+                deviceInfo: { 'default-device-name': 'Cached Roku' },
+                createdAt: Date.now()
+            });
+            manager['discoveredDevices'].push({ ip: '192.168.1.102', serialNumber: 'cached-serial' });
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.called).to.be.false;
+        });
+
+        it('health-checks only the uncached entries when both cached and uncached exist', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // One cached, one uncached, one without serial
+            mockGlobalStateManager.setCachedDevice('cached-serial', {
+                serialNumber: 'cached-serial',
+                deviceInfo: { 'default-device-name': 'Cached Roku' },
+                createdAt: Date.now()
+            });
+            manager['discoveredDevices'].push(
+                { ip: '192.168.1.100', serialNumber: 'cached-serial' },
+                { ip: '192.168.1.101', serialNumber: 'uncached-serial' },
+                { ip: '192.168.1.102' }
+            );
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.calledTwice).to.be.true;
+            const ips = healthCheckStub.getCalls().map(c => (c.args[0] as any).ip).sort();
+            expect(ips).to.deep.equal(['192.168.1.101', '192.168.1.102']);
+        });
+
+        it('does nothing when there are no discovered devices', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.called).to.be.false;
+        });
+
+        it('does nothing when all discovered devices are cached', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            mockGlobalStateManager.setCachedDevice('serial-a', {
+                serialNumber: 'serial-a', deviceInfo: {}, createdAt: Date.now()
+            });
+            mockGlobalStateManager.setCachedDevice('serial-b', {
+                serialNumber: 'serial-b', deviceInfo: {}, createdAt: Date.now()
+            });
+            manager['discoveredDevices'].push(
+                { ip: '192.168.1.100', serialNumber: 'serial-a' },
+                { ip: '192.168.1.101', serialNumber: 'serial-b' }
+            );
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.called).to.be.false;
+        });
+
+        it('runs health checks in parallel (does not await one before starting the next)', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['discoveredDevices'].push(
+                { ip: '192.168.1.100' },
+                { ip: '192.168.1.101' },
+                { ip: '192.168.1.102' }
+            );
+
+            // Resolve health checks only after all three have been kicked off
+            let resolveAll: () => void;
+            const allKickedOff = new Promise<void>(resolve => {
+                resolveAll = resolve;
+            });
+
+            let inFlight = 0;
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').callsFake(async () => {
+                inFlight++;
+                if (inFlight === 3) {
+                    resolveAll();
+                }
+                await allKickedOff;
+                return true;
+            });
+
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.callCount).to.equal(3);
+        });
+
+        it('continues resolving other devices even if one healthCheck rejects', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['discoveredDevices'].push(
+                { ip: '192.168.1.100' },
+                { ip: '192.168.1.101' }
+            );
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice');
+            healthCheckStub.onFirstCall().rejects(new Error('boom'));
+            healthCheckStub.onSecondCall().resolves(true);
+
+            // Should not reject
+            await manager['resolveUncachedDiscoveredDevices']();
+
+            expect(healthCheckStub.calledTwice).to.be.true;
+        });
+
+        it('is triggered by notifyFocusGained', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager['discoveredDevices'].push({ ip: '192.168.1.100' });
+
+            const healthCheckStub = sinon.stub(manager, 'healthCheckDevice').resolves(true);
+
+            manager['notifyFocusGained']();
+
+            expect(healthCheckStub.calledOnce).to.be.true;
+            expect(healthCheckStub.firstCall.args[0]).to.deep.equal({ ip: '192.168.1.100', serialNumber: undefined });
+        });
     });
 
     describe('fetchDeviceInfo', () => {
@@ -1618,7 +1890,7 @@ describe('DeviceManager', () => {
             expect(getDeviceInfoStub.callCount).to.equal(2);
         });
 
-        it('uses cached data on network change when serial is known', async () => {
+        it('refetches on network change even when serial is known (IP mapping is network-specific)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             // Device with known serial (from config or previous discovery)
@@ -1650,10 +1922,12 @@ describe('DeviceManager', () => {
             // Re-add device (network change clears discovered devices)
             addDevice(device);
 
-            // Device info cache is keyed by serial, not network.
-            // Since we know the serial, we can use cached data even on new network.
+            // IP→serial mapping is network-specific and gets cleared on network change.
+            // Even though device info cache is keyed by serial, we validate that the
+            // cached IP matches the device's current IP. After network change, this
+            // validation fails so we must refetch to confirm the device is still at this IP.
             await manager['resolveDevice'](device, false);
-            expect(getDeviceInfoStub.callCount).to.equal(1); // Still uses cache
+            expect(getDeviceInfoStub.callCount).to.equal(2); // Refetches after network change
         });
     });
 
@@ -2913,6 +3187,106 @@ describe('DeviceManager', () => {
                 expect(manager.getAllDevices()[0].configuredName).to.equal('Living Room Roku');
                 expect(manager.getAllDevices()[0].configuredPassword).to.equal('secret');
             });
+
+            it('shows online when configured at wrong IP and discovered at correct IP resolve concurrently', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager as any, 'randomDelay').resolves();
+                sinon.stub(manager as any, 'refresh').resolves();
+
+                // Configured device XYZ at wrong IP (192.168.1.100)
+                const configuredDevice = createMockDevice({
+                    serialNumber: 'XYZ',
+                    ip: '192.168.1.100',
+                    isConfigured: true,
+                    isDiscovered: false,
+                    configuredName: 'My Roku'
+                });
+                addDevice(configuredDevice);
+
+                // Discovered device XYZ at correct IP (192.168.1.50)
+                const discoveredDevice = createMockDevice({
+                    serialNumber: 'XYZ',
+                    ip: '192.168.1.50',
+                    isConfigured: false,
+                    isDiscovered: true
+                });
+                addDevice(discoveredDevice);
+
+                // Stub: IP .100 fails (wrong IP), IP .50 succeeds (correct IP)
+                const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.100' })).rejects(new Error('Unreachable'));
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.50' })).resolves({
+                    'serial-number': 'XYZ',
+                    'device-id': 'XYZ',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                // Resolve both concurrently (simulating race condition)
+                await Promise.all([
+                    manager['resolveDevice']({ ip: '192.168.1.100', serialNumber: 'XYZ', isDiscovered: false } as any),
+                    manager['resolveDevice']({ ip: '192.168.1.50', serialNumber: 'XYZ', isDiscovered: true } as any)
+                ]);
+
+                // Should have ONE merged device showing ONLINE (discovered state wins)
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(1);
+                expect(devices[0].serialNumber).to.equal('XYZ');
+                expect(devices[0].deviceState).to.equal('online');
+                expect(devices[0].ip).to.equal('192.168.1.50'); // discovered IP wins
+                expect(devices[0].configuredName).to.equal('My Roku'); // configured name preserved
+            });
+
+            it('shows online regardless of which concurrent health check completes first', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager as any, 'randomDelay').resolves();
+                sinon.stub(manager as any, 'refresh').resolves();
+
+                // Same setup: configured at wrong IP, discovered at correct IP
+                addDevice(createMockDevice({
+                    serialNumber: 'XYZ',
+                    ip: '192.168.1.100',
+                    isConfigured: true,
+                    isDiscovered: false
+                }));
+                addDevice(createMockDevice({
+                    serialNumber: 'XYZ',
+                    ip: '192.168.1.50',
+                    isConfigured: false,
+                    isDiscovered: true
+                }));
+
+                const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.100' })).rejects(new Error('Unreachable'));
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.50' })).resolves({
+                    'serial-number': 'XYZ',
+                    'device-id': 'XYZ',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                // Resolve in OPPOSITE order: wrong IP first, then correct IP
+                await manager['resolveDevice']({ ip: '192.168.1.100', serialNumber: 'XYZ', isDiscovered: false } as any);
+                await manager['resolveDevice']({ ip: '192.168.1.50', serialNumber: 'XYZ', isDiscovered: true } as any);
+
+                // Should still show online
+                expect(manager.getAllDevices().length).to.equal(1);
+                expect(manager.getAllDevices()[0].deviceState).to.equal('online');
+
+                // Now test the reverse order: correct IP first, then wrong IP
+                getDeviceInfoStub.reset();
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.100' })).rejects(new Error('Unreachable'));
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.50' })).resolves({
+                    'serial-number': 'XYZ',
+                    'device-id': 'XYZ',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                await manager['resolveDevice']({ ip: '192.168.1.50', serialNumber: 'XYZ', isDiscovered: true } as any);
+                await manager['resolveDevice']({ ip: '192.168.1.100', serialNumber: 'XYZ', isDiscovered: false } as any);
+
+                // Should still show online (discovered state wins, not affected by configured failure)
+                expect(manager.getAllDevices().length).to.equal(1);
+                expect(manager.getAllDevices()[0].deviceState).to.equal('online');
+            });
         });
 
         describe('edge cases', () => {
@@ -3290,6 +3664,198 @@ describe('DeviceManager', () => {
                 // Internal discoveredDevices entry should not have configuredPassword field
                 expect((manager['discoveredDevices'][0] as any).configuredPassword).to.be.undefined;
             });
+        });
+    });
+
+    describe('getDeviceDisplayName', () => {
+        function makeDevice(overrides: Partial<RokuDevice> & { deviceInfo?: Record<string, any> } = {}): RokuDevice {
+            const { deviceInfo: deviceInfoOverrides, ...rest } = overrides;
+            return {
+                ip: '192.168.1.100',
+                serialNumber: 'abc',
+                key: 's:abc',
+                deviceState: 'online',
+                isConfigured: false,
+                isDiscovered: true,
+                ...rest,
+                deviceInfo: {
+                    'model-number': '4660X',
+                    'user-device-name': 'Living Room',
+                    'software-version': '12.5.0',
+                    ...(deviceInfoOverrides ?? {})
+                }
+            } as RokuDevice;
+        }
+
+        beforeEach(() => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+        });
+
+        it('joins model, name, and OS version with en-dashes', () => {
+            const device = makeDevice();
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('prefers configuredName over user-device-name', () => {
+            const device = makeDevice({ configuredName: 'My Custom Name' });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – My Custom Name – OS 12.5.0');
+        });
+
+        it('falls back to user-device-name when configuredName is missing', () => {
+            const device = makeDevice({ configuredName: undefined });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('falls back to user-device-name when configuredName is empty string', () => {
+            const device = makeDevice({ configuredName: '' });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('omits model-number when missing', () => {
+            const device = makeDevice({ deviceInfo: { 'model-number': undefined } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('Living Room – OS 12.5.0');
+        });
+
+        it('omits name when both configuredName and user-device-name are missing', () => {
+            const device = makeDevice({ deviceInfo: { 'user-device-name': undefined } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – OS 12.5.0');
+        });
+
+        it('omits OS version when software-version is missing', () => {
+            const device = makeDevice({ deviceInfo: { 'software-version': undefined } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room');
+        });
+
+        it('prefixes software-version with "OS "', () => {
+            const device = makeDevice({ deviceInfo: { 'software-version': '11.0' } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 11.0');
+        });
+
+        it('returns just the IP when no other info is available', () => {
+            const device = makeDevice({
+                ip: '10.0.0.42',
+                deviceInfo: {
+                    'model-number': undefined,
+                    'user-device-name': undefined,
+                    'software-version': undefined
+                }
+            });
+            expect(manager.getDeviceDisplayName(device)).to.equal('10.0.0.42');
+        });
+
+        it('does not append IP by default when other info exists', () => {
+            const device = makeDevice({ ip: '10.0.0.42' });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('appends IP when includeIp=true', () => {
+            const device = makeDevice({ ip: '10.0.0.42' });
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('4660X – Living Room – OS 12.5.0 – 10.0.0.42');
+        });
+
+        it('appends IP when includeIp=true even with partial info', () => {
+            const device = makeDevice({
+                ip: '10.0.0.42',
+                deviceInfo: {
+                    'model-number': undefined,
+                    'software-version': undefined
+                }
+            });
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('Living Room – 10.0.0.42');
+        });
+
+        it('returns IP when includeIp=true and no other info exists', () => {
+            const device = makeDevice({
+                ip: '10.0.0.42',
+                deviceInfo: {
+                    'model-number': undefined,
+                    'user-device-name': undefined,
+                    'software-version': undefined
+                }
+            });
+            // parts has only the ip in it (from the includeIp push), joined produces the ip
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('10.0.0.42');
+        });
+
+        it('does not append IP when includeIp=true but ip is missing', () => {
+            const device = makeDevice({ ip: '' });
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('treats whitespace-only model, name, and version as missing (no "– – OS – ip" garbage)', () => {
+            const device = makeDevice({
+                ip: '192.168.1.31',
+                configuredName: '   ',
+                deviceInfo: {
+                    'model-number': '   ',
+                    'user-device-name': '   ',
+                    'software-version': '   '
+                }
+            });
+            // Without the fix, this would render as "   –    – OS    – 192.168.1.31"
+            // which displays as "– – OS – 192.168.1.31"
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('192.168.1.31');
+            expect(manager.getDeviceDisplayName(device, false)).to.equal('192.168.1.31');
+        });
+
+        it('treats whitespace-only model-number as missing', () => {
+            const device = makeDevice({ deviceInfo: { 'model-number': '   ' } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('Living Room – OS 12.5.0');
+        });
+
+        it('treats whitespace-only software-version as missing (no bare "OS" segment)', () => {
+            const device = makeDevice({ deviceInfo: { 'software-version': '   ' } });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room');
+        });
+
+        it('treats whitespace-only configuredName as missing and falls back to user-device-name', () => {
+            const device = makeDevice({ configuredName: '   ' });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – Living Room – OS 12.5.0');
+        });
+
+        it('treats whitespace-only configuredName AND user-device-name as missing', () => {
+            const device = makeDevice({
+                configuredName: '   ',
+                deviceInfo: { 'user-device-name': '   ' }
+            });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – OS 12.5.0');
+        });
+
+        it('treats null fields the same as missing', () => {
+            const device = makeDevice({
+                configuredName: null as any,
+                deviceInfo: {
+                    'model-number': null,
+                    'user-device-name': null,
+                    'software-version': null
+                }
+            });
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('192.168.1.100');
+        });
+
+        it('trims surrounding whitespace from non-empty values', () => {
+            const device = makeDevice({
+                configuredName: '  My TV  ',
+                deviceInfo: {
+                    'model-number': '  4660X  ',
+                    'software-version': '  12.5.0  '
+                }
+            });
+            expect(manager.getDeviceDisplayName(device)).to.equal('4660X – My TV – OS 12.5.0');
+        });
+
+        it('returns empty string when both ip and all fields are blank', () => {
+            const device = makeDevice({
+                ip: '   ',
+                configuredName: '   ',
+                deviceInfo: {
+                    'model-number': '   ',
+                    'user-device-name': '   ',
+                    'software-version': '   '
+                }
+            });
+            expect(manager.getDeviceDisplayName(device, true)).to.equal('');
+            expect(manager.getDeviceDisplayName(device, false)).to.equal('');
         });
     });
 });

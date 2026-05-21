@@ -33,30 +33,32 @@
 <div id="setManualIpAddress">
     Use the form below to connect to an active session (the on-device component needs to already be installed and running)<br />
     <table>
-        <tr>
-            <td>
-                <label for="ipAddress">IP Address</label>
-            </td>
-            <td>
-                <vscode-text-field
-                    id="ipAddress"
-                    value={ipAddress}
-                    on:input={onIpAddressChange} />
-            </td>
-        </tr>
-        <tr>
-            <td> <label for="password">Password</label></td>
-            <td>
-                <vscode-text-field
-                    id="password"
-                    value={password}
-                    on:input={onPasswordChange} />
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2">
-                <vscode-button on:click={onConnectClicked}>Connect</vscode-button>
-            </td>
-        </tr>
+        <tbody>
+            <tr>
+                <td>
+                    <label for="ipAddress">IP Address</label>
+                </td>
+                <td>
+                    <vscode-text-field
+                        id="ipAddress"
+                        value={ipAddress}
+                        on:input={onIpAddressChange} />
+                </td>
+            </tr>
+            <tr>
+                <td> <label for="password">Password</label></td>
+                <td>
+                    <vscode-text-field
+                        id="password"
+                        value={password}
+                        on:input={onPasswordChange} />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <vscode-button on:click={onConnectClicked}>Connect</vscode-button>
+                </td>
+            </tr>
+        </tbody>
     </table>
 </div>
