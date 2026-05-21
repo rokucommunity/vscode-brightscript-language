@@ -195,7 +195,6 @@ All settings are in the `brightscript.deviceDiscovery` namespace and can be set 
 |---|---|---|
 | `brightscript.deviceDiscovery.enabled` | `true` | Enables automatic network scanning and passive SSDP listening for Roku devices. Disable this if you always use a fixed IP address or want no network activity from the extension. |
 | `brightscript.deviceDiscovery.showInfoMessages` | `true` | When `true`, a toast notification appears each time a new Roku device is discovered on the network. |
-| `brightscript.deviceDiscovery.includeNonDeveloperDevices` | `false` | When `true`, the extension includes Roku devices that do **not** have Developer Mode enabled. By default only developer-enabled devices are shown. |
 | `brightscript.deviceDiscovery.concealDeviceInfo` | `false` | When `true`, unique device identifiers (`udn`, `device-id`, `advertising-id`, `wifi-mac`, `ethernet-mac`, `serial-number`, `keyed-developer-id`) are randomised in the UI – useful for screenshots and demos. |
 
 ---

@@ -617,6 +617,10 @@
                     "command": "extension.brightscript.devicesView.toggleFilter.autoDetected.active",
                     "when": "brightscript.devicesView.filter.autoDetected",
                     "group": "4_source@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.resetFilters",
+                    "group": "9_reset@1"
                 }
             ],
             "commandPalette": [
@@ -2410,12 +2414,6 @@
                         "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.",
                         "scope": "resource"
                     },
-                    "brightscript.deviceDiscovery.includeNonDeveloperDevices": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "If set to true, the extension will also include devices that do not have their developer mode enabled that are found on the network.",
-                        "scope": "resource"
-                    },
                     "brightscript.deviceDiscovery.heartbeatLogging": {
                         "type": "boolean",
                         "default": false,
@@ -2462,6 +2460,66 @@
                         "type": "string",
                         "default": "",
                         "description": "Default developer password applied to any device that does not have its own password configured. Leave empty to disable.",
+                        "scope": "application"
+                    }
+                }
+            },
+            {
+                "id": "devicesView",
+                "title": "Devices View",
+                "properties": {
+                    "brightscript.devicesView.filters.devModeEnabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show devices with developer mode enabled in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.devModeDisabled": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Show devices with developer mode disabled in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.tv": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show TV devices in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.setTopBox": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show set-top boxes in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.stick": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show streaming sticks in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.online": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show online devices in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.offline": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Show offline devices in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.userDefined": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show user-defined devices (devices listed in your settings) in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.autoDetected": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show auto-detected devices (discovered on the network) in the Devices view.",
                         "scope": "application"
                     }
                 }
@@ -3712,6 +3770,11 @@
             {
                 "command": "extension.brightscript.devicesView.toggleFilter.autoDetected.active",
                 "title": "☑ Auto Detected",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.resetFilters",
+                "title": "Reset Filters",
                 "category": "BrightScript"
             },
             {

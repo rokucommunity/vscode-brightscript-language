@@ -144,6 +144,7 @@ export class Extension {
             context.subscriptions.push(vscode.commands.registerCommand(`extension.brightscript.devicesView.toggleFilter.${key}`, handler));
             context.subscriptions.push(vscode.commands.registerCommand(`extension.brightscript.devicesView.toggleFilter.${key}.active`, handler));
         }
+        context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.devicesView.resetFilters', () => devicesViewProvider.resetFilters()));
 
         // Initialize tasks manager
         const tasksManager = new BrightScriptTaskProvider();

@@ -16,9 +16,10 @@ let treeItemKeySequence = 0;
 const DEVICE_URI_SCHEME = 'roku-device';
 
 /**
- * workspaceState key for the user's selected filters in the Devices view
+ * Configuration section that holds each filter's persisted value. Each filter facet
+ * lives under this section as its own boolean key (e.g. brightscript.devicesView.filters.online).
  */
-const DEVICES_VIEW_FILTERS_STATE_KEY = 'brightscript.devicesView.filters';
+const DEVICES_VIEW_FILTERS_SECTION = 'brightscript.devicesView.filters';
 
 /**
  * Context key prefix VS Code reads to decide which menu entry (checked vs
@@ -77,12 +78,19 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     ) {
         this.filters = this.loadFilters();
         void this.pushFilterContextKeys();
+        this.context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(event => {
+                if (event.affectsConfiguration(DEVICES_VIEW_FILTERS_SECTION)) {
+                    this.reloadFiltersFromSettings();
+                }
+            })
+        );
 
         this.decorationProvider = new DeviceDecorationProvider();
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
         // Pre-populate devices and decorations so they're ready before first render
-        this.devices = this.deviceManager.getDevicesForUI();
+        this.devices = this.deviceManager.getAllDevices();
         this.decorationProvider.updateDevices(this.devices);
 
         this.deviceManager.on('devices-changed', () => {
@@ -165,7 +173,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     private handleDevicesChanged(): void {
-        this.devices = this.deviceManager.getDevicesForUI();
+        this.devices = this.deviceManager.getAllDevices();
         this.decorationProvider.updateDevices(this.devices);
         this._onDidChangeTreeData.fire(null);
     }
@@ -183,7 +191,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
             if (this.devices.length === 0) {
-                this.devices = this.deviceManager.getDevicesForUI();
+                this.devices = this.deviceManager.getAllDevices();
                 this.decorationProvider.updateDevices(this.devices);
             }
             if (this.devices) {
@@ -533,9 +541,33 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         });
     }
 
+    /**
+     * Read each filter's persisted value from user settings. Missing keys fall back to
+     * the in-code defaults; the package.json defaults provide the matching values shown
+     * in the Settings UI.
+     */
     private loadFilters(): DevicesViewFilters {
-        const stored = this.context?.workspaceState.get<Partial<DevicesViewFilters>>(DEVICES_VIEW_FILTERS_STATE_KEY);
-        return { ...DEFAULT_FILTERS, ...(stored ?? {}) };
+        const config = vscode.workspace.getConfiguration(DEVICES_VIEW_FILTERS_SECTION);
+        const result = { ...DEFAULT_FILTERS };
+        for (const filterKey of DEVICES_VIEW_FILTER_KEYS) {
+            const value = config.get<boolean>(filterKey);
+            if (typeof value === 'boolean') {
+                result[filterKey] = value;
+            }
+        }
+        return result;
+    }
+
+    private reloadFiltersFromSettings(): void {
+        const next = this.loadFilters();
+        // Skip redundant work when our own update triggered the change event.
+        const unchanged = DEVICES_VIEW_FILTER_KEYS.every(filterKey => this.filters[filterKey] === next[filterKey]);
+        if (unchanged) {
+            return;
+        }
+        this.filters = next;
+        void this.pushFilterContextKeys();
+        this._onDidChangeTreeData.fire(null);
     }
 
     /**
@@ -551,24 +583,44 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     /**
-     * Flip a single filter facet, persist the new state, and refresh the tree.
-     * Only the keys that differ from defaults are written to workspaceState — once the
-     * user toggles a facet back to its default value, that key drops out of storage.
+     * Flip a single filter facet, persist the new state to user settings, and refresh the tree.
+     * Writing to the user-settings scope means the value syncs across windows via VS Code's
+     * config change events and across machines via Settings Sync.
      */
     public async toggleFilter(key: keyof DevicesViewFilters): Promise<void> {
         if (!DEVICES_VIEW_FILTER_KEYS.includes(key)) {
             return;
         }
-        this.filters = { ...this.filters, [key]: !this.filters[key] };
+        const nextValue = !this.filters[key];
+        this.filters = { ...this.filters, [key]: nextValue };
 
-        const overrides: Partial<DevicesViewFilters> = {};
-        for (const filterKey of DEVICES_VIEW_FILTER_KEYS) {
-            if (this.filters[filterKey] !== DEFAULT_FILTERS[filterKey]) {
-                overrides[filterKey] = this.filters[filterKey];
-            }
+        const config = vscode.workspace.getConfiguration(DEVICES_VIEW_FILTERS_SECTION);
+        // Toggling back to a default value clears the user-settings entry instead of storing it explicitly.
+        const valueToWrite = nextValue === DEFAULT_FILTERS[key] ? undefined : nextValue;
+        try {
+            await config.update(key, valueToWrite, vscode.ConfigurationTarget.Global);
+        } catch {
+            // Best-effort persistence — filter state is not critical.
         }
-        const storedValue = Object.keys(overrides).length > 0 ? overrides : undefined;
-        await this.context.workspaceState.update(DEVICES_VIEW_FILTERS_STATE_KEY, storedValue);
+
+        await this.pushFilterContextKeys();
+        this._onDidChangeTreeData.fire(null);
+    }
+
+    /**
+     * Restore every filter facet to its default by clearing the user-settings entry for each key.
+     */
+    public async resetFilters(): Promise<void> {
+        this.filters = { ...DEFAULT_FILTERS };
+
+        const config = vscode.workspace.getConfiguration(DEVICES_VIEW_FILTERS_SECTION);
+        try {
+            await Promise.all(
+                DEVICES_VIEW_FILTER_KEYS.map(key => config.update(key, undefined, vscode.ConfigurationTarget.Global))
+            );
+        } catch {
+            // Best-effort persistence — filter state is not critical.
+        }
 
         await this.pushFilterContextKeys();
         this._onDidChangeTreeData.fire(null);

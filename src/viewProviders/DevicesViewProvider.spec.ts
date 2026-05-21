@@ -20,6 +20,43 @@ import type { DevicesViewFilters } from './DevicesViewProvider';
 if (!(vscode as any).TreeItemCollapsibleState) {
     (vscode as any).TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 };
 }
+if (!(vscode as any).ConfigurationTarget) {
+    (vscode as any).ConfigurationTarget = { Global: 1, Workspace: 2, WorkspaceFolder: 3 };
+}
+
+const FILTERS_SECTION = 'brightscript.devicesView.filters';
+
+function ensureConfigStore(): Record<string, any> {
+    (vscode.workspace as any)._configuration ??= {};
+    return (vscode.workspace as any)._configuration;
+}
+
+function seedFilters(partial: Partial<DevicesViewFilters>): void {
+    const store = ensureConfigStore();
+    for (const [key, value] of Object.entries(partial)) {
+        store[`${FILTERS_SECTION}.${key}`] = value;
+    }
+}
+
+function clearFilters(): void {
+    const store = ensureConfigStore();
+    for (const key of Object.keys(store)) {
+        if (key.startsWith(`${FILTERS_SECTION}.`)) {
+            delete store[key];
+        }
+    }
+}
+
+function readSavedFilters(): Record<string, boolean> {
+    const store = ensureConfigStore();
+    const result: Record<string, boolean> = {};
+    for (const key of Object.keys(store)) {
+        if (key.startsWith(`${FILTERS_SECTION}.`)) {
+            result[key.slice(FILTERS_SECTION.length + 1)] = store[key];
+        }
+    }
+    return result;
+}
 
 let sinon: sinonImport.SinonSandbox;
 beforeEach(() => {
@@ -49,7 +86,7 @@ describe('DevicesViewProvider', () => {
         const emitter = new EventEmitter();
         const deviceManager: any = {
             on: (event: string, handler: any) => emitter.on(event, handler),
-            getDevicesForUI: () => devices,
+            getAllDevices: () => devices,
             getDevice: (key: string) => devices.find(d => d.key === key),
             getDeviceDisplayName: (device: any) => device.key,
             getIconPath: () => undefined,
@@ -66,7 +103,8 @@ describe('DevicesViewProvider', () => {
     }
 
     beforeEach(() => {
-        vscode.context.workspaceState['_data'] = {};
+        clearFilters();
+        (vscode.workspace as any)._onDidChangeConfigurationEmitter?.removeAllListeners();
     });
 
     describe('applyFilters via getChildren', () => {
@@ -89,9 +127,7 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'stb1' }),
                 makeDevice({ key: 'stick1', isStick: true })
             ];
-            vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] = {
-                devModeEnabled: true, devModeDisabled: true, tv: false, setTopBox: true, stick: true, online: true, offline: true
-            };
+            seedFilters({ tv: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
             expect(items.map(i => (i).key)).to.deep.equal(['stb1', 'stick1']);
@@ -104,9 +140,6 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'pending-was-online', deviceState: 'pending', lastDeviceState: 'online' }),
                 makeDevice({ key: 'pending-first-load', deviceState: 'pending', lastDeviceState: 'unknown' })
             ];
-            vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] = {
-                devModeEnabled: true, devModeDisabled: true, tv: true, setTopBox: true, stick: true, online: true, offline: false
-            };
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
             expect(items.map(i => (i).key)).to.deep.equal(['on1', 'pending-was-online']);
@@ -119,9 +152,7 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'pending-was-online', deviceState: 'pending', lastDeviceState: 'online' }),
                 makeDevice({ key: 'pending-first-load', deviceState: 'pending', lastDeviceState: 'unknown' })
             ];
-            vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] = {
-                devModeEnabled: true, devModeDisabled: true, tv: true, setTopBox: true, stick: true, online: false, offline: true
-            };
+            seedFilters({ online: false, offline: true });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
             expect(items.map(i => (i).key)).to.deep.equal(['off1', 'pending-first-load']);
@@ -133,9 +164,7 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'explicit-on', developerEnabled: 'true' }),
                 makeDevice({ key: 'explicit-off', developerEnabled: 'false' })
             ];
-            vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] = {
-                devModeEnabled: false, devModeDisabled: true, tv: true, setTopBox: true, stick: true, online: true, offline: true
-            };
+            seedFilters({ devModeEnabled: false, devModeDisabled: true, offline: true });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
             expect(items.map(i => (i).key)).to.deep.equal(['explicit-off']);
@@ -146,9 +175,7 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'configured1', isConfigured: true }),
                 makeDevice({ key: 'discovered1', isConfigured: false })
             ];
-            vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] = {
-                userDefined: false
-            };
+            seedFilters({ userDefined: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
             expect(items.map(i => (i).key)).to.deep.equal(['discovered1']);
@@ -159,48 +186,145 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'configured1', isConfigured: true }),
                 makeDevice({ key: 'discovered1', isConfigured: false })
             ];
-            vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] = {
-                autoDetected: false
-            };
+            seedFilters({ autoDetected: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
             expect(items.map(i => (i).key)).to.deep.equal(['configured1']);
         });
+
+        it('uses defaults when no filter settings are present', async () => {
+            const devices = [makeDevice({ key: 'stb-online' })];
+            const { provider } = createProvider(devices);
+            const items = await provider.getChildren();
+            expect(items.map(i => (i).key)).to.deep.equal(['stb-online']);
+        });
     });
 
     describe('toggleFilter', () => {
-        it('saves only the keys that diverge from defaults', async () => {
+        it('persists a non-default value into the matching settings key', async () => {
             const { provider } = createProvider([]);
             const treeChanged = sinon.spy();
             provider.onDidChangeTreeData(treeChanged);
 
             await provider.toggleFilter('tv');
 
-            const saved = vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] as Partial<DevicesViewFilters>;
-            expect(saved).to.deep.equal({ tv: false });
+            expect(readSavedFilters()).to.deep.equal({ tv: false });
             expect(treeChanged.called).to.be.true;
         });
 
-        it('drops the saved entry when filters return to defaults', async () => {
+        it('clears the settings key when toggled back to its default', async () => {
             const { provider } = createProvider([]);
             await provider.toggleFilter('online');
-            expect(vscode.context.workspaceState['_data']['brightscript.devicesView.filters']).to.deep.equal({ online: false });
+            expect(readSavedFilters()).to.deep.equal({ online: false });
             await provider.toggleFilter('online');
-            expect(vscode.context.workspaceState['_data']['brightscript.devicesView.filters']).to.be.undefined;
+            expect(readSavedFilters()).to.deep.equal({});
         });
 
         it('records a toggled-on facet that defaults off', async () => {
             const { provider } = createProvider([]);
             await provider.toggleFilter('offline');
-            const saved = vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] as Partial<DevicesViewFilters>;
-            expect(saved).to.deep.equal({ offline: true });
+            expect(readSavedFilters()).to.deep.equal({ offline: true });
         });
 
         it('ignores keys that are not part of the filter set', async () => {
             const { provider } = createProvider([]);
             await provider.toggleFilter('nonexistent' as any);
-            const saved = vscode.context.workspaceState['_data']['brightscript.devicesView.filters'];
-            expect(saved).to.be.undefined;
+            expect(readSavedFilters()).to.deep.equal({});
+        });
+
+        it('updates each facet under its own settings key', async () => {
+            const { provider } = createProvider([]);
+            await provider.toggleFilter('tv');
+            await provider.toggleFilter('online');
+            await provider.toggleFilter('offline');
+            expect(readSavedFilters()).to.deep.equal({ tv: false, online: false, offline: true });
+        });
+    });
+
+    describe('resetFilters', () => {
+        it('clears every persisted filter override', async () => {
+            const { provider } = createProvider([]);
+            await provider.toggleFilter('tv');
+            await provider.toggleFilter('online');
+            await provider.toggleFilter('offline');
+            expect(readSavedFilters()).to.deep.equal({ tv: false, online: false, offline: true });
+
+            await provider.resetFilters();
+            expect(readSavedFilters()).to.deep.equal({});
+        });
+
+        it('restores the live filter set to defaults and fires a tree change', async () => {
+            const devices = [
+                makeDevice({ key: 'tv1', isTv: true }),
+                makeDevice({ key: 'stb1' })
+            ];
+            seedFilters({ tv: false });
+            const { provider } = createProvider(devices);
+            // Confirm seeded override is honored before the reset
+            let items = await provider.getChildren();
+            expect(items.map(i => (i).key)).to.deep.equal(['stb1']);
+
+            const treeChanged = sinon.spy();
+            provider.onDidChangeTreeData(treeChanged);
+
+            await provider.resetFilters();
+
+            expect(treeChanged.called).to.be.true;
+            items = await provider.getChildren();
+            expect(items.map(i => (i).key)).to.deep.equal(['tv1', 'stb1']);
+        });
+
+        it('is a no-op on persistence when nothing was overridden', async () => {
+            const { provider } = createProvider([]);
+            await provider.resetFilters();
+            expect(readSavedFilters()).to.deep.equal({});
+        });
+    });
+
+    describe('configuration change subscription', () => {
+        it('reloads filters and fires a tree change when a filter setting changes externally', async () => {
+            const { provider } = createProvider([
+                makeDevice({ key: 'tv1', isTv: true }),
+                makeDevice({ key: 'stb1' })
+            ]);
+            const treeChanged = sinon.spy();
+            provider.onDidChangeTreeData(treeChanged);
+
+            // Simulate another window writing this setting — directly update the store, then fire the event
+            (vscode.workspace as any)._configuration[`${FILTERS_SECTION}.tv`] = false;
+            (vscode.workspace as any)._onDidChangeConfigurationEmitter.emit('event', {
+                affectsConfiguration: (section: string) => `${FILTERS_SECTION}.tv` === section || `${FILTERS_SECTION}.tv`.startsWith(`${section}.`)
+            });
+
+            expect(treeChanged.called).to.be.true;
+            const items = await provider.getChildren();
+            expect(items.map(i => (i).key)).to.deep.equal(['stb1']);
+        });
+
+        it('ignores changes to unrelated configuration sections', () => {
+            const { provider } = createProvider([]);
+            const treeChanged = sinon.spy();
+            provider.onDidChangeTreeData(treeChanged);
+
+            (vscode.workspace as any)._onDidChangeConfigurationEmitter.emit('event', {
+                affectsConfiguration: (_section: string) => false
+            });
+
+            expect(treeChanged.called).to.be.false;
+        });
+
+        it('does not fire a tree change when the reload yields the same values (self-write)', async () => {
+            const { provider } = createProvider([]);
+            await provider.toggleFilter('tv'); // toggles and emits change — provider already up to date
+            const treeChanged = sinon.spy();
+            provider.onDidChangeTreeData(treeChanged);
+
+            // Fire another change event with the same settings still in place — reload sees no diff
+            (vscode.workspace as any)._onDidChangeConfigurationEmitter.emit('event', {
+                affectsConfiguration: (section: string) => `${FILTERS_SECTION}.tv` === section || `${FILTERS_SECTION}.tv`.startsWith(`${section}.`)
+            });
+
+            expect(treeChanged.called).to.be.false;
         });
     });
 });

@@ -54,11 +54,6 @@ export class DeviceManager {
                 this.emitDevicesChanged();
             }
 
-            //if the `includeNonDeveloperDevices` setting was changed, refresh the UI to show/hide devices
-            if (event?.affectsConfiguration('brightscript.deviceDiscovery.includeNonDeveloperDevices')) {
-                this.emitDevicesChanged();
-            }
-
             //if the `devices` setting was changed, re-apply configured devices and health check them
             if (event?.affectsConfiguration('brightscript.devices')) {
                 this.loadConfiguredDevices().then(() => {
@@ -239,14 +234,6 @@ export class DeviceManager {
      */
     public getAllDevices(): RokuDevice[] {
         return this.buildAllDevices();
-    }
-
-    /**
-     * Get all devices filtered for UI display.
-     * Respects includeNonDeveloperDevices setting.
-     */
-    public getDevicesForUI(): RokuDevice[] {
-        return this.buildAllDevices().filter(d => this.shouldShowDevice(d));
     }
 
     /**
@@ -659,24 +646,6 @@ export class DeviceManager {
                 this.extensionOutputChannel?.appendLine(`[heartbeat] ${msg}`);
             }
         };
-    }
-
-    /**
-     * Should non-developer devices be included in device lists?
-     */
-    private get includeNonDeveloperDevices() {
-        return util.getConfiguration('brightscript')?.deviceDiscovery?.includeNonDeveloperDevices === true;
-    }
-
-    /**
-     * Should this device be shown via public API?
-     * Filters based on includeNonDeveloperDevices setting.
-     */
-    private shouldShowDevice(device: RokuDevice): boolean {
-        if (this.includeNonDeveloperDevices) {
-            return true;
-        }
-        return device?.deviceInfo?.['developer-enabled'] !== 'false';
     }
 
     /**
