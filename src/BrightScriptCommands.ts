@@ -69,6 +69,24 @@ export class BrightScriptCommands {
             await this.deviceManager.healthCheckDevice({ serialNumber: item.key }, true);
         });
 
+        // Hide a device from the device panel
+        this.registerCommand('hideDevice', async (item: { key: string }) => {
+            const device = this.deviceManager.getDevice(item.key);
+            if (device?.serialNumber) {
+                await this.deviceManager.hideDevice(device.serialNumber);
+            } else {
+                void vscode.window.showWarningMessage('Cannot hide device: device has no serial number');
+            }
+        });
+
+        // Open settings to edit hidden devices list
+        this.registerCommand('editHiddenDevices', async () => {
+            await vscode.commands.executeCommand(
+                'workbench.action.openSettings',
+                'brightscript.deviceDiscovery.hiddenDevices'
+            );
+        });
+
         this.registerCommand('sendRemoteText', async () => {
             let items: vscode.QuickPickItem[] = [];
             for (const item of new GlobalStateManager(this.context).sendRemoteTextHistory) {
