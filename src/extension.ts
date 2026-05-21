@@ -38,6 +38,7 @@ import { standardizePath as s } from 'brighterscript';
 import { PerfettoEditorProvider } from './editors/PerfettoEditor';
 import { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
 import { RokuProjectsViewProvider } from './viewProviders/RokuProjectsViewProvider';
+import { attachExtensionOutputChannel } from './extensionLogger';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -81,6 +82,7 @@ export class Extension {
 
         this.telemetryManager.sendStartupEvent();
         this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
+        attachExtensionOutputChannel(this.extensionOutputChannel);
         this.extensionOutputChannel.appendLine('Extension startup');
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel);
         let userInputManager = new UserInputManager(
