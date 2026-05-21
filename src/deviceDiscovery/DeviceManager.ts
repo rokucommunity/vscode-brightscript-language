@@ -98,6 +98,7 @@ export class DeviceManager {
 
             //reset all configured device states to unknown - need to re-verify on new network
             for (const entry of this.configuredDevices) {
+                entry.lastState = entry.state;
                 entry.state = 'unknown';
                 entry.stateLastUpdated = Date.now();
             }
@@ -462,6 +463,7 @@ export class DeviceManager {
             // Only update if IP matches AND (no serial conflict OR serials match)
             const serialConflict = lookup.serialNumber && entry.serialNumber && entry.serialNumber !== lookup.serialNumber;
             if (ipMatches && !serialConflict) {
+                entry.lastState = entry.state;
                 entry.state = resolvedState;
                 entry.stateLastUpdated = now;
             }
@@ -472,6 +474,7 @@ export class DeviceManager {
             const ipMatches = entry.ip === lookup.ip;
             const serialConflict = lookup.serialNumber && entry.serialNumber && entry.serialNumber !== lookup.serialNumber;
             if (ipMatches && !serialConflict) {
+                entry.lastState = entry.state;
                 entry.state = resolvedState;
                 entry.stateLastUpdated = now;
             }
@@ -553,6 +556,7 @@ export class DeviceManager {
 
         // Reset configured device states to unknown
         for (const entry of this.configuredDevices) {
+            entry.lastState = entry.state;
             entry.state = 'unknown';
             entry.stateLastUpdated = Date.now();
         }
@@ -1087,8 +1091,9 @@ export class DeviceManager {
         const existing = existingIdx >= 0 ? this.discoveredDevices[existingIdx] : undefined;
 
         if (existing) {
-            // Update existing entry
+            // Update existing entry (preserve state fields so setDeviceState below sees the prior state)
             this.discoveredDevices[existingIdx] = {
+                ...existing,
                 ip: ip,
                 serialNumber: serialNumber ?? existing.serialNumber
             };
@@ -1215,6 +1220,8 @@ export class DeviceManager {
 
         // Determine state: discovered > configured > unknown (discovered is ground truth)
         const deviceState = discoveredEntry?.state ?? configuredEntry?.state ?? 'unknown';
+        // Determine previous state: discovered > configured > unknown (discovered is ground truth)
+        const lastState = discoveredEntry?.lastState ?? configuredEntry?.lastState ?? 'unknown';
 
         // Build key
         const key = serialNumber ? `s:${serialNumber}` : `i:${ip}`;
@@ -1227,6 +1234,7 @@ export class DeviceManager {
             serialNumber: serialNumber,
             key: key,
             deviceState: deviceState,
+            lastDeviceState: lastState,
             deviceInfo: cached?.deviceInfo ?? {},
             isDiscovered: !!discoveredEntry,
             isConfigured: !!configuredEntry,
@@ -1439,6 +1447,11 @@ interface ConfiguredDeviceEntry extends ConfiguredDevice {
      */
     state?: DeviceState;
     /**
+     * Previous state, updated by setDeviceState before each transition. Undefined when no
+     * state has been recorded yet — readers should treat that as 'unknown'.
+     */
+    lastState?: DeviceState;
+    /**
      * Timestamp of last state update
      */
     stateLastUpdated?: number;
@@ -1461,6 +1474,11 @@ interface DiscoveredDeviceEntry {
      * Current device state (inline on entry)
      */
     state?: DeviceState;
+    /**
+     * Previous state, updated by setDeviceState before each transition. Undefined when no
+     * state has been recorded yet — readers should treat that as 'unknown'.
+     */
+    lastState?: DeviceState;
     /**
      * Timestamp of last state update
      */
@@ -1496,6 +1514,10 @@ export interface RokuDevice {
      * Device state: online, offline, pending (currently checking), or unknown (never checked)
      */
     deviceState: DeviceState;
+    /**
+     * Previous device state: online, offline, pending (currently checking), or unknown (never checked)
+     */
+    lastDeviceState: DeviceState;
     /**
      * Cached device info from GlobalStateManager
      */

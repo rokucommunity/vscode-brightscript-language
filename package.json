@@ -597,6 +597,26 @@
                     "command": "extension.brightscript.devicesView.toggleFilter.offline.active",
                     "when": "brightscript.devicesView.filter.offline",
                     "group": "3_connectivity@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.userDefined",
+                    "when": "!brightscript.devicesView.filter.userDefined",
+                    "group": "4_source@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.userDefined.active",
+                    "when": "brightscript.devicesView.filter.userDefined",
+                    "group": "4_source@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.autoDetected",
+                    "when": "!brightscript.devicesView.filter.autoDetected",
+                    "group": "4_source@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.autoDetected.active",
+                    "when": "brightscript.devicesView.filter.autoDetected",
+                    "group": "4_source@2"
                 }
             ],
             "commandPalette": [
@@ -654,6 +674,22 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.offline.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.userDefined",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.userDefined.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.autoDetected",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.autoDetected.active",
                     "when": "false"
                 }
             ]
@@ -3656,6 +3692,26 @@
             {
                 "command": "extension.brightscript.devicesView.toggleFilter.offline.active",
                 "title": "☑ Offline",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.userDefined",
+                "title": "☐ User Defined",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.userDefined.active",
+                "title": "☑ User Defined",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.autoDetected",
+                "title": "☐ Auto Detected",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.autoDetected.active",
+                "title": "☑ Auto Detected",
                 "category": "BrightScript"
             },
             {

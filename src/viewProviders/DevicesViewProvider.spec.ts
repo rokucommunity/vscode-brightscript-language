@@ -30,11 +30,13 @@ afterEach(() => {
 });
 
 describe('DevicesViewProvider', () => {
-    function makeDevice(overrides: { key: string; isTv?: boolean; isStick?: boolean; deviceState?: string; developerEnabled?: 'true' | 'false' | undefined }) {
+    function makeDevice(overrides: { key: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean }) {
         return {
             key: overrides.key,
             ip: '1.2.3.4',
             deviceState: overrides.deviceState ?? 'online',
+            lastDeviceState: overrides.lastDeviceState ?? 'unknown',
+            isConfigured: overrides.isConfigured ?? false,
             deviceInfo: {
                 'is-tv': overrides.isTv ? 'true' : 'false',
                 'is-stick': overrides.isStick ? 'true' : 'false',
@@ -49,6 +51,8 @@ describe('DevicesViewProvider', () => {
             on: (event: string, handler: any) => emitter.on(event, handler),
             getDevicesForUI: () => devices,
             getDevice: (key: string) => devices.find(d => d.key === key),
+            getDeviceDisplayName: (device: any) => device.key,
+            getIconPath: () => undefined,
             hasDeviceCache: () => false,
             refresh: () => undefined,
             healthCheckDevice: () => Promise.resolve()
@@ -93,32 +97,34 @@ describe('DevicesViewProvider', () => {
             expect(items.map(i => (i).key)).to.deep.equal(['stb1', 'stick1']);
         });
 
-        it('hides offline devices when the offline filter is off', async () => {
+        it('hides offline devices when the offline filter is off (pending with prior online stays visible)', async () => {
             const devices = [
                 makeDevice({ key: 'on1' }),
                 makeDevice({ key: 'off1', deviceState: 'offline' }),
-                makeDevice({ key: 'pending1', deviceState: 'pending' })
+                makeDevice({ key: 'pending-was-online', deviceState: 'pending', lastDeviceState: 'online' }),
+                makeDevice({ key: 'pending-first-load', deviceState: 'pending', lastDeviceState: 'unknown' })
             ];
             vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] = {
                 devModeEnabled: true, devModeDisabled: true, tv: true, setTopBox: true, stick: true, online: true, offline: false
             };
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['on1', 'pending1']);
+            expect(items.map(i => (i).key)).to.deep.equal(['on1', 'pending-was-online']);
         });
 
-        it('hides online devices when the online filter is off (pending counts as online)', async () => {
+        it('hides online devices when the online filter is off (pending with prior online counts as online)', async () => {
             const devices = [
                 makeDevice({ key: 'on1' }),
                 makeDevice({ key: 'off1', deviceState: 'offline' }),
-                makeDevice({ key: 'pending1', deviceState: 'pending' })
+                makeDevice({ key: 'pending-was-online', deviceState: 'pending', lastDeviceState: 'online' }),
+                makeDevice({ key: 'pending-first-load', deviceState: 'pending', lastDeviceState: 'unknown' })
             ];
             vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] = {
                 devModeEnabled: true, devModeDisabled: true, tv: true, setTopBox: true, stick: true, online: false, offline: true
             };
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['off1']);
+            expect(items.map(i => (i).key)).to.deep.equal(['off1', 'pending-first-load']);
         });
 
         it('treats missing developer-enabled as enabled', async () => {
@@ -133,6 +139,32 @@ describe('DevicesViewProvider', () => {
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
             expect(items.map(i => (i).key)).to.deep.equal(['explicit-off']);
+        });
+
+        it('hides user-defined devices when the userDefined filter is off', async () => {
+            const devices = [
+                makeDevice({ key: 'configured1', isConfigured: true }),
+                makeDevice({ key: 'discovered1', isConfigured: false })
+            ];
+            vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] = {
+                userDefined: false
+            };
+            const { provider } = createProvider(devices);
+            const items = await provider.getChildren();
+            expect(items.map(i => (i).key)).to.deep.equal(['discovered1']);
+        });
+
+        it('hides auto-detected devices when the autoDetected filter is off', async () => {
+            const devices = [
+                makeDevice({ key: 'configured1', isConfigured: true }),
+                makeDevice({ key: 'discovered1', isConfigured: false })
+            ];
+            vscode.context.workspaceState['_data']['brightscript.devicesView.filters'] = {
+                autoDetected: false
+            };
+            const { provider } = createProvider(devices);
+            const items = await provider.getChildren();
+            expect(items.map(i => (i).key)).to.deep.equal(['configured1']);
         });
     });
 

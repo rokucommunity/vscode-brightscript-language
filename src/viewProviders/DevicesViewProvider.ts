@@ -34,6 +34,8 @@ export interface DevicesViewFilters {
     stick: boolean;
     online: boolean;
     offline: boolean;
+    userDefined: boolean;
+    autoDetected: boolean;
 }
 
 export const DEVICES_VIEW_FILTER_KEYS: Array<keyof DevicesViewFilters> = [
@@ -43,7 +45,9 @@ export const DEVICES_VIEW_FILTER_KEYS: Array<keyof DevicesViewFilters> = [
     'setTopBox',
     'stick',
     'online',
-    'offline'
+    'offline',
+    'userDefined',
+    'autoDetected'
 ];
 
 const DEFAULT_FILTERS: DevicesViewFilters = {
@@ -53,7 +57,9 @@ const DEFAULT_FILTERS: DevicesViewFilters = {
     setTopBox: true,
     stick: true,
     online: true,
-    offline: false
+    offline: false,
+    userDefined: true,
+    autoDetected: true
 };
 
 export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
@@ -493,12 +499,15 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 return false;
             }
 
-            // Treat pending the same as online — it's mid-handshake, not actually offline yet
-            const isOffline = device.deviceState === 'offline';
-            if (isOffline && !filters.offline) {
+            // A device is "effectively online" when it's actually online, or when it's mid-handshake
+            // (pending) and was online the last time we checked. A pending device with no prior online
+            // result is treated as offline so first-load probing doesn't briefly show unverified devices.
+            const isEffectivelyOnline = device.deviceState === 'online' ||
+                (device.deviceState === 'pending' && device.lastDeviceState === 'online');
+            if (!isEffectivelyOnline && !filters.offline) {
                 return false;
             }
-            if (!isOffline && !filters.online) {
+            if (isEffectivelyOnline && !filters.online) {
                 return false;
             }
 
@@ -509,6 +518,14 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 return false;
             }
             if (!devEnabled && !filters.devModeDisabled) {
+                return false;
+            }
+
+            // A device that appears in both settings and the network scan is treated as user-defined.
+            if (device.isConfigured && !filters.userDefined) {
+                return false;
+            }
+            if (!device.isConfigured && !filters.autoDetected) {
                 return false;
             }
 

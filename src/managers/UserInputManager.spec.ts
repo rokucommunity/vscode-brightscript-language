@@ -56,6 +56,7 @@ describe('UserInputManager', () => {
             serialNumber: 'alpha',
             key: 's:alpha',
             deviceState: 'online',
+            lastDeviceState: 'unknown',
             isDiscovered: true,
             isConfigured: false,
             deviceInfo: {
@@ -69,6 +70,7 @@ describe('UserInputManager', () => {
             serialNumber: 'beta',
             key: 's:beta',
             deviceState: 'online',
+            lastDeviceState: 'unknown',
             isDiscovered: true,
             isConfigured: false,
             deviceInfo: {
@@ -82,6 +84,7 @@ describe('UserInputManager', () => {
             serialNumber: 'charlie',
             key: 's:charlie',
             deviceState: 'online',
+            lastDeviceState: 'unknown',
             isDiscovered: true,
             isConfigured: false,
             deviceInfo: {
