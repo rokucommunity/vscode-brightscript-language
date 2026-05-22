@@ -75,15 +75,15 @@ this.emitEvent('broadcast-ordered', {
 ```
 
 ### `reconcile` orders
-A reconcile order health-checks every known device and drops the ones that don't respond.
+A reconcile order health-checks every known device. Devices that don't respond change state:
+- **discovered devices** are removed from the list (we have no reason to keep them around)
+- **configured devices** stay in the list but are marked `offline` (the user told us they exist; we just can't reach them right now)
 
 Submitted when:
 - startup
 - network changed
 - wake from sleep
 - configured device changed
-- `ssdp:alive` announcement received
-- `M-SEARCH` reply received
 
 ---
 
@@ -98,7 +98,8 @@ Independent of broadcast orders, the extension always listens for unsolicited SS
     - if no view is listening, nothing happens
     - if a view is visible, it re-requests the list and may device-info un-hydrated entries
 - **`ssdp:byebye`** — a Roku is going offline.
-  - Remove it from the list immediately
+  - Discovered devices are removed immediately (no health check needed — the device just said so itself)
+  - Configured devices are marked `offline` but stay in the list
   - Emit `device-list-changed`
 
 This is how devices that power on or off *while a view is already open* show up or disappear without waiting for the next broadcast.
@@ -153,6 +154,32 @@ Views are the gate that lets orders run. They also submit their own orders based
 Whatever info we have, we'll give you. If a device has only been seen via SSDP, you get `{ip, serial}`. If it's been device-info'd before, you get the full cached payload. Either way, you get it immediately — no waiting on a network call.
 
 In the background, we refresh stale entries and push updates as fresh data arrives. The view's job is to display what it has now and re-render when an update comes in.
+
+---
+
+## Device states
+
+Every device in the list is in one of four states:
+
+- **`unknown`** — the device has been added to the list but we haven't tried to talk to it yet. This is the entry state for everything: cache restored at startup, configured device just loaded, `ssdp:alive` just received.
+- **`pending`** — a health check is currently in flight against this device. Transient state — it exits as soon as the health check returns.
+- **`online`** — last health check succeeded. The device is reachable and ready to use.
+- **`offline`** — last health check failed. Only configured devices reach this state; discovered devices that fail are removed entirely.
+
+The lifecycle is `unknown` → `pending` (when a health check starts) → `online` or `offline` (when it finishes). Devices can re-enter `pending` any time a fresh health check fires.
+
+Views can use these states to show the user what's going on (e.g. greyed-out for `unknown`, spinner for `pending`, normal for `online`, dimmed/warning for `offline`).
+
+---
+
+## Network-scoped cache
+
+The cache of seen devices is **scoped to the current network**. When you change networks (different Wi-Fi, plug into Ethernet, connect to VPN), the system loads the device list for *that* network and stashes the previous one.
+
+In practice:
+- Devices from your home network don't appear when you're on the office network.
+- Switching back to a previous network instantly restores its devices (as `pending`, then health-checked).
+- This is why the network-change entry point is important — it's not just "scan again," it's "swap the active list."
 
 ---
 
