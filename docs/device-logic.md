@@ -1,0 +1,158 @@
+# How Devices Are Discovered, Tracked, and Refreshed
+
+This document describes how the extension finds Roku devices on your network, keeps track of which ones are still reachable, and decides when to refresh that information. It serves two audiences:
+
+- **The team building the extension** — as the design spec for the device-management system.
+- **Users of the extension** — to explain *why* devices appear, disappear, or take a moment to show up, so the behavior feels intentional rather than mysterious.
+
+Devices come from two places: ones the user has **manually configured** in settings, and ones **automatically discovered** via SSDP broadcasts on the local network. Both flow through the same machinery described below.
+
+---
+
+## Why it's built this way
+
+A naive implementation would constantly broadcast on the network and constantly hit every device with `device-info` calls to keep its list accurate. That works, but it's expensive in ways that matter:
+
+- **SSDP broadcasts are noisy.** They touch every device on the local network, not just Rokus. Doing them on a tight interval is wasteful and unfriendly to everything else sharing the network — especially on corporate or shared Wi-Fi.
+- **`device-info` calls are noisy too.** Each one is an HTTP request to a Roku. Doing them constantly, for every known device, every few seconds, eats bandwidth and CPU on devices that may already be doing something else (running an app, streaming, being developed against).
+- **Most of the time, nothing has changed.** A device the user saw five minutes ago is almost certainly still there at the same IP. Re-asking constantly is busywork.
+
+So the system is built around three principles:
+
+1. **On demand, not on a schedule.** Work happens when the user is actually looking — when a view opens, when they click refresh, when they expand a tree node. If no UI is visible, no network traffic happens. Orders queue up and run the next time a view appears.
+2. **Cache first, refresh in the background.** When the UI asks for a device, we return whatever we have immediately — even if it's stale, even if it's just `{ip, serial}` from an SSDP packet. Fresh data is fetched in the background and pushed to the view when it arrives. The user is never blocked waiting on a network call.
+3. **Occasional sync to catch drift.** A few well-chosen triggers (startup, wake from sleep, network change, user-initiated refresh) reconcile the cache against reality. Between those, we trust the cache.
+
+The result: most of the time, your devices are *just there* with no network chatter. When something significant happens — you change networks, you wake your laptop, you click refresh — the system does a focused burst of work and then goes quiet again.
+
+---
+
+## Big picture
+
+Three moving parts:
+
+1. **[Orders](#orders)** — units of work the system wants done. Two kinds: `broadcast` (find new devices) and `reconcile` (verify known ones).
+2. **[Views](#views)** — the UI surfaces (quick pick, tree view). Views are the *gate*: orders only run while a view is visible, otherwise they queue.
+3. **[The cache](#data-freshness)** — what we hand back when someone asks for a device. Always immediate, always best-available, refreshed in the background.
+
+The rest of this doc explains [when orders get submitted](#when-are-orders-submitted), [what triggers them](#entry-points), and [how each view behaves](#views).
+
+---
+
+## Orders
+
+The system runs on **orders**. Anything that wants work done submits an order. Orders only execute when a view is actually visible. If no view is open, the order is queued and runs the next time a view appears.
+
+Two kinds:
+- **`broadcast`** — SSDP "who is there" to find devices on the network
+- **`reconcile`** — health-check every known device, drop the ones that don't respond
+
+Views are the consumers. They monitor for orders and fulfill them on open / while visible.
+
+---
+
+## When are orders submitted?
+
+### `broadcast` orders
+A broadcast order sends an SSDP "who is there" out to the network and listens for replies. Devices that respond are folded into the list (new ones get added, existing ones get re-confirmed).
+
+Submitted when:
+- startup
+- network changed
+- wake from sleep
+- user clicks refresh in the UI
+- a discovered device fails a health check (outside the current broadcast flow)
+- quick pick has been open 7s without a broadcast happening
+- "it's been a while" timer fires
+
+Emit shape (lets consumers decide how to react):
+```ts
+this.emitEvent('broadcast-ordered', {
+  reason: 'startup' | 'network' | 'sleep' | 'refresh-clicked' | 'been-a-while'
+})
+```
+
+### `reconcile` orders
+A reconcile order health-checks every known device and drops the ones that don't respond.
+
+Submitted when:
+- startup
+- network changed
+- wake from sleep
+- configured device changed
+- SSDP `alive` event received
+- SSDP "who is there" broadcast response received
+
+---
+
+## Entry points
+
+### SSDP "alive" notification
+- Add to list as `{ip, serial}` — no health check yet
+- Emit `device-list-changed`
+  - if no view is listening, nothing happens
+  - if a view is visible, it re-requests the list and may device-info un-hydrated entries
+
+### Startup
+- Load configured devices
+- Load last-seen discovered devices from cache
+- Submit `broadcast` + `reconcile` orders (queued if no view visible)
+
+### Wake from sleep
+- Submit `broadcast` + `reconcile` orders (queued if no view visible)
+
+### Network change
+- Append cached "last seen discovered devices" for the new network into `discoveredDevices`
+- Submit `broadcast` + `reconcile` orders (queued if no view visible)
+- Devices that no longer respond fall off when the reconcile runs
+
+### User clicks refresh
+- Submits a `broadcast` order and a `reconcile` order
+- Discovered devices that don't respond are dropped by the reconcile
+- New devices found by the broadcast are immediately device-info'd
+
+---
+
+## De-dupe rule
+
+Within a single refresh flow, a device only gets device-info'd once — first one in wins. (Prevents the broadcast response and the reconcile from racing each other on the same device.)
+
+---
+
+## Views
+
+Views are the gate that lets orders run. They also submit their own orders based on interaction.
+
+### Quick pick
+- On open: fulfill any pending `broadcast` orders
+- If open >7s without a broadcast: submit one
+- Does **not** health-check devices on open
+- Clicking an item: health-checks that one device
+- Calls `.getDevices()`; re-calls on `device-list-changed`
+
+### Tree view
+- On open: fulfill pending `broadcast` AND `reconcile` orders
+- Expanding an item: health-checks that device
+- Calls `.getDeviceList()`; re-calls on `device-list-changed`
+- Suppresses the "been-a-while" broadcast trigger while continuously visible (leaving and returning re-arms it)
+
+---
+
+## Data freshness
+
+Whatever info we have, we'll give you. If a device has only been seen via SSDP, you get `{ip, serial}`. If it's been device-info'd before, you get the full cached payload. Either way, you get it immediately — no waiting on a network call.
+
+In the background, we refresh stale entries and push updates as fresh data arrives. The view's job is to display what it has now and re-render when an update comes in.
+
+---
+
+## Open questions / TODOs
+
+- What does `.getAllDevices()` actually mean?
+  - Should it trigger refreshes?
+  - Should it device-info anything?
+- What do we do when configured devices change?
+  - Health-check them? Anything else?
+  - Can we sanity-check ONLY the changed one and skip discovered stuff?
+- How does the user-initiated refresh flow affect currently-visible device lists?
+- Should opening the quick pick count as a refresh on first open only?
