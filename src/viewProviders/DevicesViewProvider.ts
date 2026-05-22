@@ -477,7 +477,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private pushFilterContextKeys(): Thenable<unknown> {
         const tasks: Thenable<unknown>[] = [];
         for (const key of DEVICE_FILTER_KEYS) {
-            tasks.push(vscode.commands.executeCommand('setContext', `${DEVICES_VIEW_FILTERS_SECTION}.${key}`, this.filters[key]));
+            // Note the singular `filter` — matches the when-clauses in package.json's submenu.
+            tasks.push(vscode.commands.executeCommand('setContext', `brightscript.devicesView.filter.${key}`, this.filters[key]));
         }
         return Promise.all(tasks);
     }
