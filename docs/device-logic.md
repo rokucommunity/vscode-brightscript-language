@@ -5,7 +5,7 @@ This document describes how the extension finds Roku devices on your network, ke
 - **The team building the extension** — as the design spec for the device-management system.
 - **Users of the extension** — to explain *why* devices appear, disappear, or take a moment to show up, so the behavior feels intentional rather than mysterious.
 
-Devices come from two places: ones the user has **manually configured** in settings, and ones **automatically discovered** via SSDP broadcasts on the local network. Both flow through the same machinery described below.
+There are two kinds of devices: **configured devices** added by the user in settings, and **discovered devices** found automatically via SSDP broadcasts on the local network. Both flow through the same machinery described below.
 
 ---
 
@@ -44,7 +44,7 @@ The rest of this doc explains [when orders get submitted](#when-are-orders-submi
 The system runs on **orders**. Anything that wants work done submits an order. Orders only execute when a view is actually visible. If no view is open, the order is queued and runs the next time a view appears.
 
 Two kinds:
-- **`broadcast`** — SSDP "who is there" to find devices on the network
+- **`broadcast`** — send an SSDP `M-SEARCH` to find devices on the network
 - **`reconcile`** — health-check every known device, drop the ones that don't respond
 
 Views are the consumers. They monitor for orders and fulfill them on open / while visible.
@@ -54,7 +54,9 @@ Views are the consumers. They monitor for orders and fulfill them on open / whil
 ## When are orders submitted?
 
 ### `broadcast` orders
-A broadcast order sends an SSDP "who is there" out to the network and listens for replies. Devices that respond are folded into the list (new ones get added, existing ones get re-confirmed).
+A broadcast order sends an SSDP `M-SEARCH` request out to the local network (targeting `roku:ecp`) and listens for replies. Devices that respond are folded into the list (new ones get added, existing ones get re-confirmed).
+
+This is the *active* side of SSDP. The extension also continuously listens *passively* for unsolicited announcements (see below) — those don't require an order.
 
 Submitted when:
 - startup
@@ -80,18 +82,26 @@ Submitted when:
 - network changed
 - wake from sleep
 - configured device changed
-- SSDP `alive` event received
-- SSDP "who is there" broadcast response received
+- `ssdp:alive` announcement received
+- `M-SEARCH` reply received
 
 ---
 
 ## Entry points
 
-### SSDP "alive" notification
-- Add to list as `{ip, serial}` — no health check yet
-- Emit `device-list-changed`
-  - if no view is listening, nothing happens
-  - if a view is visible, it re-requests the list and may device-info un-hydrated entries
+### Passive SSDP announcements
+Independent of broadcast orders, the extension always listens for unsolicited SSDP messages from Roku devices on the network:
+
+- **`ssdp:alive`** — a Roku is announcing itself.
+  - Add it to the list as `{ip, serial}` — no health check yet
+  - Emit `device-list-changed`
+    - if no view is listening, nothing happens
+    - if a view is visible, it re-requests the list and may device-info un-hydrated entries
+- **`ssdp:byebye`** — a Roku is going offline.
+  - Remove it from the list immediately
+  - Emit `device-list-changed`
+
+This is how devices that power on or off *while a view is already open* show up or disappear without waiting for the next broadcast.
 
 ### Startup
 - Load configured devices
