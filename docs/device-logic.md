@@ -59,20 +59,22 @@ A broadcast order sends an SSDP `M-SEARCH` request out to the local network (tar
 This is the *active* side of SSDP. The extension also continuously listens *passively* for unsolicited announcements (see below) — those don't require an order.
 
 Submitted when:
-- startup
-- network changed
-- wake from sleep
-- user clicks refresh in the UI
-- a discovered device fails a health check (outside the current broadcast flow)
-- quick pick has been open 7s without a broadcast happening
-- "it's been a while" timer fires
+- startup (`reason: 'startup'`)
+- network changed (`reason: 'network'`)
+- wake from sleep (`reason: 'sleep'`)
+- user clicks refresh in the UI (`reason: 'refresh-clicked'`)
+- a discovered device fails a health check, outside the current broadcast flow (`reason: 'unhealthy-device'`)
+- quick pick has been open 7s without a broadcast happening (`reason: 'stale'`)
+- "it's been a while" timer fires (`reason: 'stale'`)
 
-Emit shape (lets consumers decide how to react):
+Emit shape:
 ```ts
 this.emitEvent('broadcast-ordered', {
-  reason: 'startup' | 'network' | 'sleep' | 'refresh-clicked' | 'been-a-while'
+  reason: 'startup' | 'network' | 'sleep' | 'refresh-clicked' | 'unhealthy-device' | 'stale'
 })
 ```
+
+Every emission carries a reason. Views decide which reasons they want to act on — see [Views](#views) below.
 
 ### `reconcile` orders
 A reconcile order health-checks every known device. Devices that don't respond change state:
@@ -80,11 +82,21 @@ A reconcile order health-checks every known device. Devices that don't respond c
 - **configured devices** stay in the list but are marked `offline` (the user told us they exist; we just can't reach them right now)
 
 Submitted when:
-- startup
-- network changed
-- wake from sleep
-- configured device changed
-- 5-minute timer fires (only consumed by views that subscribe — see below)
+- startup (`reason: 'startup'`)
+- network changed (`reason: 'network'`)
+- wake from sleep (`reason: 'sleep'`)
+- user clicks refresh in the UI (`reason: 'refresh-clicked'`)
+- configured device changed (`reason: 'config-changed'`)
+- 5-minute timer fires (`reason: 'stale'`)
+
+Emit shape:
+```ts
+this.emitEvent('reconcile-ordered', {
+  reason: 'startup' | 'network' | 'sleep' | 'refresh-clicked' | 'config-changed' | 'stale'
+})
+```
+
+Same as broadcast: every emission carries a reason and views opt in.
 
 ---
 
@@ -163,19 +175,20 @@ Within a single refresh flow, a device only gets device-info'd once — first on
 
 Views are the gate that lets orders run. They also submit their own orders based on interaction.
 
+Each view declares which reasons it cares about — separately for orders queued while the view was closed (consumed on open) and live events fired while the view is visible. The general rule of thumb: `stale` is treated cautiously — a clock-driven "things might be old" signal shouldn't make a view that's been quietly sitting there suddenly hammer the network.
+
 ### Quick pick
-- On open: fulfill any pending `broadcast` orders
-- If open >7s without a broadcast: submit one
-- Does **not** health-check devices on open
+- On open: fulfills pending `broadcast` orders and pending `reconcile` orders for **any reason except `stale`**
+- While visible: fulfills `broadcast` and `reconcile` events for **any reason except `stale`**
+- If open >7s without a broadcast: submits one
 - Clicking an item: health-checks that one device
 - Calls `.getDevices()`; re-calls on `device-list-changed`
 
 ### Tree view
-- On open: fulfill pending `broadcast` AND `reconcile` orders
+- On open: fulfills pending `broadcast` AND `reconcile` orders for **any reason**
+- While visible: fulfills `broadcast` and `reconcile` events for **any reason except `stale`**
 - Expanding an item: health-checks that device
 - Calls `.getDeviceList()`; re-calls on `device-list-changed`
-- Suppresses the "been-a-while" broadcast trigger while continuously visible (leaving and returning re-arms it)
-- Subscribes to the 5-minute `reconcile` timer: fulfills the order each time it fires while the view is open (keeps `online`/`offline` state fresh in the background without requiring user interaction)
 
 ---
 
