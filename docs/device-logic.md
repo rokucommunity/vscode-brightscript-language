@@ -108,6 +108,10 @@ Separate from reconcile orders (which sweep *all* devices), individual devices g
 - **The user clicks / expands a device in a view** — explicit engagement with that specific device.
 - **A view asks for a device that has no cached `deviceInfo`** — see below.
 
+### Clicking refresh
+
+Clicking **refresh** in a view is an explicit "I want fresh data now" signal. It always submits a `broadcast` order and a `reconcile` order, regardless of how recently either ran.
+
 ### Lazy hydration on read
 
 This is the catch-all that handles `ssdp:alive` (and any other case where a device ends up in the list without fresh `deviceInfo`).
@@ -153,10 +157,14 @@ This is how devices that power on or off *while a view is already open* show up 
 ### Wake from sleep
 - Submit `broadcast` + `reconcile` orders (queued if no view visible)
 
+We detect sleep by watching for a long gap in a low-frequency timer: if the timer fires significantly later than expected, the machine was almost certainly asleep. This runs regardless of whether VS Code has focus, so a wake is noticed even if the editor was in the background.
+
 ### Network change
 - Append cached "last seen discovered devices" for the new network into `discoveredDevices`
 - Submit `broadcast` + `reconcile` orders (queued if no view visible)
 - Devices that no longer respond fall off when the reconcile runs
+
+We detect network changes by periodically checking the machine's network interfaces and noticing when the set of addresses changes (new Wi-Fi, plugged in Ethernet, VPN up/down). To stay quiet while the user isn't actively using the editor, this check pauses when VS Code loses focus and resumes when it gains focus again — so a network change you make on a different app gets picked up the moment you come back.
 
 ### User clicks refresh
 - Submits a `broadcast` order and a `reconcile` order
@@ -236,6 +244,7 @@ Users can turn the whole automatic-discovery system off in settings. When discov
 - No SSDP broadcasts are sent.
 - The passive listener for `ssdp:alive` / `ssdp:byebye` stops.
 - Network-change and sleep-wake monitoring stop.
+- The "device online" popup no longer appears
 - Only **configured devices** appear in the UI.
 
 This is the escape hatch for users on locked-down networks, users who only use a single fixed IP, or anyone who doesn't want the extension making *any* network calls it doesn't have to. See [device-discovery.md](./device-discovery.md) for the exact setting.
