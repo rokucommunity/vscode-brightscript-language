@@ -17,7 +17,6 @@ import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './viewProviders/RendezvousViewProvider';
 import { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
-import { DEVICE_FILTER_KEYS } from './deviceFilters';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
@@ -137,15 +136,7 @@ export class Extension {
         });
         devicesViewProvider.setTreeView(devicesTreeView);
 
-        // Each facet has two command variants — the unchecked one and a `.active` one with
-        // a `$(check)` prefix in its title. The submenu picks which to render via a `when`
-        // clause on the per-facet context key; both call the same toggle handler.
-        for (const key of DEVICE_FILTER_KEYS) {
-            const handler = () => devicesViewProvider.toggleFilter(key);
-            context.subscriptions.push(vscode.commands.registerCommand(`extension.brightscript.devicesView.toggleFilter.${key}`, handler));
-            context.subscriptions.push(vscode.commands.registerCommand(`extension.brightscript.devicesView.toggleFilter.${key}.active`, handler));
-        }
-        context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.devicesView.resetFilters', () => devicesViewProvider.resetFilters()));
+        this.brightScriptCommands.registerDevicesViewCommands(devicesViewProvider);
 
         // Initialize tasks manager
         const tasksManager = new BrightScriptTaskProvider();
