@@ -84,6 +84,36 @@ Submitted when:
 - network changed
 - wake from sleep
 - configured device changed
+- 5-minute timer fires (only consumed by views that subscribe — see below)
+
+---
+
+## When do we health-check a single device?
+
+Separate from reconcile orders (which sweep *all* devices), individual devices get health-checked in a few specific situations:
+
+- **A device responds to an `M-SEARCH`** — broadcasts only run while a view is visible, so we know someone's looking. Hydrate it immediately.
+- **The user clicks / expands a device in a view** — explicit engagement with that specific device.
+- **A view asks for a device that has no cached `deviceInfo`** — see below.
+
+### Lazy hydration on read
+
+This is the catch-all that handles `ssdp:alive` (and any other case where a device ends up in the list without fresh `deviceInfo`).
+
+When a view calls `.getAllDevices()` (or asks for a single device):
+
+1. We return immediately with whatever we have. Devices without cached `deviceInfo` come back as the bare entry — `{ip, serial}` only, state `unknown`.
+2. In the background, we queue a device-info call for any device matching either condition:
+   - state `unknown` AND no cached `deviceInfo`, or
+   - cached `deviceInfo` is older than **8 hours** (regardless of state)
+3. As each call returns, the device transitions out of `unknown` (or just refreshes its cache, if it was already `online`/`offline`):
+   - success → `online`, cache updated
+   - failure → discovered devices are removed; configured devices become `offline`
+4. Emit `devices-changed`. Subscribed views re-read and re-render with the fresh data.
+
+The view never blocks on a network call. Devices appear instantly (even if minimal or stale), and fill in as data arrives.
+
+This is what makes `ssdp:alive` "just work" — when an announcement arrives, the device is added in state `unknown`. Nothing happens to it until a view actually reads the list. If a view *is* open, that read triggers the lazy hydration and the device fills in. If no view is open, the device sits in the list cheaply until something asks for it.
 
 ---
 
@@ -93,10 +123,9 @@ Submitted when:
 Independent of broadcast orders, the extension always listens for unsolicited SSDP messages from Roku devices on the network:
 
 - **`ssdp:alive`** — a Roku is announcing itself.
-  - Add it to the list as `{ip, serial}` — no health check yet
+  - Add it to the list as `{ip, serial}` in state `unknown`
   - Emit `device-list-changed`
-    - if no view is listening, nothing happens
-    - if a view is visible, it re-requests the list and may device-info un-hydrated entries
+  - We do *not* device-info it eagerly. If a view is open and reads the list, [lazy hydration](#lazy-hydration-on-read) fills it in. If no view is open, it sits in the list cheaply until something asks for it.
 - **`ssdp:byebye`** — a Roku is going offline.
   - Discovered devices are removed immediately (no health check needed — the device just said so itself)
   - Configured devices are marked `offline` but stay in the list
@@ -146,6 +175,7 @@ Views are the gate that lets orders run. They also submit their own orders based
 - Expanding an item: health-checks that device
 - Calls `.getDeviceList()`; re-calls on `device-list-changed`
 - Suppresses the "been-a-while" broadcast trigger while continuously visible (leaving and returning re-arms it)
+- Subscribes to the 5-minute `reconcile` timer: fulfills the order each time it fires while the view is open (keeps `online`/`offline` state fresh in the background without requiring user interaction)
 
 ---
 
@@ -153,7 +183,7 @@ Views are the gate that lets orders run. They also submit their own orders based
 
 Whatever info we have, we'll give you. If a device has only been seen via SSDP, you get `{ip, serial}`. If it's been device-info'd before, you get the full cached payload. Either way, you get it immediately — no waiting on a network call.
 
-In the background, we refresh stale entries and push updates as fresh data arrives. The view's job is to display what it has now and re-render when an update comes in.
+In the background, we refresh stale entries and push updates as fresh data arrives. The view's job is to display what it has now and re-render when an update comes in. See [Lazy hydration on read](#lazy-hydration-on-read) for the exact mechanism.
 
 ---
 
