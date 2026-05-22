@@ -219,10 +219,26 @@ Views can use these states to show the user what's going on (e.g. greyed-out for
 
 The cache of seen devices is **scoped to the current network**. When you change networks (different Wi-Fi, plug into Ethernet, connect to VPN), the system loads the device list for *that* network and stashes the previous one.
 
+The cache also **persists across VS Code restarts**. When the extension starts up, devices seen on the current network in previous sessions are loaded immediately as `unknown`, so the UI has something to show before any network traffic happens.
+
 In practice:
 - Devices from your home network don't appear when you're on the office network.
-- Switching back to a previous network instantly restores its devices (as `pending`, then health-checked).
+- Switching back to a previous network instantly restores its devices (as `unknown`, then health-checked).
+- Reopening VS Code on a network you've used before shows the same devices right away.
 - This is why the network-change entry point is important — it's not just "scan again," it's "swap the active list."
+
+---
+
+## Disabling discovery
+
+Users can turn the whole automatic-discovery system off in settings. When discovery is disabled:
+
+- No SSDP broadcasts are sent.
+- The passive listener for `ssdp:alive` / `ssdp:byebye` stops.
+- Network-change and sleep-wake monitoring stop.
+- Only **configured devices** appear in the UI.
+
+This is the escape hatch for users on locked-down networks, users who only use a single fixed IP, or anyone who doesn't want the extension making *any* network calls it doesn't have to. See [device-discovery.md](./device-discovery.md) for the exact setting.
 
 ---
 
