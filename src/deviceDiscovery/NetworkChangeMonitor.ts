@@ -34,7 +34,7 @@ export function getNetworkHash(): string {
  */
 export class NetworkChangeMonitor {
 
-    private onNetworkChanged: () => void;
+    private onNetworkChanged: (networkHash: string) => void;
     private timer: NodeJS.Timeout | null = null;
     private lastExecutionTime = 0;
     private currentHash: string;
@@ -47,7 +47,7 @@ export class NetworkChangeMonitor {
 
     private systemSleepMonitor: SystemSleepMonitor;
 
-    constructor(onNetworkChanged: () => void) {
+    constructor(onNetworkChanged: (networkHash: string) => void) {
         this.onNetworkChanged = onNetworkChanged;
         this.currentHash = getNetworkHash();
 
@@ -103,10 +103,10 @@ export class NetworkChangeMonitor {
     }
 
     private checkForNetworkChange() {
-        const hash = getNetworkHash();
+        const hash = getNetworkHash() + Date.now();
         if (hash !== this.currentHash) {
             this.currentHash = hash;
-            this.onNetworkChanged();
+            this.onNetworkChanged(hash);
         }
     }
 

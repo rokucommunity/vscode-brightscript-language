@@ -93,14 +93,11 @@ export class DeviceManager {
         this.systemSleepMonitor = new SystemSleepMonitor(() => {
             this.setScanNeeded();
         });
-        this.networkChangeMonitor = new NetworkChangeMonitor(() => {
-            this.networkId = getNetworkHash();
+        this.networkChangeMonitor = new NetworkChangeMonitor((networkHash) => {
+            this.networkId = networkHash;
 
             //restart finder for new network interfaces
             this.restartRokuFinder();
-
-            //health check all devices (sets them to pending, unreachable ones will be removed)
-            this.healthCheckAllDevices(true, false).catch(() => {});
 
             //trigger scan to find devices on new network
             this.setScanNeeded();
@@ -1010,7 +1007,7 @@ export class DeviceManager {
         }
 
         // Cooldown is handled by fetchDeviceInfo cache
-        await Promise.all([...staleIps].map(ip => this.resolveDevice({ ip: ip }, false)));
+        await Promise.all([...staleIps].map(ip => this.resolveDevice({ ip: ip }, false, true)));
     }
 
     /**
