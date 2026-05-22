@@ -10,6 +10,13 @@
                 "active": true,
                 "notes": "`ip` (via `node-ssdp`): no fixed version published. `ip` is only used by `node-ssdp` for local-network Roku discovery; no untrusted input flows into `ip.isPublic()` in any path we control."
             }
+        },
+        {
+            "GHSA-w5hq-g745-h8pq": {
+                // Added: 2026-05-22
+                "active": true,
+                "notes": "`uuid` <11.1.1 (via direct dep, `postman-request`, `node-notifier`, and dev-only `nyc>istanbul-lib-processinfo`): vulnerable code path is `v3()`/`v5()`/`v6()` when a caller-provided buffer is passed. Every consumer (including our own `src/viewProviders/RokuAppOverlaysViewViewProvider.ts`) calls only `v4()` with no buffer arg, so the vulnerable path is unreachable."
+            }
         }
     ]
 }
