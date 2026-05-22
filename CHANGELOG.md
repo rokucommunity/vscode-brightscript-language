@@ -9,20 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.66.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.65.0...v2.66.0) - 2026-05-22
 ### Added
  - Add filter dropdown to the Devices view ([#790](https://github.com/rokucommunity/vscode-brightscript-language/pull/790))
- - Add `security-audit-required` gated job to security audit workflow ([#800](https://github.com/rokucommunity/vscode-brightscript-language/pull/800))
+ - Support bsconfig*.json suffixes for JSON schema validation ([#792](https://github.com/rokucommunity/vscode-brightscript-language/pull/792))
 ### Changed
- - Accept GHSA-w5hq-g745-h8pq (uuid <11.1.1) advisory ([#804](https://github.com/rokucommunity/vscode-brightscript-language/pull/804))
+ - Rewrite Registry View ([#784](https://github.com/rokucommunity/vscode-brightscript-language/pull/784))
  - Display device state icons in device tree ([#799](https://github.com/rokucommunity/vscode-brightscript-language/pull/799))
  - Get device-info when cached device IP doesn't match requested device ([#783](https://github.com/rokucommunity/vscode-brightscript-language/pull/783))
- - Update device display name logic ([#796](https://github.com/rokucommunity/vscode-brightscript-language/pull/796))
- - Security enhancements ([#794](https://github.com/rokucommunity/vscode-brightscript-language/pull/794))
- - Device Picker shows device icons instead of pending ([#791](https://github.com/rokucommunity/vscode-brightscript-language/pull/791))
- - Support bsconfig*.json suffixes for JSON schema validation ([#792](https://github.com/rokucommunity/vscode-brightscript-language/pull/792))
  - Force-terminate dev channel on restartDevApplication ([#788](https://github.com/rokucommunity/vscode-brightscript-language/pull/788))
- - Rewrite Registry View ([#784](https://github.com/rokucommunity/vscode-brightscript-language/pull/784))
+ - Update device display name logic ([#796](https://github.com/rokucommunity/vscode-brightscript-language/pull/796))
+ - chore: Add `security-audit-required` gated job to security audit workflow ([#800](https://github.com/rokucommunity/vscode-brightscript-language/pull/800))
+ - Security enhancements ([#794](https://github.com/rokucommunity/vscode-brightscript-language/pull/794), [#804](https://github.com/rokucommunity/vscode-brightscript-language/pull/804)) 
  - upgrade to [@rokucommunity/logger@0.3.12](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#0312---2026-05-19). Notable changes since 0.3.11:
      - Security enhancements ([#17](https://github.com/rokucommunity/logger/pull/17))
-     - chore: support OIDC ([#16](https://github.com/rokucommunity/logger/pull/16))
  - upgrade to [brighterscript@0.72.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0722---2026-05-19). Notable changes since 0.72.1:
      - Security enhancements ([#1714](https://github.com/rokucommunity/brighterscript/pull/1714))
  - upgrade to [brighterscript-formatter@1.7.26](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1726---2026-05-19). Notable changes since 1.7.25:
@@ -40,7 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
      - Add `autoLaunch` option to control `dev_autolaunch` on sideload ([#261](https://github.com/rokucommunity/roku-deploy/pull/261))
 ### Fixed
  - Resolve SSDP devices that have no cache entry when focused ([#797](https://github.com/rokucommunity/vscode-brightscript-language/pull/797))
-
+ - Device Picker shows device icons instead of pending ([#791](https://github.com/rokucommunity/vscode-brightscript-language/pull/791))
+ 
 
 
 ## [2.65.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.64.0...v2.65.0) - 2026-05-12
