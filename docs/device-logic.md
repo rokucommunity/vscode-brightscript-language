@@ -33,7 +33,7 @@ Three moving parts:
 
 1. **[Orders](#orders)** — units of work the system wants done. Two kinds: `broadcast` (find new devices) and `reconcile` (verify known ones).
 2. **[Views](#views)** — the UI surfaces (quick pick, tree view). Views are the *gate*: orders only run while a view is visible, otherwise they queue.
-3. **[The cache](#data-freshness)** — what we hand back when someone asks for a device. Always immediate, always best-available, refreshed in the background.
+3. **[The cache](#data-freshness)** — when someone asks for devices, we return the cached copies immediately and refresh them in the background.
 
 The rest of this doc explains [when orders get submitted](#when-are-orders-submitted), [what triggers them](#entry-points), and [how each view behaves](#views).
 
