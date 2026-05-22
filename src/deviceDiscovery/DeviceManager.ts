@@ -390,34 +390,43 @@ export class DeviceManager {
      * @returns The device state, defaulting to 'unknown' if not found
      */
     public getDeviceState(lookup: { serialNumber?: string; ip?: string }): DeviceStateEntry {
-        // When both fields are supplied, an IP match with a conflicting serial is the wrong device.
-        // Without this guard, changing a configured device's serial to a new value at an IP that
-        // already hosts an online device would briefly inherit that online state.
-        const serialConflicts = (entrySerial: string | undefined) => !!(lookup.serialNumber && entrySerial && entrySerial !== lookup.serialNumber);
-
-        // Find discovered entry (by IP first, then by serial)
-        let discoveredEntry = lookup.ip
-            ? this.discoveredDevices.find(d => d.ip === lookup.ip && !serialConflicts(d.serialNumber))
-            : undefined;
-        if (!discoveredEntry && lookup.serialNumber) {
-            discoveredEntry = this.discoveredDevices.find(d => d.serialNumber === lookup.serialNumber);
-        }
-        if (discoveredEntry?.state) {
-            return { state: discoveredEntry.state, lastUpdated: discoveredEntry.stateLastUpdated ?? Date.now() };
+        let match = this.findStateEntry(this.discoveredDevices, lookup);
+        if (match) {
+            return { state: match.state, lastUpdated: match.stateLastUpdated ?? Date.now() };
         }
 
-        // Find configured entry (by IP first, then by serial)
-        let configuredEntry = lookup.ip
-            ? this.configuredDevices.find(d => (d.host === lookup.ip || d.resolvedIp === lookup.ip) && !serialConflicts(d.serialNumber))
-            : undefined;
-        if (!configuredEntry && lookup.serialNumber) {
-            configuredEntry = this.configuredDevices.find(d => d.serialNumber === lookup.serialNumber);
+        match = this.findStateEntry(this.configuredDevices, lookup);
+        if (match) {
+            return { state: match.state, lastUpdated: match.stateLastUpdated ?? Date.now() };
         }
-        if (configuredEntry?.state) {
-            return { state: configuredEntry.state, lastUpdated: configuredEntry.stateLastUpdated ?? Date.now() };
-        }
-
         return { state: 'unknown', lastUpdated: Date.now() };
+    }
+
+    /**
+     * Find the highest-priority state-bearing entry across discovered then configured
+     * sources. Within each source, try the IP first (skipping IP matches whose serial
+     * points to a different device — otherwise changing a configured device's serial to
+     * a new value at an IP that already hosts an online discovered device would briefly
+     * inherit that online state), then fall back to a serial-only match. Returns the
+     * first entry that actually has a `state` set.
+     */
+    private findStateEntry(entries: Array<ConfiguredDeviceEntry | DiscoveredDeviceEntry>, lookup: { serialNumber?: string; ip?: string }) {
+        let match: ConfiguredDeviceEntry | DiscoveredDeviceEntry | undefined;
+        if (lookup.ip) {
+            match = entries.find(entry => {
+                const ipMatches = (entry as DiscoveredDeviceEntry).ip === lookup.ip || (entry as ConfiguredDeviceEntry).host === lookup.ip || (entry as ConfiguredDeviceEntry).resolvedIp === lookup.ip;
+                // when both sides carry a serial, they must agree — otherwise this IP belongs to a different device
+                const serialMatches = !lookup.serialNumber || !entry.serialNumber || entry.serialNumber === lookup.serialNumber;
+                return ipMatches && serialMatches;
+            });
+        }
+        if (!match && lookup.serialNumber) {
+            match = entries.find(entry => entry.serialNumber === lookup.serialNumber);
+        }
+        if (match?.state) {
+            return match;
+        }
+        return undefined;
     }
 
     /**

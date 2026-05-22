@@ -28,12 +28,6 @@ const DEVICE_URI_SCHEME = 'roku-device';
  */
 const DEVICES_VIEW_FILTERS_SECTION = 'brightscript.devicesView.filters';
 
-/**
- * Context key prefix VS Code reads to decide which menu entry (checked vs
- * unchecked) to show for each filter facet in the title-bar submenu.
- */
-const DEVICES_VIEW_FILTER_CONTEXT_KEY_PREFIX = 'brightscript.devicesView.filter.';
-
 // Re-export the filter shape so downstream callers (extension.ts, tests) can use them
 // without importing from both modules.
 export type { DeviceFilters };
@@ -488,7 +482,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private pushFilterContextKeys(): Thenable<unknown> {
         const tasks: Thenable<unknown>[] = [];
         for (const key of DEVICE_FILTER_KEYS) {
-            tasks.push(vscode.commands.executeCommand('setContext', `${DEVICES_VIEW_FILTER_CONTEXT_KEY_PREFIX}${key}`, this.filters[key]));
+            tasks.push(vscode.commands.executeCommand('setContext', `${DEVICES_VIEW_FILTERS_SECTION}.${key}`, this.filters[key]));
         }
         return Promise.all(tasks);
     }
