@@ -15,7 +15,7 @@ Module.prototype.require = function hijacked(file) {
 };
 
 import { DevicesViewProvider } from './DevicesViewProvider';
-import type { DeviceFilters } from './DevicesViewProvider';
+import type { DeviceFilters } from '../deviceFilters';
 
 if (!(vscode as any).TreeItemCollapsibleState) {
     (vscode as any).TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 };

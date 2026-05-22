@@ -28,11 +28,6 @@ const DEVICE_URI_SCHEME = 'roku-device';
  */
 const DEVICES_VIEW_FILTERS_SECTION = 'brightscript.devicesView.filters';
 
-// Re-export the filter shape so downstream callers (extension.ts, tests) can use them
-// without importing from both modules.
-export type { DeviceFilters };
-export { DEVICE_FILTER_KEYS };
-
 export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
     public readonly id = ViewProviderId.devicesView;
