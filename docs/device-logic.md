@@ -239,16 +239,3 @@ Users can turn the whole automatic-discovery system off in settings. When discov
 - Only **configured devices** appear in the UI.
 
 This is the escape hatch for users on locked-down networks, users who only use a single fixed IP, or anyone who doesn't want the extension making *any* network calls it doesn't have to. See [device-discovery.md](./device-discovery.md) for the exact setting.
-
----
-
-## Open questions / TODOs
-
-- What does `.getAllDevices()` actually mean?
-  - Should it trigger refreshes?
-  - Should it device-info anything?
-- What do we do when configured devices change?
-  - Health-check them? Anything else?
-  - Can we sanity-check ONLY the changed one and skip discovered stuff?
-- How does the user-initiated refresh flow affect currently-visible device lists?
-- Should opening the quick pick count as a refresh on first open only?
