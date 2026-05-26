@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.66.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.0...v2.66.1) - 2026-05-26
+### Fixed
+ - Webview panels such as the SceneGraph Inspector not rendering ([#808](https://github.com/rokucommunity/vscode-brightscript-language/pull/808))
+
+
+
 ## [2.66.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.65.0...v2.66.0) - 2026-05-22
 ### Added
  - Add filter dropdown to the Devices view ([#790](https://github.com/rokucommunity/vscode-brightscript-language/pull/790))
