@@ -7,10 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [2.66.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.0...v2.66.1) - 2026-05-26
-### Changed
- - Accept GHSA-q8mj-m7cp-5q26 (qs DoS via postman-request) advisory ([#809](https://github.com/rokucommunity/vscode-brightscript-language/pull/809))
 ### Fixed
- - Fix blank webview panels under Svelte 5 by enabling component API v4 compatibility ([#808](https://github.com/rokucommunity/vscode-brightscript-language/pull/808))
+ - Webview panels such as the SceneGraph Inspector not rendering ([#808](https://github.com/rokucommunity/vscode-brightscript-language/pull/808))
 
 
 
