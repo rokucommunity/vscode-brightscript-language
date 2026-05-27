@@ -221,6 +221,29 @@ export class LanguageServerManager {
             synchronize: {
                 // Notify the server about file changes to every filetype it cares about
                 fileEvents: workspace.createFileSystemWatcher('**/*')
+            },
+            middleware: {
+                workspace: {
+                    //apply willRenameFiles edits silently (matches the TypeScript extension's behavior).
+                    //Default vscode-languageclient routes the edit through VS Code's onWillRenameFiles -> bulkEditService,
+                    //which shows a "wants to make refactoring changes" modal. Apply manually with no metadata to skip it,
+                    //then save the affected documents so they don't end up dirty.
+                    willRenameFiles: async (event, next) => {
+                        const edit = await next(event);
+                        if (!edit || (!edit.entries || edit.entries().length === 0)) {
+                            return undefined;
+                        }
+                        await vscode.workspace.applyEdit(edit);
+                        const affectedUris = edit.entries().map(([uri]) => uri.toString());
+                        await Promise.all(
+                            vscode.workspace.textDocuments
+                                .filter(doc => doc.isDirty && affectedUris.includes(doc.uri.toString()))
+                                .map(doc => doc.save())
+                        );
+                        //return undefined so vscode-languageclient doesn't ask VS Code to apply the edit a second time via the modal
+                        return undefined;
+                    }
+                }
             }
         };
 

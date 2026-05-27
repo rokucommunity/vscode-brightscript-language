@@ -4,6 +4,7 @@ import type { BrightScriptTaskProvider, TaskConfig } from '../../BrightScriptTas
 import type { RokuProjectsViewProvider } from '../../viewProviders/RokuProjectsViewProvider';
 import { BrsConfigProjectProvider } from './BrsConfigProjectProvider';
 import { BsConfigProjectProvider } from './BsConfigProjectProvider';
+import { ManifestProjectProvider } from './ManifestProjectProvider';
 import { VscodeCommand } from '../../commands/VscodeCommand';
 import { util } from '../../util';
 
@@ -23,7 +24,8 @@ export class RokuProjectManager {
 
     private readonly providers: ProjectConfigProvider[] = [
         new BsConfigProjectProvider(),
-        new BrsConfigProjectProvider()
+        new BrsConfigProjectProvider(),
+        new ManifestProjectProvider()
     ];
 
     public register(context: vscode.ExtensionContext) {
@@ -47,19 +49,27 @@ export class RokuProjectManager {
                     watcher,
                     watcher.onDidCreate(uri => {
                         if (!isExcluded(uri)) {
-                            this.registerProject(uri);
+                            this.registerProject(uri).catch(err => {
+                                console.error('Error registering Roku project:', err);
+                            });
                         }
                     }),
                     watcher.onDidDelete(uri => {
                         if (!isExcluded(uri)) {
                             this.unregisterProject(uri);
+                            // A previously-suppressed lower-priority project (e.g. a manifest beside
+                            // the just-deleted bsconfig) may now be eligible. Debounced so a rapid
+                            // delete/create rename pair only triggers one resync.
+                            this.scheduleResync();
                         }
                     }),
                     watcher.onDidChange(uri => {
                         if (!isExcluded(uri)) {
                             // rebuilds the project from the updated file
                             this.unregisterProject(uri);
-                            this.registerProject(uri);
+                            this.registerProject(uri).catch(err => {
+                                console.error('Error registering Roku project after change:', err);
+                            });
                         }
                     })
                 );
@@ -91,10 +101,10 @@ export class RokuProjectManager {
                 // filter down to only the URIs that belong to the folder being added.
                 for (const added of event.added) {
                     for (const provider of this.providers) {
-                        Promise.resolve(provider.findProjectConfigs()).then(uris => {
+                        Promise.resolve(provider.findProjectConfigs()).then(async uris => {
                             for (const uri of uris) {
                                 if (isSubdirectoryOf(added.uri.fsPath, uri.fsPath)) {
-                                    this.registerProject(uri);
+                                    await this.registerProject(uri);
                                 }
                             }
                         }).catch((err: unknown) => {
@@ -149,7 +159,7 @@ export class RokuProjectManager {
             for (const provider of this.providers) {
                 const uris = await provider.findProjectConfigs();
                 for (const uri of uris) {
-                    this.registerProject(uri);
+                    await this.registerProject(uri);
                 }
             }
         } finally {
@@ -157,7 +167,7 @@ export class RokuProjectManager {
         }
     }
 
-    private registerProject(uri: vscode.Uri) {
+    private async registerProject(uri: vscode.Uri) {
         const providerIndex = this.providers.findIndex(configProvider => configProvider.ownsConfig(uri));
         if (providerIndex === -1) {
             return;
@@ -165,11 +175,14 @@ export class RokuProjectManager {
         const provider = this.providers[providerIndex];
         const { taskName, taskConfig, project } = provider.createProject(uri);
 
-        // Skip if a higher-priority provider (lower index) already owns an ancestor directory.
-        for (const [claimedDir, claimedIndex] of this.providerIndexByProjectDir) {
-            if (claimedIndex < providerIndex && isSubdirectoryOf(claimedDir, project.projectDir)) {
-                return;
-            }
+        // Idempotent: another project (typically registered via refreshLowerPriorityRegistrations
+        // or a duplicate watcher event) already owns this dir. Skip without re-firing side effects.
+        if (this.discoveredProjects.has(project.projectDir)) {
+            return;
+        }
+
+        if (await this.isSupersededByHigherPriorityProvider(uri, providerIndex, project.projectDir)) {
+            return;
         }
 
         if (taskName) {
@@ -180,6 +193,47 @@ export class RokuProjectManager {
         this.viewProvider?.setProjects(Array.from(this.discoveredProjects.values()));
         this.syncStatusBar();
         provider.afterConfigRegistered?.(uri);
+    }
+
+    /** Debounce window before a queued resync actually runs, to coalesce delete+create rename pairs and bursts of file events. */
+    private static readonly resyncDebounceMs = 250;
+    private resyncTimer: ReturnType<typeof setTimeout> | undefined;
+
+    /**
+     * Schedules a debounced syncProjects() so previously-suppressed lower-priority projects can
+     * surface after a higher-priority config is removed. Idempotency in registerProject keeps this
+     * safe — already-registered projects are no-ops.
+     */
+    private scheduleResync(): void {
+        if (this.resyncTimer) {
+            clearTimeout(this.resyncTimer);
+        }
+        this.resyncTimer = setTimeout(() => {
+            this.resyncTimer = undefined;
+            this.syncProjects().catch(err => {
+                console.error('Error during scheduled resync of Roku projects:', err);
+            });
+        }, RokuProjectManager.resyncDebounceMs);
+    }
+
+    /**
+     * Returns true if a higher-priority (lower-index) provider already owns this project's
+     * territory. Cheap dir-overlap check first, then falls back to the more expensive
+     * cross-provider claim query so most calls short-circuit without IO.
+     */
+    private async isSupersededByHigherPriorityProvider(uri: vscode.Uri, providerIndex: number, projectDir: string): Promise<boolean> {
+        for (const [claimedDir, claimedIndex] of this.providerIndexByProjectDir) {
+            if (claimedIndex < providerIndex && isSubdirectoryOf(claimedDir, projectDir)) {
+                return true;
+            }
+        }
+        for (let higherIndex = 0; higherIndex < providerIndex; higherIndex++) {
+            const claims = await this.providers[higherIndex].findProjectConfigFromFile(uri);
+            if (claims.length > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private unregisterProject(uri: vscode.Uri) {
@@ -242,16 +296,30 @@ export class RokuProjectManager {
             allMatches.push(...uris);
         }
 
-        if (allMatches.length === 0) {
+        // Mirror registerProject's precedence so F5 silently picks the richer config
+        // (e.g. bsconfig.json wins over a manifest it already owns).
+        const filteredMatches: vscode.Uri[] = [];
+        for (const uri of allMatches) {
+            const providerIndex = this.providers.findIndex(configProvider => configProvider.ownsConfig(uri));
+            if (providerIndex === -1) {
+                continue;
+            }
+            const projectDir = this.providers[providerIndex].createProject(uri).project.projectDir;
+            if (!(await this.isSupersededByHigherPriorityProvider(uri, providerIndex, projectDir))) {
+                filteredMatches.push(uri);
+            }
+        }
+
+        if (filteredMatches.length === 0) {
             return undefined;
         }
 
         let targetUri: vscode.Uri;
-        if (allMatches.length === 1) {
-            targetUri = allMatches[0];
+        if (filteredMatches.length === 1) {
+            targetUri = filteredMatches[0];
         } else {
             const multiRoot = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
-            const items = allMatches.map(uri => {
+            const items = filteredMatches.map(uri => {
                 const provider = this.providers.find(configProvider => configProvider.ownsConfig(uri));
                 return {
                     label: provider?.createProject(uri).debugConfig.name ?? path.basename(path.dirname(uri.fsPath)),

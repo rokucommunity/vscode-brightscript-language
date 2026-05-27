@@ -8,6 +8,17 @@ import type { DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager
 import { icons } from '../icons';
 import { vscodeContextManager } from './VscodeContextManager';
 import { util } from '../util';
+import {
+    DEFAULT_DEVICE_FILTERS,
+    DEVICE_FILTER_GROUPS,
+    DEVICE_FILTER_KEYS,
+    DEVICE_FILTER_LABELS,
+    applyDeviceFilters,
+    loadDeviceFilters,
+    type DeviceFilters
+} from '../deviceFilters';
+
+const DEVICE_QUICK_PICK_FILTERS_SECTION = 'brightscript.deviceQuickPick.filters';
 
 /**
  * An id to represent the "Enter manually" option in the host picker
@@ -38,8 +49,7 @@ export class UserInputManager {
             const probed = await vscode.window.withProgress(
                 { location: vscode.ProgressLocation.Notification, title: `Contacting ${value}...` },
                 async () => {
-                    await this.deviceManager.processDiscoveredIp(value);
-                    return this.deviceManager.getDevice({ ip: value });
+                    return this.deviceManager.validateAndAddDevice(value);
                 }
             );
             if (probed) {
@@ -118,7 +128,7 @@ export class UserInputManager {
                         const device = (selectedDevice as any).device as RokuDevice;
                         // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
                         setBusy(true);
-                        const isHealthy = await this.deviceManager.checkDeviceHealth(device, true, false);
+                        const isHealthy = await this.deviceManager.healthCheckDevice(device, true, false);
                         setBusy(false);
                         if (!isHealthy) {
                             await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
@@ -135,8 +145,7 @@ export class UserInputManager {
             } else if (quickPick.value) {
                 const typedValue = quickPick.value;
                 setBusy(true);
-                await this.deviceManager.processDiscoveredIp(typedValue);
-                const probed = this.deviceManager.getDevice({ ip: typedValue });
+                const probed = await this.deviceManager.validateAndAddDevice(typedValue);
                 setBusy(false);
                 if (!probed) {
                     await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${typedValue}. Check the IP and confirm developer mode is enabled.`);
@@ -181,17 +190,23 @@ export class UserInputManager {
         const CLEAR_DEVICE_LIST = 'Clear Device List';
         const ENABLE_DEVICE_DISCOVERY = 'Enable Device Discovery';
         const DISABLE_DEVICE_DISCOVERY = 'Disable Device Discovery';
+        const FILTER_DEVICES = 'Filter Devices';
 
         const refreshList = () => {
+            const filters = loadDeviceFilters(DEVICE_QUICK_PICK_FILTERS_SECTION);
             const items = this.createHostQuickPickList(
-                this.deviceManager.getAllDevices(),
+                applyDeviceFilters(this.deviceManager.getAllDevices(), filters),
                 this.deviceManager.getLastUsedDeviceIp(),
                 itemCache
             );
             quickPick.items = items;
             const discoveryEnabled = vscodeContextManager.get('brightscript.deviceDiscovery.enabled') === true;
-            // Buttons render left-to-right; order is [toggleScanning, clearList, refresh] so right-to-left reads: refresh, clear list, toggle scanning
+            // Buttons render left-to-right; the rightmost button is the most prominent.
             quickPick.buttons = [
+                {
+                    iconPath: new vscode.ThemeIcon('filter'),
+                    tooltip: FILTER_DEVICES
+                },
                 {
                     iconPath: discoveryEnabled ? icons.radioTower : icons.radioTowerOff,
                     tooltip: discoveryEnabled ? DISABLE_DEVICE_DISCOVERY : ENABLE_DEVICE_DISCOVERY
@@ -221,30 +236,52 @@ export class UserInputManager {
         //anytime the device list changes, update the list
         this.deviceManager.on('devices-changed', refreshList, disposables);
 
-        //anytime the deviceDiscovery.enabled setting changes, refresh the buttons so the toggle icon updates
+        //refresh the list when the toggle icon's source setting changes, or when any of the
+        //device-quick-pick filter facets change (so other windows toggling a filter affect this picker)
         disposables.push(
             vscode.workspace.onDidChangeConfiguration(e => {
-                if (e.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
+                if (
+                    e.affectsConfiguration('brightscript.deviceDiscovery.enabled') ||
+                    e.affectsConfiguration(DEVICE_QUICK_PICK_FILTERS_SECTION)
+                ) {
                     refreshList();
                 }
             })
         );
 
+        //while the filter submenu is showing, the parent picker briefly hides — don't treat that as a dismissal
+        let filterSubmenuOpen = false;
         quickPick.onDidHide(() => {
+            if (filterSubmenuOpen) {
+                return;
+            }
             dispose();
             deferred.reject(new Error('No host was selected'));
         });
+
+        const openFilterSubmenu = () => {
+            filterSubmenuOpen = true;
+            this.showFilterSubmenu().finally(() => {
+                filterSubmenuOpen = false;
+                // Re-render items before re-showing — without this the parent picker
+                // appears empty after a hide/show cycle when no settings changed during the submenu.
+                refreshList();
+                quickPick.show();
+            });
+        };
 
         quickPick.onDidTriggerButton(button => {
             if (button.tooltip === SCAN_FOR_DEVICES) {
                 this.deviceManager.refresh(true);
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
-                this.deviceManager.clearCurrentDeviceList();
+                this.deviceManager.clearCurrentDeviceList().catch(() => { });
                 void util.showTimedNotification('Clearing device list');
             } else if (button.tooltip === ENABLE_DEVICE_DISCOVERY) {
                 void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
             } else if (button.tooltip === DISABLE_DEVICE_DISCOVERY) {
                 void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', false);
+            } else if (button.tooltip === FILTER_DEVICES) {
+                openFilterSubmenu();
             }
         });
 
@@ -257,37 +294,6 @@ export class UserInputManager {
         } else {
             return result?.ip;
         }
-    }
-
-    /**
-     * Generate the label used when showing "host" entries in a quick picker
-     * @param device the device containing all the info
-     * @returns a properly formatted host string
-     */
-    private getDeviceIcon(device: RokuDevice) {
-        if (device.deviceState === 'offline') {
-            // For offline devices, check cache to distinguish:
-            // - warning icon: never successfully contacted (no cache)
-            // - disconnect icon: was online before (has cache)
-            const hasCache = device.serialNumber && this.deviceManager.hasDeviceCache(device.serialNumber);
-            if (hasCache) {
-                return new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
-            } else {
-                return new vscode.ThemeIcon('warning', new vscode.ThemeColor('disabledForeground'));
-            }
-        } else if (device.deviceState === 'pending') {
-            return new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
-        }
-        return icons.getDeviceType(device.deviceInfo);
-    }
-
-    private createHostLabel(device: RokuDevice) {
-        return [
-            device.deviceInfo['model-number'] || '',
-            device.deviceInfo['user-device-name'] || '',
-            `OS ${device.deviceInfo['software-version'] || ''}`,
-            device.ip
-        ].join(' – ');
     }
 
     /**
@@ -316,9 +322,9 @@ export class UserInputManager {
 
             //add the device
             items.push({
-                label: this.createHostLabel(lastUsedDevice),
+                label: this.deviceManager.getDeviceDisplayName(lastUsedDevice, true),
                 device: lastUsedDevice,
-                iconPath: this.getDeviceIcon(lastUsedDevice)
+                iconPath: this.deviceManager.getIconPath(lastUsedDevice)
             } as any);
         }
 
@@ -333,9 +339,9 @@ export class UserInputManager {
             for (const device of devices) {
                 //add the device
                 items.push({
-                    label: this.createHostLabel(device),
+                    label: this.deviceManager.getDeviceDisplayName(device, true),
                     device: device,
-                    iconPath: this.getDeviceIcon(device)
+                    iconPath: this.deviceManager.getIconPath(device)
                 });
             }
         }
@@ -373,6 +379,97 @@ export class UserInputManager {
 
         return items;
     }
+
+    /**
+     * Open a checkbox-style quick pick (canSelectMany) listing each filter facet.
+     * Follows VS Code's standard multi-select pattern: Space toggles checkboxes,
+     * Enter commits the current selection to user settings, Escape cancels. A title-bar
+     * Reset button resets the picker's selection to defaults (still committed on Enter).
+     */
+    private showFilterSubmenu(): Promise<void> {
+        return new Promise<void>((resolve) => {
+            const RESET_FILTERS = 'Reset Filters';
+            const filterPick = vscode.window.createQuickPick<QuickPickFilterItem>();
+            filterPick.title = 'Filter Devices';
+            filterPick.placeholder = 'Space to toggle, Enter to apply, Escape to cancel';
+            filterPick.canSelectMany = true;
+            filterPick.buttons = [{
+                iconPath: new vscode.ThemeIcon('discard'),
+                tooltip: RESET_FILTERS
+            }];
+
+            const buildItems = (filters: DeviceFilters): QuickPickFilterItem[] => {
+                const result: QuickPickFilterItem[] = [];
+                for (let groupIndex = 0; groupIndex < DEVICE_FILTER_GROUPS.length; groupIndex++) {
+                    if (groupIndex > 0) {
+                        result.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
+                    }
+                    for (const facetKey of DEVICE_FILTER_GROUPS[groupIndex]) {
+                        result.push({
+                            label: DEVICE_FILTER_LABELS[facetKey],
+                            picked: filters[facetKey],
+                            facetKey: facetKey
+                        });
+                    }
+                }
+                return result;
+            };
+
+            // Initial load — render items from current settings and pre-select the picked ones
+            const initialFilters = loadDeviceFilters(DEVICE_QUICK_PICK_FILTERS_SECTION);
+            const items = buildItems(initialFilters);
+            filterPick.items = items;
+            filterPick.selectedItems = items.filter(i => i.picked);
+
+            filterPick.onDidTriggerButton((button) => {
+                if (button.tooltip !== RESET_FILTERS) {
+                    return;
+                }
+                // Reset the picker's selection to the in-code defaults — user still has to
+                // press Enter to commit or Escape to discard, matching the rest of the flow.
+                filterPick.selectedItems = items.filter(item => {
+                    return item.facetKey ? DEFAULT_DEVICE_FILTERS[item.facetKey] : false;
+                });
+            });
+
+            filterPick.onDidAccept(async () => {
+                const selectedFacets = new Set<keyof DeviceFilters>();
+                for (const item of filterPick.selectedItems) {
+                    if (item.facetKey) {
+                        selectedFacets.add(item.facetKey);
+                    }
+                }
+                const currentFilters = loadDeviceFilters(DEVICE_QUICK_PICK_FILTERS_SECTION);
+                const config = vscode.workspace.getConfiguration(DEVICE_QUICK_PICK_FILTERS_SECTION);
+                const writes: Thenable<unknown>[] = [];
+                for (const facetKey of DEVICE_FILTER_KEYS) {
+                    const nextValue = selectedFacets.has(facetKey);
+                    if (nextValue === currentFilters[facetKey]) {
+                        continue;
+                    }
+                    const valueToWrite = nextValue === DEFAULT_DEVICE_FILTERS[facetKey] ? undefined : nextValue;
+                    writes.push(config.update(facetKey, valueToWrite, vscode.ConfigurationTarget.Global));
+                }
+                if (writes.length > 0) {
+                    try {
+                        await Promise.all(writes);
+                    } catch {
+                        // best-effort persistence
+                    }
+                }
+                filterPick.hide();
+            });
+
+            filterPick.onDidHide(() => {
+                filterPick.dispose();
+                resolve();
+            });
+
+            filterPick.show();
+        });
+    }
 }
+
+type QuickPickFilterItem = QuickPickItem & { facetKey?: keyof DeviceFilters };
 
 type QuickPickHostItem = QuickPickItem & { device?: RokuDevice; iconPath?: vscode.ThemeIcon | { light: vscode.Uri; dark: vscode.Uri } };

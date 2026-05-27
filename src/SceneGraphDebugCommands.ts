@@ -2,15 +2,18 @@ import * as vscode from 'vscode';
 import type { SceneGraphCommandResponse } from 'roku-debug';
 import { SceneGraphDebugCommandController } from 'roku-debug';
 import { util } from './util';
+import type { UserInputManager } from './managers/UserInputManager';
 
 export class SceneGraphDebugCommands {
     private outputChannel: vscode.OutputChannel;
     private context: vscode.ExtensionContext;
+    private userInputManager: UserInputManager;
     private host: string;
 
-    public registerCommands(context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel) {
+    public registerCommands(context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel, userInputManager: UserInputManager) {
         this.context = context;
         this.outputChannel = outputChannel;
+        this.userInputManager = userInputManager;
         let subscriptions = context.subscriptions;
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.bsprofPause', async () => {
@@ -185,11 +188,9 @@ export class SceneGraphDebugCommands {
         if (!this.host) {
             let config = util.getConfiguration('brightscript.remoteControl');
             this.host = config.get('host');
-            if (this.host === '${promptForHost}') {
-                this.host = await vscode.window.showInputBox({
-                    placeHolder: 'The IP address of your Roku device',
-                    value: ''
-                });
+            // eslint-disable-next-line no-template-curly-in-string
+            if (!this.host || this.host === '${promptForHost}') {
+                this.host = await this.userInputManager.promptForHost();
             }
         }
         if (!this.host) {

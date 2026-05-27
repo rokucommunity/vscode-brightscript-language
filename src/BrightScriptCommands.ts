@@ -19,6 +19,8 @@ import type { LocalPackageManager } from './managers/LocalPackageManager';
 import { profilingCommands } from './commands/ProfilingCommands';
 import { vscodeContextManager } from './managers/VscodeContextManager';
 import type { CredentialStore } from './managers/CredentialStore';
+import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
+import { DEVICE_FILTER_KEYS } from './deviceFilters';
 
 export class BrightScriptCommands {
 
@@ -66,7 +68,7 @@ export class BrightScriptCommands {
 
         // Refresh a single device (inline button on hover in devices panel)
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
-            await this.deviceManager.checkDeviceHealth({ serialNumber: item.key }, true);
+            await this.deviceManager.healthCheckDevice({ serialNumber: item.key }, true);
         });
 
         this.registerCommand('sendRemoteText', async () => {
@@ -128,6 +130,10 @@ export class BrightScriptCommands {
 
         this.registerCommand('pressHomeButton', async () => {
             await this.sendRemoteCommand('Home');
+        });
+
+        this.registerCommand('restartDevApplication', async () => {
+            await this.restartDevApplication();
         });
 
         this.registerCommand('pressUpButton', async () => {
@@ -335,8 +341,9 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('clearCurrentDeviceList', async () => {
-            this.deviceManager.clearCurrentDeviceList();
-            await util.showTimedNotification('Clearing device list');
+            const toatsPromise = util.showTimedNotification('Clearing device list');
+            await this.deviceManager.clearCurrentDeviceList();
+            await toatsPromise;
         });
 
         this.registerCommand('enableDeviceDiscovery', async () => {
@@ -711,6 +718,54 @@ export class BrightScriptCommands {
         return xmlDoc.positionAt(valueOffset);
     }
 
+    public async restartDevApplication() {
+        await this.getRemoteHost();
+        const host = this.host;
+        if (!host) {
+            return;
+        }
+
+        await util.spinAsync('Restarting dev app', async () => {
+            const appsResponse = await util.httpGet(`http://${host}:8060/query/apps`, { timeout: 5_000 });
+            const appsParsed = await xml2js.parseStringPromise(appsResponse.body as string);
+            const appList: Array<{ $?: { id?: string } }> = appsParsed?.apps?.app ?? [];
+            const hasDev = appList.some(entry => entry.$?.id === 'dev');
+            if (!hasDev) {
+                await vscode.window.showErrorMessage(`No dev channel sideloaded on ${host}. Sideload your project before restarting.`);
+                return;
+            }
+
+            // `/true` forces a full terminate even if the channel is suspended in the background via Instant Resume.
+            // Harmless if dev isn't running — the device just returns FAILED in the body.
+            await this.ecpPost(host, 'exit-app/dev/true');
+
+            const launchResponse = await this.ecpPost(host, 'launch/dev');
+            if (launchResponse.statusCode !== 200) {
+                await vscode.window.showErrorMessage(`Failed to launch dev channel on ${host} (HTTP ${launchResponse.statusCode}).`);
+                return;
+            }
+
+            // give a little bit of time to let the app boot up before checking its status
+            await util.sleep(1000);
+            const verifyResponse = await util.httpGet(`http://${host}:8060/query/active-app`, { timeout: 5_000 });
+            const verifyParsed = await xml2js.parseStringPromise(verifyResponse.body as string);
+            const verifyAppId: string | undefined = verifyParsed?.['active-app']?.app?.[0]?.$?.id;
+            if (verifyAppId === 'dev') {
+                void util.showTimedNotification('Dev app restarted', 2000);
+            } else {
+                await vscode.window.showWarningMessage(`Sent the dev launch command, but the foreground app is "${verifyAppId ?? 'unknown'}". The dev app may still be loading.`);
+            }
+        });
+    }
+
+    private ecpPost(host: string, path: string) {
+        return new Promise<request.Response>((resolve, reject) => {
+            request.post(`http://${host}:8060/${path}`, (err: Error | null, response: request.Response) => {
+                return err ? reject(err) : resolve(response);
+            });
+        });
+    }
+
     public async sendRemoteCommand(key: string, host?: string, literalCharacter = false) {
         for (const notifier of this.keypressNotifiers) {
             notifier(key, literalCharacter);
@@ -748,10 +803,7 @@ export class BrightScriptCommands {
             this.host = config.get('host');
             // eslint-disable-next-line no-template-curly-in-string
             if ((!this.host || this.host === '${promptForHost}') && showPrompt) {
-                this.host = await vscode.window.showInputBox({
-                    placeHolder: 'The IP address of your Roku device',
-                    value: ''
-                });
+                this.host = await this.userInputManager.promptForHost();
             }
         }
         if (!this.host) {
@@ -915,7 +967,7 @@ export class BrightScriptCommands {
         if (!activeHost) {
             return undefined;
         }
-        const isHealthy = await this.deviceManager.checkDeviceHealth({ ip: activeHost }, true, false);
+        const isHealthy = await this.deviceManager.healthCheckDevice({ ip: activeHost }, true, false);
         return isHealthy ? activeHost : undefined;
     }
 
@@ -968,6 +1020,21 @@ export class BrightScriptCommands {
         const prefix = 'extension.brightscript.';
         const commandName = name.startsWith(prefix) ? name : prefix + name;
         this.context.subscriptions.push(vscode.commands.registerCommand(commandName, callback, thisArg));
+    }
+
+    /**
+     * Register the per-facet toggle commands plus the reset command backing the Devices
+     * view filter submenu. Each facet has two command variants (unchecked + ".active");
+     * the submenu picks which to render via a `when` clause on the per-facet context key.
+     * Both call the same toggle handler.
+     */
+    public registerDevicesViewCommands(devicesViewProvider: DevicesViewProvider) {
+        for (const key of DEVICE_FILTER_KEYS) {
+            const handler = () => devicesViewProvider.toggleFilter(key);
+            this.registerCommand(`devicesView.toggleFilter.${key}`, handler);
+            this.registerCommand(`devicesView.toggleFilter.${key}.active`, handler);
+        }
+        this.registerCommand('devicesView.resetFilters', () => devicesViewProvider.resetFilters());
     }
 
     private async sendAsciiToDevice(character: string) {

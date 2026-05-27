@@ -23,6 +23,9 @@
     ],
     "ts-node": {
         "transpileOnly": true,
+        "compilerOptions": {
+            "module": "commonjs"
+        },
         "moduleTypes": {
             "webviews/src/**/*.ts": "cjs"
         }
