@@ -8,23 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.66.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.1...v2.66.2) - 2026-05-27
 ### Changed
- - Use .svg instead of .png for VS Marketplace badges ([#814](https://github.com/rokucommunity/vscode-brightscript-language/pull/814))
  - Security enhancements ([#813](https://github.com/rokucommunity/vscode-brightscript-language/pull/813))
- - Update minimum audit threshold ([#812](https://github.com/rokucommunity/vscode-brightscript-language/pull/812))
  - upgrade to [brighterscript@0.72.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0723---2026-05-27). Notable changes since 0.72.2:
-     - Add parameter name inlay hints ([#1703](https://github.com/rokucommunity/brighterscript/pull/1703))
-     - Update minimum audit threshold ([#1723](https://github.com/rokucommunity/brighterscript/pull/1723))
-     - Accept GHSA-w5hq-g745-h8pq (uuid <11.1.1) advisory ([#1722](https://github.com/rokucommunity/brighterscript/pull/1722))
-     - Add security-audit-required gate job to security-audit workflow ([#1720](https://github.com/rokucommunity/brighterscript/pull/1720))
-     - Security Audit workflow ([#1718](https://github.com/rokucommunity/brighterscript/pull/1718))
+     - Added parameter name inlay hints ([#1703](https://github.com/rokucommunity/brighterscript/pull/1703))
  - upgrade to [roku-debug@0.23.9](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0239---2026-05-27). Notable changes since 0.23.8:
-     - Drop stale suspend/runtime-error events when debugger is no longer paused ([#356](https://github.com/rokucommunity/roku-debug/pull/356))
-     - Fix pressHomeButton crash in disconnectRequest ([#358](https://github.com/rokucommunity/roku-debug/pull/358))
-     - Update minimum audit threshold ([#359](https://github.com/rokucommunity/roku-debug/pull/359))
-     - Reset connected flag on close so _syncBreakpoints doesn't crash on a missing client ([#357](https://github.com/rokucommunity/roku-debug/pull/357))
-     - Accept GHSA-w5hq-g745-h8pq (uuid <11.1.1) advisory ([#355](https://github.com/rokucommunity/roku-debug/pull/355))
-     - Add security-audit-required job to security-audit workflow ([#353](https://github.com/rokucommunity/roku-debug/pull/353))
-     - Security Audit workflow ([#352](https://github.com/rokucommunity/roku-debug/pull/352))
+     - stale suspend/runtime-error events when debugger is no longer paused ([#356](https://github.com/rokucommunity/roku-debug/pull/356))
+     - pressHomeButton crash in disconnectRequest ([#358](https://github.com/rokucommunity/roku-debug/pull/358))
+     - crash related to  missing client when syncing breakpoints with device ([#357](https://github.com/rokucommunity/roku-debug/pull/357))
 
 
 
