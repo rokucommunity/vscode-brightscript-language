@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.66.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.1...v2.66.2) - 2026-05-27
+### Changed
+ - Security enhancements ([#813](https://github.com/rokucommunity/vscode-brightscript-language/pull/813))
+ - upgrade to [brighterscript@0.72.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0723---2026-05-27). Notable changes since 0.72.2:
+     - Added parameter name inlay hints ([#1703](https://github.com/rokucommunity/brighterscript/pull/1703))
+ - upgrade to [roku-debug@0.23.9](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0239---2026-05-27). Notable changes since 0.23.8:
+     - stale suspend/runtime-error events when debugger is no longer paused ([#356](https://github.com/rokucommunity/roku-debug/pull/356))
+     - pressHomeButton crash in disconnectRequest ([#358](https://github.com/rokucommunity/roku-debug/pull/358))
+     - crash related to  missing client when syncing breakpoints with device ([#357](https://github.com/rokucommunity/roku-debug/pull/357))
+
+
+
+## [2.66.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.0...v2.66.1) - 2026-05-26
+### Fixed
+ - Webview panels such as the SceneGraph Inspector not rendering ([#808](https://github.com/rokucommunity/vscode-brightscript-language/pull/808))
+
+
+
 ## [2.66.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.65.0...v2.66.0) - 2026-05-22
 ### Added
  - Add filter dropdown to the Devices view ([#790](https://github.com/rokucommunity/vscode-brightscript-language/pull/790))
