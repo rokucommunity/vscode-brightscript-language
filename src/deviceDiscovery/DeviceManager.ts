@@ -518,6 +518,15 @@ export class DeviceManager {
      * Re-scan the network for devices and health-check existing ones
      */
     public refresh(force = false, doSyntheticDelay = true): boolean {
+        // Refresh external configured-device providers (e.g. roku-dev-config.json discovery).
+        // Each provider's refresh() should fire its onDidChange, which triggers loadConfiguredDevices.
+        for (const provider of this.extraDeviceProviders) {
+            try {
+                void provider.refresh?.();
+            } catch (e) {
+                console.error(e);
+            }
+        }
         this.healthCheckAllDevices(force, doSyntheticDelay).catch(() => { });
         // Block automatic scans when device discovery is disabled
         if (!force && !this.deviceDiscoveryEnabled) {
@@ -1442,6 +1451,8 @@ export interface ConfiguredDeviceProvider {
     getConfiguredDevices(): ConfiguredDevice[];
     /** Fires when the underlying source has changed and devices should be reloaded. */
     onDidChange: vscode.Event<void>;
+    /** Optional: force a full re-scan of underlying sources (e.g. on user-initiated refresh). */
+    refresh?(): void | Promise<void>;
 }
 
 /**

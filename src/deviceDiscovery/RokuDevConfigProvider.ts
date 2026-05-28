@@ -78,6 +78,18 @@ export class RokuDevConfigProvider implements vscode.Disposable {
     }
 
     /**
+     * Force a full re-scan of all sources. Called when the user clicks the refresh
+     * button in the devices view.
+     */
+    public async refresh(): Promise<void> {
+        // Drop cached parse errors so any newly-fixed configs can warn again on next failure
+        this.loadErrors.clear();
+        await this.refreshWorkspaceConfigPaths();
+        // ancestor + home paths are re-read on demand in getConfiguredDevices(),
+        // so refreshing the workspace paths and firing onDidChange is enough.
+    }
+
+    /**
      * Walk upward from each workspace folder (deduped), starting at the folder itself,
      * collecting every `<dir>/.roku/roku-dev-config.json` that exists.
      */
