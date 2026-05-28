@@ -9,30 +9,32 @@ import type { ConfiguredDevice } from './DeviceManager';
  * Discovers Roku devices defined in `.roku/roku-dev-config.json` files and exposes them
  * as additional configured devices to the DeviceManager.
  *
- * Looks in three places, in this priority order (later overrides earlier):
- *   1. `~/roku-dev-config.json` (user home directory)
- *   2. `.roku/roku-dev-config.json` files walked upward from each workspace folder's parent
- *   3. `.roku/roku-dev-config.json` files discovered inside the workspace via file watcher
+ * Discovery sources, ordered from most-specific to least-specific:
+ *   1. Every `.roku/roku-dev-config.json` found inside the workspace (any depth)
+ *   2. Ancestor `.roku/roku-dev-config.json` files walked upward from each workspace folder
+ *   3. `~/roku-dev-config.json`
  *
- * Reactively reloads when any watched config file is created, changed, or deleted.
+ * All unique devices found across all sources are returned. When the same device key (id, or
+ * ip as fallback) appears in multiple configs, the more-specific config wins.
+ *
+ * Reactively reloads when workspace `.roku/roku-dev-config.json` files are created, changed,
+ * or deleted, and when workspace folders change. Ancestor and home configs are re-read every
+ * time devices are requested.
  *
  * This is rsg-specific and is kept in its own file to minimize conflicts when merging
  * upstream master changes into the DeviceManager.
  */
 export class RokuDevConfigProvider implements vscode.Disposable {
     constructor() {
-        this.parentConfigPaths = this.findParentRokuDevConfigPaths();
         this.setupWatcher();
+        void this.refreshWorkspaceConfigPaths();
     }
 
     private readonly _onDidChange = new vscode.EventEmitter<void>();
     public readonly onDidChange = this._onDidChange.event;
 
-    /** Config files found by the workspace file watcher / findFiles (inside workspace) */
+    /** Config files found inside the workspace via findFiles / file watcher. */
     private workspaceConfigPaths = new Set<string>();
-
-    /** Config files found by walking upward from workspace folder parents */
-    private parentConfigPaths: string[] = [];
 
     /** Tracks last seen parse error per config path so we don't spam the same warning on every reload */
     private loadErrors = new Map<string, string>();
@@ -56,35 +58,35 @@ export class RokuDevConfigProvider implements vscode.Disposable {
                 this._onDidChange.fire();
             }),
             vscode.workspace.onDidChangeWorkspaceFolders(() => {
-                this.parentConfigPaths = this.findParentRokuDevConfigPaths();
+                void this.refreshWorkspaceConfigPaths();
                 this._onDidChange.fire();
             })
         );
+    }
 
-        // Discover existing config files in workspace, then notify
-        void vscode.workspace.findFiles(
+    /** Find every `.roku/roku-dev-config.json` inside the current workspace (any depth). */
+    private async refreshWorkspaceConfigPaths() {
+        const uris = await vscode.workspace.findFiles(
             '**/.roku/roku-dev-config.json',
             util.buildExcludeGlob(['**/node_modules/**'])
-        ).then((uris) => {
-            for (const uri of uris) {
-                this.workspaceConfigPaths.add(uri.fsPath);
-            }
-            this._onDidChange.fire();
-        });
+        );
+        this.workspaceConfigPaths.clear();
+        for (const uri of uris) {
+            this.workspaceConfigPaths.add(uri.fsPath);
+        }
+        this._onDidChange.fire();
     }
 
     /**
-     * Walk upward from each workspace folder (deduped) looking for .roku/roku-dev-config.json files.
-     * Returns only paths that actually exist on disk.
+     * Walk upward from each workspace folder (deduped), starting at the folder itself,
+     * collecting every `<dir>/.roku/roku-dev-config.json` that exists.
      */
-    public findParentRokuDevConfigPaths(): string[] {
+    public findAncestorRokuDevConfigPaths(): string[] {
         const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
 
-        // Collect unique starting directories: the immediate parent of each workspace folder.
-        // Deduping here means two sibling workspace folders sharing a parent only produce one walk.
         const startDirs = new Set<string>();
         for (const folder of workspaceFolders) {
-            startDirs.add(path.dirname(folder.uri.fsPath));
+            startDirs.add(folder.uri.fsPath);
         }
 
         const visitedDirs = new Set<string>();
@@ -115,26 +117,25 @@ export class RokuDevConfigProvider implements vscode.Disposable {
     }
 
     /**
-     * Build the ordered list of config file paths to read.
-     * Order matters: later entries override earlier ones during merge.
-     */
-    private getAllConfigPaths(): string[] {
-        // Re-evaluate parent paths in case workspace state changed
-        this.parentConfigPaths = this.findParentRokuDevConfigPaths();
-        return [
-            path.join(os.homedir(), 'roku-dev-config.json'),
-            ...this.workspaceConfigPaths,
-            ...this.parentConfigPaths
-        ];
-    }
-
-    /**
      * Read all known roku-dev-config.json files and return the merged device list.
+     * Order: workspace-internal (most specific) → ancestor walk → home (least specific).
+     * First write wins per key, so more-specific entries override less-specific ones.
      */
     public getConfiguredDevices(): ConfiguredDevice[] {
         const deviceMap = new Map<string, ConfiguredDevice>();
+        const seenPaths = new Set<string>();
 
-        for (const configPath of this.getAllConfigPaths()) {
+        const orderedPaths = [
+            ...this.workspaceConfigPaths,
+            ...this.findAncestorRokuDevConfigPaths(),
+            path.join(os.homedir(), 'roku-dev-config.json')
+        ];
+
+        for (const configPath of orderedPaths) {
+            if (seenPaths.has(configPath)) {
+                continue;
+            }
+            seenPaths.add(configPath);
             try {
                 if (!fsExtra.existsSync(configPath)) {
                     continue;
@@ -146,12 +147,13 @@ export class RokuDevConfigProvider implements vscode.Disposable {
                             continue;
                         }
                         const key = device.id || device.ip;
-                        const existing = deviceMap.get(key);
+                        if (deviceMap.has(key)) {
+                            continue; // already set by a more-specific config
+                        }
                         deviceMap.set(key, {
                             host: device.ip,
                             name: device.name,
-                            password: device.password,
-                            ...existing
+                            password: device.password
                         });
                     }
                 }
