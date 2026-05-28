@@ -72,6 +72,21 @@ export class DeviceManager {
         applyConfig();
     }
 
+    /**
+     * Register an external source of configured devices (e.g. roku-dev-config.json files).
+     * Devices from these providers are merged in as the lowest-priority scope ('rokuDevConfig'),
+     * so they can be overridden by user/workspace settings.
+     */
+    public addConfiguredDeviceProvider(provider: ConfiguredDeviceProvider) {
+        this.extraDeviceProviders.push(provider);
+        this.context.subscriptions.push(
+            provider.onDidChange(() => {
+                this.loadConfiguredDevices().catch(e => console.error(e));
+            })
+        );
+        this.loadConfiguredDevices().catch(e => console.error(e));
+    }
+
     private setupWindowFocusHandling() {
         this.context.subscriptions.push(
             vscode.window.onDidChangeWindowState((state) => {
@@ -141,6 +156,7 @@ export class DeviceManager {
     // Core state and dependencies
     private configuredDevices: ConfiguredDeviceEntry[] = [];
     private discoveredDevices: DiscoveredDeviceEntry[] = [];
+    private extraDeviceProviders: ConfiguredDeviceProvider[] = [];
     private scanNeeded = false;
     private lastUsedDeviceIp: string | undefined = undefined;
     private networkId: string;
@@ -749,6 +765,14 @@ export class DeviceManager {
             }
         }
 
+        // Pull from any externally-registered providers first (lowest priority — user/workspace can override)
+        for (const provider of this.extraDeviceProviders) {
+            try {
+                addDevicesFromScope(provider.getConfiguredDevices(), 'rokuDevConfig');
+            } catch (e) {
+                console.error(e);
+            }
+        }
         addDevicesFromScope(userDevices, 'user');
         addDevicesFromScope(workspaceDevices, 'workspace');
 
@@ -1406,7 +1430,19 @@ export type DeviceState = 'offline' | 'unknown' | 'pending' | 'online';
 
 export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
 
-export type ConfigurationScope = 'user' | 'workspace';
+export type ConfigurationScope = 'user' | 'workspace' | 'rokuDevConfig';
+
+/**
+ * External source of configured devices that can be plugged into DeviceManager.
+ * Used to surface devices defined outside VSCode settings (e.g. rsg's roku-dev-config.json files)
+ * without requiring DeviceManager itself to know about each source.
+ */
+export interface ConfiguredDeviceProvider {
+    /** Synchronously return the current list of configured devices from this source. */
+    getConfiguredDevices(): ConfiguredDevice[];
+    /** Fires when the underlying source has changed and devices should be reloaded. */
+    onDidChange: vscode.Event<void>;
+}
 
 /**
  * User-configured device from settings (brightscript.devices)

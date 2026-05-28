@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
 import { DeviceManager } from './deviceDiscovery/DeviceManager';
+import { RokuDevConfigProvider } from './deviceDiscovery/RokuDevConfigProvider';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
@@ -84,6 +85,9 @@ export class Extension {
         this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
         this.extensionOutputChannel.appendLine('Extension startup');
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel);
+        const rokuDevConfigProvider = new RokuDevConfigProvider();
+        context.subscriptions.push(rokuDevConfigProvider);
+        this.deviceManager.addConfiguredDeviceProvider(rokuDevConfigProvider);
         let userInputManager = new UserInputManager(
             this.deviceManager
         );
