@@ -81,7 +81,9 @@ export class Extension {
         );
 
         this.telemetryManager.sendStartupEvent();
-        this.deviceManager = new DeviceManager(context, this.globalStateManager);
+        this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
+        this.extensionOutputChannel.appendLine('Extension startup');
+        this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel);
         let userInputManager = new UserInputManager(
             this.deviceManager
         );
@@ -114,8 +116,6 @@ export class Extension {
         //create channels
         this.outputChannel = vscode.window.createOutputChannel('BrightScript Log');
         this.sceneGraphDebugChannel = vscode.window.createOutputChannel('SceneGraph Debug Commands');
-        this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
-        this.extensionOutputChannel.appendLine('Extension startup');
 
         let docLinkProvider = new LogDocumentLinkProvider();
 
@@ -131,11 +131,13 @@ export class Extension {
         vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
 
         //register a tree data provider for this extension's "Devices" view
-        let devicesViewProvider = new DevicesViewProvider(this.deviceManager, credentialStore);
+        let devicesViewProvider = new DevicesViewProvider(this.deviceManager, credentialStore, context);
         const devicesTreeView = vscode.window.createTreeView(ViewProviderId.devicesView, {
             treeDataProvider: devicesViewProvider
         });
         devicesViewProvider.setTreeView(devicesTreeView);
+
+        this.brightScriptCommands.registerDevicesViewCommands(devicesViewProvider);
 
         // Initialize tasks manager
         const tasksManager = new BrightScriptTaskProvider();
@@ -293,7 +295,7 @@ export class Extension {
 
         //register all commands for this extension
         this.brightScriptCommands.registerCommands();
-        sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel);
+        sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel, userInputManager);
 
         vscode.debug.onDidStartDebugSession(this.onDidStartDebugSession.bind(this));
         vscode.debug.onDidTerminateDebugSession(this.onDidTerminateDebugSession.bind(this));

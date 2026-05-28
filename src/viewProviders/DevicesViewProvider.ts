@@ -2,9 +2,15 @@ import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { ConfiguredDevice, DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import type { CredentialStore } from '../managers/CredentialStore';
-import { icons } from '../icons';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
+import {
+    DEFAULT_DEVICE_FILTERS,
+    DEVICE_FILTER_KEYS,
+    applyDeviceFilters,
+    loadDeviceFilters,
+    type DeviceFilters
+} from '../deviceFilters';
 
 /**
  * A sequence used to generate unique IDs for tree items that don't care about having a key
@@ -16,16 +22,35 @@ let treeItemKeySequence = 0;
  */
 const DEVICE_URI_SCHEME = 'roku-device';
 
+/**
+ * Configuration section that holds each filter's persisted value. Each filter facet
+ * lives under this section as its own boolean key (e.g. brightscript.devicesView.filters.online).
+ */
+const DEVICES_VIEW_FILTERS_SECTION = 'brightscript.devicesView.filters';
+
 export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
     public readonly id = ViewProviderId.devicesView;
 
     private decorationProvider: DeviceDecorationProvider;
 
+    private filters: DeviceFilters;
+
     constructor(
         private deviceManager: DeviceManager,
-        private credentialStore: CredentialStore
+        private credentialStore: CredentialStore,
+        private context: vscode.ExtensionContext
     ) {
+        this.filters = this.loadFilters();
+        void this.pushFilterContextKeys();
+        this.context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(event => {
+                if (event.affectsConfiguration(DEVICES_VIEW_FILTERS_SECTION)) {
+                    this.reloadFiltersFromSettings();
+                }
+            })
+        );
+
         this.decorationProvider = new DeviceDecorationProvider();
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
@@ -34,9 +59,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.decorationProvider.updateDevices(this.devices);
 
         this.deviceManager.on('devices-changed', () => {
-            this.devices = this.deviceManager.getAllDevices();
-            this.decorationProvider.updateDevices(this.devices);
-            this._onDidChangeTreeData.fire(null);
+            this.handleDevicesChanged();
         });
 
         this.deviceManager.on('scanNeeded-changed', () => {
@@ -67,6 +90,17 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 return;
             }
             this.deviceManager.refresh();
+        });
+
+        // Health check device when expanded (not on every getChildren/devices-changed)
+        treeView.onDidExpandElement(e => {
+            const element = e.element as DeviceTreeItem;
+            if (element?.contextValue === 'device' && element.key) {
+                const device = this.deviceManager.getDevice(element.key);
+                if (device) {
+                    this.deviceManager.healthCheckDevice(device).catch(() => { });
+                }
+            }
         });
 
         this.deviceManager.on('scan-started', () => {
@@ -103,6 +137,12 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
     }
 
+    private handleDevicesChanged(): void {
+        this.devices = this.deviceManager.getAllDevices();
+        this.decorationProvider.updateDevices(this.devices);
+        this._onDidChangeTreeData.fire(null);
+    }
+
     /**
      * Should the unique info about a device be obfuscated (i.e. randomly modified to protect the data)?
      */
@@ -111,18 +151,6 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     private devices: Array<RokuDevice>;
-
-    private makeName(device: RokuDevice) {
-        // Use configuredName if available, otherwise fall back to user-device-name
-        const displayName = device.configuredName || device.deviceInfo['user-device-name'] || device.ip;
-        const softwareVersion = device.deviceInfo['software-version'];
-        const parts = [
-            device.deviceInfo['model-number'],
-            displayName,
-            softwareVersion ? `OS ${softwareVersion}` : undefined
-        ].filter(Boolean);
-        return parts.join(' – ') || device.ip;
-    }
 
     async getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): Promise<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
@@ -133,10 +161,11 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             }
             if (this.devices) {
                 let items: DeviceTreeItem[] = [];
-                for (const device of this.devices) {
+                const visibleDevices = this.applyFilters(this.devices);
+                for (const device of visibleDevices) {
                     // Make a rook item for each device
                     let treeItem = new DeviceTreeItem(
-                        this.makeName(device),
+                        this.deviceManager.getDeviceDisplayName(device),
                         vscode.TreeItemCollapsibleState.Collapsed,
                         device.key,
                         device.deviceInfo
@@ -146,23 +175,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     // Set resourceUri to enable FileDecorationProvider for text coloring
                     // Use the device key which is serial-based when available, IP-based as fallback
                     treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`);
-
-                    // Set icon based on device state
-                    if (device.deviceState === 'offline') {
-                        // For offline devices, check cache to distinguish:
-                        // - warning icon: never successfully contacted (no cache)
-                        // - disconnect icon: was online before (has cache)
-                        const hasCache = device.serialNumber && this.deviceManager.hasDeviceCache(device.serialNumber);
-                        if (hasCache) {
-                            treeItem.iconPath = new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
-                        } else {
-                            treeItem.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('disabledForeground'));
-                        }
-                    } else if (device.deviceState === 'pending') {
-                        treeItem.iconPath = new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
-                    } else {
-                        treeItem.iconPath = icons.getDeviceType(device.deviceInfo);
-                    }
+                    treeItem.iconPath = this.deviceManager.getIconPath(device);
 
                     // Set contextValue for context menu actions
                     // Values: device, device-user, device-workspace, device-user-workspace
@@ -218,7 +231,6 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (!device) {
                 return;
             }
-            this.deviceManager.checkDeviceHealth(device).catch(() => { });
 
             if (device.deviceInfo?.['is-tv'] === 'true') {
                 result.unshift(
@@ -437,6 +449,83 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             return value;
         }
     }
+
+    private applyFilters(devices: RokuDevice[]): RokuDevice[] {
+        return applyDeviceFilters(devices, this.filters);
+    }
+
+    private loadFilters(): DeviceFilters {
+        return loadDeviceFilters(DEVICES_VIEW_FILTERS_SECTION);
+    }
+
+    private reloadFiltersFromSettings(): void {
+        const next = this.loadFilters();
+        // Skip redundant work when our own update triggered the change event.
+        const unchanged = DEVICE_FILTER_KEYS.every(filterKey => this.filters[filterKey] === next[filterKey]);
+        if (unchanged) {
+            return;
+        }
+        this.filters = next;
+        void this.pushFilterContextKeys();
+        this._onDidChangeTreeData.fire(null);
+    }
+
+    /**
+     * Push per-facet context keys plus the aggregate hasActiveFilters key so
+     * the title-bar submenu can choose which entry to render for each filter.
+     */
+    private pushFilterContextKeys(): Thenable<unknown> {
+        const tasks: Thenable<unknown>[] = [];
+        for (const key of DEVICE_FILTER_KEYS) {
+            // Note the singular `filter` — matches the when-clauses in package.json's submenu.
+            tasks.push(vscode.commands.executeCommand('setContext', `brightscript.devicesView.filter.${key}`, this.filters[key]));
+        }
+        return Promise.all(tasks);
+    }
+
+    /**
+     * Flip a single filter facet, persist the new state to user settings, and refresh the tree.
+     * Writing to the user-settings scope means the value syncs across windows via VS Code's
+     * config change events and across machines via Settings Sync.
+     */
+    public async toggleFilter(key: keyof DeviceFilters): Promise<void> {
+        if (!DEVICE_FILTER_KEYS.includes(key)) {
+            return;
+        }
+        const nextValue = !this.filters[key];
+        this.filters = { ...this.filters, [key]: nextValue };
+
+        const config = vscode.workspace.getConfiguration(DEVICES_VIEW_FILTERS_SECTION);
+        // Toggling back to a default value clears the user-settings entry instead of storing it explicitly.
+        const valueToWrite = nextValue === DEFAULT_DEVICE_FILTERS[key] ? undefined : nextValue;
+        try {
+            await config.update(key, valueToWrite, vscode.ConfigurationTarget.Global);
+        } catch {
+            // Best-effort persistence — filter state is not critical.
+        }
+
+        await this.pushFilterContextKeys();
+        this._onDidChangeTreeData.fire(null);
+    }
+
+    /**
+     * Restore every filter facet to its default by clearing the user-settings entry for each key.
+     */
+    public async resetFilters(): Promise<void> {
+        this.filters = { ...DEFAULT_DEVICE_FILTERS };
+
+        const config = vscode.workspace.getConfiguration(DEVICES_VIEW_FILTERS_SECTION);
+        try {
+            await Promise.all(
+                DEVICE_FILTER_KEYS.map(key => config.update(key, undefined, vscode.ConfigurationTarget.Global))
+            );
+        } catch {
+            // Best-effort persistence — filter state is not critical.
+        }
+
+        await this.pushFilterContextKeys();
+        this._onDidChangeTreeData.fire(null);
+    }
 }
 
 
@@ -498,7 +587,7 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
         const deviceKey = uri.path.slice(1); // Remove leading slash (key is "s:..." or "i:...")
         const state = this.deviceStates.get(deviceKey);
 
-        if (state === 'pending' || state === 'offline') {
+        if (state !== 'online') {
             return {
                 color: new vscode.ThemeColor('disabledForeground')
             };

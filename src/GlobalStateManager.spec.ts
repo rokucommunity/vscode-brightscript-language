@@ -220,6 +220,46 @@ describe('GlobalStateManager', () => {
         });
     });
 
+    describe('setSerialNumberForIp', () => {
+        it('stores IP to serial mapping', () => {
+            manager.setSerialNumberForIp(testNetwork, '192.168.1.100', 'serial-123');
+            expect(manager.getSerialNumberForIp('192.168.1.100', testNetwork)).to.equal('serial-123');
+        });
+
+        it('removes old IP entry when serial moves to new IP', () => {
+            manager.setSerialNumberForIp(testNetwork, '192.168.1.100', 'serial-123');
+            manager.setSerialNumberForIp(testNetwork, '192.168.1.200', 'serial-123');
+
+            // Old IP should no longer have the serial
+            expect(manager.getSerialNumberForIp('192.168.1.100', testNetwork)).to.be.undefined;
+            // New IP should have the serial
+            expect(manager.getSerialNumberForIp('192.168.1.200', testNetwork)).to.equal('serial-123');
+        });
+
+        it('allows same serial at same IP (update timestamp)', () => {
+            manager.setSerialNumberForIp(testNetwork, '192.168.1.100', 'serial-123');
+            manager.setSerialNumberForIp(testNetwork, '192.168.1.100', 'serial-123');
+
+            // IP should still have the serial
+            expect(manager.getSerialNumberForIp('192.168.1.100', testNetwork)).to.equal('serial-123');
+        });
+
+        it('allows different serials at different IPs', () => {
+            manager.setSerialNumberForIp(testNetwork, '192.168.1.100', 'serial-123');
+            manager.setSerialNumberForIp(testNetwork, '192.168.1.200', 'serial-456');
+
+            expect(manager.getSerialNumberForIp('192.168.1.100', testNetwork)).to.equal('serial-123');
+            expect(manager.getSerialNumberForIp('192.168.1.200', testNetwork)).to.equal('serial-456');
+        });
+
+        it('replaces serial at same IP', () => {
+            manager.setSerialNumberForIp(testNetwork, '192.168.1.100', 'serial-123');
+            manager.setSerialNumberForIp(testNetwork, '192.168.1.100', 'serial-456');
+
+            expect(manager.getSerialNumberForIp('192.168.1.100', testNetwork)).to.equal('serial-456');
+        });
+    });
+
     describe('getIpForSerial', () => {
         const networkA = 'network-hash-aaaaaa';
         const networkB = 'network-hash-bbbbbb';

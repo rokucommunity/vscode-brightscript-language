@@ -322,7 +322,8 @@ describe('LanguageServerManager', () => {
                 }
                 return {
                     get: x => value,
-                    inspect: () => ({}) as any
+                    inspect: () => ({}) as any,
+                    update: () => Promise.resolve()
                 };
             });
             vscode.workspace.workspaceFolders.push({

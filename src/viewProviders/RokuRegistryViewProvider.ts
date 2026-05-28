@@ -15,7 +15,7 @@ export class RokuRegistryViewProvider extends BaseRdbViewProvider {
         subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuRegistryExportRegistry, async () => {
             await vscode.window.showSaveDialog({ saveLabel: 'Save' }).then(async (uri) => {
                 const result = await this.dependencies.rtaManager.onDeviceComponent?.readRegistry();
-                await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(result?.values), 'utf8'));
+                await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(result?.values, null, 4), 'utf8'));
             });
         }));
 

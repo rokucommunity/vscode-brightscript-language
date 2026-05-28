@@ -167,7 +167,7 @@ describe('BrightScriptXmlDefinitionProvider', () => {
         it('will return xml file reference for a custom component', async () => {
             let position = new vscode.Position(1, 1);
             let textDocument = new vscode.TextDocument('valid.xml', xmlText);
-            let result = await provider.provideDefinition(<any>textDocument, <any>position, undefined);
+            let result = await provider.provideDefinition(textDocument as any, position as any, undefined);
 
             assert.isEmpty(result);
 
