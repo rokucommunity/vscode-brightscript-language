@@ -25,6 +25,7 @@
         destinationFileName: string;
         visible: boolean;
         opacity: number;
+        translation: [number, number];
         imageData: any;
     }
 
@@ -82,6 +83,12 @@
                 posterNode.opacity = overlayInfo.opacity
             } else {
                 overlayInfo.opacity = 1.0;
+            }
+
+            if (overlayInfo.translation !== undefined) {
+                posterNode.translation = overlayInfo.translation
+            } else {
+                overlayInfo.translation = [0, 0];
             }
 
             await odc.setValue({
@@ -152,6 +159,28 @@
             await odc.setValue({
                 keyPath: `${containerKeyPath}.#${overlay.id}.opacity`,
                 value: overlay.opacity
+            });
+        } else {
+            await conditionallyDeployOverlay(overlay, index);
+        }
+    }
+
+    async function onOverlayTranslationChange(index: number, axis: 0 | 1, rawValue: string) {
+        const overlay = overlays[index];
+        if (!overlay.translation) {
+            overlay.translation = [0, 0];
+        }
+        const value = parseInt(rawValue, 10) || 0;
+        // copy so the array reference changes and a fresh value is sent to the device
+        const translation = [...overlay.translation] as [number, number];
+        translation[axis] = value;
+        overlay.translation = translation;
+        overlays[index] = overlay;
+
+        if (deployedOverlayIds[overlay.id]) {
+            await odc.setValue({
+                keyPath: `${containerKeyPath}.#${overlay.id}.translation`,
+                value: overlay.translation
             });
         } else {
             await conditionallyDeployOverlay(overlay, index);
@@ -233,15 +262,15 @@
         box-sizing: border-box;
         overflow: hidden;
         display: grid;
-        grid-template-columns: 0.4fr 0.4fr 3.2fr 0.1fr 0.5fr;
+        grid-template-columns: 0.4fr 0.4fr 3.2fr 0.6fr 0.5fr 0.1fr;
         grid-template-rows: 1fr 1fr;
         gap: 0px 0px;
         min-width: 0;
         min-height: 0;
         grid-auto-flow: row;
         grid-template-areas:
-            'checkbox image filepath filepath delete'
-            'checkbox image label slider delete';
+            'checkbox image filepath filepath filepath delete'
+            'checkbox image label translation slider delete';
     }
 
     .filepath {
@@ -302,6 +331,17 @@
         width: 75px;
     }
 
+    .translation {
+        grid-area: translation;
+        justify-self: center;
+        align-self: center;
+        display: flex;
+        gap: 4px;
+    }
+    .xy-input {
+        width: 48px;
+    }
+
     .delete {
         grid-area: delete;
         justify-self: center;
@@ -325,6 +365,12 @@
                 </div>
                 <div class="label">
                     <vscode-text-field id="{index}" on:input={onOverlayNameChange} value="{overlay.name}" />
+                </div>
+                <div class="translation">
+                    <input class="xy-input" type="number" title="X position" value={overlay.translation ? overlay.translation[0] : 0}
+                        on:input={(e) => onOverlayTranslationChange(index, 0, e.currentTarget.value)}>
+                    <input class="xy-input" type="number" title="Y position" value={overlay.translation ? overlay.translation[1] : 0}
+                        on:input={(e) => onOverlayTranslationChange(index, 1, e.currentTarget.value)}>
                 </div>
                 <div class="slider">
                     <input id="{index.toString()}" class="slider-input" type="range" min="0" max="100" value="{overlay.opacity * 100}" on:input={onOverlayOpacityChange}>
