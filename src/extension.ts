@@ -415,6 +415,17 @@ export class Extension {
         // in a loop until we successfully attach or until the parent session ends.
 
         while (this.debugSessions.has(parentSession)) {
+            // The node debugger attaches against the bundle's local rootDir. If that directory has
+            // been deleted (e.g. a `dist-build/bundle` wiped mid-session), vscode rejects the attach
+            // synchronously with a modal "The configured `cwd` ... does not exist." Since that
+            // rejection never hits the attach timeout below, retrying here would hot-loop and spam
+            // the modal as fast as the user can dismiss it. Bail instead — attach cannot succeed
+            // without the rootDir, and it will be retried the next time a debug session starts.
+            if (!fsExtra.existsSync(launchConfig.rootDir)) {
+                console.error(`Cannot attach node debugger: rootDir does not exist at '${launchConfig.rootDir}'`);
+                return false;
+            }
+
             //rewrite the debug session name to indicate it's the BRS session (this is just for user clarity in the UI, it has no functional effect)
             parentSession.name = `${parentSession.name.replace(/ \(BRS\)$/, '')} (BRS)`;
             try {
