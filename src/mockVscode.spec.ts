@@ -146,20 +146,38 @@ export let vscode = {
             };
         },
         _configuration: {} as any,
+        _onDidChangeConfigurationEmitter: new EventEmitter(),
         getConfiguration: function(configurationName: string, scope?: ConfigurationScope | null) {
+            const store = this._configuration;
+            const emitter = this._onDidChangeConfigurationEmitter;
             return {
                 get: (name: string) => {
-                    return this._configuration?.[`${configurationName}.${name}`];
+                    return store?.[`${configurationName}.${name}`];
                 },
                 inspect: (name: string) => {
                     return {
                         key: name,
-                        globalValue: this._configuration?.[`${configurationName}.${name}`]
+                        globalValue: store?.[`${configurationName}.${name}`]
                     } as ReturnType<WorkspaceConfiguration['inspect']>;
+                },
+                update: (name: string, value: any) => {
+                    const fullKey = `${configurationName}.${name}`;
+                    if (value === undefined) {
+                        delete store[fullKey];
+                    } else {
+                        store[fullKey] = value;
+                    }
+                    emitter.emit('event', {
+                        affectsConfiguration: (section: string) => fullKey === section || fullKey.startsWith(`${section}.`)
+                    });
+                    return Promise.resolve();
                 }
             };
         },
-        onDidChangeConfiguration: () => { },
+        onDidChangeConfiguration: function(cb) {
+            this._onDidChangeConfigurationEmitter.on('event', cb);
+            return { dispose: () => this._onDidChangeConfigurationEmitter.off('event', cb) };
+        },
         onDidChangeWorkspaceFolders: () => { },
         getWorkspaceFolder: (uri: Uri) => {
             return undefined;

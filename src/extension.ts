@@ -130,11 +130,13 @@ export class Extension {
         vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
 
         //register a tree data provider for this extension's "Devices" view
-        let devicesViewProvider = new DevicesViewProvider(this.deviceManager, credentialStore);
+        let devicesViewProvider = new DevicesViewProvider(this.deviceManager, credentialStore, context);
         const devicesTreeView = vscode.window.createTreeView(ViewProviderId.devicesView, {
             treeDataProvider: devicesViewProvider
         });
         devicesViewProvider.setTreeView(devicesTreeView);
+
+        this.brightScriptCommands.registerDevicesViewCommands(devicesViewProvider);
 
         // Initialize tasks manager
         const tasksManager = new BrightScriptTaskProvider();
@@ -234,7 +236,7 @@ export class Extension {
 
         //register all commands for this extension
         this.brightScriptCommands.registerCommands();
-        sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel);
+        sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel, userInputManager);
 
         vscode.debug.onDidStartDebugSession((e) => {
             //if this is a brightscript debug session
@@ -436,7 +438,7 @@ export class Extension {
         const tasks = await vscode.tasks.fetchTasks();
         const targetTask = tasks.find(x => x.name === taskName);
         if (!targetTask) {
-            throw new Error(`Cannot find task '$taskName}'`);
+            throw new Error(`Cannot find task '${taskName}'`);
         }
         let execution: vscode.TaskExecution;
         let taskFinished = new Promise<void>((resolve, reject) => {

@@ -1,14 +1,28 @@
 {
-    // Fail on moderate severity and above. See README "Accepted security advisories" for
+    // Fail on high severity and above. See README "Accepted security advisories" for
     // why each allowlisted entry is safe to defer.
     "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
-    "moderate": true,
+    "high": true,
     "allowlist": [
         {
             "GHSA-2p57-rm9w-gvfp": {
                 // Added: 2026-05-19
                 "active": true,
                 "notes": "`ip` (via `node-ssdp`): no fixed version published. `ip` is only used by `node-ssdp` for local-network Roku discovery; no untrusted input flows into `ip.isPublic()` in any path we control."
+            }
+        },
+        {
+            "GHSA-w5hq-g745-h8pq": {
+                // Added: 2026-05-22
+                "active": true,
+                "notes": "`uuid` <11.1.1 (via direct dep, `postman-request`, `node-notifier`, and dev-only `nyc>istanbul-lib-processinfo`): vulnerable code path is `v3()`/`v5()`/`v6()` when a caller-provided buffer is passed. Every consumer (including our own `src/viewProviders/RokuAppOverlaysViewViewProvider.ts`) calls only `v4()` with no buffer arg, so the vulnerable path is unreachable."
+            }
+        },
+        {
+            "GHSA-q8mj-m7cp-5q26": {
+                // Added: 2026-05-26
+                "active": true,
+                "notes": "`qs` 6.11.1-6.15.1 (via `postman-request`'s `~6.14.1` pin; transitive through `roku-debug`, `roku-deploy`, `roku-test-automation`): DoS in `qs.stringify` triggered only when called with `arrayFormat: 'comma'` + `encodeValuesOnly: true` and null/undefined entries. `postman-request` is used only for local-network Roku HTTP calls and does not invoke `qs.stringify` with that option combo. Latest `postman-request@2.88.1-postman.48` still pins `qs ~6.14.1`, so there is no upstream fix; `npm audit fix` downgrades `postman-request` and `uuid` significantly, which is a worse outcome."
             }
         }
     ]

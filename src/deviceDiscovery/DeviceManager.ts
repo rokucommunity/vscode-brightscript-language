@@ -54,11 +54,6 @@ export class DeviceManager {
                 this.emitDevicesChanged();
             }
 
-            //if the `includeNonDeveloperDevices` setting was changed, refresh the UI to show/hide devices
-            if (event?.affectsConfiguration('brightscript.deviceDiscovery.includeNonDeveloperDevices')) {
-                this.emitDevicesChanged();
-            }
-
             //if the `devices` setting was changed, re-apply configured devices and health check them
             if (event?.affectsConfiguration('brightscript.devices')) {
                 this.loadConfiguredDevices().then(() => {
@@ -98,6 +93,7 @@ export class DeviceManager {
 
             //reset all configured device states to unknown - need to re-verify on new network
             for (const entry of this.configuredDevices) {
+                entry.lastState = entry.state;
                 entry.state = 'unknown';
                 entry.stateLastUpdated = Date.now();
             }
@@ -238,14 +234,6 @@ export class DeviceManager {
      */
     public getAllDevices(): RokuDevice[] {
         return this.buildAllDevices();
-    }
-
-    /**
-     * Get all devices filtered for UI display.
-     * Respects includeNonDeveloperDevices setting.
-     */
-    public getDevicesForUI(): RokuDevice[] {
-        return this.buildAllDevices().filter(d => this.shouldShowDevice(d));
     }
 
     /**
@@ -402,29 +390,43 @@ export class DeviceManager {
      * @returns The device state, defaulting to 'unknown' if not found
      */
     public getDeviceState(lookup: { serialNumber?: string; ip?: string }): DeviceStateEntry {
-        // Find discovered entry (by IP first, then by serial)
-        let discoveredEntry = lookup.ip
-            ? this.discoveredDevices.find(d => d.ip === lookup.ip)
-            : undefined;
-        if (!discoveredEntry && lookup.serialNumber) {
-            discoveredEntry = this.discoveredDevices.find(d => d.serialNumber === lookup.serialNumber);
-        }
-        if (discoveredEntry?.state) {
-            return { state: discoveredEntry.state, lastUpdated: discoveredEntry.stateLastUpdated ?? Date.now() };
+        let match = this.findStateEntry(this.discoveredDevices, lookup);
+        if (match) {
+            return { state: match.state, lastUpdated: match.stateLastUpdated ?? Date.now() };
         }
 
-        // Find configured entry (by IP first, then by serial)
-        let configuredEntry = lookup.ip
-            ? this.configuredDevices.find(d => d.host === lookup.ip || d.resolvedIp === lookup.ip)
-            : undefined;
-        if (!configuredEntry && lookup.serialNumber) {
-            configuredEntry = this.configuredDevices.find(d => d.serialNumber === lookup.serialNumber);
+        match = this.findStateEntry(this.configuredDevices, lookup);
+        if (match) {
+            return { state: match.state, lastUpdated: match.stateLastUpdated ?? Date.now() };
         }
-        if (configuredEntry?.state) {
-            return { state: configuredEntry.state, lastUpdated: configuredEntry.stateLastUpdated ?? Date.now() };
-        }
-
         return { state: 'unknown', lastUpdated: Date.now() };
+    }
+
+    /**
+     * Find the highest-priority state-bearing entry across discovered then configured
+     * sources. Within each source, try the IP first (skipping IP matches whose serial
+     * points to a different device — otherwise changing a configured device's serial to
+     * a new value at an IP that already hosts an online discovered device would briefly
+     * inherit that online state), then fall back to a serial-only match. Returns the
+     * first entry that actually has a `state` set.
+     */
+    private findStateEntry(entries: Array<ConfiguredDeviceEntry | DiscoveredDeviceEntry>, lookup: { serialNumber?: string; ip?: string }) {
+        let match: ConfiguredDeviceEntry | DiscoveredDeviceEntry | undefined;
+        if (lookup.ip) {
+            match = entries.find(entry => {
+                const ipMatches = (entry as DiscoveredDeviceEntry).ip === lookup.ip || (entry as ConfiguredDeviceEntry).host === lookup.ip || (entry as ConfiguredDeviceEntry).resolvedIp === lookup.ip;
+                // when both sides carry a serial, they must agree — otherwise this IP belongs to a different device
+                const serialMatches = !lookup.serialNumber || !entry.serialNumber || entry.serialNumber === lookup.serialNumber;
+                return ipMatches && serialMatches;
+            });
+        }
+        if (!match && lookup.serialNumber) {
+            match = entries.find(entry => entry.serialNumber === lookup.serialNumber);
+        }
+        if (match?.state) {
+            return match;
+        }
+        return undefined;
     }
 
     /**
@@ -456,23 +458,32 @@ export class DeviceManager {
             }
         }
 
-        // Update configured entries at this IP that match the serial (or have no serial conflict)
+        // Update configured entries at this IP that match the serial (or have no serial conflict).
+        // stateLastUpdated bumps on every call so consumers see the latest check time, but
+        // lastState/state only move when the state actually changes.
         for (const entry of this.configuredDevices) {
             const ipMatches = entry.host === lookup.ip || entry.resolvedIp === lookup.ip;
             // Only update if IP matches AND (no serial conflict OR serials match)
             const serialConflict = lookup.serialNumber && entry.serialNumber && entry.serialNumber !== lookup.serialNumber;
             if (ipMatches && !serialConflict) {
-                entry.state = resolvedState;
+                if (entry.state !== resolvedState) {
+                    entry.lastState = entry.state;
+                    entry.state = resolvedState;
+                }
                 entry.stateLastUpdated = now;
             }
         }
 
-        // Update discovered entries at this IP that match the serial (or have no serial conflict)
+        // Update discovered entries at this IP that match the serial (or have no serial conflict).
+        // Same nested guard as the configured loop above.
         for (const entry of this.discoveredDevices) {
             const ipMatches = entry.ip === lookup.ip;
             const serialConflict = lookup.serialNumber && entry.serialNumber && entry.serialNumber !== lookup.serialNumber;
             if (ipMatches && !serialConflict) {
-                entry.state = resolvedState;
+                if (entry.state !== resolvedState) {
+                    entry.lastState = entry.state;
+                    entry.state = resolvedState;
+                }
                 entry.stateLastUpdated = now;
             }
         }
@@ -553,6 +564,7 @@ export class DeviceManager {
 
         // Reset configured device states to unknown
         for (const entry of this.configuredDevices) {
+            entry.lastState = entry.state;
             entry.state = 'unknown';
             entry.stateLastUpdated = Date.now();
         }
@@ -643,24 +655,6 @@ export class DeviceManager {
                 this.extensionOutputChannel?.appendLine(`[heartbeat] ${msg}`);
             }
         };
-    }
-
-    /**
-     * Should non-developer devices be included in device lists?
-     */
-    private get includeNonDeveloperDevices() {
-        return util.getConfiguration('brightscript')?.deviceDiscovery?.includeNonDeveloperDevices === true;
-    }
-
-    /**
-     * Should this device be shown via public API?
-     * Filters based on includeNonDeveloperDevices setting.
-     */
-    private shouldShowDevice(device: RokuDevice): boolean {
-        if (this.includeNonDeveloperDevices) {
-            return true;
-        }
-        return device?.deviceInfo?.['developer-enabled'] !== 'false';
     }
 
     /**
@@ -1087,8 +1081,9 @@ export class DeviceManager {
         const existing = existingIdx >= 0 ? this.discoveredDevices[existingIdx] : undefined;
 
         if (existing) {
-            // Update existing entry
+            // Update existing entry (preserve state fields so setDeviceState below sees the prior state)
             this.discoveredDevices[existingIdx] = {
+                ...existing,
                 ip: ip,
                 serialNumber: serialNumber ?? existing.serialNumber
             };
@@ -1215,6 +1210,8 @@ export class DeviceManager {
 
         // Determine state: discovered > configured > unknown (discovered is ground truth)
         const deviceState = discoveredEntry?.state ?? configuredEntry?.state ?? 'unknown';
+        // Determine previous state: discovered > configured > unknown (discovered is ground truth)
+        const lastState = discoveredEntry?.lastState ?? configuredEntry?.lastState ?? 'unknown';
 
         // Build key
         const key = serialNumber ? `s:${serialNumber}` : `i:${ip}`;
@@ -1227,6 +1224,7 @@ export class DeviceManager {
             serialNumber: serialNumber,
             key: key,
             deviceState: deviceState,
+            lastDeviceState: lastState,
             deviceInfo: cached?.deviceInfo ?? {},
             isDiscovered: !!discoveredEntry,
             isConfigured: !!configuredEntry,
@@ -1439,6 +1437,11 @@ interface ConfiguredDeviceEntry extends ConfiguredDevice {
      */
     state?: DeviceState;
     /**
+     * Previous state, updated by setDeviceState before each transition. Undefined when no
+     * state has been recorded yet — readers should treat that as 'unknown'.
+     */
+    lastState?: DeviceState;
+    /**
      * Timestamp of last state update
      */
     stateLastUpdated?: number;
@@ -1461,6 +1464,11 @@ interface DiscoveredDeviceEntry {
      * Current device state (inline on entry)
      */
     state?: DeviceState;
+    /**
+     * Previous state, updated by setDeviceState before each transition. Undefined when no
+     * state has been recorded yet — readers should treat that as 'unknown'.
+     */
+    lastState?: DeviceState;
     /**
      * Timestamp of last state update
      */
@@ -1496,6 +1504,10 @@ export interface RokuDevice {
      * Device state: online, offline, pending (currently checking), or unknown (never checked)
      */
     deviceState: DeviceState;
+    /**
+     * Previous device state: online, offline, pending (currently checking), or unknown (never checked)
+     */
+    lastDeviceState: DeviceState;
     /**
      * Cached device info from GlobalStateManager
      */

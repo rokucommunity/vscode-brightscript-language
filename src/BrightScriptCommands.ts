@@ -19,6 +19,8 @@ import type { LocalPackageManager } from './managers/LocalPackageManager';
 import { profilingCommands } from './commands/ProfilingCommands';
 import { vscodeContextManager } from './managers/VscodeContextManager';
 import type { CredentialStore } from './managers/CredentialStore';
+import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
+import { DEVICE_FILTER_KEYS } from './deviceFilters';
 
 export class BrightScriptCommands {
 
@@ -801,10 +803,7 @@ export class BrightScriptCommands {
             this.host = config.get('host');
             // eslint-disable-next-line no-template-curly-in-string
             if ((!this.host || this.host === '${promptForHost}') && showPrompt) {
-                this.host = await vscode.window.showInputBox({
-                    placeHolder: 'The IP address of your Roku device',
-                    value: ''
-                });
+                this.host = await this.userInputManager.promptForHost();
             }
         }
         if (!this.host) {
@@ -1021,6 +1020,21 @@ export class BrightScriptCommands {
         const prefix = 'extension.brightscript.';
         const commandName = name.startsWith(prefix) ? name : prefix + name;
         this.context.subscriptions.push(vscode.commands.registerCommand(commandName, callback, thisArg));
+    }
+
+    /**
+     * Register the per-facet toggle commands plus the reset command backing the Devices
+     * view filter submenu. Each facet has two command variants (unchecked + ".active");
+     * the submenu picks which to render via a `when` clause on the per-facet context key.
+     * Both call the same toggle handler.
+     */
+    public registerDevicesViewCommands(devicesViewProvider: DevicesViewProvider) {
+        for (const key of DEVICE_FILTER_KEYS) {
+            const handler = () => devicesViewProvider.toggleFilter(key);
+            this.registerCommand(`devicesView.toggleFilter.${key}`, handler);
+            this.registerCommand(`devicesView.toggleFilter.${key}.active`, handler);
+        }
+        this.registerCommand('devicesView.resetFilters', () => devicesViewProvider.resetFilters());
     }
 
     private async sendAsciiToDevice(character: string) {
