@@ -39,6 +39,7 @@ import { standardizePath as s } from 'brighterscript';
 import { PerfettoEditorProvider } from './editors/PerfettoEditor';
 import { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
 import { RokuProjectsViewProvider } from './viewProviders/RokuProjectsViewProvider';
+import { registerDevtoolsSpike } from './devtoolsSpike';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -169,6 +170,9 @@ export class Extension {
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.languageServer.restart', async () => {
             await languageServerManager.restart();
         }));
+
+        // THROWAWAY SPIKE: Solid Devtools evaluate-channel feasibility test. Remove with src/devtoolsSpike.ts.
+        registerDevtoolsSpike(context);
 
         //register the code formatter
         context.subscriptions.push(

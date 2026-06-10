@@ -10,6 +10,7 @@ import type {
     WorkspaceFolder
 } from 'vscode';
 import * as vscode from 'vscode';
+import { applySolidDevtoolsLaunchConfig } from './solidDevtools/launchConfig';
 import type { LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
@@ -141,6 +142,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
             result = this.processDapLogFilePath(folder, result);
+
+            //ask roku-debug to inject the Solid Devtools bridge during stage() (it no-ops for non-TS apps)
+            applySolidDevtoolsLaunchConfig(result, this.context.extensionPath);
 
             const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
             statusbarItem.text = '$(sync~spin) Fetching device info';
