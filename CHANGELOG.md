@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.66.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.2...v2.66.3) - 2026-05-28
+### Fixed
+ - profilling buttons not displaying
+ - upgrade to [roku-debug@0.23.10](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02310---2026-05-28). Notable changes since 0.23.9:
+     - perfetto and heap snapshots avalability events not firing ([#362](https://github.com/rokucommunity/roku-debug/pull/362))
+
+
+
 ## [2.66.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.1...v2.66.2) - 2026-05-27
 ### Changed
  - Security enhancements ([#813](https://github.com/rokucommunity/vscode-brightscript-language/pull/813))
