@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.66.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.3...v2.66.4) - 2026-06-10
+### Changed
+ - upgrade to [@rokucommunity/logger@0.3.13](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#0313---2026-06-08). Notable changes since 0.3.12:
+     - Security enhancments
+ - upgrade to [brighterscript@0.72.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0725---2026-06-10). Notable changes since 0.72.3:
+     - Security enhancments
+ - upgrade to [brighterscript-formatter@1.7.27](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1727---2026-06-10). Notable changes since 1.7.26:
+     - Security enhancments
+ - upgrade to [roku-debug@0.23.12](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02312---2026-06-10). Notable changes since 0.23.10:
+     - Enhanced thread names ([#303](https://github.com/rokucommunity/roku-debug/pull/303))
+     - Log Perfetto availability and notify user when device firmware is below the minimum requirement ([#354](https://github.com/rokucommunity/roku-debug/pull/354))
+     - Validate breakpoint valid file types ([#317](https://github.com/rokucommunity/roku-debug/pull/317))
+ - upgrade to [roku-deploy@3.17.6](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3176---2026-06-04). Notable changes since 3.17.4:
+     - Fix case-insensitive matching for absolute `files.src` glob patterns on case-insensitive file systems ([#279](https://github.com/rokucommunity/roku-deploy/pull/279))
+     - Preserve `!` glob-negation prefix in standardizePath ([#277](https://github.com/rokucommunity/roku-deploy/pull/277))
+     - Security enhancments
+### Fixed
+ - Skip link-local addresses in network change detection logic ([#821](https://github.com/rokucommunity/vscode-brightscript-language/pull/821))
+ - Fix string interpolation in error message when unable to run a task ([#822](https://github.com/rokucommunity/vscode-brightscript-language/pull/822))
+
+
+
 ## [2.66.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.2...v2.66.3) - 2026-05-28
 ### Fixed
  - profilling buttons not displaying
