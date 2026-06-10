@@ -8,36 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.66.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.3...v2.66.4) - 2026-06-10
 ### Changed
- - Device management docs ([#806](https://github.com/rokucommunity/vscode-brightscript-language/pull/806))
- - Skip link-local addresses in network change hash ([#821](https://github.com/rokucommunity/vscode-brightscript-language/pull/821))
  - upgrade to [@rokucommunity/logger@0.3.13](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#0313---2026-06-08). Notable changes since 0.3.12:
-     - chore: Support dispatch workflows ([#15](https://github.com/rokucommunity/logger/pull/15))
-     - chore: Shared CI - remove merged check on publish releases ([#14](https://github.com/rokucommunity/logger/pull/14))
-     - Update minimum audit threshold ([#27](https://github.com/rokucommunity/logger/pull/27))
-     - Accept GHSA-w5hq-g745-h8pq (uuid <11.1.1) advisory ([#26](https://github.com/rokucommunity/logger/pull/26))
-     - Slim security-audit-required to a single conditional check ([#24](https://github.com/rokucommunity/logger/pull/24))
-     - Only block release-branch PRs on Security Audit failures ([#21](https://github.com/rokucommunity/logger/pull/21))
-     - Security Audit workflow ([#19](https://github.com/rokucommunity/logger/pull/19))
+     - Security enhancments
  - upgrade to [brighterscript@0.72.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0725---2026-06-10). Notable changes since 0.72.3:
+     - Security enhancments
  - upgrade to [brighterscript-formatter@1.7.27](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1727---2026-06-10). Notable changes since 1.7.26:
-     - Update minimum audit threshold ([#138](https://github.com/rokucommunity/brighterscript-formatter/pull/138))
-     - Accept GHSA-w5hq-g745-h8pq (uuid <11.1.1) advisory ([#137](https://github.com/rokucommunity/brighterscript-formatter/pull/137))
-     - Add required Security Audit gate job in workflow ([#136](https://github.com/rokucommunity/brighterscript-formatter/pull/136))
-     - Security Audit workflow ([#135](https://github.com/rokucommunity/brighterscript-formatter/pull/135))
+     - Security enhancments
  - upgrade to [roku-debug@0.23.12](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02312---2026-06-10). Notable changes since 0.23.10:
      - Enhanced thread names ([#303](https://github.com/rokucommunity/roku-debug/pull/303))
      - Log Perfetto availability and notify user when device firmware is below the minimum requirement ([#354](https://github.com/rokucommunity/roku-debug/pull/354))
-     - Validate breakpoint file types; add (disabled) AST line validation ([#317](https://github.com/rokucommunity/roku-debug/pull/317))
+     - Validate breakpoint valid file types ([#317](https://github.com/rokucommunity/roku-debug/pull/317))
  - upgrade to [roku-deploy@3.17.6](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3176---2026-06-04). Notable changes since 3.17.4:
      - Fix case-insensitive matching for absolute `files.src` glob patterns on case-insensitive file systems ([#279](https://github.com/rokucommunity/roku-deploy/pull/279))
      - Preserve `!` glob-negation prefix in standardizePath ([#277](https://github.com/rokucommunity/roku-deploy/pull/277))
-     - Update minimum audit threshold ([#273](https://github.com/rokucommunity/roku-deploy/pull/273))
-     - Accept GHSA-w5hq-g745-h8pq (uuid <11.1.1) advisory ([#272](https://github.com/rokucommunity/roku-deploy/pull/272))
-     - Add `security-audit-required` gate job to security audit workflow ([#269](https://github.com/rokucommunity/roku-deploy/pull/269))
-     - Use explicit label on Security Audit badge ([#266](https://github.com/rokucommunity/roku-deploy/pull/266))
-     - Security Audit workflow ([#265](https://github.com/rokucommunity/roku-deploy/pull/265))
+     - Security enhancments
 ### Fixed
- - Fix critical shell-quote advisory (GHSA-w7jw-789q-3m8p) ([#823](https://github.com/rokucommunity/vscode-brightscript-language/pull/823))
+ - Skip link-local addresses in network change detection logic ([#821](https://github.com/rokucommunity/vscode-brightscript-language/pull/821))
  - Fix string interpolation in error message when unable to run a task ([#822](https://github.com/rokucommunity/vscode-brightscript-language/pull/822))
 
 
