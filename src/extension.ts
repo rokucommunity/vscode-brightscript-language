@@ -438,7 +438,7 @@ export class Extension {
         const tasks = await vscode.tasks.fetchTasks();
         const targetTask = tasks.find(x => x.name === taskName);
         if (!targetTask) {
-            throw new Error(`Cannot find task '$taskName}'`);
+            throw new Error(`Cannot find task '${taskName}'`);
         }
         let execution: vscode.TaskExecution;
         let taskFinished = new Promise<void>((resolve, reject) => {

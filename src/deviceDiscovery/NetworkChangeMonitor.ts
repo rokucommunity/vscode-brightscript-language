@@ -11,7 +11,7 @@ export function getNetworkHash(): string {
 
     for (const name of Object.keys(interfaces)) {
         for (const net of interfaces[name] ?? []) {
-            if (!net.internal) {
+            if (!net.internal && !isLinkLocal(net)) {
                 parts.push(`${net.address}-${net.netmask}`);
             }
         }
@@ -22,6 +22,16 @@ export function getNetworkHash(): string {
     }
 
     return md5(parts.sort().join('|'));
+}
+
+// Link-local addresses (IPv4 169.254/16, IPv6 fe80::/10) can't route to an
+// arbitrary device IP, so changes on these interfaces (VPN tunnels, AirDrop,
+// etc.) shouldn't count as network changes for device reachability.
+function isLinkLocal(net: os.NetworkInterfaceInfo): boolean {
+    if (net.family === 'IPv4') {
+        return net.address.startsWith('169.254.');
+    }
+    return /^fe[89ab]/i.test(net.address);
 }
 
 /**
