@@ -57,6 +57,17 @@ describe('bridgeInjection', () => {
         expect(fsExtra.readFileSync(bundlePath, 'utf8')).to.equal(bundleCode);
     });
 
+    it('skips a precompiled (bytecode) bundle instead of corrupting it', async () => {
+        writeStagedApp();
+        //Hermes bytecode-ish: binary header with NUL bytes
+        fsExtra.writeFileSync(bundlePath, Buffer.from([0xc6, 0x1f, 0xbc, 0x03, 0x00, 0x00, 0x19, 0x1f, 0x00, 0x41]));
+        const result = await inject();
+        expect(result.injected).to.be.false;
+        expect(result.reason).to.include('not JS text');
+        //file untouched
+        expect(fsExtra.readFileSync(bundlePath).length).to.equal(10);
+    });
+
     it('skips when the staged bundle is missing', async () => {
         writeStagedApp();
         fsExtra.removeSync(bundlePath);

@@ -116,7 +116,13 @@ export async function injectDevtoolsBridge(options: DevtoolsBridgeInjectionOptio
         if (!await fsExtra.pathExists(bundlePath)) {
             return skip(`staged ts_path bundle not found: '${bundlePath}'`);
         }
-        const bundle = await fsExtra.readFile(bundlePath, 'utf8');
+        const bundleBytes = await fsExtra.readFile(bundlePath);
+        //production builds precompile the ts_path target to Hermes bytecode — prepending
+        //JS text to that would corrupt it. NUL bytes never appear this early in JS source.
+        if (bundleBytes.subarray(0, 512).includes(0)) {
+            return skip(`staged ts_path bundle is not JS text (Hermes bytecode? production build?): '${bundlePath}'`);
+        }
+        const bundle = bundleBytes.toString('utf8');
         if (bundle.includes(BRIDGE_SENTINEL)) {
             return skip(`bundle already contains the bridge: '${bundlePath}'`);
         }
