@@ -24,7 +24,7 @@ import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
 import type { CustomRequestEvent, ProcessCrashEventData } from 'roku-debug';
-import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent } from 'roku-debug';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent, isProcessStagingDirCustomRequest } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
@@ -416,6 +416,8 @@ export class Extension {
                 response = await this.executeTask(event.body.task);
             } else if (isShowPopupMessageCustomRequest(event)) {
                 response = await this.showMessage(event);
+            } else if (isProcessStagingDirCustomRequest(event)) {
+                response = await this.processStagingDir(event);
             }
             //send the response back to the server
             await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
@@ -454,6 +456,19 @@ export class Extension {
         execution = await vscode.tasks.executeTask(targetTask);
         console.log(execution);
         await taskFinished;
+    }
+
+    /**
+     * Handle the `processStagingDir` reverse request from roku-debug. For now this just proves the round-trip
+     * works: it logs the projects the debug adapter sent and confirms each staging dir exists on disk.
+     */
+    private async processStagingDir(event: CustomRequestEvent<{ projects: Array<{ type: string; stagingDir: string }> }>) {
+        const projects = event.body.projects ?? [];
+        console.log(`[processStagingDir] received ${projects.length} project(s) to process`);
+        for (const project of projects) {
+            const exists = await fsExtra.pathExists(project.stagingDir);
+            console.log(`[processStagingDir] ${project.type} staging dir ${exists ? 'exists' : 'is MISSING'}: ${project.stagingDir}`);
+        }
     }
 
     /**
