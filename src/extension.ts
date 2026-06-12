@@ -25,7 +25,7 @@ import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
 import type { CustomRequestEvent, ProcessCrashEventData } from 'roku-debug';
-import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent } from 'roku-debug';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent, isProcessStagingDirCustomRequest } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
@@ -419,6 +419,17 @@ export class Extension {
         // in a loop until we successfully attach or until the parent session ends.
 
         while (this.debugSessions.has(parentSession)) {
+            // The node debugger attaches against the bundle's local rootDir. If that directory has
+            // been deleted (e.g. a `dist-build/bundle` wiped mid-session), vscode rejects the attach
+            // synchronously with a modal "The configured `cwd` ... does not exist." Since that
+            // rejection never hits the attach timeout below, retrying here would hot-loop and spam
+            // the modal as fast as the user can dismiss it. Bail instead — attach cannot succeed
+            // without the rootDir, and it will be retried the next time a debug session starts.
+            if (!fsExtra.existsSync(launchConfig.rootDir)) {
+                console.error(`Cannot attach node debugger: rootDir does not exist at '${launchConfig.rootDir}'`);
+                return false;
+            }
+
             //rewrite the debug session name to indicate it's the BRS session (this is just for user clarity in the UI, it has no functional effect)
             parentSession.name = `${parentSession.name.replace(/ \(BRS\)$/, '')} (BRS)`;
             try {
@@ -604,6 +615,8 @@ export class Extension {
                 response = await this.executeTask(event.body.task);
             } else if (isShowPopupMessageCustomRequest(event)) {
                 response = await this.showMessage(event);
+            } else if (isProcessStagingDirCustomRequest(event)) {
+                response = await this.processStagingDir(event);
             }
             //send the response back to the server
             await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
@@ -626,7 +639,7 @@ export class Extension {
         const tasks = await vscode.tasks.fetchTasks();
         const targetTask = tasks.find(x => x.name === taskName);
         if (!targetTask) {
-            throw new Error(`Cannot find task '$taskName}'`);
+            throw new Error(`Cannot find task '${taskName}'`);
         }
         let execution: vscode.TaskExecution;
         let taskFinished = new Promise<void>((resolve, reject) => {
@@ -642,6 +655,19 @@ export class Extension {
         execution = await vscode.tasks.executeTask(targetTask);
         console.log(execution);
         await taskFinished;
+    }
+
+    /**
+     * Handle the `processStagingDir` reverse request from roku-debug. For now this just proves the round-trip
+     * works: it logs the projects the debug adapter sent and confirms each staging dir exists on disk.
+     */
+    private async processStagingDir(event: CustomRequestEvent<{ projects: Array<{ type: string; stagingDir: string }> }>) {
+        const projects = event.body.projects ?? [];
+        console.log(`[processStagingDir] received ${projects.length} project(s) to process`);
+        for (const project of projects) {
+            const exists = await fsExtra.pathExists(project.stagingDir);
+            console.log(`[processStagingDir] ${project.type} staging dir ${exists ? 'exists' : 'is MISSING'}: ${project.stagingDir}`);
+        }
     }
 
     /**
