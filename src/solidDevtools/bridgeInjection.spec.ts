@@ -143,6 +143,7 @@ describe('bridgeInjection', () => {
             expect(statement).to.include(`${name}:typeof ${name}==='function'?${name}:void 0`);
         }
         expect(statement).to.include('$PROXY:typeof $PROXY==="undefined"?void 0:$PROXY');
+        expect(statement).to.include('getExecCount:function(){return typeof ExecCount==="number"?ExecCount:-1}');
         //the statement must be single-line so the same-line insert never shifts the source map
         expect(statement).to.not.include('\n');
     });

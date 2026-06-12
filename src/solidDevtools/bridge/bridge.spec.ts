@@ -165,6 +165,26 @@ describe('solidDevtools bridge', () => {
             dispose(root);
             assert.isAbove(sdt().version(), v0);
         });
+
+        it('derives version from solid ExecCount when available — no afterUpdate hook at all', () => {
+            let execCount = 7;
+            sdt().__connect({ ...api, getExecCount: () => execCount });
+            const v0 = sdt().version(); // first client call — observation starts
+            assert.isNull(hooks.afterUpdate, 'ExecCount makes the update-path hook unnecessary');
+            execCount += 3; // solid ran 3 update cycles
+            assert.equal(sdt().version(), v0 + 3);
+            // local bumps (e.g. root disposal) still contribute
+            const root = makeRoot();
+            hooks.afterCreateOwner(root);
+            dispose(root);
+            assert.isAbove(sdt().version(), v0 + 3);
+        });
+
+        it('falls back to the afterUpdate hook when getExecCount reports unavailable', () => {
+            sdt().__connect({ ...api, getExecCount: () => -1 });
+            sdt().version();
+            assert.isFunction(hooks.afterUpdate);
+        });
     });
 
     describe('lazy tree', () => {

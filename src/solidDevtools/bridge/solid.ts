@@ -30,6 +30,13 @@ export interface SolidApi {
     getListener?: () => any;
     /** solid's `$PROXY` symbol — optional; without it store detection degrades (stores show as values). */
     $PROXY?: symbol;
+    /**
+     * Reads solid's internal `ExecCount` (bumped once per update cycle) — optional;
+     * returns -1 when the identifier wasn't available at injection time. When present,
+     * the bridge derives its change-detection version from it instead of installing an
+     * afterUpdate hook, leaving the app's update path completely untouched.
+     */
+    getExecCount?: () => number;
 }
 
 let api: SolidApi | null = null;

@@ -606,9 +606,28 @@ function installHooks(api: SolidApi): void {
 let observing = false;
 
 /**
- * Start live-refresh observation (the afterUpdate → version++ hook) on the FIRST
- * client interaction. Until a devtools client talks to the bridge, the app's
- * update path carries zero bridge code.
+ * The client-visible change counter: our local `version` (root/anchor disposals,
+ * globals registration) PLUS solid's own ExecCount when the connect payload could
+ * provide it — solid bumps ExecCount once per update cycle anyway, so reading it
+ * gives change detection with ZERO code on the app's update path. Both terms are
+ * monotonic, so the sum is a valid "did anything change since last poll" signal.
+ */
+function currentVersion(): number {
+    const api = getSolidApi();
+    if (api?.getExecCount) {
+        const n = api.getExecCount();
+        if (typeof n === 'number' && n >= 0) {
+            return version + n;
+        }
+    }
+    return version;
+}
+
+/**
+ * Start live-refresh observation on the FIRST client interaction. Until a devtools
+ * client talks to the bridge, the app's update path carries zero bridge code — and
+ * when solid's ExecCount is readable (the normal case), it stays that way even
+ * while observing; the afterUpdate → version++ hook is only the fallback.
  */
 function ensureObserving(): void {
     const api = getSolidApi();
@@ -616,6 +635,10 @@ function ensureObserving(): void {
         return;
     }
     observing = true;
+    const execCount = api.getExecCount ? api.getExecCount() : -1;
+    if (typeof execCount === 'number' && execCount >= 0) {
+        return; // ExecCount drives version — no hook needed
+    }
     const hooks = api.hooks;
     const prevUpdate = hooks.afterUpdate;
     hooks.afterUpdate = prevUpdate
@@ -677,11 +700,11 @@ function installSdt(): void {
         // "status|rootsCount|anchorsCount|orphansCount|version"
         status: () => {
             ensureObserving();
-            return [status, roots.size, anchors.size, orphanSignals.size, version].join('|');
+            return [status, roots.size, anchors.size, orphanSignals.size, currentVersion()].join('|');
         },
         version: () => {
             ensureObserving();
-            return version;
+            return currentVersion();
         },
         // --- lazy/virtualized tree + inspector API (one shared result buffer —
         // the extension must SERIALIZE these calls) ---

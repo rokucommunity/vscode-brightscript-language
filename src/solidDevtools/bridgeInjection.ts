@@ -72,7 +72,11 @@ export function buildConnectStatement(devHooksVarName: string) {
         `${fn('untrack')},` +
         `${fn('createRoot')},` +
         `${fn('getListener')},` +
-        '$PROXY:typeof $PROXY==="undefined"?void 0:$PROXY' +
+        '$PROXY:typeof $PROXY==="undefined"?void 0:$PROXY,' +
+        //solid's own update-cycle counter (declared right before DevHooks, bumped once
+        //per runUpdates batch) — lets the bridge answer "did anything change?" without
+        //installing any hook on the update path. -1 = unavailable (bridge falls back).
+        'getExecCount:function(){return typeof ExecCount==="number"?ExecCount:-1}' +
         '});}catch(e){try{console.log("[SDT] devtools connect failed: "+e);}catch(e2){}}';
 }
 
