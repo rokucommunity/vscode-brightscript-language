@@ -4,6 +4,7 @@ import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { SolidDevtoolsTransport } from '../solidDevtools/transport';
+import { vscodeContextManager } from '../managers/VscodeContextManager';
 import type { SolidDevtoolsRequest, SolidDevtoolsResult } from '../solidDevtools/protocol';
 
 /**
@@ -42,6 +43,18 @@ export class SolidDevtoolsViewProvider extends BaseWebviewViewProvider {
 
     /** Keep tree/inspector state when the panel tab is in the background. */
     protected retainPanelContextWhenHidden = true;
+
+    /** While the editor panel is open, hide the sidebar view (its `when` clause in
+     * package.json watches this context key) — two live copies would be redundant
+     * and would double the polling traffic on the evaluate channel. */
+    protected onPanelAttached(panel: vscode.WebviewPanel) {
+        void vscodeContextManager.set(SolidDevtoolsViewProvider.panelOpenContextKey, true);
+        panel.onDidDispose(() => {
+            void vscodeContextManager.set(SolidDevtoolsViewProvider.panelOpenContextKey, false);
+        });
+    }
+
+    private static readonly panelOpenContextKey = 'brightscript.solidDevtoolsPanelOpen';
 
     public onDidTerminateDebugSession(e: vscode.DebugSession) {
         this.transport.onDidTerminateDebugSession(e);

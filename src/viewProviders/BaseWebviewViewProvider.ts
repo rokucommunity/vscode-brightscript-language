@@ -330,7 +330,12 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
             ]
         };
         panel.webview.html = await this.getHtmlForWebview();
+        this.onPanelAttached(panel);
     }
+
+    /** Called exactly once per editor panel, when it's created or restored after a
+     * window reload (not on reveal) — e.g. to track the panel's lifetime. */
+    protected onPanelAttached(panel: vscode.WebviewPanel) { }
 
     /**
      * Restore this provider's editor panel across window reloads — without a

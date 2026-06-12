@@ -3,7 +3,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import Chevron from '../../shared/Chevron.svelte';
-    import { utils } from '../../utils';
     import { solidDevtools } from './SolidDevtoolsView';
     import type { SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
@@ -17,18 +16,11 @@
 
     const { selectedId } = solidDevtools;
 
-    // The webview is destroyed whenever the sidebar view collapses, so expansion
-    // lives in webview state (utils storage) keyed by node id — same pattern as the
-    // registry view. Node ids are stable for the lifetime of one app run.
-    const expandedStorageKey = `solidDevtools:expanded:${node.id}`;
-    let expanded = utils.getStorageBooleanValue(expandedStorageKey);
-    $: {
-        if (expanded) {
-            utils.setStorageValue(expandedStorageKey, true);
-        } else {
-            utils.deleteStorageValue(expandedStorageKey);
-        }
-    }
+    // The webview is destroyed when the sidebar collapses (and pop-out is a different
+    // webview entirely), so expansion lives in the shared extension-side UI state.
+    // Node ids are stable for the lifetime of one app run.
+    let expanded = solidDevtools.isExpanded(node.id);
+    $: solidDevtools.setExpanded(node.id, expanded);
     let loaded = false;
     /** A fetch is in flight (re-entry guard — set for background refreshes too). */
     let fetching = false;

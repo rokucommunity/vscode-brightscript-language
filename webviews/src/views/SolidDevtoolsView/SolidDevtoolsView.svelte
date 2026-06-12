@@ -2,7 +2,6 @@
     window.vscode = acquireVsCodeApi();
     import { onDestroy } from 'svelte';
     import { intermediary } from '../../ExtensionIntermediary';
-    import { utils } from '../../utils';
     import { solidDevtools } from './SolidDevtoolsView';
     import TreeNode from './TreeNode.svelte';
     import ValuePreview from './ValuePreview.svelte';
@@ -11,7 +10,7 @@
     const POLL_MS = 1500;
     const { selectedId } = solidDevtools;
 
-    let live = utils.getStorageBooleanValue('solidDevtools:live', true);
+    let live = true;
     let roots: SolidTreeNode[] = [];
     let haveTree = false;
     let connected: boolean | undefined;
@@ -126,7 +125,7 @@
         if (!id) {
             return;
         }
-        utils.setStorageValue('solidDevtools:selectedId', id);
+        solidDevtools.setSelected(id);
         // new node — reset the flash baseline so the first render doesn't flash everything
         prevRowJson = {};
         rowVersions = {};
@@ -208,18 +207,25 @@
     }
 
     function onLiveChange() {
-        utils.setStorageValue('solidDevtools:live', live);
+        solidDevtools.setLive(live);
         updateStatusLine();
+    }
+
+    async function init() {
+        // the shared UI state must be loaded BEFORE the tree renders — TreeNodes read
+        // their expansion from it synchronously at mount
+        const state = await solidDevtools.loadUiState();
+        live = state.live;
+        updateStatusLine();
+        if (typeof state.selectedId === 'string') {
+            selectedId.set(state.selectedId);
+        }
+        await loadRoots('initial');
     }
 
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
-    void loadRoots('initial');
-    // restore the previous selection (set AFTER the subscription above so it fires)
-    const storedSelectedId = utils.getStorageValue('solidDevtools:selectedId');
-    if (typeof storedSelectedId === 'string') {
-        selectedId.set(storedSelectedId);
-    }
+    void init();
 </script>
 
 <div id="container">

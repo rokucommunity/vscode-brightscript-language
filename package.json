@@ -261,7 +261,8 @@
                     "id": "solidDevtoolsView",
                     "contextualTitle": "Solid Devtools",
                     "name": "Solid Devtools",
-                    "type": "webview"
+                    "type": "webview",
+                    "when": "!brightscript.solidDevtoolsPanelOpen"
                 }
             ]
         },
