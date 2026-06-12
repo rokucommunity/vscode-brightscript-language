@@ -28,7 +28,7 @@
 import { utf8ToBase64 } from './base64';
 import type { SolidApi } from './solid';
 import {
-    getNodeName, getNodeType, getOwnerType, getSolidApi, isSolidRoot,
+    getNodeName, getNodeType, getOwnerType, getSolidApi,
     onOwnerCleanup, runInThrowawayRoot, setSolidApi, untrackRead
 } from './solid';
 import { encodeValue, expandRef, NODE_BUDGET, resetValueRefs } from './values';
@@ -536,51 +536,96 @@ function registerGlobals(namespace: string, record: any): void {
 
 // ---- connect (called by the line roku-debug injects after solid's DevHooks) ----
 
+// These hooks run on the app's HOT PATHS (every owner / signal creation, every
+// update cycle), so their passive cost must be as close to zero as possible — the
+// goal is that a dev build with the bridge connected costs no more than solid DEV
+// itself. Principles:
+//  - the per-call fast path is ONE property check, no try/catch (every operation on
+//    it is a throw-free primitive read); only the rare root-capture branch (a few
+//    hundred hits vs tens of thousands) carries a try/catch + allocations
+//  - no version bump per owner: once a client observes, afterUpdate covers all graph
+//    activity (creation always happens inside an update cycle); root/anchor DISPOSAL
+//    bumps version from the (rare) cleanup callbacks
+//  - afterUpdate isn't installed AT ALL until a devtools client actually talks to
+//    the bridge (ensureObserving), so idle debug sessions pay nothing on writes
+//  - the prev-hook chaining branch is specialized away when there's no prev hook
+
+/** Rare path: record a live root + self-clean registration. */
+function captureRoot(owner: any): void {
+    try {
+        roots.add(owner);
+        const cleanup = (): void => {
+            roots.delete(owner);
+            version++; // disposal is graph activity → triggers a live refresh
+        };
+        if (owner.cleanups === null || owner.cleanups === undefined) {
+            owner.cleanups = [cleanup];
+        } else {
+            owner.cleanups.push(cleanup);
+        }
+    } catch {
+        // never break app rendering
+    }
+}
+
 function installHooks(api: SolidApi): void {
     const hooks = api.hooks;
-    // Root collection — a cheap, NON-reactive hook (records a ref only; no walking /
-    // observation). Roots self-clean on disposal so the Set tracks only LIVE roots.
+    // Root collection: createRoot owners are the only owners with NO `fn` property,
+    // so one undefined-check filters the storm of computations/components/effects.
     const prevCreateOwner = hooks.afterCreateOwner;
-    hooks.afterCreateOwner = function afterCreateOwner(owner: any) {
-        version++;
-        try {
-            if (isSolidRoot(owner) && !roots.has(owner) && roots.size < ROOT_CAP) {
-                roots.add(owner);
-                onOwnerCleanup(owner, () => {
-                    roots.delete(owner);
-                    version++; // disposal is graph activity → triggers a live refresh
-                });
+    hooks.afterCreateOwner = prevCreateOwner
+        ? function afterCreateOwner(owner: any) {
+            if (owner.fn === undefined && roots.size < ROOT_CAP) {
+                captureRoot(owner);
             }
-        } catch {
-            // never break app rendering
-        }
-        if (prevCreateOwner) {
             prevCreateOwner(owner);
         }
-    };
-    const prevUpdate = hooks.afterUpdate;
-    hooks.afterUpdate = function afterUpdate() {
-        version++;
-        if (prevUpdate) {
-            prevUpdate();
-        }
-    };
+        : function afterCreateOwner(owner: any) {
+            if (owner.fn === undefined && roots.size < ROOT_CAP) {
+                captureRoot(owner);
+            }
+        };
     // Orphan capture: unowned signals (module-level globals) have no `.graph`
     // (registerGraph only sets it under an Owner). __connect runs during solid's
     // module init — BEFORE any app module — so import-time globals are caught.
     const prevCreateSignal = hooks.afterCreateSignal;
-    hooks.afterCreateSignal = function afterCreateSignal(s: any) {
-        try {
-            if (s && !s.graph && orphanSignals.size < ORPHAN_CAP) {
+    hooks.afterCreateSignal = prevCreateSignal
+        ? function afterCreateSignal(s: any) {
+            if (s.graph === undefined && orphanSignals.size < ORPHAN_CAP) {
                 orphanSignals.add(s);
             }
-        } catch {
-            // never break app rendering
-        }
-        if (prevCreateSignal) {
             prevCreateSignal(s);
         }
-    };
+        : function afterCreateSignal(s: any) {
+            if (s.graph === undefined && orphanSignals.size < ORPHAN_CAP) {
+                orphanSignals.add(s);
+            }
+        };
+}
+
+let observing = false;
+
+/**
+ * Start live-refresh observation (the afterUpdate → version++ hook) on the FIRST
+ * client interaction. Until a devtools client talks to the bridge, the app's
+ * update path carries zero bridge code.
+ */
+function ensureObserving(): void {
+    const api = getSolidApi();
+    if (observing || !connected || !api) {
+        return;
+    }
+    observing = true;
+    const hooks = api.hooks;
+    const prevUpdate = hooks.afterUpdate;
+    hooks.afterUpdate = prevUpdate
+        ? function afterUpdate() {
+            version++;
+            prevUpdate();
+        }
+        : function afterUpdate() {
+            version++;
+        };
 }
 
 /**
@@ -626,12 +671,24 @@ function installSdt(): void {
     g.__SDT = {
         __sdtBridge: true,
         __connect: __connect,
+        // status/version/lazyRoots are the panel's entry points — the first call
+        // starts live-refresh observation (until then the app's update path carries
+        // zero bridge code)
         // "status|rootsCount|anchorsCount|orphansCount|version"
-        status: () => [status, roots.size, anchors.size, orphanSignals.size, version].join('|'),
-        version: () => version,
+        status: () => {
+            ensureObserving();
+            return [status, roots.size, anchors.size, orphanSignals.size, version].join('|');
+        },
+        version: () => {
+            ensureObserving();
+            return version;
+        },
         // --- lazy/virtualized tree + inspector API (one shared result buffer —
         // the extension must SERIALIZE these calls) ---
-        lazyRoots: lazyRoots, // -> total b64 length of the result; drain via readResult
+        lazyRoots: () => {
+            ensureObserving();
+            return lazyRoots();
+        }, // -> total b64 length of the result; drain via readResult
         lazyChildren: lazyChildren, // (idStr) -> total b64 length
         lazyInspect: lazyInspect, // (idStr) -> total b64 length; props/signals/memos/stores/value
         lazyValue: lazyValue, // (ref, offset) -> total b64 length; expand a collapsed value
@@ -651,6 +708,7 @@ export function __resetSdtBridgeForTests(): void {
     status = 'waiting';
     lastError = '';
     connected = false;
+    observing = false;
     version = 0;
     roots.clear();
     anchors.clear();

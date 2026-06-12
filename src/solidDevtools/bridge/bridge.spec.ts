@@ -117,12 +117,15 @@ describe('solidDevtools bridge', () => {
             assert.equal(sdt().status(), 'waiting|0|0|0|0');
         });
 
-        it('connects with a valid payload and installs hooks', () => {
+        it('connects with a valid payload and installs creation hooks', () => {
             assert.equal(sdt().__connect(api), 'ok');
-            assert.equal(sdt().status().split('|')[0], 'ready');
             assert.isFunction(hooks.afterCreateOwner);
-            assert.isFunction(hooks.afterUpdate);
             assert.isFunction(hooks.afterCreateSignal);
+            // afterUpdate stays uninstalled until a client interacts — idle debug
+            // sessions pay zero bridge cost on the update path
+            assert.isNull(hooks.afterUpdate);
+            assert.equal(sdt().status().split('|')[0], 'ready'); // first client call…
+            assert.isFunction(hooks.afterUpdate); // …starts observation
         });
 
         it('rejects a bad payload without throwing', () => {
@@ -145,14 +148,22 @@ describe('solidDevtools bridge', () => {
     });
 
     describe('version', () => {
-        it('bumps on owner creation and updates', () => {
+        it('bumps on updates once a client is observing (creation itself does not bump)', () => {
             sdt().__connect(api);
-            const v0 = sdt().version();
+            const v0 = sdt().version(); // first client call installs afterUpdate
             hooks.afterCreateOwner(makeRoot());
-            assert.isAbove(sdt().version(), v0);
-            const v1 = sdt().version();
+            assert.equal(sdt().version(), v0, 'owner creation alone must not bump (afterUpdate covers it in real apps)');
             hooks.afterUpdate();
-            assert.isAbove(sdt().version(), v1);
+            assert.isAbove(sdt().version(), v0);
+        });
+
+        it('bumps on root disposal (cleanup path)', () => {
+            sdt().__connect(api);
+            const root = makeRoot();
+            hooks.afterCreateOwner(root);
+            const v0 = sdt().version();
+            dispose(root);
+            assert.isAbove(sdt().version(), v0);
         });
     });
 
