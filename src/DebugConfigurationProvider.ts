@@ -158,6 +158,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
 
+            //advertise the optional features this client supports to the debug adapter. This is populated by the
+            //extension itself (not a user-facing setting) and gates optional roku-debug behavior like the
+            //`processStagingDir` reverse request.
+            result.clientCapabilities = {
+                supportsProcessStagingDir: true
+            };
+
             return result;
         } catch (e) {
             //log any exceptions to the extension panel
