@@ -8,6 +8,7 @@ import rokuRegistryView from './views/RokuRegistryView/RokuRegistryView.svelte';
 import rokuAppOverlaysView from './views/RokuAppOverlaysView/RokuAppOverlaysView.svelte';
 import sceneGraphInspectorView from './views/SceneGraphInspectorView/SceneGraphInspectorView.svelte';
 import rokuReplView from './views/RokuReplView/RokuReplView.svelte';
+import solidDevtoolsView from './views/SolidDevtoolsView/SolidDevtoolsView.svelte';
 
 
 import './style.css';
@@ -33,7 +34,8 @@ const views = {
     rokuRegistryView,
     rokuAppOverlaysView,
     sceneGraphInspectorView,
-    rokuReplView
+    rokuReplView,
+    solidDevtoolsView
 };
 
 const app = new views[viewName]({

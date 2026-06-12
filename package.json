@@ -159,7 +159,7 @@
         "onDebug",
         "onDebugDynamicConfigurations:brightscript",
         "onTaskType:brightscript",
-        "onWebviewPanel:sdtTree"
+        "onWebviewPanel:solidDevtoolsView"
     ],
     "contributes": {
         "taskDefinitions": [
@@ -255,6 +255,12 @@
                 {
                     "id": "rokuReplView",
                     "name": "Roku REPL",
+                    "type": "webview"
+                },
+                {
+                    "id": "solidDevtoolsView",
+                    "contextualTitle": "Solid Devtools",
+                    "name": "Solid Devtools",
                     "type": "webview"
                 }
             ]
@@ -475,6 +481,11 @@
                 {
                     "command": "extension.brightscript.openSceneGraphInspectorInPanel",
                     "when": "view == sceneGraphInspectorView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.openSolidDevtoolsInPanel",
+                    "when": "view == solidDevtoolsView",
                     "group": "navigation@1"
                 },
                 {
@@ -3328,19 +3339,10 @@
         ],
         "commands": [
             {
-                "command": "extension.brightscript.devtoolsSpike",
-                "title": "Solid Devtools: Run Evaluate Channel Spike",
-                "category": "BrightScript"
-            },
-            {
-                "command": "extension.brightscript.devtoolsReadTree",
-                "title": "Solid Devtools: Read On-Device Tree",
-                "category": "BrightScript"
-            },
-            {
-                "command": "extension.brightscript.devtoolsPanel",
-                "title": "Solid Devtools: Open Tree Panel",
-                "category": "BrightScript"
+                "command": "extension.brightscript.openSolidDevtoolsInPanel",
+                "title": "Open Solid Devtools In New Window",
+                "category": "BrightScript",
+                "icon": "$(link-external)"
             },
             {
                 "command": "extension.brightscript.debugRokuProject",

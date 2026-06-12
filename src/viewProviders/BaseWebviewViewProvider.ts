@@ -202,8 +202,11 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                     if (
                         events.find(x => (x.type === 'create' || x.type === 'update') && x.path?.toLowerCase()?.endsWith('index.html'))
                     ) {
-                        this.view.webview.html = '';
-                        this.view.webview.html = this.getIndexHtml();
+                        const webview = (this.view ?? this.panel)?.webview;
+                        if (webview) {
+                            webview.html = '';
+                            webview.html = this.getIndexHtml();
+                        }
                     }
                 });
             }
@@ -217,7 +220,9 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     * Get a webview-supported URI for the given path
     */
     private asWebviewUri(...parts: string[]) {
-        return this.view?.webview?.asWebviewUri?.(
+        // a provider may be opened panel-first (e.g. via its open-in-panel command)
+        // without its sidebar view ever having resolved
+        return (this.view ?? this.panel)?.webview?.asWebviewUri?.(
             vscode.Uri.file(
                 path.join(...parts)
             )
@@ -292,24 +297,56 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         }
 
         if (createPanel) {
-            this.panel = vscode.window.createWebviewPanel(
+            const panel = vscode.window.createWebviewPanel(
                 this.id,
                 await this.getViewNameById(this.id),
                 vscode.ViewColumn.Active,
                 {
                     // Enable javascript in the webview
                     enableScripts: true,
+                    retainContextWhenHidden: this.retainPanelContextWhenHidden,
                     localResourceRoots: [
                         vscode.Uri.file(this.webviewBasePath)
                     ]
                 }
             );
-
-            this.setupViewMessageObserver(this.panel.webview);
-
-            const html = await this.getHtmlForWebview();
-            this.panel.webview.html = html;
+            await this.attachPanel(panel);
         }
+    }
+
+    /** Subclasses may set this to keep the panel's webview state alive while its tab
+     * is in the background (more memory, but no reset on every tab switch). */
+    protected retainPanelContextWhenHidden = false;
+
+    /** Adopt an editor panel (newly created, or restored after a window reload):
+     * wire messaging, (re-)assert webview options, and set the html. */
+    private async attachPanel(panel: vscode.WebviewPanel) {
+        this.panel = panel;
+        this.setupViewMessageObserver(panel.webview);
+        panel.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [
+                vscode.Uri.file(this.webviewBasePath)
+            ]
+        };
+        panel.webview.html = await this.getHtmlForWebview();
+    }
+
+    /**
+     * Restore this provider's editor panel across window reloads — without a
+     * registered serializer VS Code destroys the panel (the tab is forgotten).
+     * Call from the subclass constructor (i.e. during activation) and pair it with
+     * an `onWebviewPanel:<id>` activation event in package.json so the extension
+     * wakes up to revive the panel.
+     */
+    protected enablePanelRestore() {
+        this.extensionContext.subscriptions.push(
+            vscode.window.registerWebviewPanelSerializer(this.id, {
+                deserializeWebviewPanel: async (panel: vscode.WebviewPanel) => {
+                    await this.attachPanel(panel);
+                }
+            })
+        );
     }
 
     private async getViewNameById(viewId) {
