@@ -95,11 +95,21 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     }
 
     protected postMessage(message) {
-        this.view?.webview.postMessage(message).then(null, (reason) => {
-            console.log('postMessage failed: ', reason);
-        });
+        // resolve `.webview` lazily inside the guard: accessing it on a DISPOSED view or
+        // panel throws synchronously ("Webview is disposed") — e.g. after the pop-out
+        // editor is closed, or while the sidebar view is hidden behind the panel.
+        this.tryPostMessage(() => this.view?.webview, message);
+        this.tryPostMessage(() => this.panel?.webview, message);
+    }
 
-        this.panel?.webview.postMessage(message).then(null, (reason) => {
+    private tryPostMessage(resolveWebview: () => vscode.Webview | undefined, message) {
+        let webview: vscode.Webview | undefined;
+        try {
+            webview = resolveWebview();
+        } catch {
+            return; // the view/panel was disposed
+        }
+        webview?.postMessage(message).then(null, (reason) => {
             console.log('postMessage failed: ', reason);
         });
     }
@@ -271,6 +281,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         _token: vscode.CancellationToken
     ) {
         this.view = view;
+        // the sidebar view's webview is disposed when the view is hidden (e.g. behind the
+        // pop-out panel); drop the reference so we don't post to a dead webview
+        view.onDidDispose?.(() => {
+            if (this.view === view) {
+                this.view = undefined;
+            }
+        });
         const webview = view.webview;
         this.setupViewMessageObserver(webview);
 
@@ -327,6 +344,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
      * wire messaging, (re-)assert webview options, and set the html. */
     private async attachPanel(panel: vscode.WebviewPanel) {
         this.panel = panel;
+        // when the pop-out editor is closed, drop the reference so postMessage (and the
+        // dev-watcher reload) stop targeting the disposed panel
+        panel.onDidDispose?.(() => {
+            if (this.panel === panel) {
+                this.panel = undefined;
+            }
+        });
         this.setupViewMessageObserver(panel.webview);
         panel.webview.options = {
             enableScripts: true,
