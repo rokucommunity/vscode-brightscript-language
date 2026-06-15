@@ -124,6 +124,10 @@
         class="row"
         class:sel={$selectedId === node.id}
         class:focused={$focusedId === node.id}
+        data-node-id={node.id}
+        data-depth={depth}
+        data-expanded={expanded}
+        data-leaf={isLeaf}
         on:click={select}
         bind:this={rowEl}
         style="--indent: {depth * 8}px"

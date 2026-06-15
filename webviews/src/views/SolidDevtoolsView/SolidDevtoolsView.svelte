@@ -20,7 +20,7 @@
     import type { SolidDevtoolsResult, SolidEncodedValue, SolidInspectData, SolidInspectEntry, SolidInspectorPosition, SolidSearchMatch, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
     const POLL_MS = 1500;
-    const { selectedId, selectedNode, searchResults, searching, searchError } = solidDevtools;
+    const { selectedId, selectedNode, focusedId, searchResults, searching, searchError } = solidDevtools;
 
     // ---- inspector layout (position / collapse / resize / full-screen) -----------
     // Persisted per-workspace AND per-context (the sidebar view and the popped-out
@@ -123,6 +123,101 @@
             // pointer was already released
         }
         persistLayout();
+    }
+
+    // ---- keyboard navigation (VS Code tree parity; Enter inspects) --------------
+    // The tree pane holds focus (ARIA activedescendant style); the visible rows are read
+    // straight from the DOM — collapsed children aren't rendered, so the rows ARE the
+    // flattened visible list, in order. Expand/collapse/select reuse the rows' existing
+    // click handlers (dispatched programmatically) so there's no second source of truth.
+    let treepaneEl: HTMLElement;
+
+    function visibleRows(): HTMLElement[] {
+        return treepaneEl ? Array.from(treepaneEl.querySelectorAll<HTMLElement>('[data-node-id]')) : [];
+    }
+
+    function focusRow(row: HTMLElement | undefined) {
+        if (!row) {
+            return;
+        }
+        const id = row.getAttribute('data-node-id');
+        if (id) {
+            solidDevtools.setFocused(id);
+        }
+        row.scrollIntoView({ block: 'nearest' });
+    }
+
+    function onTreeKeydown(e: KeyboardEvent) {
+        if ($searchResults !== null) {
+            return; // results mode shows a list, not the tree
+        }
+        const rows = visibleRows();
+        if (!rows.length) {
+            return;
+        }
+        const i = rows.findIndex((r) => r.getAttribute('data-node-id') === $focusedId);
+        const current = i >= 0 ? rows[i] : undefined;
+        const expanded = current?.getAttribute('data-expanded') === 'true';
+        const leaf = current?.getAttribute('data-leaf') === 'true';
+        const twisty = () => current?.querySelector<HTMLElement>('.twisty')?.click();
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                focusRow(i < 0 ? rows[0] : rows[Math.min(i + 1, rows.length - 1)]);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                focusRow(i <= 0 ? rows[0] : rows[i - 1]);
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                if (!current) {
+                    focusRow(rows[0]);
+                } else if (leaf) {
+                    // nothing to expand
+                } else if (!expanded) {
+                    twisty(); // expand in place (focus stays; children load lazily)
+                } else {
+                    focusRow(rows[i + 1]); // already open → move to first child
+                }
+                break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                if (!current) {
+                    focusRow(rows[0]);
+                } else if (expanded) {
+                    twisty(); // collapse in place
+                } else {
+                    // move to parent: nearest preceding row at a shallower depth
+                    const depth = Number(current.getAttribute('data-depth') ?? '0');
+                    for (let j = i - 1; j >= 0; j--) {
+                        if (Number(rows[j].getAttribute('data-depth') ?? '0') < depth) {
+                            focusRow(rows[j]);
+                            break;
+                        }
+                    }
+                }
+                break;
+            case 'Enter':
+                e.preventDefault();
+                current?.click(); // select → inspect
+                break;
+            case ' ':
+                e.preventDefault();
+                if (!leaf) {
+                    twisty(); // Space toggles expand, like VS Code
+                }
+                break;
+            case 'Home':
+                e.preventDefault();
+                focusRow(rows[0]);
+                break;
+            case 'End':
+                e.preventDefault();
+                focusRow(rows[rows.length - 1]);
+                break;
+        }
     }
 
     // ---- search (debounced full-tree name search → results list) ----------------
@@ -230,6 +325,13 @@
         if (lastVersion === null) {
             lastVersion = result.data;
         } else if (result.data !== lastVersion) {
+            // Don't let the background refresh cascade preempt a user-initiated inspect —
+            // they share the one serialized device channel, so firing the cascade here
+            // would queue ahead and stall the inspect. Leave lastVersion untouched so the
+            // next poll refreshes once the inspect has landed.
+            if (inspectPending) {
+                return;
+            }
             lastVersion = result.data;
             if (result.data >= 0) {
                 refresh();
@@ -255,6 +357,10 @@
     let inspectMessage = 'Select a component to inspect its props, signals & memos.';
     let sections: InspectSection[] = [];
     let inspectPending = false;
+    /** Monotonic token: only the LATEST inspect updates state / clears pending, so a stale
+     * or superseded request can never strand the pane (the old `$selectedId !== id` compare
+     * could leave inspectPending stuck → "inspecting…" forever). */
+    let inspectSeq = 0;
     /** Raw inspect outcome for the selected node — shown (collapsed) when the body is
      * empty so an empty/odd payload is diagnosable instead of just looking blank. */
     let lastRaw: string | null = null;
@@ -274,12 +380,12 @@
         sections = [];
         lastRaw = null;
         inspectMessage = ''; // the "inspecting…" label (+ delayed spinner) covers loading
-        void inspectSelected(true);
+        void inspectSelected(true, id); // pass the FRESH id so we never inspect a stale node
     });
     onDestroy(unsubscribeSelected);
 
-    async function inspectSelected(force: boolean) {
-        const id = $selectedId;
+    async function inspectSelected(force: boolean, forId?: string) {
+        const id = forId ?? $selectedId;
         if (!id) {
             return;
         }
@@ -287,11 +393,12 @@
             // avoid piling up inspect requests on the serialized channel during live refresh
             return;
         }
+        const seq = ++inspectSeq; // this call's token; only the latest one updates state
         inspectPending = true;
         try {
             const result = await solidDevtools.sendRequest({ method: 'inspect', id: id });
-            if ($selectedId !== id) {
-                return; // selection moved on while this was in flight
+            if (seq !== inspectSeq) {
+                return; // a newer inspect superseded this one
             }
             if (!result.ok) {
                 inspectData = null;
@@ -303,18 +410,17 @@
             setInspectData(result.data);
         } catch (e: any) {
             // never leave the pane stuck at "inspecting…" — surface whatever broke
-            if ($selectedId === id) {
+            if (seq === inspectSeq) {
                 inspectData = null;
                 sections = [];
                 lastRaw = String(e?.stack ?? e?.message ?? e);
                 inspectMessage = `Inspect failed: ${e?.message ?? e}`;
             }
         } finally {
-            // only the inspect for the CURRENT selection owns the pending flag: a STALE
-            // request (issued for a node we've since swapped away from, or a background
-            // re-inspect) resolving here must not clear it, or the "inspecting…" indicator
-            // would vanish while the newly-selected node is still loading.
-            if ($selectedId === id) {
+            // only the LATEST inspect owns the pending flag — a superseded one resolving
+            // here must not clear it (and, crucially, the latest ALWAYS clears it, so the
+            // "inspecting…" indicator can never get stuck on).
+            if (seq === inspectSeq) {
                 inspectPending = false;
             }
         }
@@ -463,7 +569,14 @@
             class:dragging
             style="--isize: {(sizePct * 100).toFixed(2)}%"
         >
-            <div id="treepane">
+            <div
+                id="treepane"
+                bind:this={treepaneEl}
+                role="tree"
+                tabindex="0"
+                on:keydown={onTreeKeydown}
+                on:pointerdown={() => treepaneEl?.focus({ preventScroll: true })}
+            >
                 {#if $searchResults !== null}
                     <!-- search active: a results list replaces the tree; click to inspect -->
                     {#if $searching}
@@ -818,6 +931,12 @@
         min-width: 0;
         overflow: auto;
         padding: 2px 4px 8px;
+    }
+
+    /* the focused ROW is the keyboard-focus indicator (VS Code-style), so the tree pane
+       container itself doesn't need a focus ring */
+    #treepane:focus {
+        outline: none;
     }
 
     #inspect {
