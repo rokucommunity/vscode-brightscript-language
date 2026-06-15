@@ -29,6 +29,13 @@ export interface SolidLayoutState {
 
 export const DEFAULT_SOLID_LAYOUT: SolidLayoutState = { position: 'bottom', collapsed: false, sizePct: 0.42 };
 
+/** Default layout for a context (used until the user moves the inspector). The sidebar is
+ * narrow + tall, so the inspector reads best docked at the BOTTOM; the popped-out editor
+ * panel is wide, so it reads best docked at the RIGHT. */
+export function defaultLayoutForContext(context: SolidWebviewContext): SolidLayoutState {
+    return { ...DEFAULT_SOLID_LAYOUT, position: context === 'panel' ? 'right' : 'bottom' };
+}
+
 /** Persisted UI state for the Solid Devtools view, shared by the sidebar + panel copies.
  * `expanded`/`selectedId` are per-debug-session (node ids); `live`/`layouts`/`perf` outlive
  * a session. `layouts` is keyed by context so the sidebar and pop-out remember separately. */

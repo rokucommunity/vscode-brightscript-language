@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import { intermediary } from '../../ExtensionIntermediary';
 import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
-import { SOLID_DEVTOOLS_UI_STATE_KEY, DEFAULT_SOLID_LAYOUT, resetUiStateForNewSession } from '../../../../src/solidDevtools/protocol';
+import { SOLID_DEVTOOLS_UI_STATE_KEY, defaultLayoutForContext, resetUiStateForNewSession } from '../../../../src/solidDevtools/protocol';
 import type { SolidDevtoolsPerfSample, SolidDevtoolsRequest, SolidDevtoolsResponseData, SolidDevtoolsResult, SolidDevtoolsUiState, SolidEncodedValue, SolidLayoutState, SolidSearchMatch, SolidTreeNode, SolidWebviewContext } from '../../../../src/solidDevtools/protocol';
 
 /** A perf sample stamped with its receipt time (for rolling-window throughput). */
@@ -106,9 +106,10 @@ class SolidDevtoolsViewModel {
         void intermediary.updateWorkspaceState(SOLID_DEVTOOLS_UI_STATE_KEY, this.uiState);
     }
 
-    /** This context's persisted inspector layout, with defaults filled in. */
+    /** This context's persisted inspector layout, with context-aware defaults filled in
+     * (sidebar → bottom, pop-out panel → right). */
     public getLayout(): SolidLayoutState {
-        return { ...DEFAULT_SOLID_LAYOUT, ...this.uiState.layouts?.[this.context] };
+        return { ...defaultLayoutForContext(this.context), ...this.uiState.layouts?.[this.context] };
     }
 
     public saveLayout(layout: SolidLayoutState) {
