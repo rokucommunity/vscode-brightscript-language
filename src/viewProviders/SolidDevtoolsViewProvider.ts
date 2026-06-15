@@ -24,7 +24,11 @@ export class SolidDevtoolsViewProvider extends BaseWebviewViewProvider {
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
 
-        this.transport = new SolidDevtoolsTransport();
+        this.transport = new SolidDevtoolsTransport(
+            () => { },
+            // stream each timed round-trip to the webview's perf overlay
+            (sample) => this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onSolidDevtoolsPerfSample, { sample: sample }))
+        );
         this.transport.register(context);
 
         this.registerCommand(VscodeCommand.openSolidDevtoolsInPanel, async () => {

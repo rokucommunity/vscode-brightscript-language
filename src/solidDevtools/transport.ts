@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type {
     SolidChildrenData,
+    SolidDevtoolsPerfSample,
     SolidInspectData,
     SolidRootsData,
     SolidSearchData,
@@ -26,7 +27,9 @@ import type {
 export class SolidDevtoolsTransport {
 
     public constructor(
-        private log: (message: string) => void = () => { }
+        private log: (message: string) => void = () => { },
+        /** Emitted once per timed bridge round-trip — streamed to the perf overlay. */
+        private onPerf: (sample: SolidDevtoolsPerfSample) => void = () => { }
     ) { }
 
     /** base64 chars per evaluate — safely under the ~1000-char result cap. */
@@ -76,34 +79,37 @@ export class SolidDevtoolsTransport {
         if (!session) {
             return undefined;
         }
+        const t0 = Date.now();
         const r = await this.evaluate(session, 'globalThis.__SDT ? globalThis.__SDT.version() : -1');
+        const ms = Date.now() - t0;
         if (!r.ok) {
             this.cachedSession = undefined;
             return undefined;
         }
+        this.onPerf({ op: 'version', totalMs: ms, deviceMs: ms, roundTrips: 1, bytes: 0 });
         return Number(this.unquote(r.result));
     }
 
     public getRoots(): Promise<SolidRootsData | undefined> {
-        return this.fetchLazy('globalThis.__SDT ? globalThis.__SDT.lazyRoots() : -1');
+        return this.fetchLazy('roots', 'globalThis.__SDT ? globalThis.__SDT.lazyRoots() : -1');
     }
 
     public getChildren(id: string): Promise<SolidChildrenData | undefined> {
-        return this.fetchLazy(`globalThis.__SDT.lazyChildren(${JSON.stringify(id)})`);
+        return this.fetchLazy('children', `globalThis.__SDT.lazyChildren(${JSON.stringify(id)})`);
     }
 
     public inspect(id: string): Promise<SolidInspectData | undefined> {
-        return this.fetchLazy(`globalThis.__SDT.lazyInspect(${JSON.stringify(id)})`);
+        return this.fetchLazy('inspect', `globalThis.__SDT.lazyInspect(${JSON.stringify(id)})`);
     }
 
     /** Expand one collapsed value by ref (drill-down); refs come from the last inspect. */
     public getValue(ref: number, offset = 0): Promise<SolidValueData | undefined> {
-        return this.fetchLazy(`globalThis.__SDT.lazyValue(${Number(ref)}, ${Number(offset)})`);
+        return this.fetchLazy('value', `globalThis.__SDT.lazyValue(${Number(ref)}, ${Number(offset)})`);
     }
 
     /** Full-tree search by component name. */
     public search(query: string): Promise<SolidSearchData | undefined> {
-        return this.fetchLazy(`globalThis.__SDT.lazySearch(${JSON.stringify(query)})`);
+        return this.fetchLazy('search', `globalThis.__SDT.lazySearch(${JSON.stringify(query)})`);
     }
 
     /** True/false = bridge present on device; undefined = no evaluable session. */
@@ -250,13 +256,16 @@ export class SolidDevtoolsTransport {
      * then drain __SDT.readResult in CHUNK-sized pieces and JSON.parse the decoded
      * result. Returns undefined when there's no session or the drain/parse failed.
      */
-    private fetchLazy<T>(expr: string): Promise<T | undefined> {
+    private fetchLazy<T>(op: SolidDevtoolsPerfSample['op'], expr: string): Promise<T | undefined> {
         return this.serializeLazy(async () => {
             const session = await this.ensureSession();
             if (!session) {
                 return undefined;
             }
+            // deviceMs = the lazy call itself: on-device encode + one evaluate round-trip
+            const t0 = Date.now();
             const lenR = await this.evaluate(session, expr);
+            const deviceMs = Date.now() - t0;
             if (!lenR.ok) {
                 this.cachedSession = undefined;
                 return undefined;
@@ -265,10 +274,14 @@ export class SolidDevtoolsTransport {
             if (!(total >= 0)) {
                 return undefined;
             }
+            // drain the single device buffer in CHUNK-sized pieces, one evaluate each
+            const drainStart = Date.now();
             let b64 = '';
+            let roundTrips = 1; // the length call above
             let guard = 0;
             while (b64.length < total && guard++ < 100000) {
                 const r = await this.evaluate(session, `globalThis.__SDT.readResult(${b64.length}, ${SolidDevtoolsTransport.CHUNK})`);
+                roundTrips++;
                 if (!r.ok) {
                     break;
                 }
@@ -278,6 +291,14 @@ export class SolidDevtoolsTransport {
                 }
                 b64 += piece;
             }
+            this.onPerf({
+                op: op,
+                totalMs: Date.now() - t0,
+                deviceMs: deviceMs,
+                drainMs: Date.now() - drainStart,
+                roundTrips: roundTrips,
+                bytes: b64.length
+            });
             try {
                 return JSON.parse(this.b64decode(b64)) as T;
             } catch {

@@ -15,6 +15,7 @@
     import { solidDevtools, dedupeById } from './SolidDevtoolsView';
     import TreeNode from './TreeNode.svelte';
     import ValueNode from './ValueNode.svelte';
+    import PerfOverlay from './PerfOverlay.svelte';
     import type { SolidDevtoolsResult, SolidEncodedValue, SolidInspectData, SolidInspectEntry, SolidInspectorPosition, SolidSearchMatch, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
     const POLL_MS = 1500;
@@ -145,6 +146,7 @@
     onDestroy(() => clearTimeout(searchTimer));
 
     let live = true;
+    let showPerf = false;
     let roots: SolidTreeNode[] = [];
     let haveTree = false;
     let connected: boolean | undefined;
@@ -352,6 +354,10 @@
         updateStatusLine();
     }
 
+    function onPerfChange() {
+        solidDevtools.setPerf(showPerf);
+    }
+
     async function init() {
         // sidebar vs popped-out panel — picks which context's layout we read/write
         solidDevtools.setContext((window as any).webviewContext === 'panel' ? 'panel' : 'sidebar');
@@ -359,6 +365,7 @@
         // their expansion from it synchronously at mount
         const state = await solidDevtools.loadUiState();
         live = state.live;
+        showPerf = state.perf ?? false;
         const layout = solidDevtools.getLayout();
         position = layout.position;
         collapsed = layout.collapsed;
@@ -390,6 +397,12 @@
         // don't loadRoots here — the app is still booting; the version poll retries
     });
 
+    // Stream of timed bridge round-trips from the extension transport → perf overlay.
+    // Always recorded (cheap, bounded buffer) so toggling the overlay on shows recent history.
+    intermediary.observeEvent(ViewProviderEvent.onSolidDevtoolsPerfSample, (message) => {
+        solidDevtools.recordPerf(message.context.sample);
+    });
+
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
     void init();
@@ -399,6 +412,7 @@
     <div id="bar">
         <vscode-button appearance="secondary" on:click={refresh}>Refresh</vscode-button>
         <label class="live"><input type="checkbox" bind:checked={live} on:change={onLiveChange} /> Live</label>
+        <label class="live"><input type="checkbox" bind:checked={showPerf} on:change={onPerfChange} /> Perf</label>
         <span id="status">{statusLine}</span>
         {#if refreshing}
             <!-- fades in only after 400ms, so quick refreshes show nothing at all -->
@@ -570,6 +584,10 @@
                 {/if}
             </div>
         </div>
+    {/if}
+
+    {#if showPerf}
+        <PerfOverlay />
     {/if}
 </div>
 

@@ -2,7 +2,12 @@ import { writable } from 'svelte/store';
 import { intermediary } from '../../ExtensionIntermediary';
 import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
 import { SOLID_DEVTOOLS_UI_STATE_KEY, DEFAULT_SOLID_LAYOUT, resetUiStateForNewSession } from '../../../../src/solidDevtools/protocol';
-import type { SolidDevtoolsRequest, SolidDevtoolsResponseData, SolidDevtoolsResult, SolidDevtoolsUiState, SolidEncodedValue, SolidLayoutState, SolidSearchMatch, SolidTreeNode, SolidWebviewContext } from '../../../../src/solidDevtools/protocol';
+import type { SolidDevtoolsPerfSample, SolidDevtoolsRequest, SolidDevtoolsResponseData, SolidDevtoolsResult, SolidDevtoolsUiState, SolidEncodedValue, SolidLayoutState, SolidSearchMatch, SolidTreeNode, SolidWebviewContext } from '../../../../src/solidDevtools/protocol';
+
+/** A perf sample stamped with its receipt time (for rolling-window throughput). */
+export interface PerfSample extends SolidDevtoolsPerfSample {
+    t: number;
+}
 
 /** An expanded value's fetched children + paging cursor (drill-down state, by ref). */
 export interface DrillNode {
@@ -148,6 +153,44 @@ class SolidDevtoolsViewModel {
         }
         this.uiState.live = live;
         this.saveUiState();
+    }
+
+    public setPerf(enabled: boolean) {
+        if (this.uiState.perf === enabled) {
+            return;
+        }
+        this.uiState.perf = enabled;
+        this.saveUiState();
+    }
+
+    // ---- perf overlay metrics ---------------------------------------------------
+    // The transport (extension side) streams a timed sample per bridge round-trip via
+    // the onSolidDevtoolsPerfSample event; the view records them here so the overlay can
+    // show where the latency goes (device encode vs. drain round-trips) and spot the
+    // refresh-cascade saturating the single serialized channel.
+    public perfSamples = writable<PerfSample[]>([]);
+    private perfBuffer: PerfSample[] = [];
+    private static readonly PERF_CAP = 400;
+    private perfPublishTimer: ReturnType<typeof setTimeout> | undefined;
+
+    /** Record a round-trip (stamped on receipt). Publishes on a 200ms cadence so a
+     * refresh burst can't make the overlay's own rendering a bottleneck. */
+    public recordPerf(sample: SolidDevtoolsPerfSample) {
+        this.perfBuffer.push({ ...sample, t: Date.now() });
+        if (this.perfBuffer.length > SolidDevtoolsViewModel.PERF_CAP) {
+            this.perfBuffer.splice(0, this.perfBuffer.length - SolidDevtoolsViewModel.PERF_CAP);
+        }
+        if (this.perfPublishTimer === undefined) {
+            this.perfPublishTimer = setTimeout(() => {
+                this.perfPublishTimer = undefined;
+                this.perfSamples.set([...this.perfBuffer]);
+            }, 200);
+        }
+    }
+
+    public clearPerf() {
+        this.perfBuffer = [];
+        this.perfSamples.set([]);
     }
 
     /**
