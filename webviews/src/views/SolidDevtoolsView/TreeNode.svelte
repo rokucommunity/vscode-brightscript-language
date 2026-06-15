@@ -13,7 +13,15 @@
      * expand opens the whole chain instead of one level per click. */
     export let autoExpand = false;
 
-    const { selectedId } = solidDevtools;
+    const { selectedId, scrollTargetId } = solidDevtools;
+
+    let rowEl: HTMLElement;
+    // "Reveal in tree" from a search result sets scrollTargetId; the matching row scrolls
+    // itself into view once it exists (the tree cascades open to it async), then clears it.
+    $: if (rowEl && $scrollTargetId === node.id) {
+        rowEl.scrollIntoView({ block: 'center' });
+        solidDevtools.clearScrollTarget();
+    }
 
     // The webview is destroyed when the sidebar collapses (and pop-out is a different
     // webview entirely), so expansion lives in the shared extension-side UI state.
@@ -85,7 +93,7 @@
     }
 </script>
 
-<div class="row" class:sel={$selectedId === node.id} on:click={select}>
+<div class="row" class:sel={$selectedId === node.id} on:click={select} bind:this={rowEl}>
     <span class="twisty" class:loading on:click={toggle}>
         {#if !isLeaf}
             <Chevron {expanded} />

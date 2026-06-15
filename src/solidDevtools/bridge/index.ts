@@ -340,6 +340,86 @@ function lazyChildren(idStr: string): number {
     return setResult({ kind: 'children', parent: idStr, nodes: out });
 }
 
+/**
+ * Full-tree search by component NAME. Walks the SAME node layers the tree renders
+ * (lazyRoots' top level → collectStitchedChildren per layer) so results match what's
+ * shown — but unlike the lazy tree it descends the whole graph, not one layer, so it
+ * finds matches in not-yet-expanded subtrees. Each match carries a `›`-joined ancestor
+ * NAME path for context. Budget- and count-capped to keep the payload drainable.
+ */
+function lazySearch(queryStr: string): number {
+    const q = String(queryStr || '').trim().toLowerCase();
+    const matches: any[] = [];
+    if (q) {
+        const MAX_MATCHES = 200;
+        const budget = { n: 8000 };
+        // Top-level entries exactly as lazyRoots derives them (skipping GLOBALS leaves).
+        ensureRootIndex();
+        const topNodes: any[] = [];
+        const emitted = new Set<string>();
+        const pushTop = (owner: any, name: string) => {
+            const id = idOf(owner);
+            if (emitted.has(id)) {
+                return;
+            }
+            const kids: any[] = [];
+            collectStitchedChildren(owner, id, kids, new Set());
+            if (kids.length) {
+                emitted.add(id);
+                topNodes.push({ id: id, type: 'ANCHOR', name: name });
+            }
+        };
+        for (const entry of anchors) {
+            pushTop(entry[0], entry[1]);
+        }
+        const tops = topRoots.length ? topRoots : Array.from(roots);
+        for (const r of tops) {
+            const name = safeName(r);
+            if (name) {
+                pushTop(r, name);
+            }
+        }
+        if (!emitted.size) {
+            const seen = new Set<any>();
+            for (const r of tops) {
+                collectChildComponents(r, topNodes, seen, 0);
+            }
+        }
+        // DFS over the layers, carrying each node's ancestor NAME path (for display)
+        // and ancestor ID path (so the client can expand the tree to a match).
+        const stack: Array<{ node: any; path: string[]; idPath: string[] }> = [];
+        for (const n of topNodes) {
+            stack.push({ node: n, path: [], idPath: [] });
+        }
+        const visited = new Set<string>();
+        while (stack.length && matches.length < MAX_MATCHES && budget.n-- > 0) {
+            const item = stack.pop();
+            if (!item || visited.has(item.node.id)) {
+                continue;
+            }
+            visited.add(item.node.id);
+            const node = item.node;
+            const name = node.name || '';
+            if (name.toLowerCase().indexOf(q) >= 0) {
+                matches.push({ id: node.id, name: name, type: node.type, path: item.path.join(' › '), ancestorIds: item.idPath });
+            }
+            if (!node.leaf && node.id.charAt(0) !== '@') {
+                const owner = resolveOwner(node.id);
+                if (owner) {
+                    const kids: any[] = [];
+                    collectStitchedChildren(owner, node.id, kids, new Set());
+                    const childPath = item.path.concat(name || node.type || '?');
+                    const childIdPath = item.idPath.concat(node.id);
+                    for (const kid of kids) {
+                        stack.push({ node: kid, path: childPath, idPath: childIdPath });
+                    }
+                }
+            }
+        }
+    }
+    return setResult({ kind: 'search', matches: matches });
+}
+
 // ---- inspector: props / signals / memos / stores / value of one node ----------
 
 /** Read a registered global's CURRENT value without subscribing. */
@@ -793,6 +873,7 @@ function installSdt(): void {
         lazyChildren: lazyChildren, // (idStr) -> total b64 length
         lazyInspect: lazyInspect, // (idStr) -> total b64 length; props/signals/memos/stores/value
         lazyValue: lazyValue, // (ref, offset) -> total b64 length; expand a collapsed value
+        lazySearch: lazySearch, // (query) -> total b64 length; full-tree name search
         readResult: (off: number, len: number) => lastResult.slice(off, off + len),
         errorB64: () => utf8ToBase64(lastError || ''),
         // --- optional app-side hooks ---

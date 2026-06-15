@@ -3,13 +3,36 @@
     import { onDestroy } from 'svelte';
     import { intermediary } from '../../ExtensionIntermediary';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
+    import ListTree from 'svelte-codicons/lib/ListTree.svelte';
     import { solidDevtools, dedupeById } from './SolidDevtoolsView';
     import TreeNode from './TreeNode.svelte';
     import ValueNode from './ValueNode.svelte';
-    import type { SolidDevtoolsResult, SolidEncodedValue, SolidInspectData, SolidInspectEntry, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
+    import type { SolidDevtoolsResult, SolidEncodedValue, SolidInspectData, SolidInspectEntry, SolidSearchMatch, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
     const POLL_MS = 1500;
-    const { selectedId, selectedNode } = solidDevtools;
+    const { selectedId, selectedNode, searchResults, searching, searchError } = solidDevtools;
+
+    // ---- search (debounced full-tree name search → results list) ----------------
+    let searchText = '';
+    let searchTimer: ReturnType<typeof setTimeout> | undefined;
+    function onSearchInput() {
+        clearTimeout(searchTimer);
+        const q = searchText;
+        searchTimer = setTimeout(() => void solidDevtools.runSearch(q), 250);
+    }
+    function clearSearch() {
+        searchText = '';
+        clearTimeout(searchTimer);
+        void solidDevtools.runSearch('');
+    }
+    function pickSearchResult(match: SolidSearchMatch) {
+        solidDevtools.select({ id: match.id, name: match.name, type: match.type });
+    }
+    function revealResult(match: SolidSearchMatch) {
+        solidDevtools.revealInTree(match); // expand ancestors + select + request scroll
+        clearSearch(); // back to the tree, which remounts and cascades open to the match
+    }
+    onDestroy(() => clearTimeout(searchTimer));
 
     let live = true;
     let roots: SolidTreeNode[] = [];
@@ -266,6 +289,16 @@
         {/if}
     </div>
 
+    <div id="searchbar">
+        <input
+            type="search"
+            placeholder="Search components by name…"
+            bind:value={searchText}
+            on:input={onSearchInput}
+        />
+        {#if searchText}<button class="clearsearch" title="Clear" on:click={clearSearch}>✕</button>{/if}
+    </div>
+
     {#if guidance}
         <div class="guidance">{guidance}</div>
     {:else}
@@ -276,11 +309,40 @@
                 and rebuild.
             </div>
         {/if}
-        <div id="tree">
-            {#each roots as node (node.id)}
-                <TreeNode {node} {refreshEpoch} />
-            {/each}
-        </div>
+        {#if $searchResults !== null}
+            <!-- search active: a results list replaces the tree; click to inspect -->
+            <div id="tree">
+                {#if $searching}
+                    <div class="searchmsg">searching…</div>
+                {:else if $searchError}
+                    <div class="searchmsg">{$searchError}</div>
+                {:else if $searchResults.length === 0}
+                    <div class="searchmsg">No components match “{searchText}”.</div>
+                {:else}
+                    <div class="searchmsg">{$searchResults.length} match{$searchResults.length === 1 ? '' : 'es'}</div>
+                    {#each $searchResults as match (match.id)}
+                        <div class="result" class:sel={$selectedId === match.id} on:click={() => pickSearchResult(match)}>
+                            <div class="result-main">
+                                <div class="result-head">
+                                    <span class="name">{match.name}</span>
+                                    <span class="type">{match.type}</span>
+                                </div>
+                                {#if match.path}<div class="result-path">{match.path}</div>{/if}
+                            </div>
+                            <button class="reveal" title="Reveal in tree" on:click|stopPropagation={() => revealResult(match)}>
+                                <ListTree />
+                            </button>
+                        </div>
+                    {/each}
+                {/if}
+            </div>
+        {:else}
+            <div id="tree">
+                {#each roots as node (node.id)}
+                    <TreeNode {node} {refreshEpoch} />
+                {/each}
+            </div>
+        {/if}
         <div id="inspect">
             {#if $selectedNode || inspectData}
                 <!-- header from the selected tree node (always available) or the inspect payload -->
@@ -347,6 +409,117 @@
 
     #status {
         opacity: 0.65;
+    }
+
+    #searchbar {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 6px 6px;
+    }
+
+    #searchbar input {
+        flex: 1 1 auto;
+        min-width: 0;
+        font: inherit;
+        padding: 3px 6px;
+        color: var(--vscode-input-foreground);
+        background: var(--vscode-input-background);
+        border: 1px solid var(--vscode-input-border, transparent);
+        border-radius: 3px;
+    }
+
+    #searchbar input:focus {
+        outline: 1px solid var(--vscode-focusBorder);
+        outline-offset: -1px;
+    }
+
+    .clearsearch {
+        flex: 0 0 auto;
+        font: inherit;
+        cursor: pointer;
+        color: var(--vscode-foreground);
+        background: transparent;
+        border: none;
+        opacity: 0.6;
+        padding: 2px 4px;
+    }
+
+    .clearsearch:hover {
+        opacity: 1;
+    }
+
+    .searchmsg {
+        opacity: 0.55;
+        padding: 4px 4px 6px;
+        font-size: 11px;
+    }
+
+    .result {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 6px;
+        border-radius: 3px;
+        cursor: pointer;
+    }
+
+    .result-main {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .result:hover {
+        background: var(--vscode-list-hoverBackground);
+    }
+
+    .result.sel {
+        background: var(--vscode-list-activeSelectionBackground);
+        color: var(--vscode-list-activeSelectionForeground);
+    }
+
+    .reveal {
+        flex: 0 0 auto;
+        display: none;
+        align-items: center;
+        cursor: pointer;
+        color: inherit;
+        background: transparent;
+        border: none;
+        padding: 2px;
+        opacity: 0.7;
+    }
+
+    .result:hover .reveal,
+    .result.sel .reveal {
+        display: inline-flex;
+    }
+
+    .reveal:hover {
+        opacity: 1;
+    }
+
+    .result-head .name {
+        color: var(--vscode-symbolIcon-classForeground, #4ec9b0);
+    }
+
+    .result-head .type {
+        opacity: 0.45;
+        font-size: 11px;
+        margin-left: 6px;
+    }
+
+    .result-path {
+        opacity: 0.5;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .result.sel .result-path {
+        opacity: 0.75;
     }
 
     .spinner {

@@ -581,6 +581,59 @@ describe('solidDevtools bridge', () => {
         });
     });
 
+    describe('lazySearch', () => {
+        function buildTree() {
+            sdt().__connect(api);
+            const root = makeRoot();
+            root.name = 'App'; // named top root → ANCHOR
+            const screen = makeComponent('ScreenManager');
+            const list = makeComponent('Carousel');
+            link(root, screen);
+            link(screen, list);
+            hooks.afterCreateOwner(root);
+        }
+
+        it('finds a deep component by name with an ancestor name + id path', () => {
+            buildTree();
+            const data = callAndRead(sdt().lazySearch('carou'));
+            assert.equal(data.kind, 'search');
+            assert.lengthOf(data.matches, 1);
+            const m = data.matches[0];
+            assert.equal(m.name, 'Carousel');
+            assert.equal(m.type, 'COMPONENT');
+            assert.equal(m.path, 'App › ScreenManager');
+            // ancestorIds (top → parent) must actually lead to the match
+            assert.lengthOf(m.ancestorIds, 2);
+            const roots = callAndRead(sdt().lazyRoots());
+            assert.equal(m.ancestorIds[0], roots.nodes.find((n: any) => n.name === 'App').id, 'top ancestor is the App anchor');
+            const kids = callAndRead(sdt().lazyChildren(m.ancestorIds[m.ancestorIds.length - 1]));
+            assert.isTrue(kids.nodes.some((n: any) => n.id === m.id), 'last ancestor lists the match as a child');
+        });
+
+        it('is case-insensitive and returns every match', () => {
+            sdt().__connect(api);
+            const root = makeRoot();
+            root.name = 'App';
+            link(root, makeComponent('CardA'), makeComponent('CardB'));
+            hooks.afterCreateOwner(root);
+            const data = callAndRead(sdt().lazySearch('CARD'));
+            assert.deepEqual(data.matches.map((m: any) => m.name).sort(), ['CardA', 'CardB']);
+        });
+
+        it('matches the named anchor itself (empty path)', () => {
+            buildTree();
+            const data = callAndRead(sdt().lazySearch('app'));
+            const hit = data.matches.find((m: any) => m.name === 'App');
+            assert.isDefined(hit);
+            assert.equal(hit.path, '');
+        });
+
+        it('an empty/whitespace query returns no matches', () => {
+            buildTree();
+            assert.lengthOf(callAndRead(sdt().lazySearch('   ')).matches, 0);
+        });
+    });
+
     describe('result buffer + errors', () => {
         it('readResult slices the base64 buffer for chunked drains', () => {
             sdt().__connect(api);

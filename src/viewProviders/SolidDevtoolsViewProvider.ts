@@ -94,6 +94,9 @@ export class SolidDevtoolsViewProvider extends BaseWebviewViewProvider {
                 case 'value': {
                     return await this.resultOf(await this.transport.getValue(request.ref, request.offset ?? 0));
                 }
+                case 'search': {
+                    return await this.resultOf(await this.transport.search(request.query));
+                }
                 default: {
                     return { ok: false, reason: 'error', message: `unknown method ${(request as any)?.method}` };
                 }

@@ -3,6 +3,7 @@ import type {
     SolidChildrenData,
     SolidInspectData,
     SolidRootsData,
+    SolidSearchData,
     SolidValueData
 } from './protocol';
 
@@ -98,6 +99,11 @@ export class SolidDevtoolsTransport {
     /** Expand one collapsed value by ref (drill-down); refs come from the last inspect. */
     public getValue(ref: number, offset = 0): Promise<SolidValueData | undefined> {
         return this.fetchLazy(`globalThis.__SDT.lazyValue(${Number(ref)}, ${Number(offset)})`);
+    }
+
+    /** Full-tree search by component name. */
+    public search(query: string): Promise<SolidSearchData | undefined> {
+        return this.fetchLazy(`globalThis.__SDT.lazySearch(${JSON.stringify(query)})`);
     }
 
     /** True/false = bridge present on device; undefined = no evaluable session. */

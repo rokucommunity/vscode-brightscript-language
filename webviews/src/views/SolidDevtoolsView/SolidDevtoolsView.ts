@@ -2,7 +2,7 @@ import { writable } from 'svelte/store';
 import { intermediary } from '../../ExtensionIntermediary';
 import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
 import { SOLID_DEVTOOLS_UI_STATE_KEY } from '../../../../src/solidDevtools/protocol';
-import type { SolidDevtoolsRequest, SolidDevtoolsResponseData, SolidDevtoolsResult, SolidEncodedValue, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
+import type { SolidDevtoolsRequest, SolidDevtoolsResponseData, SolidDevtoolsResult, SolidEncodedValue, SolidSearchMatch, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
 /** An expanded value's fetched children + paging cursor (drill-down state, by ref). */
 export interface DrillNode {
@@ -31,11 +31,32 @@ class SolidDevtoolsViewModel {
      * shows WHICH node is selected even if the inspect comes back empty or errors. */
     public selectedNode = writable<SolidTreeNode | null>(null);
 
+    /** When set, the TreeNode with this id scrolls itself into view on (re)render, then
+     * clears it. Used by "reveal in tree" from a search result. */
+    public scrollTargetId = writable<string | null>(null);
+
     /** Select a node for inspection (called by every TreeNode row). */
     public select(node: SolidTreeNode) {
         this.selectedNode.set(node);
         this.setSelected(node.id);
         this.selectedId.set(node.id);
+    }
+
+    public clearScrollTarget() {
+        this.scrollTargetId.set(null);
+    }
+
+    /**
+     * Jump from a search result to the node in the tree: mark its ancestors expanded
+     * (so the tree cascades open to it when search clears and the tree remounts), select
+     * it, and request a scroll. The caller clears the search box afterward.
+     */
+    public revealInTree(match: SolidSearchMatch) {
+        for (const id of match.ancestorIds ?? []) {
+            this.setExpanded(id, true);
+        }
+        this.scrollTargetId.set(match.id);
+        this.select({ id: match.id, name: match.name, type: match.type });
     }
 
     /**
@@ -181,6 +202,47 @@ class SolidDevtoolsViewModel {
         }
         this.children[path] = this.toDrillNode(node, fresh);
         this.publishDrill();
+    }
+
+    // ---- full-tree search -------------------------------------------------------
+    /** null = not searching (show the tree); array (possibly empty) = active results. */
+    public searchResults = writable<SolidSearchMatch[] | null>(null);
+    /** True while a search request is in flight (for a spinner / "searching…"). */
+    public searching = writable<boolean>(false);
+    /** Non-null when the search REQUEST failed (vs. genuinely zero matches). */
+    public searchError = writable<string | null>(null);
+    private searchSeq = 0;
+
+    /** Run a full-tree name search; empty query clears results (back to the tree). */
+    public async runSearch(query: string): Promise<void> {
+        const trimmed = query.trim();
+        const seq = ++this.searchSeq; // ignore out-of-order responses from earlier keystrokes
+        if (!trimmed) {
+            this.searching.set(false);
+            this.searchResults.set(null);
+            this.searchError.set(null);
+            return;
+        }
+        this.searching.set(true);
+        this.searchError.set(null);
+        const result = await this.sendRequest({ method: 'search', query: trimmed });
+        if (seq !== this.searchSeq) {
+            return; // a newer search superseded this one
+        }
+        this.searching.set(false);
+        if (result.ok) {
+            this.searchResults.set(result.data.matches);
+            this.searchError.set(null);
+            return;
+        }
+        // A failed request is NOT "no matches" — surface why. The common case is an
+        // older on-device bridge without lazySearch (the evaluate throws), so hint at it.
+        this.searchResults.set([]);
+        this.searchError.set(
+            result.reason === 'no-session' ? 'No debug session — launch an RSG/TS app.'
+                : result.reason === 'no-bridge' ? 'No devtools bridge on the device yet.'
+                    : 'Search failed — relaunch the app so the updated devtools bridge is injected.'
+        );
     }
 
     /** Drop all expansion (call when the inspected node changes — paths are node-relative). */

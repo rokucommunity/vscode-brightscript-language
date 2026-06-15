@@ -88,13 +88,28 @@ export interface SolidValueData {
     error?: string;
 }
 
+/** One hit from a full-tree name search, with a `›`-joined ancestor path for context. */
+export interface SolidSearchMatch {
+    id: string;
+    name: string;
+    type: string;
+    path: string;
+    /** Ancestor node ids (top → parent) — the tree expands these to reveal the match. */
+    ancestorIds: string[];
+}
+
+export interface SolidSearchData {
+    matches: SolidSearchMatch[];
+}
+
 /** webview → extension: the `context` of a sendSolidDevtoolsRequest command message. */
 export type SolidDevtoolsRequest =
     | { method: 'version' }
     | { method: 'roots' }
     | { method: 'children'; id: string }
     | { method: 'inspect'; id: string }
-    | { method: 'value'; ref: number; offset?: number };
+    | { method: 'value'; ref: number; offset?: number }
+    | { method: 'search'; query: string };
 
 /** Maps each request method to its `data` payload type. */
 export interface SolidDevtoolsResponseData {
@@ -103,6 +118,7 @@ export interface SolidDevtoolsResponseData {
     children: SolidChildrenData;
     inspect: SolidInspectData;
     value: SolidValueData;
+    search: SolidSearchData;
 }
 
 /**
