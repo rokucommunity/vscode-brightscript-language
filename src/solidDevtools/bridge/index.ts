@@ -29,7 +29,7 @@ import { utf8ToBase64 } from './base64';
 import type { SolidApi } from './solid';
 import {
     getNodeName, getNodeType, getOwnerType, getSolidApi,
-    onOwnerCleanup, runInThrowawayRoot, setSolidApi, untrackRead
+    isBridgeWork, onOwnerCleanup, runInThrowawayRoot, setSolidApi, untrackRead
 } from './solid';
 import { encodeValue, expandRef, NODE_BUDGET, resetValueRefs } from './values';
 
@@ -303,14 +303,17 @@ function inspectOrphans(): number {
     const seen = new Set<any>();
     const budget = { n: NODE_BUDGET };
     const signals: any[] = [];
-    let i = 0;
-    for (const s of orphanSignals) {
-        if (i++ >= 400) {
-            out.truncated = true;
-            break;
+    // throwaway root: encodeValue's walks can hit app getters that create computations
+    runInThrowawayRoot(() => {
+        let i = 0;
+        for (const s of orphanSignals) {
+            if (i++ >= 400) {
+                out.truncated = true;
+                break;
+            }
+            signals.push({ name: safeName(s) || '', value: encodeValue(s.value, 2, budget, seen) });
         }
-        signals.push({ name: safeName(s) || '', value: encodeValue(s.value, 2, budget, seen) });
-    }
+    });
     if (signals.length) {
         out.signals = signals;
     }
@@ -330,9 +333,12 @@ function inspectGlobals(ns: string): number {
         const budget = { n: NODE_BUDGET };
         const signals: any[] = [];
         try {
-            for (const k of Object.keys(rec)) {
-                signals.push({ name: k, value: encodeValue(readGlobal(rec[k]), 2, budget, seen) });
-            }
+            // throwaway root: reading registered accessors can create computations
+            runInThrowawayRoot(() => {
+                for (const k of Object.keys(rec)) {
+                    signals.push({ name: k, value: encodeValue(readGlobal(rec[k]), 2, budget, seen) });
+                }
+            });
         } catch (e: any) {
             out.error = String(e?.message ?? e);
         }
@@ -370,91 +376,13 @@ function lazyInspect(idStr: string): number {
     // a component has. When exhausted, remaining values collapse to a ref'd shape tag.
     const budget = { n: NODE_BUDGET };
     try {
-        // Props WITH values. Reading the props proxy invokes reactive getters, which
-        // can create transient computations — so do it inside a throwaway root we
-        // dispose. We skip `children`/`ref`: resolving children can do heavy
-        // synchronous render work.
-        const props = owner.props;
-        if (props && typeof props === 'object') {
-            let keys: string[] = [];
-            try {
-                keys = Object.keys(props);
-            } catch {
-                // proxy ownKeys threw
-            }
-            if (keys.length) {
-                const list: any[] = [];
-                runInThrowawayRoot(() => {
-                    for (let i = 0; i < keys.length && i < 60; i++) {
-                        const k = keys[i];
-                        if (k === 'children' || k === 'ref') {
-                            list.push({ key: k }); // name only — don't resolve
-                            continue;
-                        }
-                        let val: any;
-                        try {
-                            val = untrackRead(() => props[k]);
-                        } catch {
-                            val = undefined;
-                        }
-                        list.push({ key: k, value: encodeValue(val, 2, budget, seen) });
-                    }
-                });
-                if (list.length) {
-                    out.props = list;
-                }
-            }
-        }
-        // Signals + stores from the owner's sourceMap; `.value` is a plain data property.
-        const sm = owner.sourceMap;
-        if (sm?.length) {
-            const signals: any[] = [];
-            const stores: any[] = [];
-            for (let i = 0; i < sm.length && i < 200; i++) {
-                const n = sm[i];
-                if (!n) {
-                    continue;
-                }
-                let nt = 'SIGNAL';
-                try {
-                    nt = getNodeType(n);
-                } catch {
-                    // fall back to SIGNAL
-                }
-                const entry = { name: safeName(n) || '', value: encodeValue(n.value, 2, budget, seen) };
-                if (nt === 'STORE') {
-                    stores.push(entry);
-                } else {
-                    signals.push(entry);
-                }
-            }
-            if (signals.length) {
-                out.signals = signals;
-            }
-            if (stores.length) {
-                out.stores = stores;
-            }
-        }
-        // Memos are computations in `owned` (fn + comparator); `.value` is a data prop.
-        const owned = owner.owned;
-        if (owned?.length) {
-            const memos: any[] = [];
-            for (let i = 0; i < owned.length && i < 400 && memos.length < 100; i++) {
-                const c = owned[i];
-                if (c && typeof c.fn === 'function' && ('comparator' in c)) {
-                    memos.push({ name: safeName(c) || '', value: encodeValue(c.value, 2, budget, seen) });
-                }
-            }
-            if (memos.length) {
-                out.memos = memos;
-            }
-        }
-        // The component's rendered output — depth 1, but it's a SceneGraph node
-        // (non-plain) so encodeValue won't walk into it; shows its constructor + a ref.
-        const ev = encodeValue(owner.value, 1, budget, seen);
-        if (ev && ev.t !== 'undefined' && ev.t !== 'null') {
-            out.value = ev;
-        }
+        // ONE throwaway root around ALL value reading: props getters AND encodeValue's
+        // object walks can invoke app getters that create transient computations —
+        // without an owner Solid DEV warns "computations created outside a
+        // `createRoot` or `render` will never be disposed" and leaks them.
+        runInThrowawayRoot(() => {
+            collectInspect(owner, out, budget, seen);
+        });
         if (budget.n <= 0) {
             out.truncated = true; // some values were collapsed to fit the payload budget
         }
@@ -462,6 +390,92 @@ function lazyInspect(idStr: string): number {
         out.error = String(e?.message ?? e);
     }
     return setResult(out);
+}
+
+/** Read one owner's props/signals/memos/stores/value into `out`. Must run inside a
+ *  throwaway root (see lazyInspect). */
+function collectInspect(owner: any, out: any, budget: { n: number }, seen: Set<any>): void {
+    // Props WITH values. We skip `children`/`ref`: resolving children can do heavy
+    // synchronous render work.
+    const props = owner.props;
+    if (props && typeof props === 'object') {
+        let keys: string[] = [];
+        try {
+            keys = Object.keys(props);
+        } catch {
+            // proxy ownKeys threw
+        }
+        if (keys.length) {
+            const list: any[] = [];
+            for (let i = 0; i < keys.length && i < 60; i++) {
+                const k = keys[i];
+                if (k === 'children' || k === 'ref') {
+                    list.push({ key: k }); // name only — don't resolve
+                    continue;
+                }
+                let val: any;
+                try {
+                    val = untrackRead(() => props[k]);
+                } catch {
+                    val = undefined;
+                }
+                list.push({ key: k, value: encodeValue(val, 2, budget, seen) });
+            }
+            if (list.length) {
+                out.props = list;
+            }
+        }
+    }
+    // Signals + stores from the owner's sourceMap; `.value` is a plain data property.
+    const sm = owner.sourceMap;
+    if (sm?.length) {
+        const signals: any[] = [];
+        const stores: any[] = [];
+        for (let i = 0; i < sm.length && i < 200; i++) {
+            const n = sm[i];
+            if (!n) {
+                continue;
+            }
+            let nt = 'SIGNAL';
+            try {
+                nt = getNodeType(n);
+            } catch {
+                // fall back to SIGNAL
+            }
+            const entry = { name: safeName(n) || '', value: encodeValue(n.value, 2, budget, seen) };
+            if (nt === 'STORE') {
+                stores.push(entry);
+            } else {
+                signals.push(entry);
+            }
+        }
+        if (signals.length) {
+            out.signals = signals;
+        }
+        if (stores.length) {
+            out.stores = stores;
+        }
+    }
+    // Memos are computations in `owned` (fn + comparator); `.value` is a data prop.
+    const owned = owner.owned;
+    if (owned?.length) {
+        const memos: any[] = [];
+        for (let i = 0; i < owned.length && i < 400 && memos.length < 100; i++) {
+            const c = owned[i];
+            if (c && typeof c.fn === 'function' && ('comparator' in c)) {
+                memos.push({ name: safeName(c) || '', value: encodeValue(c.value, 2, budget, seen) });
+            }
+        }
+        if (memos.length) {
+            out.memos = memos;
+        }
+    }
+    // The component's rendered output — depth 1, but it's a SceneGraph node
+    // (non-plain) so encodeValue won't walk into it; shows its constructor + a ref.
+    const ev = encodeValue(owner.value, 1, budget, seen);
+    if (ev && ev.t !== 'undefined' && ev.t !== 'null') {
+        out.value = ev;
+    }
 }
 
 /**
@@ -572,16 +586,18 @@ function installHooks(api: SolidApi): void {
     const hooks = api.hooks;
     // Root collection: createRoot owners are the only owners with NO `fn` property,
     // so one undefined-check filters the storm of computations/components/effects.
+    // (the isBridgeWork() check is on the rare root branch only — it skips the
+    // bridge's OWN throwaway roots, whose capture+dispose would loop live refresh)
     const prevCreateOwner = hooks.afterCreateOwner;
     hooks.afterCreateOwner = prevCreateOwner
         ? function afterCreateOwner(owner: any) {
-            if (owner.fn === undefined && roots.size < ROOT_CAP) {
+            if (owner.fn === undefined && roots.size < ROOT_CAP && !isBridgeWork()) {
                 captureRoot(owner);
             }
             prevCreateOwner(owner);
         }
         : function afterCreateOwner(owner: any) {
-            if (owner.fn === undefined && roots.size < ROOT_CAP) {
+            if (owner.fn === undefined && roots.size < ROOT_CAP && !isBridgeWork()) {
                 captureRoot(owner);
             }
         };
@@ -591,13 +607,13 @@ function installHooks(api: SolidApi): void {
     const prevCreateSignal = hooks.afterCreateSignal;
     hooks.afterCreateSignal = prevCreateSignal
         ? function afterCreateSignal(s: any) {
-            if (s.graph === undefined && orphanSignals.size < ORPHAN_CAP) {
+            if (s.graph === undefined && orphanSignals.size < ORPHAN_CAP && !isBridgeWork()) {
                 orphanSignals.add(s);
             }
             prevCreateSignal(s);
         }
         : function afterCreateSignal(s: any) {
-            if (s.graph === undefined && orphanSignals.size < ORPHAN_CAP) {
+            if (s.graph === undefined && orphanSignals.size < ORPHAN_CAP && !isBridgeWork()) {
                 orphanSignals.add(s);
             }
         };

@@ -54,6 +54,18 @@ export function untrackRead<T>(fn: () => T): T {
     return api ? api.untrack(fn) : fn();
 }
 
+let bridgeWorking = false;
+
+/**
+ * True while the bridge itself is reading app values inside a throwaway root. The
+ * capture hooks must skip owners/signals created by bridge work — otherwise every
+ * inspect captures its own throwaway root, whose synchronous disposal bumps
+ * `version`, which triggers a live refresh, which re-inspects… a refresh loop.
+ */
+export function isBridgeWork(): boolean {
+    return bridgeWorking;
+}
+
 /**
  * Run `fn` inside a throwaway root that is disposed synchronously. Reading reactive
  * getters (props, store fields) can CREATE transient computations; without an owner
@@ -61,10 +73,15 @@ export function untrackRead<T>(fn: () => T): T {
  */
 export function runInThrowawayRoot(fn: () => void): void {
     if (api) {
-        api.createRoot((dispose) => {
-            fn();
-            dispose();
-        });
+        bridgeWorking = true;
+        try {
+            api.createRoot((dispose) => {
+                fn();
+                dispose();
+            });
+        } finally {
+            bridgeWorking = false;
+        }
     } else {
         fn();
     }

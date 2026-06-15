@@ -393,6 +393,31 @@ describe('solidDevtools bridge', () => {
             const data = callAndRead(sdt().lazyInspect('#nope'));
             assert.isTrue(data.missing);
         });
+
+        it('does not capture its own throwaway roots or bump version (would loop live refresh)', () => {
+            sdt().__connect(api);
+            // make createRoot behave like REAL solid DEV: fire afterCreateOwner for
+            // the new root and run its cleanups on dispose — this is exactly how the
+            // bridge's own throwaway inspect roots are born on device
+            api.createRoot = <T>(fn: (d: () => void) => T) => {
+                const throwaway = makeRoot();
+                hooks.afterCreateOwner(throwaway);
+                return fn(() => dispose(throwaway));
+            };
+            const comp = inspectableComponent();
+            const appRoot = makeRoot();
+            link(appRoot, comp);
+            hooks.afterCreateOwner(appRoot);
+            const roots = callAndRead(sdt().lazyRoots());
+            const v0 = sdt().version();
+
+            const data = callAndRead(sdt().lazyInspect(roots.nodes[0].id));
+
+            assert.equal(data.name, 'Card'); // sanity: the inspect itself worked
+            assert.equal(sdt().version(), v0, 'inspect must not change version');
+            const rootsAfter = callAndRead(sdt().lazyRoots());
+            assert.deepEqual(rootsAfter.nodes.map((n: any) => n.id), roots.nodes.map((n: any) => n.id), 'tree must be unchanged');
+        });
     });
 
     describe('lazyValue (drill-down)', () => {
