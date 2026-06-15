@@ -683,7 +683,7 @@
     }
 
     .result-head .name {
-        color: var(--vscode-symbolIcon-classForeground, #4ec9b0);
+        color: var(--vscode-foreground);
     }
 
     .result-head .type {
@@ -977,7 +977,7 @@
     }
 
     .iname {
-        color: var(--vscode-symbolIcon-classForeground, #4ec9b0);
+        color: var(--vscode-foreground);
     }
 
     .itype {

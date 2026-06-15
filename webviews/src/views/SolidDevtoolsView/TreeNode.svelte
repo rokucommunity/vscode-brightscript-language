@@ -227,7 +227,9 @@
     }
 
     .name {
-        color: var(--vscode-symbolIcon-classForeground, #4ec9b0);
+        /* default font colour (not an icon-symbol colour) so names stay readable on every
+           theme; the dimmed type/anchor suffix carries the distinction instead */
+        color: var(--vscode-foreground);
     }
 
     .type {
