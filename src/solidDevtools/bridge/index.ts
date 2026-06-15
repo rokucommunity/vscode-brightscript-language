@@ -70,7 +70,70 @@ function setResult(obj: any): number {
 
 const idMap = new WeakMap<any, string>();
 let idCounter = 0;
-const ownerById = new Map<string, any>(); // reverse map so the UI can expand a node by id
+
+// Reverse map (id -> owner) so the UI can expand/inspect a node by id. The owners are
+// long-lived app objects (component computations, SceneGraph node graphs); holding them
+// with STRONG refs would keep every node ever shown alive forever — a slow leak over a
+// long session. So when the runtime has WeakRef (Hermes 0.12.0+ does; the SDK's own
+// leak-detect ponyfill proves it works on device), store WeakRefs and sweep dead ones
+// opportunistically. FinalizationRegistry is NOT on Hermes, so we poll-sweep instead of
+// auto-finalize. If WeakRef is absent, fall back to a capped strong-ref map (FIFO evict).
+// WeakRef isn't in the project's TS lib target, so grab the global ctor (undefined if
+// the runtime lacks it) with the minimal shape we use.
+interface SdtWeakRef {
+    deref(): any;
+}
+const WeakRefCtor = (globalThis as any).WeakRef as (new (target: any) => SdtWeakRef) | undefined;
+let weakRefEnabled = !!WeakRefCtor;
+const OWNER_CAP = 10000; // fallback cap (strong-ref mode only)
+const ownerById = new Map<string, any>(); // id -> WeakRef<owner> (weakRefEnabled) | owner
+
+function rememberOwner(id: string, owner: any): void {
+    if (ownerById.has(id)) {
+        return;
+    }
+    if (weakRefEnabled && WeakRefCtor) {
+        ownerById.set(id, new WeakRefCtor(owner));
+        return;
+    }
+    ownerById.set(id, owner);
+    if (ownerById.size > OWNER_CAP) {
+        const oldest = ownerById.keys().next().value; // Map preserves insertion order → FIFO
+        if (oldest !== undefined) {
+            ownerById.delete(oldest);
+        }
+    }
+}
+
+/** Resolve an id to its owner, or undefined if it was collected/evicted (→ "missing").
+ *  Drops a dead entry on the way out. */
+function resolveOwner(id: string): any {
+    const entry = ownerById.get(id);
+    if (entry === undefined) {
+        return undefined;
+    }
+    if (!weakRefEnabled) {
+        return entry;
+    }
+    const owner = entry.deref();
+    if (owner === undefined) {
+        ownerById.delete(id);
+    }
+    return owner;
+}
+
+/** Drop entries whose owner has been GC'd. Cheap, bounded, no timer — called from the
+ *  throttled root-index rebuild so it only runs while the panel is actively walking. */
+function sweepOwnerById(): void {
+    if (!weakRefEnabled) {
+        return;
+    }
+    for (const entry of ownerById) {
+        if (entry[1].deref() === undefined) {
+            ownerById.delete(entry[0]);
+        }
+    }
+}
 
 function idOf(owner: any): string {
     let id = idMap.get(owner);
@@ -78,9 +141,7 @@ function idOf(owner: any): string {
         id = '#' + (idCounter++).toString(16);
         idMap.set(owner, id);
     }
-    if (!ownerById.has(id)) {
-        ownerById.set(id, owner);
-    }
+    rememberOwner(id, owner);
     return id;
 }
 
@@ -165,6 +226,7 @@ const rootsByParentId = new Map<string, any[]>();
 let indexBuiltAt = 0;
 
 function buildRootIndex(): void {
+    sweepOwnerById(); // opportunistic: drop GC'd owners while we're already walking
     topRoots = [];
     rootsByParentId.clear();
     for (const r of roots) {
@@ -269,7 +331,7 @@ function lazyChildren(idStr: string): number {
     if (idStr.startsWith('@')) {
         return setResult({ kind: 'children', parent: idStr, nodes: [] }); // synthetic Globals node: a leaf — select it to inspect
     }
-    const owner = ownerById.get(idStr);
+    const owner = resolveOwner(idStr);
     if (!owner) {
         return setResult({ kind: 'children', parent: idStr, nodes: [], missing: true });
     }
@@ -364,7 +426,7 @@ function lazyInspect(idStr: string): number {
     if (idStr.startsWith('@g:')) {
         return inspectGlobals(idStr.slice(3));
     }
-    const owner = ownerById.get(idStr);
+    const owner = resolveOwner(idStr);
     if (!owner) {
         return setResult({ kind: 'inspect', id: idStr, missing: true });
     }
@@ -690,7 +752,7 @@ function __connect(api: SolidApi): string {
         connected = true;
         status = 'ready';
         version++;
-        console.log('[SDT] connected to solid DEV; hooks installed');
+        console.log('[SDT] connected to solid DEV; hooks installed; ownerById=' + (weakRefEnabled ? 'weakref' : 'capped'));
         return 'ok';
     } catch (e: any) {
         status = 'connect-error';
@@ -742,13 +804,15 @@ function installSdt(): void {
 
 installSdt();
 
-/** TEST-ONLY: reset all module state and reinstall a fresh __SDT. */
-export function __resetSdtBridgeForTests(): void {
+/** TEST-ONLY: reset all module state and reinstall a fresh __SDT. Pass
+ *  `{ forceCapMode: true }` to exercise the strong-ref fallback (no WeakRef). */
+export function __resetSdtBridgeForTests(opts?: { forceCapMode?: boolean }): void {
     status = 'waiting';
     lastError = '';
     connected = false;
     observing = false;
     version = 0;
+    weakRefEnabled = !!WeakRefCtor && !opts?.forceCapMode;
     roots.clear();
     anchors.clear();
     globalGroups.clear();

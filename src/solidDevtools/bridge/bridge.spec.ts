@@ -418,6 +418,21 @@ describe('solidDevtools bridge', () => {
             const rootsAfter = callAndRead(sdt().lazyRoots());
             assert.deepEqual(rootsAfter.nodes.map((n: any) => n.id), roots.nodes.map((n: any) => n.id), 'tree must be unchanged');
         });
+
+        it('resolves owners by id in WeakRef mode (the on-device default)', () => {
+            // Node has WeakRef, so the bridge stores owners weakly; a live owner (held by
+            // the test + the roots set) must still resolve through deref().
+            const data = inspect(inspectableComponent());
+            assert.equal(data.name, 'Card');
+            assert.equal(data.type, 'COMPONENT');
+        });
+
+        it('resolves owners by id in the capped strong-ref fallback (no WeakRef)', () => {
+            __resetSdtBridgeForTests({ forceCapMode: true });
+            const data = inspect(inspectableComponent());
+            assert.equal(data.name, 'Card');
+            assert.equal(data.type, 'COMPONENT');
+        });
     });
 
     describe('lazyValue (drill-down)', () => {
