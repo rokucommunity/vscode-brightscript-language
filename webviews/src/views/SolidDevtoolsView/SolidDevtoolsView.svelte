@@ -2,13 +2,14 @@
     window.vscode = acquireVsCodeApi();
     import { onDestroy } from 'svelte';
     import { intermediary } from '../../ExtensionIntermediary';
-    import { solidDevtools } from './SolidDevtoolsView';
+    import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
+    import { solidDevtools, dedupeById } from './SolidDevtoolsView';
     import TreeNode from './TreeNode.svelte';
     import ValuePreview from './ValuePreview.svelte';
     import type { SolidDevtoolsResult, SolidEncodedValue, SolidInspectData, SolidInspectEntry, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
     const POLL_MS = 1500;
-    const { selectedId } = solidDevtools;
+    const { selectedId, selectedNode } = solidDevtools;
 
     let live = true;
     let roots: SolidTreeNode[] = [];
@@ -55,7 +56,7 @@
             }
             return;
         }
-        roots = result.data.nodes;
+        roots = dedupeById(result.data.nodes);
         connected = result.data.connected;
         haveTree = true;
         guidance = '';
@@ -115,6 +116,9 @@
     let inspectMessage = 'Select a component to inspect its props, signals & memos.';
     let sections: InspectSection[] = [];
     let inspectPending = false;
+    /** Raw inspect outcome for the selected node — shown (collapsed) when the body is
+     * empty so an empty/odd payload is diagnosable instead of just looking blank. */
+    let lastRaw: string | null = null;
     /** Per-row value JSON from the previous inspect of the SAME node — rows whose
      * value changed get a flash animation (like the Variables view). */
     let prevRowJson: Record<string, string> = {};
@@ -125,12 +129,12 @@
         if (!id) {
             return;
         }
-        solidDevtools.setSelected(id);
         // new node — reset the flash baseline so the first render doesn't flash everything
         prevRowJson = {};
         rowVersions = {};
         inspectData = null;
         sections = [];
+        lastRaw = null;
         inspectMessage = 'inspecting…';
         void inspectSelected(true);
     });
@@ -146,25 +150,41 @@
             return;
         }
         inspectPending = true;
-        const result = await solidDevtools.sendRequest({ method: 'inspect', id: id });
-        inspectPending = false;
-        if ($selectedId !== id) {
-            return; // selection moved on while this was in flight
+        try {
+            const result = await solidDevtools.sendRequest({ method: 'inspect', id: id });
+            if ($selectedId !== id) {
+                return; // selection moved on while this was in flight
+            }
+            if (!result.ok) {
+                inspectData = null;
+                sections = [];
+                lastRaw = JSON.stringify(result, null, 2);
+                inspectMessage = guidanceFor(result);
+                return;
+            }
+            setInspectData(result.data);
+        } catch (e: any) {
+            // never leave the pane stuck at "inspecting…" — surface whatever broke
+            if ($selectedId === id) {
+                inspectData = null;
+                sections = [];
+                lastRaw = String(e?.stack ?? e?.message ?? e);
+                inspectMessage = `Inspect failed: ${e?.message ?? e}`;
+            }
+        } finally {
+            inspectPending = false;
         }
-        if (!result.ok) {
-            inspectData = null;
-            sections = [];
-            inspectMessage = guidanceFor(result);
-            return;
-        }
-        setInspectData(result.data);
     }
 
     function buildSection(title: string, prefix: string, entries: SolidInspectEntry[] | undefined): InspectSection | undefined {
         if (!entries?.length) {
             return undefined;
         }
-        const rows = entries.map((entry, i) => buildRow(prefix + (entry.key ?? entry.name ?? i), entry.key ?? entry.name ?? '', entry.value));
+        // Key by index — unnamed signals/memos all come back with name '' (and a prop
+        // name could in theory repeat), so a name-based key isn't unique and a dup key
+        // makes Svelte's keyed {#each} throw, blanking the whole pane. Index is unique
+        // within a section and position-stable across refreshes (so flash still works).
+        const rows = entries.map((entry, i) => buildRow(prefix + i, entry.key ?? entry.name ?? '', entry.value));
         return { title: title, rows: rows };
     }
 
@@ -203,7 +223,9 @@
         prevRowJson = nextRowJson;
         inspectData = data;
         sections = built;
-        inspectMessage = built.length || data.error ? '' : 'No inspectable props/signals/memos on this node.';
+        // keep the raw payload around for the diagnostic <details> when the body is empty
+        lastRaw = built.length ? null : JSON.stringify(data, null, 2);
+        inspectMessage = built.length || data.error ? '' : 'No readable props, signals, memos, or value on this node.';
     }
 
     function onLiveChange() {
@@ -222,6 +244,24 @@
         }
         await loadRoots('initial');
     }
+
+    // A new debug session = a new owner graph; the provider already cleared the
+    // persisted state — reset our in-memory copy and start over.
+    intermediary.observeEvent(ViewProviderEvent.onSolidDevtoolsDebugSessionStarted, () => {
+        solidDevtools.resetUiState();
+        selectedId.set(null);
+        selectedNode.set(null);
+        inspectData = null;
+        sections = [];
+        lastRaw = null;
+        inspectMessage = 'Select a component to inspect its props, signals & memos.';
+        roots = []; // unmounts every TreeNode; fresh ones re-read the (cleared) expansion
+        haveTree = false;
+        lastVersion = null;
+        guidance = '';
+        statusLine = 'waiting for app…';
+        // don't loadRoots here — the app is still booting; the version poll retries
+    });
 
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
@@ -255,38 +295,43 @@
             {/each}
         </div>
         <div id="inspect">
+            {#if $selectedNode || inspectData}
+                <!-- header from the selected tree node (always available) or the inspect payload -->
+                <div class="ihdr">
+                    {#if $selectedNode?.name ?? inspectData?.name}<span class="iname">{$selectedNode?.name ?? inspectData?.name}</span>{/if}
+                    {#if $selectedNode?.type ?? inspectData?.type}<span class="itype">{$selectedNode?.type ?? inspectData?.type}</span>{/if}
+                </div>
+            {/if}
             {#if inspectMessage}
                 <div class="imsg">{inspectMessage}</div>
             {/if}
-            {#if inspectData}
-                {#if inspectData.name || inspectData.type}
-                    <div class="ihdr">
-                        {#if inspectData.name}<span class="iname">{inspectData.name}</span>{/if}
-                        {#if inspectData.type}<span class="itype">{inspectData.type}</span>{/if}
-                    </div>
-                {/if}
-                {#each sections as section (section.title)}
-                    <div class="isec">
-                        <div class="ititle">{section.title}</div>
-                        {#each section.rows as row (row.key)}
-                            {#key row.version}
-                                <div class="irow" class:flash={row.changed}>
-                                    {#if row.label}<span class="ikey">{row.label}</span>{#if row.value !== undefined}<span class="ipunc">: </span>{/if}{/if}
-                                    {#if row.value !== undefined}<ValuePreview value={row.value} />{/if}
-                                </div>
-                            {/key}
-                        {/each}
-                    </div>
-                {/each}
-                {#if inspectData.error}
-                    <div class="isec">
-                        <div class="ititle">Error</div>
-                        <div class="irow nul">{inspectData.error}</div>
-                    </div>
-                {/if}
-                {#if inspectData.truncated}
-                    <div class="imsg">⚠ Some values were collapsed to keep the response small (large component).</div>
-                {/if}
+            {#each sections as section (section.title)}
+                <div class="isec">
+                    <div class="ititle">{section.title}</div>
+                    {#each section.rows as row (row.key)}
+                        {#key row.version}
+                            <div class="irow" class:flash={row.changed}>
+                                {#if row.label}<span class="ikey">{row.label}</span>{#if row.value !== undefined}<span class="ipunc">: </span>{/if}{/if}
+                                {#if row.value !== undefined}<ValuePreview value={row.value} />{/if}
+                            </div>
+                        {/key}
+                    {/each}
+                </div>
+            {/each}
+            {#if inspectData?.error}
+                <div class="isec">
+                    <div class="ititle">Error</div>
+                    <div class="irow nul">{inspectData.error}</div>
+                </div>
+            {/if}
+            {#if inspectData?.truncated}
+                <div class="imsg">⚠ Some values were collapsed to keep the response small (large component).</div>
+            {/if}
+            {#if lastRaw}
+                <details class="raw">
+                    <summary>raw response</summary>
+                    <pre>{lastRaw}</pre>
+                </details>
             {/if}
         </div>
     {/if}
@@ -410,6 +455,24 @@
 
     .nul {
         opacity: 0.5;
+    }
+
+    .raw {
+        margin-top: 10px;
+        opacity: 0.7;
+        font-size: 11px;
+    }
+
+    .raw summary {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .raw pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: var(--vscode-editor-font-family, monospace);
+        margin: 4px 0 0;
     }
 
     /* flash a row when its value changes, then fade out (like the Variables view) */

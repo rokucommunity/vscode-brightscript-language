@@ -5,6 +5,8 @@ import { ViewProviderCommand } from './ViewProviderCommand';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { SolidDevtoolsTransport } from '../solidDevtools/transport';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
+import { ViewProviderEvent } from './ViewProviderEvent';
+import { SOLID_DEVTOOLS_UI_STATE_KEY } from '../solidDevtools/protocol';
 import type { SolidDevtoolsRequest, SolidDevtoolsResult } from '../solidDevtools/protocol';
 
 /**
@@ -58,6 +60,17 @@ export class SolidDevtoolsViewProvider extends BaseWebviewViewProvider {
 
     public onDidTerminateDebugSession(e: vscode.DebugSession) {
         this.transport.onDidTerminateDebugSession(e);
+    }
+
+    /** A new app launch means a new owner graph — node ids from the previous run are
+     * meaningless, so drop the persisted expansion/selection and tell the view to
+     * start fresh. (Persistence still covers collapse/pop-out/window reloads WITHIN
+     * a debug session.) */
+    public onDidStartDebugSession(e: vscode.DebugSession) {
+        if (e.type === 'brightscript' && !e.parentSession) {
+            void this.extensionContext.workspaceState.update(SOLID_DEVTOOLS_UI_STATE_KEY, undefined);
+            this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onSolidDevtoolsDebugSessionStarted));
+        }
     }
 
     private async processRequest(request: SolidDevtoolsRequest): Promise<SolidDevtoolsResult<unknown>> {

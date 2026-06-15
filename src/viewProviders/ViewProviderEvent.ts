@@ -3,6 +3,7 @@ export enum ViewProviderEvent {
     onDeviceAvailabilityChange = 'onDeviceAvailabilityChange',
     onVscodeCommandReceived = 'onVscodeCommandReceived',
     onRegistryUpdated = 'onRegistryUpdated',
+    onSolidDevtoolsDebugSessionStarted = 'onSolidDevtoolsDebugSessionStarted',
     onStoredAppUIUpdated = 'onStoredAppUIUpdated',
     onRokuAutomationConfigsLoaded = 'onRokuAutomationConfigsLoaded',
     onRokuAutomationImportAllAutomations = 'onRokuAutomationImportAllAutomations',

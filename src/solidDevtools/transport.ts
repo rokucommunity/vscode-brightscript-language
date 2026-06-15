@@ -174,18 +174,30 @@ export class SolidDevtoolsTransport {
 
     // ---- evaluate + lazy drain ----------------------------------------------------
 
+    /** A device with a busy/stuck JS thread can leave an evaluate pending forever,
+     * which would jam the serialized lazy chain — bound every round-trip. */
+    private static readonly EVALUATE_TIMEOUT_MS = 15000;
+
     private async evaluate(session: vscode.DebugSession, expression: string): Promise<{ ok: boolean; result?: string; error?: string }> {
+        let timer: ReturnType<typeof setTimeout>;
         try {
             // NOTE: `context:'watch'` does not echo to the Debug Console, and no
             // `frameId` means the global execution context — which is what lets this
             // work while the app is running (not paused).
-            const resp = await session.customRequest('evaluate', { expression: expression, context: 'watch' });
+            const resp = await Promise.race([
+                session.customRequest('evaluate', { expression: expression, context: 'watch' }),
+                new Promise((_, reject) => {
+                    timer = setTimeout(() => reject(new Error(`evaluate timed out after ${SolidDevtoolsTransport.EVALUATE_TIMEOUT_MS}ms`)), SolidDevtoolsTransport.EVALUATE_TIMEOUT_MS);
+                })
+            ]);
             return {
                 ok: true,
                 result: typeof resp?.result === 'string' ? resp.result : JSON.stringify(resp?.result)
             };
         } catch (e: any) {
             return { ok: false, error: e?.message ?? String(e) };
+        } finally {
+            clearTimeout(timer);
         }
     }
 

@@ -5,6 +5,11 @@
  * on-device bridge (./bridge). Both sides import this file so they stay in lock-step.
  */
 
+/** workspaceState key holding the view's persisted UI state (expanded/selection/live).
+ * Written by the webview (via updateWorkspaceState), cleared by the provider when a
+ * new debug session starts — node ids only live for one app run. */
+export const SOLID_DEVTOOLS_UI_STATE_KEY = 'solidDevtoolsUiState';
+
 /** One row in the component tree (a `nodes` entry from lazyRoots/lazyChildren). */
 export interface SolidTreeNode {
     id: string;

@@ -3,7 +3,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import Chevron from '../../shared/Chevron.svelte';
-    import { solidDevtools } from './SolidDevtoolsView';
+    import { solidDevtools, dedupeById } from './SolidDevtoolsView';
     import type { SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
     export let node: SolidTreeNode;
@@ -45,7 +45,7 @@
         fetching = false;
         loading = false;
         if (result.ok && !result.data.missing) {
-            children = result.data.nodes;
+            children = dedupeById(result.data.nodes);
             loaded = true;
             userExpand = reason === 'expand';
         } else if (!loaded) {
@@ -66,7 +66,7 @@
     }
 
     function select() {
-        selectedId.set(node.id);
+        solidDevtools.select(node);
     }
 
     onMount(() => {
