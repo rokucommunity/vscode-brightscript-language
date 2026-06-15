@@ -222,6 +222,29 @@ describe('solidDevtools bridge', () => {
             assert.equal(kids.nodes[0].name, 'Child');
         });
 
+        it('marks childless component nodes leaf up front (so the tree shows no phantom chevron)', () => {
+            sdt().__connect(api);
+            const root = makeRoot();
+            const app = makeComponent('App');
+            const branch = makeComponent('Branch');
+            const grandchild = makeComponent('Grandchild');
+            const leaf = makeComponent('Leaf');
+            link(root, app);
+            link(app, branch, leaf);
+            link(branch, grandchild); // Branch HAS a component descendant → not a leaf
+            link(leaf, makeRenderEffect()); // Leaf has only a non-component child → leaf
+            hooks.afterCreateOwner(root);
+
+            const appId = callAndRead(sdt().lazyRoots()).nodes[0].id;
+            const kids = callAndRead(sdt().lazyChildren(appId));
+            const byName: Record<string, any> = {};
+            for (const n of kids.nodes) {
+                byName[n.name] = n;
+            }
+            assert.isUndefined(byName.Branch.leaf, 'a component with a component descendant is not a leaf');
+            assert.isTrue(byName.Leaf.leaf, 'a component with no component descendants is marked leaf');
+        });
+
         it('reports missing for an unknown id', () => {
             sdt().__connect(api);
             const data = callAndRead(sdt().lazyChildren('#nope'));

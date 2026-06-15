@@ -164,10 +164,17 @@ function safeName(owner: any): string | undefined {
 }
 
 function nodeOf(owner: any): any {
-    const n: any = { id: idOf(owner), type: safeType(owner) };
+    const id = idOf(owner);
+    const n: any = { id: id, type: safeType(owner) };
     const name = safeName(owner);
     if (name) {
         n.name = name;
+    }
+    // mark empty nodes leaf UP FRONT so the tree never shows an expand chevron that
+    // vanishes when a click reveals nothing (e.g. a <Show> whose branch renders no
+    // components). Cheap: an early-exit peek for the next component layer.
+    if (isLeafOwner(owner, id)) {
+        n.leaf = true;
     }
     return n;
 }
@@ -272,6 +279,49 @@ function collectStitchedChildren(owner: any, idStr: string, out: any[], seen: Se
             collectChildComponents(r, out, seen, 0);
         }
     }
+}
+
+/** Early-exit "is there a COMPONENT in here?" — same descent as collectChildComponents
+ * (through non-component owners) but returns on the FIRST one found. */
+function hasChildComponent(owner: any, seen: Set<any>, depth: number): boolean {
+    const owned = owner?.owned;
+    if (!owned || depth > 1500) {
+        return false;
+    }
+    for (let i = 0; i < owned.length; i++) {
+        const c = owned[i];
+        if (!c || seen.has(c)) {
+            continue;
+        }
+        seen.add(c);
+        if (safeType(c) === 'COMPONENT') {
+            return true;
+        }
+        if (hasChildComponent(c, seen, depth + 1)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** True when `owner` has no component children at all (owned-walk OR stitched sub-roots) —
+ * the same set collectStitchedChildren would return, but computed cheaply so emitted nodes
+ * can be marked leaf up front. */
+function isLeafOwner(owner: any, idStr: string): boolean {
+    const seen = new Set<any>();
+    if (hasChildComponent(owner, seen, 0)) {
+        return false;
+    }
+    ensureRootIndex();
+    const attached = rootsByParentId.get(idStr);
+    if (attached) {
+        for (const r of attached) {
+            if (hasChildComponent(r, seen, 0)) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 /**
