@@ -937,7 +937,7 @@
         color: var(--vscode-menu-foreground, var(--vscode-foreground));
         border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, #454545));
         border-radius: 4px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.36);
+        box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
     }
 
     .menu-group-label {
