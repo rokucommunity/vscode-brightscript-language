@@ -2,7 +2,7 @@
 <!-- One row of the Solid component tree; children load lazily on expand (recursive). -->
 <script lang="ts">
     import { onMount } from 'svelte';
-    import Chevron from '../../shared/Chevron.svelte';
+    import ChevronOrSpinner from './ChevronOrSpinner.svelte';
     import { solidDevtools, dedupeById } from './SolidDevtoolsView';
     import type { SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
@@ -131,10 +131,8 @@
         {#each { length: depth } as _, i}
             <span class="gline" class:active={i === activeIndex} style="left: {3 + i * 8}px"></span>
         {/each}
-        <span class="twisty" class:loading on:click={toggle}>
-            {#if !isLeaf}
-                <Chevron {expanded} />
-            {/if}
+        <span class="twisty" on:click={toggle}>
+            <ChevronOrSpinner loading={loading} expandable={!isLeaf} {expanded} />
         </span>
         {#if node.name}<span class="name">{node.name}</span>{/if}
         <span class="type">{node.type}</span>
@@ -220,10 +218,6 @@
     /* block (not baseline-aligned) so the chevron sits centered in the twisty */
     .twisty :global(svg) {
         display: block;
-    }
-
-    .twisty.loading {
-        opacity: 0.4;
     }
 
     .name {

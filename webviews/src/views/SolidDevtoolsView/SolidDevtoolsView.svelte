@@ -16,6 +16,7 @@
     import TreeNode from './TreeNode.svelte';
     import ValueNode from './ValueNode.svelte';
     import PerfOverlay from './PerfOverlay.svelte';
+    import Spinner from './Spinner.svelte';
     import type { SolidDevtoolsResult, SolidEncodedValue, SolidInspectData, SolidInspectEntry, SolidInspectorPosition, SolidSearchMatch, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
     const POLL_MS = 1500;
@@ -256,6 +257,10 @@
     /** Raw inspect outcome for the selected node — shown (collapsed) when the body is
      * empty so an empty/odd payload is diagnosable instead of just looking blank. */
     let lastRaw: string | null = null;
+    /** Initial inspect of a freshly-selected node is in flight (no data yet) — drives the
+     * delayed spinner. Background re-inspects on live refresh keep the old data shown, so
+     * `!inspectData` stops the spinner flashing over existing content on every poll. */
+    $: inspecting = inspectPending && !inspectData;
 
     const unsubscribeSelected = selectedId.subscribe((id) => {
         if (!id) {
@@ -265,7 +270,7 @@
         inspectData = null;
         sections = [];
         lastRaw = null;
-        inspectMessage = 'inspecting…';
+        inspectMessage = ''; // the delayed spinner covers the loading state now
         void inspectSelected(true);
     });
     onDestroy(unsubscribeSelected);
@@ -416,7 +421,7 @@
         <span id="status">{statusLine}</span>
         {#if refreshing}
             <!-- fades in only after 400ms, so quick refreshes show nothing at all -->
-            <vscode-progress-ring class="spinner" />
+            <Spinner />
         {/if}
     </div>
 
@@ -544,6 +549,10 @@
 
                 {#if !collapsed}
                     <div class="ibody">
+                        {#if inspecting}
+                            <!-- delayed: only a slow inspect surfaces a spinner -->
+                            <div class="inspecting"><Spinner size={16} /></div>
+                        {/if}
                         {#if inspectMessage}
                             <div class="imsg">{inspectMessage}</div>
                         {/if}
@@ -722,17 +731,10 @@
         opacity: 0.75;
     }
 
-    .spinner {
-        width: 14px;
-        height: 14px;
-        opacity: 0;
-        animation: sdtappear 0.15s ease 0.4s forwards;
-    }
-
-    @keyframes sdtappear {
-        to {
-            opacity: 0.8;
-        }
+    .inspecting {
+        display: flex;
+        justify-content: center;
+        padding: 12px;
     }
 
     label.live {

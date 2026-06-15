@@ -13,7 +13,7 @@
         drill-downs stay live too. Keyed by a stable PATH so expansion survives re-render.
 -->
 <script lang="ts">
-    import Chevron from '../../shared/Chevron.svelte';
+    import ChevronOrSpinner from './ChevronOrSpinner.svelte';
     import ValuePreview from './ValuePreview.svelte';
     import { solidDevtools } from './SolidDevtoolsView';
     import type { SolidEncodedValue } from '../../../../src/solidDevtools/protocol';
@@ -39,6 +39,9 @@
 
     $: isOpen = $drill.open.has(path);
     $: fetched = $drill.children[path];
+    // first-page fetch in flight (no data yet) — drives the delayed spinner on the twisty.
+    // A live re-fetch keeps the old `fetched` shown, so it won't spin on every refresh.
+    $: fetching = isOpen && needsFetch && !fetched;
     // What to render children from: the fetched page if we fetched, else inline.
     $: renderNode = fetched ? fetched.node : value;
     $: moreCount = fetched ? fetched.more : 0;
@@ -100,7 +103,7 @@
 {#key flashId}
     <div class="vrow" class:flash={flashId > 0}>
         <span class="twisty" on:click={toggle}>
-            {#if expandable}<Chevron expanded={isOpen} />{/if}
+            <ChevronOrSpinner loading={fetching} {expandable} expanded={isOpen} />
         </span>
         <span class="vcontent">
             {#if label}<span class={labelClass}>{label}</span><span class="vpunc">{' = '}</span>{/if}{#if isOpen && isContainer}<span class="vsummary">{openSummary}</span>{:else}<span class:vmuted={isContainer}><ValuePreview {value} /></span>{/if}
