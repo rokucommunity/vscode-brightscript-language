@@ -281,9 +281,17 @@ function collectStitchedChildren(owner: any, idStr: string, out: any[], seen: Se
     }
 }
 
+// The leaf-peek must NEVER do an unbounded synchronous walk — a node with a big
+// childless subtree would otherwise block Hermes for seconds (stalling every evaluate
+// and backlogging the channel). So cap the owners visited; if the search is TRUNCATED
+// (budget hit) we can't prove it's a leaf, so assume expandable (show the chevron — the
+// old optimistic behaviour, but only for these rare deep nodes). No false leaves.
+const LEAF_PEEK_BUDGET = 256;
+
 /** Early-exit "is there a COMPONENT in here?" — same descent as collectChildComponents
- * (through non-component owners) but returns on the FIRST one found. */
-function hasChildComponent(owner: any, seen: Set<any>, depth: number): boolean {
+ * (through non-component owners) but returns on the FIRST one found, and bails when the
+ * shared visit budget is exhausted (budget.n <= 0 after the call ⇒ truncated). */
+function hasChildComponent(owner: any, seen: Set<any>, depth: number, budget: { n: number }): boolean {
     const owned = owner?.owned;
     if (!owned || depth > 1500) {
         return false;
@@ -294,29 +302,33 @@ function hasChildComponent(owner: any, seen: Set<any>, depth: number): boolean {
             continue;
         }
         seen.add(c);
+        if (--budget.n <= 0) {
+            return false; // truncated — caller checks budget.n to know it was inconclusive
+        }
         if (safeType(c) === 'COMPONENT') {
             return true;
         }
-        if (hasChildComponent(c, seen, depth + 1)) {
+        if (hasChildComponent(c, seen, depth + 1, budget)) {
             return true;
         }
     }
     return false;
 }
 
-/** True when `owner` has no component children at all (owned-walk OR stitched sub-roots) —
- * the same set collectStitchedChildren would return, but computed cheaply so emitted nodes
- * can be marked leaf up front. */
+/** True when `owner` has no component children at all (owned-walk OR stitched sub-roots).
+ * Bounded by LEAF_PEEK_BUDGET; a truncated (inconclusive) search returns false so the node
+ * stays expandable rather than being mislabelled a leaf. */
 function isLeafOwner(owner: any, idStr: string): boolean {
+    const budget = { n: LEAF_PEEK_BUDGET };
     const seen = new Set<any>();
-    if (hasChildComponent(owner, seen, 0)) {
-        return false;
+    if (hasChildComponent(owner, seen, 0, budget) || budget.n <= 0) {
+        return false; // found a component, or ran out of budget (assume expandable)
     }
     ensureRootIndex();
     const attached = rootsByParentId.get(idStr);
     if (attached) {
         for (const r of attached) {
-            if (hasChildComponent(r, seen, 0)) {
+            if (hasChildComponent(r, seen, 0, budget) || budget.n <= 0) {
                 return false;
             }
         }
