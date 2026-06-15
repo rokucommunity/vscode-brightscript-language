@@ -189,7 +189,10 @@
     }
 
     function buildRow(key: string, label: string, value: SolidEncodedValue | undefined): InspectRow {
-        const json = JSON.stringify(value ?? null);
+        // Compare WITHOUT `ref` — it's an ephemeral drill-down handle the bridge
+        // re-numbers on every inspect (its ref registry resets per call), so leaving
+        // it in would flash every collapsed value on every poll even when unchanged.
+        const json = JSON.stringify(value ?? null, (k, v) => (k === 'ref' ? undefined : v));
         const changed = prevRowJson[key] !== undefined && prevRowJson[key] !== json;
         if (changed) {
             rowVersions[key] = (rowVersions[key] ?? 0) + 1;
