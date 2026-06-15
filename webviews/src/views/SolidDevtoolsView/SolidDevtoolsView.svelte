@@ -5,7 +5,7 @@
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { solidDevtools, dedupeById } from './SolidDevtoolsView';
     import TreeNode from './TreeNode.svelte';
-    import ValuePreview from './ValuePreview.svelte';
+    import ValueNode from './ValueNode.svelte';
     import type { SolidDevtoolsResult, SolidEncodedValue, SolidInspectData, SolidInspectEntry, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
     const POLL_MS = 1500;
@@ -72,6 +72,8 @@
         updateStatusLine();
         refreshEpoch += 1;
         void loadRoots(haveTree ? 'refresh' : 'initial');
+        // Re-inspect on every refresh — open drill-downs re-resolve themselves against
+        // the fresh value refs (each ValueNode re-fetches when its ref changes).
         void inspectSelected(false);
     }
 
@@ -100,12 +102,12 @@
     onDestroy(() => clearInterval(pollTimer));
 
     // ---- inspector ---------------------------------------------------------------
+    // Flash-on-change is handled per-value inside ValueNode (so an expanded store flashes
+    // only the field that changed, not the whole object); rows are just data here.
     interface InspectRow {
         key: string;
         label: string;
         value?: SolidEncodedValue;
-        changed: boolean;
-        version: number;
     }
     interface InspectSection {
         title: string;
@@ -119,19 +121,12 @@
     /** Raw inspect outcome for the selected node — shown (collapsed) when the body is
      * empty so an empty/odd payload is diagnosable instead of just looking blank. */
     let lastRaw: string | null = null;
-    /** Per-row value JSON from the previous inspect of the SAME node — rows whose
-     * value changed get a flash animation (like the Variables view). */
-    let prevRowJson: Record<string, string> = {};
-    let nextRowJson: Record<string, string> = {};
-    let rowVersions: Record<string, number> = {};
 
     const unsubscribeSelected = selectedId.subscribe((id) => {
         if (!id) {
             return;
         }
-        // new node — reset the flash baseline so the first render doesn't flash everything
-        prevRowJson = {};
-        rowVersions = {};
+        solidDevtools.resetDrill(); // drill paths are relative to the inspected node
         inspectData = null;
         sections = [];
         lastRaw = null;
@@ -183,22 +178,10 @@
         // Key by index — unnamed signals/memos all come back with name '' (and a prop
         // name could in theory repeat), so a name-based key isn't unique and a dup key
         // makes Svelte's keyed {#each} throw, blanking the whole pane. Index is unique
-        // within a section and position-stable across refreshes (so flash still works).
-        const rows = entries.map((entry, i) => buildRow(prefix + i, entry.key ?? entry.name ?? '', entry.value));
+        // within a section and position-stable across refreshes (so drill paths + flash
+        // baselines stay put).
+        const rows = entries.map((entry, i) => ({ key: prefix + i, label: entry.key ?? entry.name ?? '', value: entry.value }));
         return { title: title, rows: rows };
-    }
-
-    function buildRow(key: string, label: string, value: SolidEncodedValue | undefined): InspectRow {
-        // Compare WITHOUT `ref` — it's an ephemeral drill-down handle the bridge
-        // re-numbers on every inspect (its ref registry resets per call), so leaving
-        // it in would flash every collapsed value on every poll even when unchanged.
-        const json = JSON.stringify(value ?? null, (k, v) => (k === 'ref' ? undefined : v));
-        const changed = prevRowJson[key] !== undefined && prevRowJson[key] !== json;
-        if (changed) {
-            rowVersions[key] = (rowVersions[key] ?? 0) + 1;
-        }
-        nextRowJson[key] = json;
-        return { key: key, label: label, value: value, changed: changed, version: rowVersions[key] ?? 0 };
     }
 
     function setInspectData(data: SolidInspectData) {
@@ -208,7 +191,6 @@
             inspectMessage = 'This node is no longer present.';
             return;
         }
-        nextRowJson = {};
         const built: InspectSection[] = [];
         for (const section of [
             buildSection('Props', 'p:', data.props),
@@ -221,11 +203,12 @@
             }
         }
         if (data.value) {
-            built.push({ title: 'Value', rows: [buildRow('val', '', data.value)] });
+            built.push({ title: 'Value', rows: [{ key: 'val', label: '', value: data.value }] });
         }
-        prevRowJson = nextRowJson;
         inspectData = data;
         sections = built;
+        // NOTE: don't reset drill-down here — open paths re-resolve against the fresh
+        // refs (that's what makes drill-down live). Reset only happens on node change.
         // keep the raw payload around for the diagnostic <details> when the body is empty
         lastRaw = built.length ? null : JSON.stringify(data, null, 2);
         inspectMessage = built.length || data.error ? '' : 'No readable props, signals, memos, or value on this node.';
@@ -252,6 +235,7 @@
     // persisted state — reset our in-memory copy and start over.
     intermediary.observeEvent(ViewProviderEvent.onSolidDevtoolsDebugSessionStarted, () => {
         solidDevtools.resetUiState();
+        solidDevtools.resetDrill();
         selectedId.set(null);
         selectedNode.set(null);
         inspectData = null;
@@ -294,7 +278,7 @@
         {/if}
         <div id="tree">
             {#each roots as node (node.id)}
-                <TreeNode {node} depth={0} {refreshEpoch} />
+                <TreeNode {node} {refreshEpoch} />
             {/each}
         </div>
         <div id="inspect">
@@ -308,19 +292,24 @@
             {#if inspectMessage}
                 <div class="imsg">{inspectMessage}</div>
             {/if}
-            {#each sections as section (section.title)}
-                <div class="isec">
-                    <div class="ititle">{section.title}</div>
-                    {#each section.rows as row (row.key)}
-                        {#key row.version}
-                            <div class="irow" class:flash={row.changed}>
-                                {#if row.label}<span class="ikey">{row.label}</span>{#if row.value !== undefined}<span class="ipunc">: </span>{/if}{/if}
-                                {#if row.value !== undefined}<ValuePreview value={row.value} />{/if}
+            <!-- key on the selected node so switching nodes remounts the rows, resetting
+                 each ValueNode's flash baseline (row keys like "s:0" repeat across nodes) -->
+            {#key $selectedId}
+                {#each sections as section (section.title)}
+                    <div class="isec">
+                        <div class="ititle">{section.title}</div>
+                        {#each section.rows as row (row.key)}
+                            <div class="irow">
+                                {#if row.value !== undefined}
+                                    <ValueNode value={row.value} label={row.label} path={row.key} />
+                                {:else if row.label}
+                                    <span class="ikey">{row.label}</span>
+                                {/if}
                             </div>
-                        {/key}
-                    {/each}
-                </div>
-            {/each}
+                        {/each}
+                    </div>
+                {/each}
+            {/key}
             {#if inspectData?.error}
                 <div class="isec">
                     <div class="ititle">Error</div>
@@ -441,8 +430,6 @@
     }
 
     .irow {
-        white-space: pre-wrap;
-        word-break: break-word;
         padding: 1px 0 1px 8px;
         font-family: var(--vscode-editor-font-family, monospace);
         font-size: 12px;
@@ -450,10 +437,6 @@
 
     .ikey {
         color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe);
-    }
-
-    .ipunc {
-        opacity: 0.6;
     }
 
     .nul {
@@ -476,21 +459,5 @@
         word-break: break-word;
         font-family: var(--vscode-editor-font-family, monospace);
         margin: 4px 0 0;
-    }
-
-    /* flash a row when its value changes, then fade out (like the Variables view) */
-    @keyframes sdtflash {
-        0% {
-            background: var(--vscode-debugView-valueChangedHighlight, #648589);
-        }
-
-        100% {
-            background: transparent;
-        }
-    }
-
-    .irow.flash {
-        animation: sdtflash 1s ease-out;
-        border-radius: 3px;
     }
 </style>

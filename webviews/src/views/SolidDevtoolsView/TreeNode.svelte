@@ -7,7 +7,6 @@
     import type { SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
     export let node: SolidTreeNode;
-    export let depth = 0;
     /** Bumped by the main view on a live refresh — every showing layer re-fetches. */
     export let refreshEpoch = 0;
     /** Set by the parent on straight-line chains (single-child layers) so a user
@@ -87,9 +86,6 @@
 </script>
 
 <div class="row" class:sel={$selectedId === node.id} on:click={select}>
-    {#each { length: depth } as _}
-        <span class="indent-guide">&nbsp;</span>
-    {/each}
     <span class="twisty" class:loading on:click={toggle}>
         {#if !isLeaf}
             <Chevron {expanded} />
@@ -104,7 +100,6 @@
         {#each children as child (child.id)}
             <svelte:self
                 node={child}
-                depth={depth + 1}
                 {refreshEpoch}
                 autoExpand={userExpand && children.length === 1}
             />
@@ -131,14 +126,12 @@
         color: var(--vscode-list-activeSelectionForeground);
     }
 
-    .indent-guide {
-        display: inline-block;
-        box-sizing: border-box;
-        margin-left: 4px;
-        padding-left: 7px;
-        border-left: 1px solid var(--vscode-tree-indentGuidesStroke);
-        opacity: 0.4;
-        align-self: stretch;
+    /* nested children indent + a CONTINUOUS guide line (a per-row segment leaves gaps
+       at each row's vertical padding — the container border runs unbroken) */
+    .children {
+        margin-left: 8px;
+        padding-left: 8px;
+        border-left: 1px solid var(--vscode-tree-indentGuidesStroke, rgba(128, 128, 128, 0.28));
     }
 
     /* fixed-width twisty so leaf labels align with expandable ones */

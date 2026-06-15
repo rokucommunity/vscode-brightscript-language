@@ -38,6 +38,8 @@ export interface SolidEncodedValue {
     /** Constructor name for non-plain objects (e.g. a SceneGraph node class). */
     ctor?: string;
     ref?: number;
+    /** Start index/char offset of this page — set by lazyValue on paged responses. */
+    offset?: number;
 }
 
 /** A named row in an inspect section (props use `key`, the others use `name`). */
