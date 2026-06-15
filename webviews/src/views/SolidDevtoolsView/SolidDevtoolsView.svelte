@@ -35,11 +35,12 @@
     let bodyEl: HTMLElement;
     let dragging = false;
 
+    // order matches VS Code's "Panel Position" submenu (Top / Left / Right / Bottom)
     const positionOptions: Array<{ value: SolidInspectorPosition; label: string }> = [
-        { value: 'bottom', label: 'Bottom' },
-        { value: 'right', label: 'Right' },
+        { value: 'top', label: 'Top' },
         { value: 'left', label: 'Left' },
-        { value: 'top', label: 'Top' }
+        { value: 'right', label: 'Right' },
+        { value: 'bottom', label: 'Bottom' }
     ];
 
     // The collapse chevron points the way the pane MOVES when you click it: expanded →
@@ -423,9 +424,9 @@
 
 <div id="container">
     <div id="bar">
-        <vscode-button appearance="secondary" on:click={refresh}>Refresh</vscode-button>
-        <label class="live"><input type="checkbox" bind:checked={live} on:change={onLiveChange} /> Live</label>
-        <label class="live"><input type="checkbox" bind:checked={showPerf} on:change={onPerfChange} /> Perf</label>
+        <vscode-button appearance="secondary" title="Re-fetch the component tree and re-inspect the selected node" on:click={refresh}>Refresh</vscode-button>
+        <label class="live" title="Auto-refresh the tree and inspector as the app's reactive graph changes"><input type="checkbox" bind:checked={live} on:change={onLiveChange} /> Live</label>
+        <label class="live" title="Round-trip timing between the Solid Devtools and the device"><input type="checkbox" bind:checked={showPerf} on:change={onPerfChange} /> Perf</label>
         <span id="status">{statusLine}</span>
         {#if refreshing}
             <!-- fades in only after 400ms, so quick refreshes show nothing at all -->
@@ -540,7 +541,7 @@
                                         <div class="menu-group-label">Position</div>
                                         {#each positionOptions as option (option.value)}
                                             <button class="menu-item" on:click={() => setPosition(option.value)}>
-                                                <span class="menu-check">{#if position === option.value}<Check width="14" height="14" />{/if}</span>
+                                                {#if position === option.value}<span class="menu-check"><Check width="14" height="14" /></span>{/if}
                                                 {option.label}
                                             </button>
                                         {/each}
@@ -979,7 +980,9 @@
         right: 0;
         margin-top: 3px;
         z-index: 11;
-        min-width: 150px;
+        /* size to content (the short Bottom/Right/Left/Top labels) — a fixed min-width
+           left a lot of dead space to the right of the labels */
+        white-space: nowrap;
         padding: 4px 0;
         background: var(--vscode-menu-background, var(--vscode-editorWidget-background, #252526));
         color: var(--vscode-menu-foreground, var(--vscode-foreground));
@@ -993,13 +996,16 @@
         text-transform: uppercase;
         letter-spacing: 0.04em;
         opacity: 0.5;
-        padding: 2px 10px 4px;
+        /* left-align the header with the item labels (past the check gutter) */
+        padding: 3px 14px 5px 26px;
     }
 
+    /* block item with a left gutter for the check — labels are left-aligned text, the
+       check is absolutely positioned in the gutter (like a native menu). Avoids any flex
+       packing that could push the labels off the left edge. */
     .menu-item {
-        display: flex;
-        align-items: center;
-        gap: 4px;
+        position: relative;
+        display: block;
         width: 100%;
         background: transparent;
         border: none;
@@ -1007,8 +1013,8 @@
         cursor: pointer;
         font: inherit;
         text-align: left;
-        padding: 4px 10px;
         white-space: nowrap;
+        padding: 4px 14px 4px 26px;
     }
 
     .menu-item:hover {
@@ -1017,11 +1023,11 @@
     }
 
     .menu-check {
-        flex: 0 0 auto;
-        width: 16px;
+        position: absolute;
+        left: 7px;
+        top: 50%;
+        transform: translateY(-50%);
         display: inline-flex;
-        align-items: center;
-        justify-content: center;
     }
 
     .iname {
