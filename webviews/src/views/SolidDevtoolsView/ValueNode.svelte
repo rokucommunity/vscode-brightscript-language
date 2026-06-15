@@ -179,11 +179,11 @@
         opacity: 0.6;
     }
 
-    /* children indent: a guide line one level in, matching the tree */
+    /* children indent: a guide line one level in, matching the tree (~8px/level) */
     .vchildren {
-        margin-left: 8px;
-        padding-left: 8px;
-        border-left: 1px solid var(--vscode-tree-indentGuidesStroke, rgba(128, 128, 128, 0.28));
+        margin-left: 3px;
+        padding-left: 5px;
+        border-left: 1px solid var(--vscode-tree-inactiveIndentGuidesStroke, rgba(128, 128, 128, 0.2));
     }
 
     .vstring {

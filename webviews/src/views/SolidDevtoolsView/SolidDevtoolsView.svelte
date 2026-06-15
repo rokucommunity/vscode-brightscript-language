@@ -250,6 +250,7 @@
         updateStatusLine();
         if (typeof state.selectedId === 'string') {
             selectedId.set(state.selectedId);
+            solidDevtools.setFocused(state.selectedId); // restore the focus outline too
         }
         await loadRoots('initial');
     }

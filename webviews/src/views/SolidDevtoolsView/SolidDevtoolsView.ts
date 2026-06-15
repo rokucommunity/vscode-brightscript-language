@@ -35,11 +35,32 @@ class SolidDevtoolsViewModel {
      * clears it. Used by "reveal in tree" from a search result. */
     public scrollTargetId = writable<string | null>(null);
 
-    /** Select a node for inspection (called by every TreeNode row). */
+    /** The focused row (distinct from selection, like VS Code): clicking a chevron to
+     * expand focuses a row without selecting it. Selecting also focuses. */
+    public focusedId = writable<string | null>(null);
+
+    /** Active indent-guide anchor + level. The guide at indent index `activeGuideLevel`
+     * is drawn bright on every row inside `activeGuideAncestorId`'s subtree. The selected
+     * TreeNode publishes these from its live expand state: when expanded it lights the
+     * guide its children hang off of; when leaf/collapsed, the guide at its own level. */
+    public activeGuideAncestorId = writable<string | null>(null);
+    public activeGuideLevel = writable<number>(-1);
+
+    /** Select a node for inspection (called by every TreeNode row / search result). */
     public select(node: SolidTreeNode) {
         this.selectedNode.set(node);
+        this.focusedId.set(node.id);
         this.setSelected(node.id);
         this.selectedId.set(node.id);
+    }
+
+    public setFocused(id: string) {
+        this.focusedId.set(id);
+    }
+
+    public setActiveGuide(ancestorId: string | null, level: number) {
+        this.activeGuideAncestorId.set(ancestorId);
+        this.activeGuideLevel.set(level);
     }
 
     public clearScrollTarget() {
