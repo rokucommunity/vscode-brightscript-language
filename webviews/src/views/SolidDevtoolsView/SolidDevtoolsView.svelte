@@ -257,10 +257,12 @@
     /** Raw inspect outcome for the selected node — shown (collapsed) when the body is
      * empty so an empty/odd payload is diagnosable instead of just looking blank. */
     let lastRaw: string | null = null;
-    /** Initial inspect of a freshly-selected node is in flight (no data yet) — drives the
-     * delayed spinner. Background re-inspects on live refresh keep the old data shown, so
-     * `!inspectData` stops the spinner flashing over existing content on every poll. */
-    $: inspecting = inspectPending && !inspectData;
+    /** Show the "inspecting…" label whenever a node is selected but we don't yet have its
+     * data OR a message to show. Deliberately NOT keyed on the async `inspectPending` flag
+     * (its true/false timing has gaps — e.g. the restore-after-reload path), so the label
+     * appears the instant you select and clears the moment data/a message lands. Background
+     * re-inspects keep `inspectData` set, so they never re-trigger it. */
+    $: inspecting = !!$selectedId && !inspectData && !inspectMessage;
 
     const unsubscribeSelected = selectedId.subscribe((id) => {
         if (!id) {
@@ -270,7 +272,7 @@
         inspectData = null;
         sections = [];
         lastRaw = null;
-        inspectMessage = ''; // the delayed spinner covers the loading state now
+        inspectMessage = ''; // the "inspecting…" label (+ delayed spinner) covers loading
         void inspectSelected(true);
     });
     onDestroy(unsubscribeSelected);
@@ -307,7 +309,13 @@
                 inspectMessage = `Inspect failed: ${e?.message ?? e}`;
             }
         } finally {
-            inspectPending = false;
+            // only the inspect for the CURRENT selection owns the pending flag: a STALE
+            // request (issued for a node we've since swapped away from, or a background
+            // re-inspect) resolving here must not clear it, or the "inspecting…" indicator
+            // would vanish while the newly-selected node is still loading.
+            if ($selectedId === id) {
+                inspectPending = false;
+            }
         }
     }
 
@@ -550,8 +558,9 @@
                 {#if !collapsed}
                     <div class="ibody">
                         {#if inspecting}
-                            <!-- delayed: only a slow inspect surfaces a spinner -->
-                            <div class="inspecting"><Spinner size={16} /></div>
+                            <!-- immediate label so the pane isn't blank; the spinner joins it
+                                 only once the inspect crosses the slow threshold -->
+                            <div class="inspecting"><span>inspecting…</span><Spinner size={14} /></div>
                         {/if}
                         {#if inspectMessage}
                             <div class="imsg">{inspectMessage}</div>
@@ -733,8 +742,13 @@
 
     .inspecting {
         display: flex;
-        justify-content: center;
-        padding: 12px;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+    }
+
+    .inspecting span {
+        opacity: 0.55;
     }
 
     label.live {
@@ -779,8 +793,22 @@
         flex-direction: row-reverse;
     }
 
+    /* While dragging the splitter, hold the resize cursor across the WHOLE body — pointer
+       capture routes events but not the cursor, so without this it would flicker to each
+       element's own cursor (pointer over rows, text over labels) as the pointer moves. */
     #body.dragging {
         user-select: none;
+    }
+    #body.dragging[data-pos='bottom'],
+    #body.dragging[data-pos='top'] {
+        cursor: row-resize;
+    }
+    #body.dragging[data-pos='left'],
+    #body.dragging[data-pos='right'] {
+        cursor: col-resize;
+    }
+    #body.dragging * {
+        cursor: inherit;
     }
 
     #treepane {

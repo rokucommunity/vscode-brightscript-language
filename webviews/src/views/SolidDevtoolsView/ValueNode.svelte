@@ -102,7 +102,7 @@
 
 {#key flashId}
     <div class="vrow" class:flash={flashId > 0}>
-        <span class="twisty" on:click={toggle}>
+        <span class="twisty" class:clickable={expandable} on:click={toggle}>
             <ChevronOrSpinner loading={fetching} {expandable} expanded={isOpen} />
         </span>
         <span class="vcontent">
@@ -162,8 +162,13 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        cursor: pointer;
+        cursor: default;
         user-select: none;
+    }
+
+    /* only show the hand pointer when there's actually something to expand */
+    .twisty.clickable {
+        cursor: pointer;
     }
 
     /* the inline value (label + ValuePreview tokens) as ONE flex item, kept to a SINGLE
