@@ -43,6 +43,12 @@
     $: renderNode = fetched ? fetched.node : value;
     $: moreCount = fetched ? fetched.more : 0;
 
+    // When expanded, the children below carry the detail — so the row shows a minimal
+    // summary ({…}/[…], with the constructor name if any) instead of the full inline
+    // preview, which would just duplicate the listed children (keeps big objects from
+    // dominating the pane). Two independent ternaries — no nesting.
+    $: openSummary = (value?.ctor ? value.ctor + ' ' : '') + (value?.t === 'array' ? '[…]' : '{…}');
+
     // (Re)fetch when open + needs fetching + the ref changed — a live re-inspect gives a
     // fresh ref, keeping the drill-down current. Inline-only expansions never fetch.
     let fetchedRef: number | undefined;
@@ -97,7 +103,7 @@
             {#if expandable}<Chevron expanded={isOpen} />{/if}
         </span>
         <span class="vcontent">
-            {#if label}<span class={labelClass}>{label}</span><span class="vpunc">: </span>{/if}<ValuePreview {value} />
+            {#if label}<span class={labelClass}>{label}</span><span class="vpunc">{' = '}</span>{/if}{#if isOpen && isContainer}<span class="vsummary">{openSummary}</span>{:else}<span class:vmuted={isContainer}><ValuePreview {value} /></span>{/if}
         </span>
     </div>
 {/key}
@@ -126,7 +132,7 @@
 <style>
     .vrow {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         border-radius: 3px;
     }
 
@@ -157,18 +163,21 @@
         user-select: none;
     }
 
-    /* the inline value (label + ValuePreview tokens) as ONE flex item, so the tokens
-       flow as wrapping text. white-space:normal so the markup's own indentation doesn't
-       render as blank lines (the expanded string below uses pre-wrap for real content). */
+    /* the inline value (label + ValuePreview tokens) as ONE flex item, kept to a SINGLE
+       truncated line like VS Code's Variables view — drill in with the twisty to see more
+       rather than letting a big object preview wrap across many lines. min-width:0 lets
+       the flex item shrink so text-overflow can ellipsize. */
     .vcontent {
         flex: 1 1 auto;
         min-width: 0;
-        white-space: normal;
-        word-break: break-word;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
+    /* the variable/property name — the same neutral token VS Code's Variables view uses */
     .vkey {
-        color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe);
+        color: var(--vscode-debugTokenExpression-name, var(--vscode-foreground));
     }
 
     .vindex {
@@ -177,6 +186,16 @@
 
     .vpunc {
         opacity: 0.6;
+    }
+
+    /* Objects/arrays render in ONE flat colour (VS Code's Variables view does the same —
+       the value isn't syntax-highlighted), so a container reads as a single muted blob and
+       scalar values stand out. Covers the collapsed preview's per-token spans and the
+       expanded {…} summary. The descendant override beats ValuePreview's :global(.sdtv-*). */
+    .vsummary,
+    .vmuted :global([class^='sdtv-']) {
+        color: var(--vscode-debugTokenExpression-value, var(--vscode-descriptionForeground));
+        opacity: 1;
     }
 
     /* children indent: a guide line one level in, matching the tree (~8px/level) */

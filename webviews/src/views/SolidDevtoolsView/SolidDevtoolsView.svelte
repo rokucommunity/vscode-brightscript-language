@@ -4,13 +4,123 @@
     import { intermediary } from '../../ExtensionIntermediary';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import ListTree from 'svelte-codicons/lib/ListTree.svelte';
+    import Ellipsis from 'svelte-codicons/lib/Ellipsis.svelte';
+    import ScreenFull from 'svelte-codicons/lib/ScreenFull.svelte';
+    import ScreenNormal from 'svelte-codicons/lib/ScreenNormal.svelte';
+    import ChevronDown from 'svelte-codicons/lib/ChevronDown.svelte';
+    import ChevronRight from 'svelte-codicons/lib/ChevronRight.svelte';
+    import ChevronUp from 'svelte-codicons/lib/ChevronUp.svelte';
+    import ChevronLeft from 'svelte-codicons/lib/ChevronLeft.svelte';
+    import Check from 'svelte-codicons/lib/Check.svelte';
     import { solidDevtools, dedupeById } from './SolidDevtoolsView';
     import TreeNode from './TreeNode.svelte';
     import ValueNode from './ValueNode.svelte';
-    import type { SolidDevtoolsResult, SolidEncodedValue, SolidInspectData, SolidInspectEntry, SolidSearchMatch, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
+    import type { SolidDevtoolsResult, SolidEncodedValue, SolidInspectData, SolidInspectEntry, SolidInspectorPosition, SolidSearchMatch, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
 
     const POLL_MS = 1500;
     const { selectedId, selectedNode, searchResults, searching, searchError } = solidDevtools;
+
+    // ---- inspector layout (position / collapse / resize / full-screen) -----------
+    // Persisted per-workspace AND per-context (the sidebar view and the popped-out
+    // editor panel remember their own). `fullscreen` is a transient action (inspector
+    // fills the whole view, tree hidden) — deliberately NOT persisted, so reopening
+    // never strands the user with no tree.
+    let position: SolidInspectorPosition = 'bottom';
+    let collapsed = false;
+    let fullscreen = false;
+    let sizePct = 0.42;
+    let menuOpen = false;
+    let bodyEl: HTMLElement;
+    let dragging = false;
+
+    const positionOptions: Array<{ value: SolidInspectorPosition; label: string }> = [
+        { value: 'bottom', label: 'Bottom' },
+        { value: 'right', label: 'Right' },
+        { value: 'left', label: 'Left' },
+        { value: 'top', label: 'Top' }
+    ];
+
+    // The collapse chevron points the way the pane MOVES when you click it: expanded →
+    // toward its dock edge, collapsed → back toward the tree. So right+open → ▶,
+    // right+collapsed → ◀, bottom+open → ▼, etc.
+    function chevronFor(pos: SolidInspectorPosition, isCollapsed: boolean) {
+        switch (pos) {
+            case 'top':
+                return isCollapsed ? ChevronDown : ChevronUp;
+            case 'left':
+                return isCollapsed ? ChevronRight : ChevronLeft;
+            case 'right':
+                return isCollapsed ? ChevronLeft : ChevronRight;
+            default: // bottom
+                return isCollapsed ? ChevronUp : ChevronDown;
+        }
+    }
+
+    $: vertical = position === 'left' || position === 'right';
+    $: collapseIcon = chevronFor(position, collapsed);
+
+    function persistLayout() {
+        solidDevtools.saveLayout({ position: position, collapsed: collapsed, sizePct: sizePct });
+    }
+
+    function setPosition(value: SolidInspectorPosition) {
+        position = value;
+        menuOpen = false;
+        persistLayout();
+    }
+
+    function toggleCollapsed() {
+        collapsed = !collapsed;
+        if (collapsed) {
+            fullscreen = false; // can't be both minimized and maximized
+        }
+        menuOpen = false;
+        persistLayout();
+    }
+
+    function toggleFullscreen() {
+        fullscreen = !fullscreen;
+        if (fullscreen) {
+            collapsed = false;
+        }
+        // transient — don't persist
+    }
+
+    // ---- splitter drag (resize the inspector pane) ------------------------------
+    function onSplitterDown(e: PointerEvent) {
+        dragging = true;
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        e.preventDefault();
+    }
+    function onSplitterMove(e: PointerEvent) {
+        if (!dragging || !bodyEl) {
+            return;
+        }
+        const r = bodyEl.getBoundingClientRect();
+        let pct: number;
+        if (position === 'bottom') {
+            pct = (r.bottom - e.clientY) / r.height;
+        } else if (position === 'top') {
+            pct = (e.clientY - r.top) / r.height;
+        } else if (position === 'right') {
+            pct = (r.right - e.clientX) / r.width;
+        } else {
+            pct = (e.clientX - r.left) / r.width; // left
+        }
+        sizePct = Math.min(0.85, Math.max(0.12, pct));
+    }
+    function onSplitterUp(e: PointerEvent) {
+        if (!dragging) {
+            return;
+        }
+        dragging = false;
+        try {
+            (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+        } catch {
+            // pointer was already released
+        }
+        persistLayout();
+    }
 
     // ---- search (debounced full-tree name search → results list) ----------------
     let searchText = '';
@@ -243,10 +353,16 @@
     }
 
     async function init() {
+        // sidebar vs popped-out panel — picks which context's layout we read/write
+        solidDevtools.setContext((window as any).webviewContext === 'panel' ? 'panel' : 'sidebar');
         // the shared UI state must be loaded BEFORE the tree renders — TreeNodes read
         // their expansion from it synchronously at mount
         const state = await solidDevtools.loadUiState();
         live = state.live;
+        const layout = solidDevtools.getLayout();
+        position = layout.position;
+        collapsed = layout.collapsed;
+        sizePct = layout.sizePct;
         updateStatusLine();
         if (typeof state.selectedId === 'string') {
             selectedId.set(state.selectedId);
@@ -310,84 +426,149 @@
                 and rebuild.
             </div>
         {/if}
-        {#if $searchResults !== null}
-            <!-- search active: a results list replaces the tree; click to inspect -->
-            <div id="tree">
-                {#if $searching}
-                    <div class="searchmsg">searching…</div>
-                {:else if $searchError}
-                    <div class="searchmsg">{$searchError}</div>
-                {:else if $searchResults.length === 0}
-                    <div class="searchmsg">No components match “{searchText}”.</div>
-                {:else}
-                    <div class="searchmsg">{$searchResults.length} match{$searchResults.length === 1 ? '' : 'es'}</div>
-                    {#each $searchResults as match (match.id)}
-                        <div class="result" class:sel={$selectedId === match.id} on:click={() => pickSearchResult(match)}>
-                            <div class="result-main">
-                                <div class="result-head">
-                                    <span class="name">{match.name}</span>
-                                    <span class="type">{match.type}</span>
+        <div
+            id="body"
+            bind:this={bodyEl}
+            data-pos={position}
+            class:collapsed
+            class:fullscreen
+            class:dragging
+            style="--isize: {(sizePct * 100).toFixed(2)}%"
+        >
+            <div id="treepane">
+                {#if $searchResults !== null}
+                    <!-- search active: a results list replaces the tree; click to inspect -->
+                    {#if $searching}
+                        <div class="searchmsg">searching…</div>
+                    {:else if $searchError}
+                        <div class="searchmsg">{$searchError}</div>
+                    {:else if $searchResults.length === 0}
+                        <div class="searchmsg">No components match “{searchText}”.</div>
+                    {:else}
+                        <div class="searchmsg">{$searchResults.length} match{$searchResults.length === 1 ? '' : 'es'}</div>
+                        {#each $searchResults as match (match.id)}
+                            <div class="result" class:sel={$selectedId === match.id} on:click={() => pickSearchResult(match)}>
+                                <div class="result-main">
+                                    <div class="result-head">
+                                        <span class="name">{match.name}</span>
+                                        <span class="type">{match.type}</span>
+                                    </div>
+                                    {#if match.path}<div class="result-path">{match.path}</div>{/if}
                                 </div>
-                                {#if match.path}<div class="result-path">{match.path}</div>{/if}
+                                <button class="reveal" title="Reveal in tree" on:click|stopPropagation={() => revealResult(match)}>
+                                    <ListTree />
+                                </button>
                             </div>
-                            <button class="reveal" title="Reveal in tree" on:click|stopPropagation={() => revealResult(match)}>
-                                <ListTree />
-                            </button>
-                        </div>
+                        {/each}
+                    {/if}
+                {:else}
+                    {#each roots as node (node.id)}
+                        <TreeNode {node} {refreshEpoch} />
                     {/each}
                 {/if}
             </div>
-        {:else}
-            <div id="tree">
-                {#each roots as node (node.id)}
-                    <TreeNode {node} {refreshEpoch} />
-                {/each}
-            </div>
-        {/if}
-        <div id="inspect">
-            {#if $selectedNode || inspectData}
-                <!-- header from the selected tree node (always available) or the inspect payload -->
-                <div class="ihdr">
-                    {#if $selectedNode?.name ?? inspectData?.name}<span class="iname">{$selectedNode?.name ?? inspectData?.name}</span>{/if}
-                    {#if $selectedNode?.type ?? inspectData?.type}<span class="itype">{$selectedNode?.type ?? inspectData?.type}</span>{/if}
-                </div>
+
+            {#if !collapsed && !fullscreen}
+                <!-- drag to resize the inspector pane; pointer-captured so it tracks
+                     even when the pointer leaves the thin splitter -->
+                <div
+                    id="splitter"
+                    class:dragging
+                    on:pointerdown={onSplitterDown}
+                    on:pointermove={onSplitterMove}
+                    on:pointerup={onSplitterUp}
+                ></div>
             {/if}
-            {#if inspectMessage}
-                <div class="imsg">{inspectMessage}</div>
-            {/if}
-            <!-- key on the selected node so switching nodes remounts the rows, resetting
-                 each ValueNode's flash baseline (row keys like "s:0" repeat across nodes) -->
-            {#key $selectedId}
-                {#each sections as section (section.title)}
-                    <div class="isec">
-                        <div class="ititle">{section.title}</div>
-                        {#each section.rows as row (row.key)}
-                            <div class="irow">
-                                {#if row.value !== undefined}
-                                    <ValueNode value={row.value} label={row.label} path={row.key} />
-                                {:else if row.label}
-                                    <span class="ikey">{row.label}</span>
+
+            <div id="inspect">
+                <!-- header is ALWAYS present so the layout controls stay reachable even
+                     when the body is collapsed or nothing is selected yet -->
+                <div class="ihdr" class:strip={collapsed && vertical}>
+                    <button
+                        class="collapse-twisty"
+                        title={collapsed ? 'Show inspector' : 'Hide inspector'}
+                        on:click={toggleCollapsed}
+                    >
+                        <svelte:component this={collapseIcon} width="16" height="16" />
+                    </button>
+                    {#if !(collapsed && vertical)}
+                        <!-- title hidden only when collapsed into a thin vertical strip -->
+                        <span class="ititle-label">
+                            {#if ($selectedNode?.name ?? inspectData?.name)}<span class="iname">{$selectedNode?.name ?? inspectData?.name}</span>{/if}
+                            {#if ($selectedNode?.type ?? inspectData?.type)}<span class="itype">{$selectedNode?.type ?? inspectData?.type}</span>{/if}
+                            {#if !($selectedNode || inspectData)}<span class="iplaceholder">Inspector</span>{/if}
+                        </span>
+                    {/if}
+                    {#if !collapsed}
+                        <!-- layout controls hidden while collapsed; expand to reach them -->
+                        <div class="ihdr-controls">
+                            <div class="menu-anchor">
+                                <button class="ctl" title="Position" aria-label="Position" on:click|stopPropagation={() => (menuOpen = !menuOpen)}>
+                                    <Ellipsis width="16" height="16" />
+                                </button>
+                                {#if menuOpen}
+                                    <div class="menu-backdrop" on:click={() => (menuOpen = false)}></div>
+                                    <!-- open upward when docked at the bottom so it doesn't fall off the view -->
+                                    <div class="menu" class:up={position === 'bottom'}>
+                                        <div class="menu-group-label">Position</div>
+                                        {#each positionOptions as option (option.value)}
+                                            <button class="menu-item" on:click={() => setPosition(option.value)}>
+                                                <span class="menu-check">{#if position === option.value}<Check width="14" height="14" />{/if}</span>
+                                                {option.label}
+                                            </button>
+                                        {/each}
+                                    </div>
                                 {/if}
                             </div>
-                        {/each}
-                    </div>
-                {/each}
-            {/key}
-            {#if inspectData?.error}
-                <div class="isec">
-                    <div class="ititle">Error</div>
-                    <div class="irow nul">{inspectData.error}</div>
+                            <div class="ctl-sep"></div>
+                            <button class="ctl" title={fullscreen ? 'Restore' : 'Maximize inspector'} on:click={toggleFullscreen}>
+                                {#if fullscreen}<ScreenNormal width="16" height="16" />{:else}<ScreenFull width="16" height="16" />{/if}
+                            </button>
+                        </div>
+                    {/if}
                 </div>
-            {/if}
-            {#if inspectData?.truncated}
-                <div class="imsg">⚠ Some values were collapsed to keep the response small (large component).</div>
-            {/if}
-            {#if lastRaw}
-                <details class="raw">
-                    <summary>raw response</summary>
-                    <pre>{lastRaw}</pre>
-                </details>
-            {/if}
+
+                {#if !collapsed}
+                    <div class="ibody">
+                        {#if inspectMessage}
+                            <div class="imsg">{inspectMessage}</div>
+                        {/if}
+                        <!-- key on the selected node so switching nodes remounts the rows, resetting
+                             each ValueNode's flash baseline (row keys like "s:0" repeat across nodes) -->
+                        {#key $selectedId}
+                            {#each sections as section (section.title)}
+                                <div class="isec">
+                                    <div class="ititle">{section.title}</div>
+                                    {#each section.rows as row (row.key)}
+                                        <div class="irow">
+                                            {#if row.value !== undefined}
+                                                <ValueNode value={row.value} label={row.label} path={row.key} />
+                                            {:else if row.label}
+                                                <span class="ikey">{row.label}</span>
+                                            {/if}
+                                        </div>
+                                    {/each}
+                                </div>
+                            {/each}
+                        {/key}
+                        {#if inspectData?.error}
+                            <div class="isec">
+                                <div class="ititle">Error</div>
+                                <div class="irow nul">{inspectData.error}</div>
+                            </div>
+                        {/if}
+                        {#if inspectData?.truncated}
+                            <div class="imsg">⚠ Some values were collapsed to keep the response small (large component).</div>
+                        {/if}
+                        {#if lastRaw}
+                            <details class="raw">
+                                <summary>raw response</summary>
+                                <pre>{lastRaw}</pre>
+                            </details>
+                        {/if}
+                    </div>
+                {/if}
+            </div>
         </div>
     {/if}
 </div>
@@ -557,17 +738,108 @@
         margin: 0 6px 6px;
     }
 
-    #tree {
+    /* ---- body: tree + splitter + inspector, docked per `position` ----------- */
+    #body {
         flex: 1 1 auto;
+        display: flex;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    #body[data-pos='bottom'] {
+        flex-direction: column;
+    }
+    #body[data-pos='top'] {
+        flex-direction: column-reverse;
+    }
+    #body[data-pos='right'] {
+        flex-direction: row;
+    }
+    #body[data-pos='left'] {
+        flex-direction: row-reverse;
+    }
+
+    #body.dragging {
+        user-select: none;
+    }
+
+    #treepane {
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
         overflow: auto;
         padding: 2px 4px 8px;
     }
 
     #inspect {
-        flex: 0 0 42%;
+        flex: 0 0 var(--isize, 42%);
+        min-height: 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* collapsed = just the header strip; full-screen = inspector fills, tree hidden */
+    #body.collapsed #inspect {
+        flex: 0 0 auto;
+    }
+    #body.fullscreen #inspect {
+        flex: 1 1 auto;
+    }
+    #body.fullscreen #treepane {
+        display: none;
+    }
+
+    .ibody {
+        flex: 1 1 auto;
+        min-height: 0;
         overflow: auto;
-        border-top: 1px solid var(--vscode-panel-border, #4444);
         padding: 6px 8px;
+    }
+
+    /* ---- splitter (drag to resize the inspector) ---------------------------- */
+    #splitter {
+        flex: 0 0 6px;
+        position: relative;
+        z-index: 2;
+    }
+
+    #body[data-pos='bottom'] #splitter,
+    #body[data-pos='top'] #splitter {
+        cursor: row-resize;
+    }
+    #body[data-pos='left'] #splitter,
+    #body[data-pos='right'] #splitter {
+        cursor: col-resize;
+    }
+
+    /* a 1px hairline centered in the 6px grab band */
+    #splitter::before {
+        content: '';
+        position: absolute;
+        background: var(--vscode-panel-border, #4444);
+        transition: background 0.1s;
+    }
+    #body[data-pos='bottom'] #splitter::before,
+    #body[data-pos='top'] #splitter::before {
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 1px;
+        transform: translateY(-50%);
+    }
+    #body[data-pos='left'] #splitter::before,
+    #body[data-pos='right'] #splitter::before {
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+        transform: translateX(-50%);
+    }
+    #splitter:hover::before,
+    #splitter.dragging::before {
+        background: var(--vscode-sash-hoverBorder, var(--vscode-focusBorder));
     }
 
     .imsg {
@@ -576,9 +848,132 @@
     }
 
     .ihdr {
-        margin-bottom: 6px;
-        padding-bottom: 4px;
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 4px 3px 2px;
         border-bottom: 1px solid var(--vscode-panel-border, #4444);
+    }
+
+    /* collapsed into a thin vertical strip (left/right dock) — just the twisty */
+    .ihdr.strip {
+        padding: 3px 2px;
+        border-bottom: none;
+    }
+
+    .ititle-label {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .iplaceholder {
+        opacity: 0.5;
+    }
+
+    .ihdr-controls {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .ctl,
+    .collapse-twisty {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        color: var(--vscode-icon-foreground);
+        cursor: pointer;
+        padding: 2px;
+        border-radius: 3px;
+        opacity: 0.85;
+    }
+
+    .ctl:hover,
+    .collapse-twisty:hover {
+        background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1));
+        opacity: 1;
+    }
+
+    .ctl :global(svg),
+    .collapse-twisty :global(svg) {
+        display: block;
+    }
+
+    .ctl-sep {
+        width: 1px;
+        align-self: stretch;
+        margin: 3px;
+        background: var(--vscode-panel-border, #4444);
+    }
+
+    /* ---- position popup menu ------------------------------------------------ */
+    .menu-anchor {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .menu-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+    }
+
+    .menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 3px;
+        z-index: 11;
+        min-width: 150px;
+        padding: 4px 0;
+        background: var(--vscode-menu-background, var(--vscode-editorWidget-background, #252526));
+        color: var(--vscode-menu-foreground, var(--vscode-foreground));
+        border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, #454545));
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.36);
+    }
+
+    .menu-group-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        opacity: 0.5;
+        padding: 2px 10px 4px;
+    }
+
+    .menu-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+        padding: 4px 10px;
+        white-space: nowrap;
+    }
+
+    .menu-item:hover {
+        background: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground));
+        color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground));
+    }
+
+    .menu-check {
+        flex: 0 0 auto;
+        width: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .iname {
@@ -610,7 +1005,7 @@
     }
 
     .ikey {
-        color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe);
+        color: var(--vscode-debugTokenExpression-name, var(--vscode-foreground));
     }
 
     .nul {

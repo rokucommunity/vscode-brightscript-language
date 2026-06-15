@@ -1,8 +1,8 @@
 import { writable } from 'svelte/store';
 import { intermediary } from '../../ExtensionIntermediary';
 import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
-import { SOLID_DEVTOOLS_UI_STATE_KEY } from '../../../../src/solidDevtools/protocol';
-import type { SolidDevtoolsRequest, SolidDevtoolsResponseData, SolidDevtoolsResult, SolidEncodedValue, SolidSearchMatch, SolidTreeNode } from '../../../../src/solidDevtools/protocol';
+import { SOLID_DEVTOOLS_UI_STATE_KEY, DEFAULT_SOLID_LAYOUT, resetUiStateForNewSession } from '../../../../src/solidDevtools/protocol';
+import type { SolidDevtoolsRequest, SolidDevtoolsResponseData, SolidDevtoolsResult, SolidDevtoolsUiState, SolidEncodedValue, SolidLayoutState, SolidSearchMatch, SolidTreeNode, SolidWebviewContext } from '../../../../src/solidDevtools/protocol';
 
 /** An expanded value's fetched children + paging cursor (drill-down state, by ref). */
 export interface DrillNode {
@@ -14,13 +14,6 @@ export interface DrillNode {
     more: number;
     /** Ref to use for the next page (same ref for the same value). */
     pageRef?: number;
-}
-
-/** UI state shared by the sidebar view and the popped-out panel. */
-export interface SolidDevtoolsUiState {
-    expanded: Record<string, true>;
-    selectedId?: string;
-    live: boolean;
 }
 
 class SolidDevtoolsViewModel {
@@ -88,6 +81,14 @@ class SolidDevtoolsViewModel {
      */
     private uiState: SolidDevtoolsUiState = { expanded: {}, live: true };
 
+    /** Which copy of the view this is — the sidebar and the popped-out panel remember
+     * their inspector layout independently. Set once at startup from window.webviewContext. */
+    private context: SolidWebviewContext = 'sidebar';
+
+    public setContext(context: SolidWebviewContext) {
+        this.context = context;
+    }
+
     public async loadUiState(): Promise<SolidDevtoolsUiState> {
         const stored = await intermediary.getWorkspaceState(SOLID_DEVTOOLS_UI_STATE_KEY);
         if (stored && typeof stored === 'object') {
@@ -100,10 +101,20 @@ class SolidDevtoolsViewModel {
         void intermediary.updateWorkspaceState(SOLID_DEVTOOLS_UI_STATE_KEY, this.uiState);
     }
 
+    /** This context's persisted inspector layout, with defaults filled in. */
+    public getLayout(): SolidLayoutState {
+        return { ...DEFAULT_SOLID_LAYOUT, ...this.uiState.layouts?.[this.context] };
+    }
+
+    public saveLayout(layout: SolidLayoutState) {
+        this.uiState.layouts = { ...this.uiState.layouts, [this.context]: layout };
+        this.saveUiState();
+    }
+
     /** A new debug session started — node ids from the previous run are dead. Drop
-     * expansion + selection (the live preference isn't per-session and survives). */
+     * expansion + selection; keep the live preference + per-context layout (not per-session). */
     public resetUiState() {
-        this.uiState = { expanded: {}, live: this.uiState.live };
+        this.uiState = resetUiStateForNewSession(this.uiState) ?? { expanded: {}, live: true };
         this.saveUiState();
     }
 
@@ -258,11 +269,13 @@ class SolidDevtoolsViewModel {
         }
         // A failed request is NOT "no matches" — surface why. The common case is an
         // older on-device bridge without lazySearch (the evaluate throws), so hint at it.
+        const reasonMessages: Record<string, string> = {
+            'no-session': 'No debug session — launch an RSG/TS app.',
+            'no-bridge': 'No devtools bridge on the device yet.'
+        };
         this.searchResults.set([]);
         this.searchError.set(
-            result.reason === 'no-session' ? 'No debug session — launch an RSG/TS app.'
-                : result.reason === 'no-bridge' ? 'No devtools bridge on the device yet.'
-                    : 'Search failed — relaunch the app so the updated devtools bridge is injected.'
+            reasonMessages[result.reason ?? ''] ?? 'Search failed — relaunch the app so the updated devtools bridge is injected.'
         );
     }
 

@@ -5,10 +5,49 @@
  * on-device bridge (./bridge). Both sides import this file so they stay in lock-step.
  */
 
-/** workspaceState key holding the view's persisted UI state (expanded/selection/live).
- * Written by the webview (via updateWorkspaceState), cleared by the provider when a
- * new debug session starts — node ids only live for one app run. */
+/** workspaceState key holding the view's persisted UI state (expanded/selection/live
+ * + per-context layout). Written by the webview (via updateWorkspaceState); the
+ * provider drops the node-specific bits (but keeps layout/live) when a new debug
+ * session starts — node ids only live for one app run. */
 export const SOLID_DEVTOOLS_UI_STATE_KEY = 'solidDevtoolsUiState';
+
+/** The same webview component runs in two places — the Run-and-Debug sidebar view and
+ * the popped-out editor panel — and each remembers its own inspector layout. */
+export type SolidWebviewContext = 'sidebar' | 'panel';
+
+/** Which side of the view the inspector pane docks on (VS Code "Panel Position" parity). */
+export type SolidInspectorPosition = 'bottom' | 'top' | 'left' | 'right';
+
+/** Inspector-pane layout for ONE context. Persisted per workspace + per context. */
+export interface SolidLayoutState {
+    position: SolidInspectorPosition;
+    /** Collapsed = body hidden, header strip stays (controls remain reachable). */
+    collapsed: boolean;
+    /** Inspector size as a fraction (0..1) of the body along the split axis. */
+    sizePct: number;
+}
+
+export const DEFAULT_SOLID_LAYOUT: SolidLayoutState = { position: 'bottom', collapsed: false, sizePct: 0.42 };
+
+/** Persisted UI state for the Solid Devtools view, shared by the sidebar + panel copies.
+ * `expanded`/`selectedId` are per-debug-session (node ids); `live` + `layouts` outlive a
+ * session. `layouts` is keyed by context so the sidebar and pop-out remember separately. */
+export interface SolidDevtoolsUiState {
+    expanded: Record<string, true>;
+    selectedId?: string;
+    live: boolean;
+    layouts?: Partial<Record<SolidWebviewContext, SolidLayoutState>>;
+}
+
+/** A new debug session = a fresh owner graph, so previous node ids are dead. Keep the
+ * developer's layout + live preference; drop expansion/selection. Returns undefined when
+ * there was nothing stored (so the key clears entirely). */
+export function resetUiStateForNewSession(prev: SolidDevtoolsUiState | undefined): SolidDevtoolsUiState | undefined {
+    if (!prev) {
+        return undefined;
+    }
+    return { expanded: {}, live: prev.live, layouts: prev.layouts };
+}
 
 /** One row in the component tree (a `nodes` entry from lazyRoots/lazyChildren). */
 export interface SolidTreeNode {

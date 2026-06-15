@@ -185,7 +185,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return [];
     }
 
-    protected async getHtmlForWebview() {
+    protected async getHtmlForWebview(webviewContext: 'sidebar' | 'panel' = 'sidebar') {
         try {
             let watcher;
             try {
@@ -205,7 +205,9 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                         const webview = (this.view ?? this.panel)?.webview;
                         if (webview) {
                             webview.html = '';
-                            webview.html = this.getIndexHtml();
+                            // the sidebar view takes precedence in (this.view ?? this.panel),
+                            // so reload with the matching context
+                            webview.html = this.getIndexHtml(this.view ? 'sidebar' : 'panel');
                         }
                     }
                 });
@@ -213,7 +215,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         } catch (e) {
             console.error(e);
         }
-        return this.getIndexHtml();
+        return this.getIndexHtml(webviewContext);
     }
 
     /**
@@ -229,7 +231,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         );
     }
 
-    private getIndexHtml() {
+    private getIndexHtml(webviewContext: 'sidebar' | 'panel' = 'sidebar') {
         let html: string;
         try {
             html = fsExtra.readFileSync(this.webviewBasePath + '/index.html').toString();
@@ -240,6 +242,9 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         //the data that will be replaced in the index.html
         const data = {
             viewName: this.id,
+            // lets a view persist/behave differently in the sidebar vs the popped-out
+            // editor panel (the same view component runs in both)
+            webviewContext: webviewContext,
             baseHref: `${this.asWebviewUri(this.webviewBasePath)}/`,
             additionalScriptContents: this.additionalScriptContents().join('\n                        ')
         };
@@ -277,7 +282,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 vscode.Uri.file(this.webviewBasePath)
             ]
         };
-        webview.html = await this.getHtmlForWebview();
+        webview.html = await this.getHtmlForWebview('sidebar');
     }
 
     protected async createOrRevealWebviewPanel() {
@@ -329,7 +334,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 vscode.Uri.file(this.webviewBasePath)
             ]
         };
-        panel.webview.html = await this.getHtmlForWebview();
+        panel.webview.html = await this.getHtmlForWebview('panel');
         this.onPanelAttached(panel);
     }
 

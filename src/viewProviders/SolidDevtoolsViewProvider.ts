@@ -6,8 +6,8 @@ import { VscodeCommand } from '../commands/VscodeCommand';
 import { SolidDevtoolsTransport } from '../solidDevtools/transport';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { ViewProviderEvent } from './ViewProviderEvent';
-import { SOLID_DEVTOOLS_UI_STATE_KEY } from '../solidDevtools/protocol';
-import type { SolidDevtoolsRequest, SolidDevtoolsResult } from '../solidDevtools/protocol';
+import { SOLID_DEVTOOLS_UI_STATE_KEY, resetUiStateForNewSession } from '../solidDevtools/protocol';
+import type { SolidDevtoolsRequest, SolidDevtoolsResult, SolidDevtoolsUiState } from '../solidDevtools/protocol';
 
 /**
  * The Solid Devtools view: a live SolidJS component tree + inspector for RSG/TS apps,
@@ -64,11 +64,13 @@ export class SolidDevtoolsViewProvider extends BaseWebviewViewProvider {
 
     /** A new app launch means a new owner graph — node ids from the previous run are
      * meaningless, so drop the persisted expansion/selection and tell the view to
-     * start fresh. (Persistence still covers collapse/pop-out/window reloads WITHIN
-     * a debug session.) */
+     * start fresh. The developer's inspector layout + live preference are NOT
+     * session-specific, so keep them (done even when no view is open, so the next open
+     * still honours the layout). */
     public onDidStartDebugSession(e: vscode.DebugSession) {
         if (e.type === 'brightscript' && !e.parentSession) {
-            void this.extensionContext.workspaceState.update(SOLID_DEVTOOLS_UI_STATE_KEY, undefined);
+            const prev = this.extensionContext.workspaceState.get<SolidDevtoolsUiState>(SOLID_DEVTOOLS_UI_STATE_KEY);
+            void this.extensionContext.workspaceState.update(SOLID_DEVTOOLS_UI_STATE_KEY, resetUiStateForNewSession(prev));
             this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onSolidDevtoolsDebugSessionStarted));
         }
     }
