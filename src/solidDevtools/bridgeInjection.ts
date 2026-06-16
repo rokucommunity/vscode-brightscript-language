@@ -48,13 +48,18 @@ export interface DevtoolsBridgeInjectionResult {
 }
 
 /**
- * Matches solid-js's dev `DevHooks` declaration in the bundle, e.g.
+ * Matches solid-js's dev `DevHooks` hooks object in the bundle, e.g.
  *   var DevHooks={afterUpdate:null,afterCreateOwner:null,afterCreateSignal:null,afterRegisterGraph:null};
- * The var name is captured because esbuild renames on collision (solid-js/store's own
- * hooks object becomes `DevHooks2` — anchoring on the afterCreateOwner/afterCreateSignal
- * property names guarantees we match the solid-js one).
+ * The declaration keyword is OPTIONAL: the SDK's block-scoping lowering (for Hermes)
+ * hoists the `var`/`let`/`const` to the top of its scope and leaves a bare assignment
+ *   ...;ExecCount=0;DevHooks={afterUpdate:null,...};
+ * at the original init site — so we anchor on the captured name + the hook-property
+ * shape, NOT the keyword (a `\b` keeps us from capturing out of a larger identifier).
+ * The name is captured because esbuild renames on collision (solid-js/store's own hooks
+ * object becomes `DevHooks2`); requiring BOTH afterCreateOwner and afterCreateSignal in
+ * the literal guarantees we match solid-js core's hooks, not store's `{onStoreNodeUpdate}`.
  */
-const DEV_HOOKS_REGEX = /var\s+(DevHooks\w*)\s*=\s*\{[^{}]*afterCreateOwner[^{}]*afterCreateSignal[^{}]*\}\s*;/;
+const DEV_HOOKS_REGEX = /(?:(?:var|let|const)\s+)?\b(DevHooks\w*)\s*=\s*\{[^{}]*afterCreateOwner[^{}]*afterCreateSignal[^{}]*\}\s*;/;
 
 /** Marker present in the extension-built bridge — used as the double-injection guard */
 const BRIDGE_SENTINEL = '__sdtBridge';

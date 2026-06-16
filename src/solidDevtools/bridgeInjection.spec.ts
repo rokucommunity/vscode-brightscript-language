@@ -91,6 +91,25 @@ describe('bridgeInjection', () => {
         expect(bundle).to.include('var DevHooks2={onStoreNodeUpdate:null};var after=1;');
     });
 
+    it('connects when block-scoping lowering hoists the keyword to a bare assignment', async () => {
+        //The SDK's block-scoping transform (for Hermes) hoists `var`/`let`/`const` to the
+        //top of the scope and leaves a bare `DevHooks={...}` assignment at the init site —
+        //e.g. `...;ExecCount=0;DevHooks={...};`. No declaration keyword, so the old
+        //`var\s+DevHooks` anchor missed it and the bridge never connected.
+        const loweredLine = 'var DevHooks,DevHooks2;ExecCount=0;DevHooks={afterUpdate:null,afterCreateOwner:null,afterCreateSignal:null,afterRegisterGraph:null};DevHooks2={onStoreNodeUpdate:null};';
+        const loweredBundle = `(function(){\nvar Updates=null;${loweredLine}var after=1;\nfunction getOwner(){}\n})();\n//# sourceMappingURL=index.js.map`;
+        writeStagedApp({ bundle: loweredBundle });
+        const result = await inject();
+        expect(result).to.include({ injected: true, connected: true });
+
+        const bundle = fsExtra.readFileSync(bundlePath, 'utf8');
+        //connect call sits immediately after the bare DevHooks assignment (NOT the hoisted
+        //`var DevHooks,DevHooks2;` decl, and NOT DevHooks2's store-hooks assignment)
+        const bareDecl = 'DevHooks={afterUpdate:null,afterCreateOwner:null,afterCreateSignal:null,afterRegisterGraph:null};';
+        expect(bundle).to.include(bareDecl + buildConnectStatement('DevHooks'));
+        expect(bundle).to.include('DevHooks2={onStoreNodeUpdate:null};var after=1;');
+    });
+
     it('pads the source map mappings with one semicolon per prepended line', async () => {
         writeStagedApp();
         await inject();
