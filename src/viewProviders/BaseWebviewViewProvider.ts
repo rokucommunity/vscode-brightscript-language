@@ -95,11 +95,21 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     }
 
     protected postMessage(message) {
-        this.view?.webview.postMessage(message).then(null, (reason) => {
-            console.log('postMessage failed: ', reason);
-        });
+        // resolve `.webview` lazily inside the guard: accessing it on a DISPOSED view or
+        // panel throws synchronously ("Webview is disposed") — e.g. after the pop-out
+        // editor is closed, or while the sidebar view is hidden behind the panel.
+        this.tryPostMessage(() => this.view?.webview, message);
+        this.tryPostMessage(() => this.panel?.webview, message);
+    }
 
-        this.panel?.webview.postMessage(message).then(null, (reason) => {
+    private tryPostMessage(resolveWebview: () => vscode.Webview | undefined, message) {
+        let webview: vscode.Webview | undefined;
+        try {
+            webview = resolveWebview();
+        } catch {
+            return; // the view/panel was disposed
+        }
+        webview?.postMessage(message).then(null, (reason) => {
             console.log('postMessage failed: ', reason);
         });
     }
@@ -185,7 +195,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return [];
     }
 
-    protected async getHtmlForWebview() {
+    protected async getHtmlForWebview(webviewContext: 'sidebar' | 'panel' = 'sidebar') {
         try {
             let watcher;
             try {
@@ -202,29 +212,36 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                     if (
                         events.find(x => (x.type === 'create' || x.type === 'update') && x.path?.toLowerCase()?.endsWith('index.html'))
                     ) {
-                        this.view.webview.html = '';
-                        this.view.webview.html = this.getIndexHtml();
+                        const webview = (this.view ?? this.panel)?.webview;
+                        if (webview) {
+                            webview.html = '';
+                            // the sidebar view takes precedence in (this.view ?? this.panel),
+                            // so reload with the matching context
+                            webview.html = this.getIndexHtml(this.view ? 'sidebar' : 'panel');
+                        }
                     }
                 });
             }
         } catch (e) {
             console.error(e);
         }
-        return this.getIndexHtml();
+        return this.getIndexHtml(webviewContext);
     }
 
     /**
     * Get a webview-supported URI for the given path
     */
     private asWebviewUri(...parts: string[]) {
-        return this.view?.webview?.asWebviewUri?.(
+        // a provider may be opened panel-first (e.g. via its open-in-panel command)
+        // without its sidebar view ever having resolved
+        return (this.view ?? this.panel)?.webview?.asWebviewUri?.(
             vscode.Uri.file(
                 path.join(...parts)
             )
         );
     }
 
-    private getIndexHtml() {
+    private getIndexHtml(webviewContext: 'sidebar' | 'panel' = 'sidebar') {
         let html: string;
         try {
             html = fsExtra.readFileSync(this.webviewBasePath + '/index.html').toString();
@@ -235,6 +252,9 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         //the data that will be replaced in the index.html
         const data = {
             viewName: this.id,
+            // lets a view persist/behave differently in the sidebar vs the popped-out
+            // editor panel (the same view component runs in both)
+            webviewContext: webviewContext,
             baseHref: `${this.asWebviewUri(this.webviewBasePath)}/`,
             additionalScriptContents: this.additionalScriptContents().join('\n                        ')
         };
@@ -261,6 +281,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         _token: vscode.CancellationToken
     ) {
         this.view = view;
+        // the sidebar view's webview is disposed when the view is hidden (e.g. behind the
+        // pop-out panel); drop the reference so we don't post to a dead webview
+        view.onDidDispose?.(() => {
+            if (this.view === view) {
+                this.view = undefined;
+            }
+        });
         const webview = view.webview;
         this.setupViewMessageObserver(webview);
 
@@ -272,7 +299,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 vscode.Uri.file(this.webviewBasePath)
             ]
         };
-        webview.html = await this.getHtmlForWebview();
+        webview.html = await this.getHtmlForWebview('sidebar');
     }
 
     protected async createOrRevealWebviewPanel() {
@@ -292,24 +319,68 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         }
 
         if (createPanel) {
-            this.panel = vscode.window.createWebviewPanel(
+            const panel = vscode.window.createWebviewPanel(
                 this.id,
                 await this.getViewNameById(this.id),
                 vscode.ViewColumn.Active,
                 {
                     // Enable javascript in the webview
                     enableScripts: true,
+                    retainContextWhenHidden: this.retainPanelContextWhenHidden,
                     localResourceRoots: [
                         vscode.Uri.file(this.webviewBasePath)
                     ]
                 }
             );
-
-            this.setupViewMessageObserver(this.panel.webview);
-
-            const html = await this.getHtmlForWebview();
-            this.panel.webview.html = html;
+            await this.attachPanel(panel);
         }
+    }
+
+    /** Subclasses may set this to keep the panel's webview state alive while its tab
+     * is in the background (more memory, but no reset on every tab switch). */
+    protected retainPanelContextWhenHidden = false;
+
+    /** Adopt an editor panel (newly created, or restored after a window reload):
+     * wire messaging, (re-)assert webview options, and set the html. */
+    private async attachPanel(panel: vscode.WebviewPanel) {
+        this.panel = panel;
+        // when the pop-out editor is closed, drop the reference so postMessage (and the
+        // dev-watcher reload) stop targeting the disposed panel
+        panel.onDidDispose?.(() => {
+            if (this.panel === panel) {
+                this.panel = undefined;
+            }
+        });
+        this.setupViewMessageObserver(panel.webview);
+        panel.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [
+                vscode.Uri.file(this.webviewBasePath)
+            ]
+        };
+        panel.webview.html = await this.getHtmlForWebview('panel');
+        this.onPanelAttached(panel);
+    }
+
+    /** Called exactly once per editor panel, when it's created or restored after a
+     * window reload (not on reveal) — e.g. to track the panel's lifetime. */
+    protected onPanelAttached(panel: vscode.WebviewPanel) { }
+
+    /**
+     * Restore this provider's editor panel across window reloads — without a
+     * registered serializer VS Code destroys the panel (the tab is forgotten).
+     * Call from the subclass constructor (i.e. during activation) and pair it with
+     * an `onWebviewPanel:<id>` activation event in package.json so the extension
+     * wakes up to revive the panel.
+     */
+    protected enablePanelRestore() {
+        this.extensionContext.subscriptions.push(
+            vscode.window.registerWebviewPanelSerializer(this.id, {
+                deserializeWebviewPanel: async (panel: vscode.WebviewPanel) => {
+                    await this.attachPanel(panel);
+                }
+            })
+        );
     }
 
     private async getViewNameById(viewId) {

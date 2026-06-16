@@ -39,6 +39,7 @@ import { standardizePath as s } from 'brighterscript';
 import { PerfettoEditorProvider } from './editors/PerfettoEditor';
 import { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
 import { RokuProjectsViewProvider } from './viewProviders/RokuProjectsViewProvider';
+import { injectDevtoolsBridge } from './solidDevtools/bridgeInjection';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -58,10 +59,12 @@ export class Extension {
     private diagnosticManager = new DiagnosticManager();
     private logOutputManager: LogOutputManager;
     private deviceManager: DeviceManager;
+    private extensionContext: vscode.ExtensionContext;
 
     public async activate(context: vscode.ExtensionContext) {
         //make this entire extension disposable so that all resources will be cleaned up on extension deactivation
         context.subscriptions.push(this);
+        this.extensionContext = context;
         const currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version as string;
 
         this.globalStateManager = new GlobalStateManager(context);
@@ -654,15 +657,27 @@ export class Extension {
     }
 
     /**
-     * Handle the `processStagingDir` reverse request from roku-debug. For now this just proves the round-trip
-     * works: it logs the projects the debug adapter sent and confirms each staging dir exists on disk.
+     * Handle the `processStagingDir` reverse request from roku-debug — sent after all projects are
+     * staged and before they're packaged. This is where the extension injects the Solid Devtools
+     * on-device bridge into the main project's staged TS bundle (no-op for non-TS apps and when
+     * the `brightscript.solidDevtools.enabled` setting is off; never fails the launch).
      */
     private async processStagingDir(event: CustomRequestEvent<{ projects: Array<{ type: string; stagingDir: string }> }>) {
         const projects = event.body.projects ?? [];
-        console.log(`[processStagingDir] received ${projects.length} project(s) to process`);
+        const solidDevtoolsEnabled = vscode.workspace.getConfiguration('brightscript').get<boolean>('solidDevtools.enabled', true);
+        if (!solidDevtoolsEnabled) {
+            return;
+        }
         for (const project of projects) {
-            const exists = await fsExtra.pathExists(project.stagingDir);
-            console.log(`[processStagingDir] ${project.type} staging dir ${exists ? 'exists' : 'is MISSING'}: ${project.stagingDir}`);
+            //only the main app project carries the TS bundle
+            if (project.type !== 'main') {
+                continue;
+            }
+            await injectDevtoolsBridge({
+                stagingDir: project.stagingDir,
+                devtoolsBridgePath: path.join(this.extensionContext.extensionPath, 'dist', 'solidDevtools', 'bridge.js'),
+                log: (message) => this.extensionOutputChannel.appendLine(`[SolidDevtools] ${message}`)
+            });
         }
     }
 
