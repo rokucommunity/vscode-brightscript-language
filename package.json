@@ -123,6 +123,7 @@
         "deferred": "^0.7.11",
         "esbuild": "^0.28.0",
         "eslint": "^8.10.0",
+        "eslint-plugin-bridge": "file:eslint-local-rules",
         "eslint-plugin-github": "^4.3.5",
         "eslint-plugin-no-only-tests": "^2.6.0",
         "lodash": "^4.17.21",
