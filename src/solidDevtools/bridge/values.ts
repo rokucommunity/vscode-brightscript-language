@@ -12,12 +12,6 @@ import { untrackRead } from './solid';
 // is the producer of this wire shape; the webview consumes the same type (protocol.ts).
 import type { SolidEncodedValue } from '../protocol';
 
-/** One value expanded one more level by expandRef (drill-down), or a missing marker. */
-interface ExpandResult {
-    node?: SolidEncodedValue;
-    missing?: boolean;
-}
-
 /** Max keys/items shown per object/array per level. */
 export const VALUE_BREADTH = 40;
 /** Max chars of a string shown inline. */
@@ -276,4 +270,12 @@ export function expandRef(refId: number, offset: number): ExpandResult {
         node.ref = refId;
     }
     return { node: node };
+}
+
+// ---- types -------------------------------------------------------------------
+
+/** One value expanded one more level by expandRef (drill-down), or a missing marker. */
+interface ExpandResult {
+    node?: SolidEncodedValue;
+    missing?: boolean;
 }

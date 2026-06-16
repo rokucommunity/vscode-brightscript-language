@@ -38,23 +38,7 @@ import type {
     SolidRootsData, SolidSearchData, SolidSearchMatch, SolidTreeNode, SolidValueData
 } from '../protocol';
 
-/** The bridge tags every drained result with the method that produced it (a diagnostic
- *  aid — the transport routes by call site). Each result = a protocol payload + `kind`. */
-interface RootsResult extends SolidRootsData {
-    kind: 'roots';
-}
-interface ChildrenResult extends SolidChildrenData {
-    kind: 'children';
-}
-interface InspectResult extends SolidInspectData {
-    kind: 'inspect';
-}
-interface ValueResult extends SolidValueData {
-    kind: 'value';
-}
-interface SearchResult extends SolidSearchData {
-    kind: 'search';
-}
+// Result/global types (RootsResult … SdtApi) are declared at the bottom.
 
 /** Extract a human-readable message from an unknown thrown value (Error or otherwise). */
 function errText(e: unknown): string {
@@ -108,10 +92,7 @@ let idCounter = 0;
 // opportunistically. FinalizationRegistry is NOT on Hermes, so we poll-sweep instead of
 // auto-finalize. If WeakRef is absent, fall back to a capped strong-ref map (FIFO evict).
 // WeakRef isn't in the project's TS lib target, so grab the global ctor (undefined if
-// the runtime lacks it) with the minimal shape we use.
-interface SdtWeakRef {
-    deref(): SolidNode | undefined;
-}
+// the runtime lacks it) with the minimal shape we use (SdtWeakRef, declared at bottom).
 const WeakRefCtor = (globalThis as { WeakRef?: new (target: SolidNode) => SdtWeakRef }).WeakRef;
 let weakRefEnabled = !!WeakRefCtor;
 const OWNER_CAP = 10000; // fallback cap (strong-ref mode only)
@@ -942,30 +923,6 @@ function __connect(api: SolidApi): string {
 
 // ---- install -------------------------------------------------------------------
 
-/**
- * The on-device `globalThis.__SDT` surface the extension's transport calls over the
- * debug `evaluate` channel. Every lazy* call returns the total base64 length of the
- * stashed result, drained in chunks via `readResult`.
- */
-interface SdtApi {
-    __sdtBridge: true;
-    __connect: (api: SolidApi) => string;
-    status: () => string;
-    version: () => number;
-    lazyRoots: () => number;
-    lazyChildren: (idStr: string) => number;
-    lazyInspect: (idStr: string) => number;
-    lazyValue: (ref: number, offset: number) => number;
-    lazySearch: (query: string) => number;
-    readResult: (off: number, len: number) => string;
-    errorB64: () => string;
-    attachAnchor: (name?: string) => boolean;
-    registerGlobals: (namespace: string, record: unknown) => void;
-}
-
-/** globalThis with the bridge's optional install target. */
-type SdtGlobal = typeof globalThis & { __SDT?: SdtApi };
-
 function installSdt(): void {
     const g = globalThis as SdtGlobal;
     if (g.__SDT?.__sdtBridge) {
@@ -1032,3 +989,53 @@ export function __resetSdtBridgeForTests(opts?: { forceCapMode?: boolean }): voi
     (globalThis as SdtGlobal).__SDT = undefined;
     installSdt();
 }
+
+// ---- types -------------------------------------------------------------------
+
+/** The bridge tags every drained result with the method that produced it (a diagnostic
+ *  aid — the transport routes by call site). Each result = a protocol payload + `kind`. */
+interface RootsResult extends SolidRootsData {
+    kind: 'roots';
+}
+interface ChildrenResult extends SolidChildrenData {
+    kind: 'children';
+}
+interface InspectResult extends SolidInspectData {
+    kind: 'inspect';
+}
+interface ValueResult extends SolidValueData {
+    kind: 'value';
+}
+interface SearchResult extends SolidSearchData {
+    kind: 'search';
+}
+
+/** Minimal shape of the global `WeakRef` ctor we use (not in the project's TS lib target);
+ *  undefined when the runtime lacks it (then ownerById falls back to a capped strong map). */
+interface SdtWeakRef {
+    deref(): SolidNode | undefined;
+}
+
+/**
+ * The on-device `globalThis.__SDT` surface the extension's transport calls over the
+ * debug `evaluate` channel. Every lazy* call returns the total base64 length of the
+ * stashed result, drained in chunks via `readResult`.
+ */
+interface SdtApi {
+    __sdtBridge: true;
+    __connect: (api: SolidApi) => string;
+    status: () => string;
+    version: () => number;
+    lazyRoots: () => number;
+    lazyChildren: (idStr: string) => number;
+    lazyInspect: (idStr: string) => number;
+    lazyValue: (ref: number, offset: number) => number;
+    lazySearch: (query: string) => number;
+    readResult: (off: number, len: number) => string;
+    errorB64: () => string;
+    attachAnchor: (name?: string) => boolean;
+    registerGlobals: (namespace: string, record: unknown) => void;
+}
+
+/** globalThis with the bridge's optional install target. */
+type SdtGlobal = typeof globalThis & { __SDT?: SdtApi };

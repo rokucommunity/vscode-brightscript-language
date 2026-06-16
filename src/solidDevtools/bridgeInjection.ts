@@ -27,25 +27,9 @@ import * as fsExtra from 'fs-extra';
  * is STILL prepended without the connect call, so the devtools panel can surface a
  * clear "couldn't connect to solid DEV — is this a dev build?" status instead of
  * silence.
+ *
+ * Types (DevtoolsBridgeInjectionOptions / ...Result) are declared at the bottom.
  */
-
-export interface DevtoolsBridgeInjectionOptions {
-    /** The staged project folder (after staging, before packaging) */
-    stagingDir: string;
-    /** Absolute path to the extension-built bridge JS (a self-contained IIFE) */
-    devtoolsBridgePath: string;
-    /** Where to log progress/skips (defaults to console.log) */
-    log?: (message: string) => void;
-}
-
-export interface DevtoolsBridgeInjectionResult {
-    /** true when the bridge was prepended to the staged bundle */
-    injected: boolean;
-    /** true when the solid `__connect(...)` call was also inserted (false = bridge-only, won't connect) */
-    connected: boolean;
-    /** why injection (or the connect insert) was skipped */
-    reason?: string;
-}
 
 /**
  * Matches solid-js's dev `DevHooks` hooks object in the bundle, e.g.
@@ -181,4 +165,24 @@ export async function injectDevtoolsBridge(options: DevtoolsBridgeInjectionOptio
         log(`Devtools bridge injection failed: ${(e as Error)?.stack ?? String(e)}`);
         return { injected: false, connected: false, reason: `error: ${(e as Error)?.message ?? String(e)}` };
     }
+}
+
+// ---- types -------------------------------------------------------------------
+
+export interface DevtoolsBridgeInjectionOptions {
+    /** The staged project folder (after staging, before packaging) */
+    stagingDir: string;
+    /** Absolute path to the extension-built bridge JS (a self-contained IIFE) */
+    devtoolsBridgePath: string;
+    /** Where to log progress/skips (defaults to console.log) */
+    log?: (message: string) => void;
+}
+
+export interface DevtoolsBridgeInjectionResult {
+    /** true when the bridge was prepended to the staged bundle */
+    injected: boolean;
+    /** true when the solid `__connect(...)` call was also inserted (false = bridge-only, won't connect) */
+    connected: boolean;
+    /** why injection (or the connect insert) was skipped */
+    reason?: string;
 }

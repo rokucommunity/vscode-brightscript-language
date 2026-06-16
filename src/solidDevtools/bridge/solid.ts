@@ -9,83 +9,8 @@
 // The classification helpers below are field-check reimplementations of
 // @solid-devtools/debugger's pure utils (we used to import ~6 of them; the rest of
 // that package can't run on this renderer, so the dependency is dropped entirely).
-
-/**
- * A Solid reactive-graph node as the bridge probes it. Solid's Owner, Computation,
- * Memo, SignalState and store-node shapes overlap heavily, and the bridge only ever
- * reads a known subset of fields AFTER presence-checking them (the `isSolidX` helpers
- * below). So this is ONE permissive shape with all-optional fields — the dynamic
- * `'field' in node` probes would fight a strict discriminated union, and these objects
- * are untyped solid internals anyway. Every field is what the bridge actually touches.
- */
-export interface SolidNode {
-    /** Child owners (Owner). */
-    owned?: SolidNode[] | null;
-    /** Parent owner — still set on `<For>`/`<Index>` createRoot owners (Owner / Computation). */
-    owner?: SolidNode | null;
-    /** Disposal callbacks (Owner) — how the bridge self-cleans its root/anchor sets. */
-    cleanups?: Array<() => void> | null;
-    /** Context map (Owner) — used to distinguish CONTEXT owners. */
-    context?: Record<string, unknown> | null;
-    /** Computation body — presence/truthiness marks a Computation (vs a Root). */
-    fn?: unknown;
-    /** Effect/render flags on a Computation. */
-    pure?: boolean;
-    user?: boolean;
-    /** Memo equality fn — presence marks a MEMO. */
-    comparator?: unknown;
-    /** Present on a non-computation owner that is a CATCH_ERROR boundary. */
-    sources?: unknown;
-    /** The component function (Component owner), carrying the dev display name. */
-    component?: SolidComponent;
-    /** A component's resolved props object. */
-    props?: unknown;
-    /** Current value (SignalState / Memo / a component's rendered output). */
-    value?: unknown;
-    /** SignalState observer bookkeeping — presence marks a SIGNAL. */
-    observers?: unknown;
-    observerSlots?: unknown;
-    /** registerGraph sets this only under an Owner — UNSET marks an orphan (unowned) signal. */
-    graph?: unknown;
-    /** Dev name (Solid's dev naming convention; the SDK names mount roots this way). */
-    name?: string;
-    /** Signals/stores created under this owner (dev). */
-    sourceMap?: SolidNode[];
-    /** Bridge/anchor override of the classified type. */
-    sdtType?: string;
-}
-
-/** A Solid component function as the bridge reads it — callable, optionally carrying a
- *  dev `displayName` (`name` comes from `Function.prototype`). */
-export type SolidComponent = ((...args: unknown[]) => unknown) & { displayName?: string };
-
-/** What the injected `__connect(...)` call hands us, from inside solid's module scope. */
-export interface SolidApi {
-    /**
-     * Solid's dev `DevHooks` object. Solid reads its fields at runtime
-     * (`DevHooks.afterCreateOwner && DevHooks.afterCreateOwner(owner)`), so
-     * assigning them here installs our hooks.
-     */
-    hooks: {
-        afterUpdate: (() => void) | null;
-        afterCreateOwner: ((owner: SolidNode) => void) | null;
-        afterCreateSignal: ((signal: SolidNode) => void) | null;
-        afterRegisterGraph?: (() => void) | null;
-    };
-    getOwner: () => SolidNode | null;
-    untrack: <T>(fn: () => T) => T;
-    createRoot: <T>(fn: (dispose: () => void) => T) => T;
-    getListener?: () => SolidNode | null;
-    /** solid's `$PROXY` symbol — optional; without it store detection degrades (stores show as values). */
-    $PROXY?: symbol;
-    /**
-     * Reads solid's internal `ExecCount` (bumped once per update cycle) — optional;
-     * returns -1 when the identifier wasn't available at injection time. When present,
-     * the bridge derives its change-detection version from it instead of installing an
-     * afterUpdate hook, leaving the app's update path completely untouched.
-     */
-    getExecCount?: () => number;
-}
+//
+// Types (SolidNode / SolidComponent / SolidApi) are declared at the bottom.
 
 let api: SolidApi | null = null;
 
@@ -242,4 +167,83 @@ export function onOwnerCleanup(owner: SolidNode, fn: () => void): () => void {
             }
         }
     };
+}
+
+// ---- types -------------------------------------------------------------------
+
+/**
+ * A Solid reactive-graph node as the bridge probes it. Solid's Owner, Computation,
+ * Memo, SignalState and store-node shapes overlap heavily, and the bridge only ever
+ * reads a known subset of fields AFTER presence-checking them (the `isSolidX` helpers
+ * above). So this is ONE permissive shape with all-optional fields — the dynamic
+ * `'field' in node` probes would fight a strict discriminated union, and these objects
+ * are untyped solid internals anyway. Every field is what the bridge actually touches.
+ */
+export interface SolidNode {
+    /** Child owners (Owner). */
+    owned?: SolidNode[] | null;
+    /** Parent owner — still set on `<For>`/`<Index>` createRoot owners (Owner / Computation). */
+    owner?: SolidNode | null;
+    /** Disposal callbacks (Owner) — how the bridge self-cleans its root/anchor sets. */
+    cleanups?: Array<() => void> | null;
+    /** Context map (Owner) — used to distinguish CONTEXT owners. */
+    context?: Record<string, unknown> | null;
+    /** Computation body — presence/truthiness marks a Computation (vs a Root). */
+    fn?: unknown;
+    /** Effect/render flags on a Computation. */
+    pure?: boolean;
+    user?: boolean;
+    /** Memo equality fn — presence marks a MEMO. */
+    comparator?: unknown;
+    /** Present on a non-computation owner that is a CATCH_ERROR boundary. */
+    sources?: unknown;
+    /** The component function (Component owner), carrying the dev display name. */
+    component?: SolidComponent;
+    /** A component's resolved props object. */
+    props?: unknown;
+    /** Current value (SignalState / Memo / a component's rendered output). */
+    value?: unknown;
+    /** SignalState observer bookkeeping — presence marks a SIGNAL. */
+    observers?: unknown;
+    observerSlots?: unknown;
+    /** registerGraph sets this only under an Owner — UNSET marks an orphan (unowned) signal. */
+    graph?: unknown;
+    /** Dev name (Solid's dev naming convention; the SDK names mount roots this way). */
+    name?: string;
+    /** Signals/stores created under this owner (dev). */
+    sourceMap?: SolidNode[];
+    /** Bridge/anchor override of the classified type. */
+    sdtType?: string;
+}
+
+/** A Solid component function as the bridge reads it — callable, optionally carrying a
+ *  dev `displayName` (`name` comes from `Function.prototype`). */
+export type SolidComponent = ((...args: unknown[]) => unknown) & { displayName?: string };
+
+/** What the injected `__connect(...)` call hands us, from inside solid's module scope. */
+export interface SolidApi {
+    /**
+     * Solid's dev `DevHooks` object. Solid reads its fields at runtime
+     * (`DevHooks.afterCreateOwner && DevHooks.afterCreateOwner(owner)`), so
+     * assigning them here installs our hooks.
+     */
+    hooks: {
+        afterUpdate: (() => void) | null;
+        afterCreateOwner: ((owner: SolidNode) => void) | null;
+        afterCreateSignal: ((signal: SolidNode) => void) | null;
+        afterRegisterGraph?: (() => void) | null;
+    };
+    getOwner: () => SolidNode | null;
+    untrack: <T>(fn: () => T) => T;
+    createRoot: <T>(fn: (dispose: () => void) => T) => T;
+    getListener?: () => SolidNode | null;
+    /** solid's `$PROXY` symbol — optional; without it store detection degrades (stores show as values). */
+    $PROXY?: symbol;
+    /**
+     * Reads solid's internal `ExecCount` (bumped once per update cycle) — optional;
+     * returns -1 when the identifier wasn't available at injection time. When present,
+     * the bridge derives its change-detection version from it instead of installing an
+     * afterUpdate hook, leaving the app's update path completely untouched.
+     */
+    getExecCount?: () => number;
 }
