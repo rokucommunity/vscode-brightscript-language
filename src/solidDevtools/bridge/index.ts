@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // ON-DEVICE CODE (Hermes) — Solid Devtools bridge (read-only, lazy tree).
 //
 // This is the extension-owned source of truth for the on-device half of the Solid
@@ -26,12 +25,41 @@
 // the single-quote-wrapped, backslash-escaping `evaluate` display rendering.
 
 import { utf8ToBase64 } from './base64';
-import type { SolidApi } from './solid';
+import type { SolidApi, SolidNode } from './solid';
 import {
     getNodeName, getNodeType, getOwnerType, getSolidApi,
     isBridgeWork, onOwnerCleanup, runInThrowawayRoot, setSolidApi, untrackRead
 } from './solid';
 import { encodeValue, expandRef, NODE_BUDGET, resetValueRefs } from './values';
+// Type-only — erased by esbuild, so the bundled bridge stays import-free. The bridge
+// is the PRODUCER of these wire shapes; the webview consumes the same types (protocol.ts).
+import type {
+    SolidChildrenData, SolidInspectData, SolidInspectEntry,
+    SolidRootsData, SolidSearchData, SolidSearchMatch, SolidTreeNode, SolidValueData
+} from '../protocol';
+
+/** The bridge tags every drained result with the method that produced it (a diagnostic
+ *  aid — the transport routes by call site). Each result = a protocol payload + `kind`. */
+interface RootsResult extends SolidRootsData {
+    kind: 'roots';
+}
+interface ChildrenResult extends SolidChildrenData {
+    kind: 'children';
+}
+interface InspectResult extends SolidInspectData {
+    kind: 'inspect';
+}
+interface ValueResult extends SolidValueData {
+    kind: 'value';
+}
+interface SearchResult extends SolidSearchData {
+    kind: 'search';
+}
+
+/** Extract a human-readable message from an unknown thrown value (Error or otherwise). */
+function errText(e: unknown): string {
+    return String((e as { message?: unknown })?.message ?? e);
+}
 
 // ---- state -------------------------------------------------------------------
 
@@ -44,31 +72,32 @@ let connected = false;
 let version = 0;
 
 /** Live createRoot owners, self-cleaned on disposal — what lazyRoots stitches from. */
-const roots = new Set<any>();
+const roots = new Set<SolidNode>();
 /** Anchor owner -> label; the NAMED top-level entries of the tree (opt-in via attachAnchor). */
-const anchors = new Map<any, string>();
-/** Namespace -> record of module-level state (opt-in via registerGlobals). */
-const globalGroups = new Map<string, any>();
+const anchors = new Map<SolidNode, string>();
+/** Namespace -> record of module-level state (opt-in via registerGlobals). The record maps
+ *  a label to an accessor fn / {get,set} wrapper / store proxy / plain value. */
+const globalGroups = new Map<string, Record<string, unknown>>();
 /** Unowned signals (created with no Owner) — auto-captured via afterCreateSignal. */
-const orphanSignals = new Set<any>();
+const orphanSignals = new Set<SolidNode>();
 const ORPHAN_CAP = 5000;
 /** Runaway seatbelt only — roots self-clean via onOwnerCleanup, so this shouldn't be reached. */
 const ROOT_CAP = 20000;
 
 let lastResult = ''; // base64 of the latest lazy response; the extension drains it in chunks
 
-function setResult(obj: any): number {
+function setResult(obj: unknown): number {
     try {
         lastResult = utf8ToBase64(JSON.stringify(obj));
-    } catch (e: any) {
-        lastResult = utf8ToBase64(JSON.stringify({ error: String(e?.message ?? e) }));
+    } catch (e) {
+        lastResult = utf8ToBase64(JSON.stringify({ error: errText(e) }));
     }
     return lastResult.length;
 }
 
 // ---- ids ---------------------------------------------------------------------
 
-const idMap = new WeakMap<any, string>();
+const idMap = new WeakMap<SolidNode, string>();
 let idCounter = 0;
 
 // Reverse map (id -> owner) so the UI can expand/inspect a node by id. The owners are
@@ -81,14 +110,16 @@ let idCounter = 0;
 // WeakRef isn't in the project's TS lib target, so grab the global ctor (undefined if
 // the runtime lacks it) with the minimal shape we use.
 interface SdtWeakRef {
-    deref(): any;
+    deref(): SolidNode | undefined;
 }
-const WeakRefCtor = (globalThis as any).WeakRef as (new (target: any) => SdtWeakRef) | undefined;
+const WeakRefCtor = (globalThis as { WeakRef?: new (target: SolidNode) => SdtWeakRef }).WeakRef;
 let weakRefEnabled = !!WeakRefCtor;
 const OWNER_CAP = 10000; // fallback cap (strong-ref mode only)
-const ownerById = new Map<string, any>(); // id -> WeakRef<owner> (weakRefEnabled) | owner
+// id -> WeakRef<owner> (weakRefEnabled) | owner. The `weakRefEnabled` flag is the runtime
+// tag for which arm each entry is, so the few accesses cast on it explicitly.
+const ownerById = new Map<string, SdtWeakRef | SolidNode>();
 
-function rememberOwner(id: string, owner: any): void {
+function rememberOwner(id: string, owner: SolidNode): void {
     if (ownerById.has(id)) {
         return;
     }
@@ -107,15 +138,15 @@ function rememberOwner(id: string, owner: any): void {
 
 /** Resolve an id to its owner, or undefined if it was collected/evicted (→ "missing").
  *  Drops a dead entry on the way out. */
-function resolveOwner(id: string): any {
+function resolveOwner(id: string): SolidNode | undefined {
     const entry = ownerById.get(id);
     if (entry === undefined) {
         return undefined;
     }
     if (!weakRefEnabled) {
-        return entry;
+        return entry as SolidNode;
     }
-    const owner = entry.deref();
+    const owner = (entry as SdtWeakRef).deref();
     if (owner === undefined) {
         ownerById.delete(id);
     }
@@ -129,13 +160,13 @@ function sweepOwnerById(): void {
         return;
     }
     for (const entry of ownerById) {
-        if (entry[1].deref() === undefined) {
+        if ((entry[1] as SdtWeakRef).deref() === undefined) {
             ownerById.delete(entry[0]);
         }
     }
 }
 
-function idOf(owner: any): string {
+function idOf(owner: SolidNode): string {
     let id = idMap.get(owner);
     if (!id) {
         id = '#' + (idCounter++).toString(16);
@@ -147,7 +178,7 @@ function idOf(owner: any): string {
 
 // ---- lazy / virtualized tree: walk ONE component-layer per request ------------
 
-function safeType(owner: any): string {
+function safeType(owner: SolidNode): string {
     try {
         return getOwnerType(owner);
     } catch {
@@ -155,7 +186,7 @@ function safeType(owner: any): string {
     }
 }
 
-function safeName(owner: any): string | undefined {
+function safeName(owner: SolidNode): string | undefined {
     try {
         return getNodeName(owner) || undefined;
     } catch {
@@ -163,9 +194,9 @@ function safeName(owner: any): string | undefined {
     }
 }
 
-function nodeOf(owner: any): any {
+function nodeOf(owner: SolidNode): SolidTreeNode {
     const id = idOf(owner);
-    const n: any = { id: id, type: safeType(owner) };
+    const n: SolidTreeNode = { id: id, type: safeType(owner) };
     const name = safeName(owner);
     if (name) {
         n.name = name;
@@ -184,7 +215,7 @@ function nodeOf(owner: any): any {
  * non-component owners, stopping at each component). Bounded — never walks the
  * whole graph, only down to the next component layer.
  */
-function collectChildComponents(owner: any, out: any[], seen: Set<any>, depth: number): void {
+function collectChildComponents(owner: SolidNode, out: SolidTreeNode[], seen: Set<SolidNode>, depth: number): void {
     const owned = owner?.owned;
     if (!owned || depth > 1500) {
         return;
@@ -213,7 +244,7 @@ function collectChildComponents(owner: any, out: any[], seen: Set<any>, depth: n
 
 const MAX_UP = 10000;
 
-function nearestComponentAncestor(root: any): any {
+function nearestComponentAncestor(root: SolidNode): SolidNode | null {
     let o = root?.owner;
     let guard = 0;
     while (o && guard++ < MAX_UP) {
@@ -228,8 +259,8 @@ function nearestComponentAncestor(root: any): any {
 // Attachment index: top-level roots + (componentId -> roots attached under it).
 // Rebuilt at most every 250ms so a refresh's lazyRoots + cascaded lazyChildren
 // share one consistent snapshot without rebuilding on every call.
-let topRoots: any[] = [];
-const rootsByParentId = new Map<string, any[]>();
+let topRoots: SolidNode[] = [];
+const rootsByParentId = new Map<string, SolidNode[]>();
 let indexBuiltAt = 0;
 
 function buildRootIndex(): void {
@@ -270,7 +301,7 @@ function ensureRootIndex(): void {
  * to it. So a `<For>`/`<Index>` shows its item components directly, not each wrapped
  * in a redundant ROOT row.
  */
-function collectStitchedChildren(owner: any, idStr: string, out: any[], seen: Set<any>): void {
+function collectStitchedChildren(owner: SolidNode, idStr: string, out: SolidTreeNode[], seen: Set<SolidNode>): void {
     collectChildComponents(owner, out, seen, 0);
     ensureRootIndex();
     const attached = rootsByParentId.get(idStr);
@@ -291,7 +322,7 @@ const LEAF_PEEK_BUDGET = 256;
 /** Early-exit "is there a COMPONENT in here?" — same descent as collectChildComponents
  * (through non-component owners) but returns on the FIRST one found, and bails when the
  * shared visit budget is exhausted (budget.n <= 0 after the call ⇒ truncated). */
-function hasChildComponent(owner: any, seen: Set<any>, depth: number, budget: { n: number }): boolean {
+function hasChildComponent(owner: SolidNode, seen: Set<SolidNode>, depth: number, budget: { n: number }): boolean {
     const owned = owner?.owned;
     if (!owned || depth > 1500) {
         return false;
@@ -318,9 +349,9 @@ function hasChildComponent(owner: any, seen: Set<any>, depth: number, budget: { 
 /** True when `owner` has no component children at all (owned-walk OR stitched sub-roots).
  * Bounded by LEAF_PEEK_BUDGET; a truncated (inconclusive) search returns false so the node
  * stays expandable rather than being mislabelled a leaf. */
-function isLeafOwner(owner: any, idStr: string): boolean {
+function isLeafOwner(owner: SolidNode, idStr: string): boolean {
     const budget = { n: LEAF_PEEK_BUDGET };
-    const seen = new Set<any>();
+    const seen = new Set<SolidNode>();
     if (hasChildComponent(owner, seen, 0, budget) || budget.n <= 0) {
         return false; // found a component, or ran out of budget (assume expandable)
     }
@@ -346,7 +377,7 @@ function isLeafOwner(owner: any, idStr: string): boolean {
  */
 function lazyRoots(): number {
     ensureRootIndex();
-    const nodes: any[] = [];
+    const nodes: SolidTreeNode[] = [];
     // Global-state entries first (leaves you SELECT to inspect): the auto-captured
     // orphan (unowned) signals, plus any explicitly-registered named groups.
     if (orphanSignals.size) {
@@ -356,13 +387,13 @@ function lazyRoots(): number {
         nodes.push({ id: '@g:' + ns, type: 'GLOBALS', name: ns, leaf: true });
     }
     const emitted = new Set<string>();
-    const pushAnchor = (owner: any, name: string) => {
+    const pushAnchor = (owner: SolidNode, name: string) => {
         const id = idOf(owner);
         if (emitted.has(id)) {
             return;
         }
-        const kids: any[] = [];
-        collectStitchedChildren(owner, id, kids, new Set());
+        const kids: SolidTreeNode[] = [];
+        collectStitchedChildren(owner, id, kids, new Set<SolidNode>());
         if (kids.length) {
             emitted.add(id);
             nodes.push({ id: id, type: 'ANCHOR', name: name, childCount: kids.length });
@@ -380,12 +411,13 @@ function lazyRoots(): number {
     }
     if (!emitted.size) {
         // No named entry — hoist top-level roots' components so the tree isn't empty.
-        const seen = new Set<any>();
+        const seen = new Set<SolidNode>();
         for (const r of tops) {
             collectChildComponents(r, nodes, seen, 0);
         }
     }
-    return setResult({ kind: 'roots', connected: connected, nodes: nodes });
+    const result: RootsResult = { kind: 'roots', connected: connected, nodes: nodes };
+    return setResult(result);
 }
 
 /** Children of a component (one layer), with sub-roots stitched in transparently. */
@@ -397,9 +429,10 @@ function lazyChildren(idStr: string): number {
     if (!owner) {
         return setResult({ kind: 'children', parent: idStr, nodes: [], missing: true });
     }
-    const out: any[] = [];
-    collectStitchedChildren(owner, idStr, out, new Set());
-    return setResult({ kind: 'children', parent: idStr, nodes: out });
+    const out: SolidTreeNode[] = [];
+    collectStitchedChildren(owner, idStr, out, new Set<SolidNode>());
+    const result: ChildrenResult = { kind: 'children', parent: idStr, nodes: out };
+    return setResult(result);
 }
 
 /**
@@ -411,21 +444,21 @@ function lazyChildren(idStr: string): number {
  */
 function lazySearch(queryStr: string): number {
     const q = String(queryStr || '').trim().toLowerCase();
-    const matches: any[] = [];
+    const matches: SolidSearchMatch[] = [];
     if (q) {
         const MAX_MATCHES = 200;
         const budget = { n: 8000 };
         // Top-level entries exactly as lazyRoots derives them (skipping GLOBALS leaves).
         ensureRootIndex();
-        const topNodes: any[] = [];
+        const topNodes: SolidTreeNode[] = [];
         const emitted = new Set<string>();
-        const pushTop = (owner: any, name: string) => {
+        const pushTop = (owner: SolidNode, name: string) => {
             const id = idOf(owner);
             if (emitted.has(id)) {
                 return;
             }
-            const kids: any[] = [];
-            collectStitchedChildren(owner, id, kids, new Set());
+            const kids: SolidTreeNode[] = [];
+            collectStitchedChildren(owner, id, kids, new Set<SolidNode>());
             if (kids.length) {
                 emitted.add(id);
                 topNodes.push({ id: id, type: 'ANCHOR', name: name });
@@ -442,14 +475,14 @@ function lazySearch(queryStr: string): number {
             }
         }
         if (!emitted.size) {
-            const seen = new Set<any>();
+            const seen = new Set<SolidNode>();
             for (const r of tops) {
                 collectChildComponents(r, topNodes, seen, 0);
             }
         }
         // DFS over the layers, carrying each node's ancestor NAME path (for display)
         // and ancestor ID path (so the client can expand the tree to a match).
-        const stack: Array<{ node: any; path: string[]; idPath: string[] }> = [];
+        const stack: Array<{ node: SolidTreeNode; path: string[]; idPath: string[] }> = [];
         for (const n of topNodes) {
             stack.push({ node: n, path: [], idPath: [] });
         }
@@ -462,14 +495,14 @@ function lazySearch(queryStr: string): number {
             visited.add(item.node.id);
             const node = item.node;
             const name = node.name || '';
-            if (name.toLowerCase().indexOf(q) >= 0) {
+            if (name.toLowerCase().includes(q)) {
                 matches.push({ id: node.id, name: name, type: node.type, path: item.path.join(' › '), ancestorIds: item.idPath });
             }
-            if (!node.leaf && node.id.charAt(0) !== '@') {
+            if (!node.leaf && !node.id.startsWith('@')) {
                 const owner = resolveOwner(node.id);
                 if (owner) {
-                    const kids: any[] = [];
-                    collectStitchedChildren(owner, node.id, kids, new Set());
+                    const kids: SolidTreeNode[] = [];
+                    collectStitchedChildren(owner, node.id, kids, new Set<SolidNode>());
                     const childPath = item.path.concat(name || node.type || '?');
                     const childIdPath = item.idPath.concat(node.id);
                     for (const kid of kids) {
@@ -479,19 +512,21 @@ function lazySearch(queryStr: string): number {
             }
         }
     }
-    return setResult({ kind: 'search', matches: matches });
+    const result: SearchResult = { kind: 'search', matches: matches };
+    return setResult(result);
 }
 
 // ---- inspector: props / signals / memos / stores / value of one node ----------
 
 /** Read a registered global's CURRENT value without subscribing. */
-function readGlobal(v: any): any {
+function readGlobal(v: unknown): unknown {
     try {
         if (typeof v === 'function') {
-            return untrackRead(() => v()); // bare accessor
+            return untrackRead(() => (v as () => unknown)()); // bare accessor
         }
-        if (v && typeof v.get === 'function') {
-            return untrackRead(() => v.get()); // asSignal-style {get,set} wrapper
+        const wrapper = v as { get?: unknown };
+        if (v && typeof wrapper.get === 'function') {
+            return untrackRead(() => (wrapper.get as () => unknown)()); // asSignal-style {get,set} wrapper
         }
     } catch {
         return undefined;
@@ -503,10 +538,10 @@ function readGlobal(v: any): any {
  *  if the signal was named (Solid records no names without a build transform). */
 function inspectOrphans(): number {
     resetValueRefs();
-    const out: any = { kind: 'inspect', id: '@orphans', name: 'orphan signals', type: 'GLOBALS' };
-    const seen = new Set<any>();
+    const out: InspectResult = { kind: 'inspect', id: '@orphans', name: 'orphan signals', type: 'GLOBALS' };
+    const seen = new Set<unknown>();
     const budget = { n: NODE_BUDGET };
-    const signals: any[] = [];
+    const signals: SolidInspectEntry[] = [];
     // throwaway root: encodeValue's walks can hit app getters that create computations
     runInThrowawayRoot(() => {
         let i = 0;
@@ -530,12 +565,12 @@ function inspectOrphans(): number {
 /** Inspect a registered Globals group: each entry's current value as a signal row. */
 function inspectGlobals(ns: string): number {
     resetValueRefs();
-    const out: any = { kind: 'inspect', id: '@g:' + ns, name: ns, type: 'GLOBALS' };
+    const out: InspectResult = { kind: 'inspect', id: '@g:' + ns, name: ns, type: 'GLOBALS' };
     const rec = globalGroups.get(ns);
     if (rec) {
-        const seen = new Set<any>();
+        const seen = new Set<unknown>();
         const budget = { n: NODE_BUDGET };
-        const signals: any[] = [];
+        const signals: SolidInspectEntry[] = [];
         try {
             // throwaway root: reading registered accessors can create computations
             runInThrowawayRoot(() => {
@@ -543,8 +578,8 @@ function inspectGlobals(ns: string): number {
                     signals.push({ name: k, value: encodeValue(readGlobal(rec[k]), 2, budget, seen) });
                 }
             });
-        } catch (e: any) {
-            out.error = String(e?.message ?? e);
+        } catch (e) {
+            out.error = errText(e);
         }
         if (signals.length) {
             out.signals = signals;
@@ -573,8 +608,8 @@ function lazyInspect(idStr: string): number {
         return setResult({ kind: 'inspect', id: idStr, missing: true });
     }
     resetValueRefs();
-    const out: any = { kind: 'inspect', id: idStr, name: safeName(owner) || '', type: safeType(owner) };
-    const seen = new Set<any>();
+    const out: InspectResult = { kind: 'inspect', id: idStr, name: safeName(owner) || '', type: safeType(owner) };
+    const seen = new Set<unknown>();
     // Shared node budget across the whole inspect — bounds the total payload so it
     // always drains well within the client timeout no matter how many signals/memos
     // a component has. When exhausted, remaining values collapse to a ref'd shape tag.
@@ -590,36 +625,37 @@ function lazyInspect(idStr: string): number {
         if (budget.n <= 0) {
             out.truncated = true; // some values were collapsed to fit the payload budget
         }
-    } catch (e: any) {
-        out.error = String(e?.message ?? e);
+    } catch (e) {
+        out.error = errText(e);
     }
     return setResult(out);
 }
 
 /** Read one owner's props/signals/memos/stores/value into `out`. Must run inside a
  *  throwaway root (see lazyInspect). */
-function collectInspect(owner: any, out: any, budget: { n: number }, seen: Set<any>): void {
+function collectInspect(owner: SolidNode, out: SolidInspectData, budget: { n: number }, seen: Set<unknown>): void {
     // Props WITH values. We skip `children`/`ref`: resolving children can do heavy
     // synchronous render work.
     const props = owner.props;
     if (props && typeof props === 'object') {
+        const propsObj = props as Record<string, unknown>;
         let keys: string[] = [];
         try {
-            keys = Object.keys(props);
+            keys = Object.keys(propsObj);
         } catch {
             // proxy ownKeys threw
         }
         if (keys.length) {
-            const list: any[] = [];
+            const list: SolidInspectEntry[] = [];
             for (let i = 0; i < keys.length && i < 60; i++) {
                 const k = keys[i];
                 if (k === 'children' || k === 'ref') {
                     list.push({ key: k }); // name only — don't resolve
                     continue;
                 }
-                let val: any;
+                let val: unknown;
                 try {
-                    val = untrackRead(() => props[k]);
+                    val = untrackRead(() => propsObj[k]);
                 } catch {
                     val = undefined;
                 }
@@ -633,8 +669,8 @@ function collectInspect(owner: any, out: any, budget: { n: number }, seen: Set<a
     // Signals + stores from the owner's sourceMap; `.value` is a plain data property.
     const sm = owner.sourceMap;
     if (sm?.length) {
-        const signals: any[] = [];
-        const stores: any[] = [];
+        const signals: SolidInspectEntry[] = [];
+        const stores: SolidInspectEntry[] = [];
         for (let i = 0; i < sm.length && i < 200; i++) {
             const n = sm[i];
             if (!n) {
@@ -646,7 +682,7 @@ function collectInspect(owner: any, out: any, budget: { n: number }, seen: Set<a
             } catch {
                 // fall back to SIGNAL
             }
-            const entry = { name: safeName(n) || '', value: encodeValue(n.value, 2, budget, seen) };
+            const entry: SolidInspectEntry = { name: safeName(n) || '', value: encodeValue(n.value, 2, budget, seen) };
             if (nt === 'STORE') {
                 stores.push(entry);
             } else {
@@ -663,7 +699,7 @@ function collectInspect(owner: any, out: any, budget: { n: number }, seen: Set<a
     // Memos are computations in `owned` (fn + comparator); `.value` is a data prop.
     const owned = owner.owned;
     if (owned?.length) {
-        const memos: any[] = [];
+        const memos: SolidInspectEntry[] = [];
         for (let i = 0; i < owned.length && i < 400 && memos.length < 100; i++) {
             const c = owned[i];
             if (c && typeof c.fn === 'function' && ('comparator' in c)) {
@@ -689,7 +725,7 @@ function collectInspect(owner: any, out: any, budget: { n: number }, seen: Set<a
  * transient computations) and without subscribing.
  */
 function lazyValue(ref: number, offset: number): number {
-    const out: any = { kind: 'value', ref: ref, offset: offset || 0 };
+    const out: ValueResult = { kind: 'value', ref: ref, offset: offset || 0 };
     try {
         runInThrowawayRoot(() => {
             const r = expandRef(ref, offset || 0);
@@ -699,8 +735,8 @@ function lazyValue(ref: number, offset: number): number {
                 out.node = r.node;
             }
         });
-    } catch (e: any) {
-        out.error = String(e?.message ?? e);
+    } catch (e) {
+        out.error = errText(e);
     }
     return setResult(out);
 }
@@ -730,8 +766,8 @@ function attachAnchor(name?: string): boolean {
         version++;
         console.log('[SDT] attachAnchor "' + (name || 'anchor') + '"; anchors=' + anchors.size);
         return true;
-    } catch (e: any) {
-        lastError = 'attachAnchor: ' + String(e?.message ?? e);
+    } catch (e) {
+        lastError = 'attachAnchor: ' + errText(e);
         return false;
     }
 }
@@ -744,11 +780,11 @@ function attachAnchor(name?: string): boolean {
  * only auto-captured as UNNAMED orphans. `record` is read on demand:
  * { name: accessorFn | {get,set} wrapper | store proxy | plain value }.
  */
-function registerGlobals(namespace: string, record: any): void {
+function registerGlobals(namespace: string, record: unknown): void {
     if (!record) {
         return;
     }
-    globalGroups.set(String(namespace), record);
+    globalGroups.set(String(namespace), record as Record<string, unknown>);
     version++;
 }
 
@@ -769,7 +805,7 @@ function registerGlobals(namespace: string, record: any): void {
 //  - the prev-hook chaining branch is specialized away when there's no prev hook
 
 /** Rare path: record a live root + self-clean registration. */
-function captureRoot(owner: any): void {
+function captureRoot(owner: SolidNode): void {
     try {
         roots.add(owner);
         const cleanup = (): void => {
@@ -794,13 +830,13 @@ function installHooks(api: SolidApi): void {
     // bridge's OWN throwaway roots, whose capture+dispose would loop live refresh)
     const prevCreateOwner = hooks.afterCreateOwner;
     hooks.afterCreateOwner = prevCreateOwner
-        ? function afterCreateOwner(owner: any) {
+        ? function afterCreateOwner(owner: SolidNode) {
             if (owner.fn === undefined && roots.size < ROOT_CAP && !isBridgeWork()) {
                 captureRoot(owner);
             }
             prevCreateOwner(owner);
         }
-        : function afterCreateOwner(owner: any) {
+        : function afterCreateOwner(owner: SolidNode) {
             if (owner.fn === undefined && roots.size < ROOT_CAP && !isBridgeWork()) {
                 captureRoot(owner);
             }
@@ -810,13 +846,13 @@ function installHooks(api: SolidApi): void {
     // module init — BEFORE any app module — so import-time globals are caught.
     const prevCreateSignal = hooks.afterCreateSignal;
     hooks.afterCreateSignal = prevCreateSignal
-        ? function afterCreateSignal(s: any) {
+        ? function afterCreateSignal(s: SolidNode) {
             if (s.graph === undefined && orphanSignals.size < ORPHAN_CAP && !isBridgeWork()) {
                 orphanSignals.add(s);
             }
             prevCreateSignal(s);
         }
-        : function afterCreateSignal(s: any) {
+        : function afterCreateSignal(s: SolidNode) {
             if (s.graph === undefined && orphanSignals.size < ORPHAN_CAP && !isBridgeWork()) {
                 orphanSignals.add(s);
             }
@@ -896,9 +932,9 @@ function __connect(api: SolidApi): string {
         version++;
         console.log('[SDT] connected to solid DEV; hooks installed; ownerById=' + (weakRefEnabled ? 'weakref' : 'capped'));
         return 'ok';
-    } catch (e: any) {
+    } catch (e) {
         status = 'connect-error';
-        lastError = 'connect: ' + String(e?.message ?? e);
+        lastError = 'connect: ' + errText(e);
         console.log('[SDT] ' + lastError);
         return 'error';
     }
@@ -906,12 +942,36 @@ function __connect(api: SolidApi): string {
 
 // ---- install -------------------------------------------------------------------
 
+/**
+ * The on-device `globalThis.__SDT` surface the extension's transport calls over the
+ * debug `evaluate` channel. Every lazy* call returns the total base64 length of the
+ * stashed result, drained in chunks via `readResult`.
+ */
+interface SdtApi {
+    __sdtBridge: true;
+    __connect: (api: SolidApi) => string;
+    status: () => string;
+    version: () => number;
+    lazyRoots: () => number;
+    lazyChildren: (idStr: string) => number;
+    lazyInspect: (idStr: string) => number;
+    lazyValue: (ref: number, offset: number) => number;
+    lazySearch: (query: string) => number;
+    readResult: (off: number, len: number) => string;
+    errorB64: () => string;
+    attachAnchor: (name?: string) => boolean;
+    registerGlobals: (namespace: string, record: unknown) => void;
+}
+
+/** globalThis with the bridge's optional install target. */
+type SdtGlobal = typeof globalThis & { __SDT?: SdtApi };
+
 function installSdt(): void {
-    const g = globalThis as any;
+    const g = globalThis as SdtGlobal;
     if (g.__SDT?.__sdtBridge) {
         return; // double-injection guard
     }
-    g.__SDT = {
+    const sdt: SdtApi = {
         __sdtBridge: true,
         __connect: __connect,
         // status/version/lazyRoots are the panel's entry points — the first call
@@ -942,6 +1002,7 @@ function installSdt(): void {
         attachAnchor: attachAnchor,
         registerGlobals: registerGlobals
     };
+    g.__SDT = sdt;
     console.log('[SDT] bridge installed (waiting for solid __connect)');
 }
 
@@ -968,6 +1029,6 @@ export function __resetSdtBridgeForTests(opts?: { forceCapMode?: boolean }): voi
     indexBuiltAt = 0;
     setSolidApi(null);
     resetValueRefs();
-    (globalThis as any).__SDT = undefined;
+    (globalThis as SdtGlobal).__SDT = undefined;
     installSdt();
 }

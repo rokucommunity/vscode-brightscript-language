@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // ON-DEVICE CODE (Hermes) — bundled into dist/solidDevtools/bridge.js and injected
 // into the staged app bundle by roku-debug. Must stay dependency-free.
 //
@@ -11,6 +10,55 @@
 // @solid-devtools/debugger's pure utils (we used to import ~6 of them; the rest of
 // that package can't run on this renderer, so the dependency is dropped entirely).
 
+/**
+ * A Solid reactive-graph node as the bridge probes it. Solid's Owner, Computation,
+ * Memo, SignalState and store-node shapes overlap heavily, and the bridge only ever
+ * reads a known subset of fields AFTER presence-checking them (the `isSolidX` helpers
+ * below). So this is ONE permissive shape with all-optional fields — the dynamic
+ * `'field' in node` probes would fight a strict discriminated union, and these objects
+ * are untyped solid internals anyway. Every field is what the bridge actually touches.
+ */
+export interface SolidNode {
+    /** Child owners (Owner). */
+    owned?: SolidNode[] | null;
+    /** Parent owner — still set on `<For>`/`<Index>` createRoot owners (Owner / Computation). */
+    owner?: SolidNode | null;
+    /** Disposal callbacks (Owner) — how the bridge self-cleans its root/anchor sets. */
+    cleanups?: Array<() => void> | null;
+    /** Context map (Owner) — used to distinguish CONTEXT owners. */
+    context?: Record<string, unknown> | null;
+    /** Computation body — presence/truthiness marks a Computation (vs a Root). */
+    fn?: unknown;
+    /** Effect/render flags on a Computation. */
+    pure?: boolean;
+    user?: boolean;
+    /** Memo equality fn — presence marks a MEMO. */
+    comparator?: unknown;
+    /** Present on a non-computation owner that is a CATCH_ERROR boundary. */
+    sources?: unknown;
+    /** The component function (Component owner), carrying the dev display name. */
+    component?: SolidComponent;
+    /** A component's resolved props object. */
+    props?: unknown;
+    /** Current value (SignalState / Memo / a component's rendered output). */
+    value?: unknown;
+    /** SignalState observer bookkeeping — presence marks a SIGNAL. */
+    observers?: unknown;
+    observerSlots?: unknown;
+    /** registerGraph sets this only under an Owner — UNSET marks an orphan (unowned) signal. */
+    graph?: unknown;
+    /** Dev name (Solid's dev naming convention; the SDK names mount roots this way). */
+    name?: string;
+    /** Signals/stores created under this owner (dev). */
+    sourceMap?: SolidNode[];
+    /** Bridge/anchor override of the classified type. */
+    sdtType?: string;
+}
+
+/** A Solid component function as the bridge reads it — callable, optionally carrying a
+ *  dev `displayName` (`name` comes from `Function.prototype`). */
+export type SolidComponent = ((...args: unknown[]) => unknown) & { displayName?: string };
+
 /** What the injected `__connect(...)` call hands us, from inside solid's module scope. */
 export interface SolidApi {
     /**
@@ -20,14 +68,14 @@ export interface SolidApi {
      */
     hooks: {
         afterUpdate: (() => void) | null;
-        afterCreateOwner: ((owner: any) => void) | null;
-        afterCreateSignal: ((signal: any) => void) | null;
-        [key: string]: any;
+        afterCreateOwner: ((owner: SolidNode) => void) | null;
+        afterCreateSignal: ((signal: SolidNode) => void) | null;
+        afterRegisterGraph?: (() => void) | null;
     };
-    getOwner: () => any;
+    getOwner: () => SolidNode | null;
     untrack: <T>(fn: () => T) => T;
     createRoot: <T>(fn: (dispose: () => void) => T) => T;
-    getListener?: () => any;
+    getListener?: () => SolidNode | null;
     /** solid's `$PROXY` symbol — optional; without it store detection degrades (stores show as values). */
     $PROXY?: symbol;
     /**
@@ -90,35 +138,35 @@ export function runInThrowawayRoot(fn: () => void): void {
 const REFRESH_PREFIX = '[solid-refresh]';
 const NAME_CAP = 36;
 
-function isSolidProxy(v: any): boolean {
+function isSolidProxy(v: unknown): boolean {
     return !!api && !!api.$PROXY && typeof v === 'object' && v !== null && (api.$PROXY in v);
 }
 
-export function isSolidOwner(o: any): boolean {
+export function isSolidOwner(o: SolidNode): boolean {
     return 'owned' in o;
 }
 
-export function isSolidComputation(o: any): boolean {
+export function isSolidComputation(o: SolidNode): boolean {
     return !!o.fn;
 }
 
-export function isSolidRoot(o: any): boolean {
+export function isSolidRoot(o: SolidNode): boolean {
     return !('fn' in o);
 }
 
-export function isSolidComponent(o: any): boolean {
+export function isSolidComponent(o: SolidNode): boolean {
     return 'component' in o;
 }
 
-export function isSolidSignal(o: any): boolean {
+export function isSolidSignal(o: SolidNode): boolean {
     return 'value' in o && 'observers' in o && 'observerSlots' in o && 'comparator' in o;
 }
 
-export function isSolidStore(o: any): boolean {
+export function isSolidStore(o: SolidNode): boolean {
     return !('observers' in o) && isSolidProxy(o.value);
 }
 
-export function getOwnerType(o: any): string {
+export function getOwnerType(o: SolidNode): string {
     if (o.sdtType !== undefined) {
         return o.sdtType;
     }
@@ -130,7 +178,7 @@ export function getOwnerType(o: any): string {
     }
     if ('comparator' in o) {
         const ownerComponent = o.owner?.component;
-        if (ownerComponent && typeof ownerComponent.name === 'string' && ownerComponent.name.indexOf(REFRESH_PREFIX) === 0) {
+        if (ownerComponent && typeof ownerComponent.name === 'string' && ownerComponent.name.startsWith(REFRESH_PREFIX)) {
             return 'REFRESH';
         }
         return 'MEMO';
@@ -148,7 +196,7 @@ export function getOwnerType(o: any): string {
 }
 
 /** Owner → its type; sourceMap node → SIGNAL / STORE / CUSTOM_VALUE. */
-export function getNodeType(o: any): string {
+export function getNodeType(o: SolidNode): string {
     if (isSolidOwner(o)) {
         return getOwnerType(o);
     }
@@ -161,7 +209,7 @@ export function getNodeType(o: any): string {
     return 'CUSTOM_VALUE';
 }
 
-export function getNodeName(o: any): string | undefined {
+export function getNodeName(o: SolidNode): string | undefined {
     let name: string;
     if (typeof o.component === 'function' && typeof o.component.displayName === 'string' && o.component.displayName.length > 0) {
         name = o.component.displayName;
@@ -180,7 +228,7 @@ export function getNodeName(o: any): string | undefined {
  * Register a disposal callback on an owner (pure solid-core mechanism: `owner.cleanups`
  * runs on dispose). This is how the bridge self-cleans its root/anchor sets.
  */
-export function onOwnerCleanup(owner: any, fn: () => void): () => void {
+export function onOwnerCleanup(owner: SolidNode, fn: () => void): () => void {
     if (owner.cleanups === null || owner.cleanups === undefined) {
         owner.cleanups = [fn];
     } else {

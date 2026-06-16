@@ -408,13 +408,14 @@
                 return;
             }
             setInspectData(result.data);
-        } catch (e: any) {
+        } catch (e) {
             // never leave the pane stuck at "inspecting…" — surface whatever broke
+            const err = e as { stack?: string; message?: string };
             if (seq === inspectSeq) {
                 inspectData = null;
                 sections = [];
-                lastRaw = String(e?.stack ?? e?.message ?? e);
-                inspectMessage = `Inspect failed: ${e?.message ?? e}`;
+                lastRaw = String(err?.stack ?? err?.message ?? e);
+                inspectMessage = `Inspect failed: ${err?.message ?? e}`;
             }
         } finally {
             // only the LATEST inspect owns the pending flag — a superseded one resolving
@@ -480,7 +481,7 @@
 
     async function init() {
         // sidebar vs popped-out panel — picks which context's layout we read/write
-        solidDevtools.setContext((window as any).webviewContext === 'panel' ? 'panel' : 'sidebar');
+        solidDevtools.setContext((window as { webviewContext?: string }).webviewContext === 'panel' ? 'panel' : 'sidebar');
         // the shared UI state must be loaded BEFORE the tree renders — TreeNodes read
         // their expansion from it synchronously at mount
         const state = await solidDevtools.loadUiState();

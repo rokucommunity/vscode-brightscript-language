@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // ON-DEVICE CODE (Hermes) — bundled into dist/solidDevtools/bridge.js and injected
 // into the staged app bundle by roku-debug. Must stay dependency-free.
 //
@@ -9,6 +8,15 @@
 // the client can expand on demand via __SDT.lazyValue(ref, offset).
 
 import { untrackRead } from './solid';
+// Type-only — erased by esbuild, so the bundled bridge stays import-free. The bridge
+// is the producer of this wire shape; the webview consumes the same type (protocol.ts).
+import type { SolidEncodedValue } from '../protocol';
+
+/** One value expanded one more level by expandRef (drill-down), or a missing marker. */
+interface ExpandResult {
+    node?: SolidEncodedValue;
+    missing?: boolean;
+}
 
 /** Max keys/items shown per object/array per level. */
 export const VALUE_BREADTH = 40;
@@ -24,7 +32,7 @@ export const NODE_BUDGET = 800;
 // Refs are scoped to the LAST inspect: each lazyInspect resets the registry (so it
 // can't grow without bound), and the monotonic counter guarantees a stale ref from
 // a previous inspect can never alias a new value — it just reports `missing`.
-const valueRefs = new Map<number, any>();
+const valueRefs = new Map<number, unknown>();
 let refCounter = 0;
 const REF_CAP = 5000;
 
@@ -32,7 +40,7 @@ export function resetValueRefs(): void {
     valueRefs.clear();
 }
 
-function refOf(v: any): number {
+function refOf(v: unknown): number {
     if (valueRefs.size >= REF_CAP) {
         return 0; // registry full — value simply isn't expandable this round
     }
@@ -41,7 +49,7 @@ function refOf(v: any): number {
     return refCounter;
 }
 
-function tagRef(node: any, v: any): any {
+function tagRef(node: SolidEncodedValue, v: unknown): SolidEncodedValue {
     const r = refOf(v);
     if (r) {
         node.ref = r;
@@ -56,8 +64,8 @@ function tagRef(node: any, v: any): any {
  * because their property getters can do heavy synchronous native work. Drilling into
  * one is then an explicit user action (lazyValue).
  */
-export function isPlainObject(v: any): boolean {
-    let p: any;
+export function isPlainObject(v: unknown): boolean {
+    let p: unknown;
     try {
         p = Object.getPrototypeOf(v);
     } catch {
@@ -66,57 +74,58 @@ export function isPlainObject(v: any): boolean {
     return p === Object.prototype || p === null;
 }
 
-export function encodeValue(v: any, depth: number, budget: { n: number }, seen: Set<any>): any {
+export function encodeValue(v: unknown, depth: number, budget: { n: number }, seen: Set<unknown>): SolidEncodedValue {
     budget.n--;
-    const t = typeof v;
     if (v === null) {
         return { t: 'null' };
     }
-    if (t === 'undefined') {
+    if (v === undefined) {
         return { t: 'undefined' };
     }
-    if (t === 'number' || t === 'boolean') {
-        return { t: t, v: v };
+    if (typeof v === 'number' || typeof v === 'boolean') {
+        return { t: typeof v, v: v };
     }
-    if (t === 'bigint') {
+    if (typeof v === 'bigint') {
         return { t: 'number', v: v.toString() + 'n' };
     }
-    if (t === 'string') {
+    if (typeof v === 'string') {
         return v.length > STRING_CAP
             ? tagRef({ t: 'string', v: v.slice(0, STRING_CAP), len: v.length }, v)
             : { t: 'string', v: v };
     }
-    if (t === 'symbol') {
+    if (typeof v === 'symbol') {
         return { t: 'symbol', v: v.toString() };
     }
-    if (t === 'function') {
+    if (typeof v === 'function') {
         return { t: 'function', v: v.name || '' };
     }
-    if (t === 'object') {
+    if (typeof v === 'object') {
         if (seen.has(v)) {
             return tagRef({ t: 'circular' }, v);
         }
         const expand = depth > 0 && budget.n > 0; // out of budget → collapse to a shape tag
         if (Array.isArray(v)) {
+            const arr = v as unknown[];
             let len = 0;
             try {
-                len = v.length;
+                len = arr.length;
             } catch {
                 // proxy length getter threw
             }
-            const node: any = { t: 'array', len: len };
+            const node: SolidEncodedValue = { t: 'array', len: len };
             if (expand && len) {
                 seen.add(v);
-                node.items = [];
+                const items: SolidEncodedValue[] = [];
                 for (let i = 0; i < len && i < VALUE_BREADTH; i++) {
-                    let it: any;
+                    let it: unknown;
                     try {
-                        it = v[i];
+                        it = arr[i];
                     } catch {
                         it = undefined;
                     }
-                    node.items.push(encodeValue(it, depth - 1, budget, seen));
+                    items.push(encodeValue(it, depth - 1, budget, seen));
                 }
+                node.items = items;
                 if (len > VALUE_BREADTH) {
                     node.more = len - VALUE_BREADTH;
                     tagRef(node, v); // expand more pages via lazyValue(ref, offset)
@@ -126,13 +135,14 @@ export function encodeValue(v: any, depth: number, budget: { n: number }, seen: 
             }
             return node;
         }
+        const obj = v as Record<string, unknown>;
         let ctor: string | undefined;
         try {
-            ctor = v.constructor?.name;
+            ctor = (v as { constructor?: { name?: string } }).constructor?.name;
         } catch {
             // constructor getter threw
         }
-        const node: any = { t: 'object' };
+        const node: SolidEncodedValue = { t: 'object' };
         if (ctor && ctor !== 'Object') {
             node.ctor = ctor;
         }
@@ -140,22 +150,23 @@ export function encodeValue(v: any, depth: number, budget: { n: number }, seen: 
             seen.add(v);
             let keys: string[] = [];
             try {
-                keys = Object.keys(v);
+                keys = Object.keys(obj);
             } catch {
                 // proxy ownKeys threw
             }
             if (keys.length) {
-                node.entries = [];
+                const entries: Array<{ k: string; value: SolidEncodedValue }> = [];
                 for (let i = 0; i < keys.length && i < VALUE_BREADTH; i++) {
                     const k = keys[i];
-                    let val: any;
+                    let val: unknown;
                     try {
-                        val = v[k];
+                        val = obj[k];
                     } catch {
                         val = undefined;
                     }
-                    node.entries.push({ k: k, value: encodeValue(val, depth - 1, budget, seen) });
+                    entries.push({ k: k, value: encodeValue(val, depth - 1, budget, seen) });
                 }
+                node.entries = entries;
                 if (keys.length > VALUE_BREADTH) {
                     node.more = keys.length - VALUE_BREADTH;
                     tagRef(node, v);
@@ -168,7 +179,7 @@ export function encodeValue(v: any, depth: number, budget: { n: number }, seen: 
         }
         return node;
     }
-    return { t: t };
+    return { t: 'undefined' };
 }
 
 /**
@@ -178,16 +189,16 @@ export function encodeValue(v: any, depth: number, budget: { n: number }, seen: 
  * every read individually guarded). Returns `{ node }` or `{ missing: true }`;
  * nested children get fresh refs for further drilling.
  */
-export function expandRef(refId: number, offset: number): any {
+export function expandRef(refId: number, offset: number): ExpandResult {
     if (!valueRefs.has(refId)) {
         return { missing: true };
     }
     const v = valueRefs.get(refId);
     const budget = { n: NODE_BUDGET };
-    const seen = new Set<any>();
+    const seen = new Set<unknown>();
     if (typeof v === 'string') {
         const chunk = v.slice(offset, offset + STRING_PAGE);
-        const node: any = { t: 'string', v: chunk, len: v.length, offset: offset };
+        const node: SolidEncodedValue = { t: 'string', v: chunk, len: v.length, offset: offset };
         if (offset + chunk.length < v.length) {
             node.more = v.length - offset - chunk.length;
             node.ref = refId; // same ref — page again with a bigger offset
@@ -199,21 +210,23 @@ export function expandRef(refId: number, offset: number): any {
     }
     seen.add(v);
     if (Array.isArray(v)) {
+        const arr = v as unknown[];
         let len = 0;
         try {
-            len = v.length;
+            len = arr.length;
         } catch {
             // proxy length getter threw
         }
-        const node: any = { t: 'array', len: len, offset: offset, items: [] };
+        const items: SolidEncodedValue[] = [];
+        const node: SolidEncodedValue = { t: 'array', len: len, offset: offset, items: items };
         for (let i = offset; i < len && i < offset + VALUE_BREADTH; i++) {
-            let it: any;
+            let it: unknown;
             try {
-                it = untrackRead(() => v[i]);
+                it = untrackRead(() => arr[i]);
             } catch {
                 it = undefined;
             }
-            node.items.push(encodeValue(it, 1, budget, seen));
+            items.push(encodeValue(it, 1, budget, seen));
         }
         if (len > offset + VALUE_BREADTH) {
             node.more = len - offset - VALUE_BREADTH;
@@ -221,15 +234,16 @@ export function expandRef(refId: number, offset: number): any {
         }
         return { node: node };
     }
+    const obj = v as Record<string, unknown>;
     let ctor: string | undefined;
     try {
-        ctor = v.constructor?.name;
+        ctor = (v as { constructor?: { name?: string } }).constructor?.name;
     } catch {
         // constructor getter threw
     }
     let keys: string[] = [];
     try {
-        keys = Object.keys(v);
+        keys = Object.keys(obj);
     } catch {
         // proxy ownKeys threw
     }
@@ -237,24 +251,25 @@ export function expandRef(refId: number, offset: number): any {
         // class instances often have no own enumerable keys — fall back to own
         // property names (still own-only; prototype getters are never touched)
         try {
-            keys = Object.getOwnPropertyNames(v);
+            keys = Object.getOwnPropertyNames(obj);
         } catch {
             // exotic object
         }
     }
-    const node: any = { t: 'object', offset: offset, entries: [] };
+    const entries: Array<{ k: string; value: SolidEncodedValue }> = [];
+    const node: SolidEncodedValue = { t: 'object', offset: offset, entries: entries };
     if (ctor && ctor !== 'Object') {
         node.ctor = ctor;
     }
     for (let i = offset; i < keys.length && i < offset + VALUE_BREADTH; i++) {
         const k = keys[i];
-        let val: any;
+        let val: unknown;
         try {
-            val = untrackRead(() => v[k]);
+            val = untrackRead(() => obj[k]);
         } catch {
             val = undefined;
         }
-        node.entries.push({ k: k, value: encodeValue(val, 1, budget, seen) });
+        entries.push({ k: k, value: encodeValue(val, 1, budget, seen) });
     }
     if (keys.length > offset + VALUE_BREADTH) {
         node.more = keys.length - offset - VALUE_BREADTH;

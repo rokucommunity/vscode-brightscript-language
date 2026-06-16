@@ -206,8 +206,8 @@ export class SolidDevtoolsTransport {
                 ok: true,
                 result: typeof resp?.result === 'string' ? resp.result : JSON.stringify(resp?.result)
             };
-        } catch (e: any) {
-            return { ok: false, error: e?.message ?? String(e) };
+        } catch (e) {
+            return { ok: false, error: (e as { message?: string })?.message ?? String(e) };
         } finally {
             clearTimeout(timer);
         }
