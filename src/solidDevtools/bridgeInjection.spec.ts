@@ -110,6 +110,25 @@ describe('bridgeInjection', () => {
         expect(bundle).to.include('DevHooks2={onStoreNodeUpdate:null};var after=1;');
     });
 
+    it('connects when the DevHooks literal is pretty-printed across multiple lines (non-minified)', async () => {
+        //A non-minified dev build can spread the hooks object over several lines. The regex
+        //spans newlines (both \s* and [^{}]* match them), so it still matches, and the
+        //connect call lands right after the closing `};` WITHOUT adding a line.
+        const devHooksBlock = 'var DevHooks = {\n    afterUpdate: null,\n    afterCreateOwner: null,\n    afterCreateSignal: null,\n    afterRegisterGraph: null\n};';
+        const multilineBundle = `(function(){\nvar Updates = null;\n${devHooksBlock}\nvar DevHooks2 = { onStoreNodeUpdate: null };\nfunction getOwner(){}\n})();\n//# sourceMappingURL=index.js.map`;
+        writeStagedApp({ bundle: multilineBundle });
+        const result = await inject();
+        expect(result).to.include({ injected: true, connected: true });
+
+        const bundle = fsExtra.readFileSync(bundlePath, 'utf8');
+        //connect call inserted immediately after the closing `};` of the multi-line literal
+        expect(bundle).to.include(devHooksBlock + buildConnectStatement('DevHooks'));
+        //the inline insert adds NO line — total lines = bridge lines + original bundle lines.
+        //This is exactly what keeps the prepend's source-map `;` padding correct: only the
+        //prepend shifts lines, so the map stays line-accurate for the whole solid module.
+        expect(bundle.split('\n').length).to.equal(bridgeCode.split('\n').length - 1 + multilineBundle.split('\n').length);
+    });
+
     it('pads the source map mappings with one semicolon per prepended line', async () => {
         writeStagedApp();
         await inject();
