@@ -42,8 +42,11 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
                 });
                 deviceInfo = info;
             } catch (e) {
-                // Device might be temporarily unavailable or network unreachable
-                // This is expected behavior and we'll just continue without device info
+                // Device might be temporarily unavailable or network unreachable.
+                // This is expected behavior during device startup, network transitions, or when
+                // the device is restarting. We silently continue without device info rather than
+                // logging to avoid noise in the output. The UI will gracefully handle the missing
+                // device info by disabling version-dependent features.
             }
         }
 

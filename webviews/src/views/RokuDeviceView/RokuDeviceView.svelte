@@ -30,7 +30,11 @@
         if (!version) return false;
 
         const parseVersion = (v: string) => {
-            const parts = v.split('.').map(p => parseInt(p, 10));
+            const parts = v.split('.').map(p => {
+                const parsed = parseInt(p, 10);
+                // Return 0 for invalid/NaN values to handle edge cases like beta versions
+                return isNaN(parsed) ? 0 : parsed;
+            });
             return { major: parts[0] || 0, minor: parts[1] || 0, patch: parts[2] || 0 };
         };
 
