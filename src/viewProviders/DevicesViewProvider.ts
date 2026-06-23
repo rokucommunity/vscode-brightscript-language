@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
+import { rokuDeploy } from 'roku-deploy';
 import type { ConfiguredDevice, DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import type { CredentialStore } from '../managers/CredentialStore';
 import { util } from '../util';
@@ -525,6 +526,84 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
         await this.pushFilterContextKeys();
         this._onDidChangeTreeData.fire(null);
+    }
+
+    /**
+     * Restart a device
+     */
+    public async restartDevice(element: DeviceTreeItem): Promise<void> {
+        if (!element || element.contextValue !== 'device' && !element.contextValue?.startsWith('device-')) {
+            void vscode.window.showErrorMessage('Please select a device to restart');
+            return;
+        }
+
+        const device = this.deviceManager.getDevice(element.key);
+        if (!device) {
+            void vscode.window.showErrorMessage('Device not found');
+            return;
+        }
+
+        const confirm = await vscode.window.showWarningMessage(
+            `Are you sure you want to restart ${device.ip}? This will close all running channels.`,
+            { modal: true },
+            'Restart'
+        );
+
+        if (confirm !== 'Restart') {
+            return;
+        }
+
+        try {
+            const password = await this.credentialStore.getPassword(device.ip);
+            await rokuDeploy.rebootDevice({
+                host: device.ip,
+                password: password,
+                timeout: 10000
+            });
+
+            void vscode.window.showInformationMessage(`Device ${device.ip} restart initiated successfully`);
+        } catch (e) {
+            void vscode.window.showErrorMessage(`Failed to restart device: ${e.message}`);
+        }
+    }
+
+    /**
+     * Check for software updates on a device
+     */
+    public async checkForUpdates(element: DeviceTreeItem): Promise<void> {
+        if (!element || element.contextValue !== 'device' && !element.contextValue?.startsWith('device-')) {
+            void vscode.window.showErrorMessage('Please select a device to check for updates');
+            return;
+        }
+
+        const device = this.deviceManager.getDevice(element.key);
+        if (!device) {
+            void vscode.window.showErrorMessage('Device not found');
+            return;
+        }
+
+        const confirm = await vscode.window.showInformationMessage(
+            `Check for software updates on ${device.ip}? The device will check for and install any available updates.`,
+            { modal: true },
+            'Check for Updates'
+        );
+
+        if (confirm !== 'Check for Updates') {
+            return;
+        }
+
+        try {
+            const password = await this.credentialStore.getPassword(device.ip);
+            await rokuDeploy.checkForUpdate({
+                host: device.ip,
+                password: password,
+                timeout: 10000
+            });
+
+            void vscode.window.showInformationMessage(`Software update check initiated successfully on ${device.ip}`);
+        } catch (e) {
+            void vscode.window.showErrorMessage(`Failed to check for updates: ${e.message}`);
+        }
     }
 }
 

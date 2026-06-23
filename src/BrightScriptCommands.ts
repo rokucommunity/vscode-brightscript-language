@@ -1035,6 +1035,8 @@ export class BrightScriptCommands {
             this.registerCommand(`devicesView.toggleFilter.${key}.active`, handler);
         }
         this.registerCommand('devicesView.resetFilters', () => devicesViewProvider.resetFilters());
+        this.registerCommand('devicesView.restartDevice', (element) => devicesViewProvider.restartDevice(element));
+        this.registerCommand('devicesView.checkAndInstallUpdates', (element) => devicesViewProvider.checkForUpdates(element));
     }
 
     private async sendAsciiToDevice(character: string) {
