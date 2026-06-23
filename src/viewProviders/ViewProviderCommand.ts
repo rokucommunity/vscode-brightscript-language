@@ -19,7 +19,5 @@ export enum ViewProviderCommand {
     exportRokuAutomationConfigs = 'exportRokuAutomationConfigs',
     loadRokuAutomationConfigs = 'loadRokuAutomationConfigs',
     updateWorkspaceState = 'updateWorkspaceState',
-    viewReady = 'viewReady',
-    restartDevice = 'restartDevice',
-    checkForUpdates = 'checkForUpdates'
+    viewReady = 'viewReady'
 }
