@@ -5,8 +5,6 @@ export enum VscodeCommand {
     rokuDeviceViewCopyScreenshot = 'extension.brightscript.rokuDeviceView.copyScreenshot',
     rokuDeviceViewEnableNodeInspector = 'extension.brightscript.rokuDeviceView.enableNodeInspector',
     rokuDeviceViewDisableNodeInspector = 'extension.brightscript.rokuDeviceView.disableNodeInspector',
-    rokuDeviceViewRestartDevice = 'extension.brightscript.rokuDeviceView.restartDevice',
-    rokuDeviceViewCheckAndInstallUpdates = 'extension.brightscript.rokuDeviceView.checkAndInstallUpdates',
     devicesViewRestartDevice = 'extension.brightscript.devicesView.restartDevice',
     devicesViewCheckAndInstallUpdates = 'extension.brightscript.devicesView.checkAndInstallUpdates',
     rokuRegistryExportRegistry = 'extension.brightscript.rokuRegistry.exportRegistry',

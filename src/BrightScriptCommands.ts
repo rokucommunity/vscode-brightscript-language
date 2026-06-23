@@ -21,6 +21,7 @@ import { vscodeContextManager } from './managers/VscodeContextManager';
 import type { CredentialStore } from './managers/CredentialStore';
 import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { DEVICE_FILTER_KEYS } from './deviceFilters';
+import { rokuDeploy } from 'roku-deploy';
 
 export class BrightScriptCommands {
 
@@ -766,6 +767,86 @@ export class BrightScriptCommands {
         });
     }
 
+    /**
+     * Restart a Roku device
+     */
+    public async restartDevice(host?: string): Promise<void> {
+        if (!host) {
+            host = await this.userInputManager.promptForHost();
+        }
+        if (!host) {
+            void vscode.window.showErrorMessage('Please select a device to restart');
+            return;
+        }
+
+        const confirm = await vscode.window.showWarningMessage(
+            `Are you sure you want to restart ${host}? This will close all running channels.`,
+            { modal: true },
+            'Restart'
+        );
+
+        if (confirm !== 'Restart') {
+            return;
+        }
+
+        try {
+            const device = this.deviceManager.getDevice({ ip: host });
+            const password = device?.serialNumber
+                ? await this.credentialStore.getPassword(device.serialNumber)
+                : undefined;
+
+            await rokuDeploy.rebootDevice({
+                host: host,
+                password: password,
+                timeout: 10000
+            });
+
+            void vscode.window.showInformationMessage(`Device ${host} restart initiated successfully`);
+        } catch (e) {
+            void vscode.window.showErrorMessage(`Failed to restart device: ${e.message}`);
+        }
+    }
+
+    /**
+     * Check for software updates on a Roku device
+     */
+    public async checkForUpdates(host?: string): Promise<void> {
+        if (!host) {
+            host = await this.userInputManager.promptForHost();
+        }
+        if (!host) {
+            void vscode.window.showErrorMessage('Please select a device to check for updates');
+            return;
+        }
+
+        const confirm = await vscode.window.showInformationMessage(
+            `Check for software updates on ${host}? The device will check for and install any available updates.`,
+            { modal: true },
+            'Check for Updates'
+        );
+
+        if (confirm !== 'Check for Updates') {
+            return;
+        }
+
+        try {
+            const device = this.deviceManager.getDevice({ ip: host });
+            const password = device?.serialNumber
+                ? await this.credentialStore.getPassword(device.serialNumber)
+                : undefined;
+
+            await rokuDeploy.checkForUpdate({
+                host: host,
+                password: password,
+                timeout: 10000
+            });
+
+            void vscode.window.showInformationMessage(`Software update check initiated successfully on ${host}`);
+        } catch (e) {
+            void vscode.window.showErrorMessage(`Failed to check for updates: ${e.message}`);
+        }
+    }
+
     public async sendRemoteCommand(key: string, host?: string, literalCharacter = false) {
         for (const notifier of this.keypressNotifiers) {
             notifier(key, literalCharacter);
@@ -1035,8 +1116,14 @@ export class BrightScriptCommands {
             this.registerCommand(`devicesView.toggleFilter.${key}.active`, handler);
         }
         this.registerCommand('devicesView.resetFilters', () => devicesViewProvider.resetFilters());
-        this.registerCommand('devicesView.restartDevice', (element) => devicesViewProvider.restartDevice(element));
-        this.registerCommand('devicesView.checkAndInstallUpdates', (element) => devicesViewProvider.checkForUpdates(element));
+        this.registerCommand('devicesView.restartDevice', (element: { key: string }) => {
+            const device = this.deviceManager.getDevice(element?.key);
+            return this.restartDevice(device?.ip);
+        });
+        this.registerCommand('devicesView.checkAndInstallUpdates', (element: { key: string }) => {
+            const device = this.deviceManager.getDevice(element?.key);
+            return this.checkForUpdates(device?.ip);
+        });
     }
 
     private async sendAsciiToDevice(character: string) {
