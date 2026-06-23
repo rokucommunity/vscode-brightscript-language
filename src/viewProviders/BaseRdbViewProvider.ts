@@ -22,6 +22,12 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
         this.setupCommandObservers();
     }
 
+    /**
+     * Update the device availability status and send it to the webview.
+     * This method is asynchronous because it fetches device info from the network,
+     * which may take time and could fail. Callers should use `void` or `await`
+     * as appropriate for their context.
+     */
     public async updateDeviceAvailability() {
         const device = this.dependencies.rtaManager.device;
         const deviceConfig = this.dependencies.rtaManager.deviceConfig;

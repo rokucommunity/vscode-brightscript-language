@@ -12,38 +12,47 @@
 
     window.vscode = acquireVsCodeApi();
 
+    // Time to wait before resetting device action states after operation completes
+    const DEVICE_ACTION_TIMEOUT_MS = 3000;
+
+    interface DeviceInfo {
+        'software-version'?: string;
+        softwareVersion?: string;
+        [key: string]: any;
+    }
+
     let deviceAvailable = false;
-    let deviceInfo: any = null;
-    
+    let deviceInfo: DeviceInfo | null = null;
+
     // Helper function to compare semantic versions
     function semverGte(version: string, minVersion: string): boolean {
         if (!version) return false;
-        
+
         const parseVersion = (v: string) => {
             const parts = v.split('.').map(p => parseInt(p, 10));
             return { major: parts[0] || 0, minor: parts[1] || 0, patch: parts[2] || 0 };
         };
-        
+
         const v1 = parseVersion(version);
         const v2 = parseVersion(minVersion);
-        
+
         if (v1.major !== v2.major) return v1.major > v2.major;
         if (v1.minor !== v2.minor) return v1.minor > v2.minor;
         return v1.patch >= v2.patch;
     }
-    
+
     $: softwareVersion = deviceInfo?.['software-version'] || deviceInfo?.softwareVersion || '';
     $: supportsDeviceActions = semverGte(softwareVersion, '15.0.4');
-    $: deviceActionTooltip = supportsDeviceActions 
-        ? '' 
+    $: deviceActionTooltip = supportsDeviceActions
+        ? ''
         : 'Requires software version 15.0.4 or later';
-    
+
     let isRestarting = false;
     let isCheckingUpdates = false;
-    
+
     async function onRestartDevice() {
         if (!supportsDeviceActions || isRestarting) return;
-        
+
         isRestarting = true;
         try {
             const response = await intermediary.sendCommand(ViewProviderCommand.restartDevice);
@@ -51,7 +60,7 @@
                 // Device will restart, so reset the flag after a delay
                 setTimeout(() => {
                     isRestarting = false;
-                }, 3000);
+                }, DEVICE_ACTION_TIMEOUT_MS);
             } else {
                 isRestarting = false;
             }
@@ -60,10 +69,10 @@
             isRestarting = false;
         }
     }
-    
+
     async function onCheckForUpdates() {
         if (!supportsDeviceActions || isCheckingUpdates) return;
-        
+
         isCheckingUpdates = true;
         try {
             const response = await intermediary.sendCommand(ViewProviderCommand.checkForUpdates);
@@ -71,7 +80,7 @@
                 // Update check initiated, reset flag after a delay
                 setTimeout(() => {
                     isCheckingUpdates = false;
-                }, 3000);
+                }, DEVICE_ACTION_TIMEOUT_MS);
             } else {
                 isCheckingUpdates = false;
             }
@@ -80,7 +89,7 @@
             isCheckingUpdates = false;
         }
     }
-    
+
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         deviceAvailable = message.context.deviceAvailable;
         deviceInfo = message.context.deviceInfo;
