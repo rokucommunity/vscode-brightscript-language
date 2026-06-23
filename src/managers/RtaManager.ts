@@ -22,18 +22,11 @@ export class RtaManager {
 
     public onDeviceComponent?: rta.OnDeviceComponent;
     public device?: rta.RokuDevice;
-    public deviceConfig?: { host: string; password: string };
 
     private webviewViewProviderManager?: WebviewViewProviderManager;
     private lastAppUIResponse: rta.AppUIResponse | undefined;
 
     public setupRtaWithConfig(config: { host: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
-        // Store device config for later use
-        this.deviceConfig = {
-            host: config.host,
-            password: config.password
-        };
-
         const enableDebugging = ['info', 'debug', 'trace'].includes(config.logLevel);
         const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {

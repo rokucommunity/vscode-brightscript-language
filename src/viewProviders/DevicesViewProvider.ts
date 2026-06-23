@@ -328,6 +328,37 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 );
             }
 
+            // Device actions that require software version 15.0.4 or later
+            if (semver.satisfies(element.details['software-version'], '>=15.0.4')) {
+                result.unshift(
+                    this.createDeviceInfoTreeItem({
+                        label: '🔄 Check for Software Updates',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'Check for and install software updates',
+                        command: {
+                            command: 'extension.brightscript.devicesView.checkAndInstallUpdates',
+                            title: 'Check for Updates',
+                            arguments: [element]
+                        }
+                    })
+                );
+
+                result.unshift(
+                    this.createDeviceInfoTreeItem({
+                        label: '🔁 Restart Device',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'Restart this device',
+                        command: {
+                            command: 'extension.brightscript.devicesView.restartDevice',
+                            title: 'Restart Device',
+                            arguments: [element]
+                        }
+                    })
+                );
+            }
+
             result.unshift(
                 this.createDeviceInfoTreeItem({
                     label: '🔗 Open device web portal',
