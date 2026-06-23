@@ -3,7 +3,6 @@ import type * as vscode from 'vscode';
 import type { RequestType } from 'roku-test-automation';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
-import { rokuDeploy } from 'roku-deploy';
 
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import { ViewProviderEvent } from './ViewProviderEvent';
@@ -22,38 +21,10 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
         this.setupCommandObservers();
     }
 
-    /**
-     * Update the device availability status and send it to the webview.
-     * This method is asynchronous because it fetches device info from the network,
-     * which may take time and could fail. Callers should use `void` or `await`
-     * as appropriate for their context.
-     */
-    public async updateDeviceAvailability() {
-        const device = this.dependencies.rtaManager.device;
-        const deviceConfig = this.dependencies.rtaManager.deviceConfig;
-        let deviceInfo = null;
-
-        // Try to get device info if device is available
-        if (device && deviceConfig) {
-            try {
-                const info = await rokuDeploy.getDeviceInfo({
-                    host: deviceConfig.host,
-                    timeout: 5000
-                });
-                deviceInfo = info;
-            } catch (e) {
-                // Device might be temporarily unavailable or network unreachable.
-                // This is expected behavior during device startup, network transitions, or when
-                // the device is restarting. We silently continue without device info rather than
-                // logging to avoid noise in the output. The UI will gracefully handle the missing
-                // device info by disabling version-dependent features.
-            }
-        }
-
+    public updateDeviceAvailability() {
         const message = this.createEventMessage(ViewProviderEvent.onDeviceAvailabilityChange, {
             odcAvailable: !!this.dependencies.rtaManager.onDeviceComponent,
-            deviceAvailable: !!device,
-            deviceInfo: deviceInfo
+            deviceAvailable: !!this.dependencies.rtaManager.device
         });
 
         this.postOrQueueMessage(message);
@@ -102,6 +73,6 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
 
     protected onViewReady() {
         // Always post back the device status so we make sure the client doesn't miss it if it got refreshed
-        void this.updateDeviceAvailability();
+        this.updateDeviceAvailability();
     }
 }
