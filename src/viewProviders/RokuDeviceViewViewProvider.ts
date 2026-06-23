@@ -54,7 +54,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
                     { modal: true },
                     'Restart'
                 );
-                
+
                 if (confirm !== 'Restart') {
                     this.postOrQueueMessage(this.createResponseMessage(message, {
                         success: false,
@@ -65,7 +65,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
 
                 const device = this.dependencies.rtaManager.device;
                 const deviceConfig = this.dependencies.rtaManager.deviceConfig;
-                
+
                 if (!device || !deviceConfig) {
                     throw new Error('No device connected');
                 }
@@ -79,7 +79,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
                 this.postOrQueueMessage(this.createResponseMessage(message, {
                     success: true
                 }));
-                
+
                 void vscode.window.showInformationMessage('Device restart initiated successfully');
             } catch (e) {
                 this.postOrQueueMessage(this.createResponseMessage(message, {
@@ -98,7 +98,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
                     { modal: true },
                     'Check for Updates'
                 );
-                
+
                 if (confirm !== 'Check for Updates') {
                     this.postOrQueueMessage(this.createResponseMessage(message, {
                         success: false,
@@ -109,7 +109,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
 
                 const device = this.dependencies.rtaManager.device;
                 const deviceConfig = this.dependencies.rtaManager.deviceConfig;
-                
+
                 if (!device || !deviceConfig) {
                     throw new Error('No device connected');
                 }
@@ -123,7 +123,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
                 this.postOrQueueMessage(this.createResponseMessage(message, {
                     success: true
                 }));
-                
+
                 void vscode.window.showInformationMessage('Software update check initiated successfully');
             } catch (e) {
                 this.postOrQueueMessage(this.createResponseMessage(message, {
