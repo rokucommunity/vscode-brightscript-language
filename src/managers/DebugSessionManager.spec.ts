@@ -15,7 +15,7 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import { debugSessionManager } from './DebugSessionManager';
+import { DebugSessionManager } from './DebugSessionManager';
 
 const sinon = createSandbox();
 
@@ -42,12 +42,15 @@ function makeDualSession(suffix = '1') {
 }
 
 describe('DebugSessionManager', () => {
+    // Use a fresh instance per test rather than the shared singleton — the production
+    // singleton accumulates listeners from other specs (e.g. extension.activate() wires
+    // Extension.onDidStartDebugSession to it), and firing events through it would invoke
+    // their stale handlers.
+    let manager: DebugSessionManager;
     let start: (session: any) => void;
     let terminate: (session: any) => void;
 
     beforeEach(() => {
-        // The manager is a singleton; clear any sessions a prior test left tracked.
-        (debugSessionManager as any).liveSessions.clear();
         (vscode.debug as any).activeDebugSession = undefined;
 
         (sinon.stub(vscode.debug, 'onDidStartDebugSession') as sinon.SinonStub).callsFake((cb: any) => {
@@ -59,11 +62,11 @@ describe('DebugSessionManager', () => {
             return { dispose: () => { } };
         });
 
-        debugSessionManager.register({ subscriptions: [] } as any);
+        manager = new DebugSessionManager();
+        manager.register({ subscriptions: [] } as any);
     });
 
     afterEach(() => {
-        (debugSessionManager as any).liveSessions.clear();
         (vscode.debug as any).activeDebugSession = undefined;
         sinon.restore();
     });
@@ -71,15 +74,15 @@ describe('DebugSessionManager', () => {
     describe('tracking', () => {
         it('isLive reflects start/terminate', () => {
             const { brightScript } = makeDualSession();
-            expect(debugSessionManager.isLive(brightScript)).to.be.false;
+            expect(manager.isLive(brightScript)).to.be.false;
             start(brightScript);
-            expect(debugSessionManager.isLive(brightScript)).to.be.true;
+            expect(manager.isLive(brightScript)).to.be.true;
             terminate(brightScript);
-            expect(debugSessionManager.isLive(brightScript)).to.be.false;
+            expect(manager.isLive(brightScript)).to.be.false;
         });
 
         it('isLive is false for undefined', () => {
-            expect(debugSessionManager.isLive(undefined)).to.be.false;
+            expect(manager.isLive(undefined)).to.be.false;
         });
     });
 
@@ -90,7 +93,7 @@ describe('DebugSessionManager', () => {
             start(js);
             start(jsChild);
 
-            const groups = debugSessionManager.groups;
+            const groups = manager.groups;
             expect(groups.length).to.equal(1);
             expect(groups[0].brightScript).to.equal(brightScript);
             expect(groups[0].js).to.equal(js);
@@ -101,7 +104,7 @@ describe('DebugSessionManager', () => {
             const { brightScript } = makeDualSession();
             start(brightScript);
 
-            const groups = debugSessionManager.groups;
+            const groups = manager.groups;
             expect(groups.length).to.equal(1);
             expect(groups[0].js).to.be.undefined;
             expect(groups[0].jsChildren).to.eql([]);
@@ -116,13 +119,13 @@ describe('DebugSessionManager', () => {
             start(jsChild);
 
             (vscode.debug as any).activeDebugSession = js;
-            expect(debugSessionManager.getActiveBrightScriptSession()).to.equal(brightScript);
+            expect(manager.getActiveBrightScriptSession()).to.equal(brightScript);
 
             (vscode.debug as any).activeDebugSession = jsChild;
-            expect(debugSessionManager.getActiveBrightScriptSession()).to.equal(brightScript);
+            expect(manager.getActiveBrightScriptSession()).to.equal(brightScript);
 
             (vscode.debug as any).activeDebugSession = brightScript;
-            expect(debugSessionManager.getActiveBrightScriptSession()).to.equal(brightScript);
+            expect(manager.getActiveBrightScriptSession()).to.equal(brightScript);
         });
 
         it('falls back to the only running group when an unrelated session is active', () => {
@@ -131,7 +134,7 @@ describe('DebugSessionManager', () => {
             start(js);
 
             (vscode.debug as any).activeDebugSession = makeSession('unrelated', 'node');
-            expect(debugSessionManager.getActiveBrightScriptSession()).to.equal(brightScript);
+            expect(manager.getActiveBrightScriptSession()).to.equal(brightScript);
         });
 
         it('is undefined when nothing relevant is active and multiple groups run', () => {
@@ -141,7 +144,7 @@ describe('DebugSessionManager', () => {
             start(b.brightScript);
 
             (vscode.debug as any).activeDebugSession = makeSession('unrelated', 'node');
-            expect(debugSessionManager.getActiveBrightScriptSession()).to.be.undefined;
+            expect(manager.getActiveBrightScriptSession()).to.be.undefined;
         });
 
         it('picks the right group when multiple are running and the JS session of one is active', () => {
@@ -153,7 +156,7 @@ describe('DebugSessionManager', () => {
             start(b.js);
 
             (vscode.debug as any).activeDebugSession = b.js;
-            expect(debugSessionManager.getActiveBrightScriptSession()).to.equal(b.brightScript);
+            expect(manager.getActiveBrightScriptSession()).to.equal(b.brightScript);
         });
     });
 
@@ -164,7 +167,7 @@ describe('DebugSessionManager', () => {
             start(js);
             start(jsChild);
 
-            const evaluable = debugSessionManager.getEvaluableJsSessions().map(s => s.id);
+            const evaluable = manager.getEvaluableJsSessions().map(s => s.id);
             // the brightscript session is not node-ish, so it's excluded; the child comes first
             expect(evaluable).to.eql(['child1', 'js1']);
         });
@@ -176,7 +179,7 @@ describe('DebugSessionManager', () => {
             start(jsChild);
 
             (vscode.debug as any).activeDebugSession = js;
-            const evaluable = debugSessionManager.getEvaluableJsSessions().map(s => s.id);
+            const evaluable = manager.getEvaluableJsSessions().map(s => s.id);
             expect(evaluable[0]).to.equal('js1');
         });
     });

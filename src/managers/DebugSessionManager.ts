@@ -27,7 +27,7 @@ import * as vscode from 'vscode';
  *  - {@link getActiveBrightScriptSession} — custom requests (profiling, rendezvous)
  *  - {@link getEvaluableJsSessions} — the Solid transport's `evaluate` channel
  */
-class DebugSessionManager {
+export class DebugSessionManager {
 
     private liveSessions = new Map<string, vscode.DebugSession>();
 
