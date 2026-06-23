@@ -42,8 +42,8 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
                 });
                 deviceInfo = info;
             } catch (e) {
-                // Device might be temporarily unavailable, just continue without device info
-                console.error('Failed to get device info:', e);
+                // Device might be temporarily unavailable or network unreachable
+                // This is expected behavior and we'll just continue without device info
             }
         }
 

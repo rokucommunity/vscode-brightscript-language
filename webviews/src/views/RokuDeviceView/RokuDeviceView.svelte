@@ -18,7 +18,8 @@
     interface DeviceInfo {
         'software-version'?: string;
         softwareVersion?: string;
-        [key: string]: any;
+        // Device info can contain many additional fields from the Roku device API
+        // Using a flexible type here to accommodate all device-specific properties
     }
 
     let deviceAvailable = false;
