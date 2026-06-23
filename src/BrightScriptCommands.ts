@@ -1118,11 +1118,19 @@ export class BrightScriptCommands {
         this.registerCommand('devicesView.resetFilters', () => devicesViewProvider.resetFilters());
         this.registerCommand('devicesView.restartDevice', (element: { key: string }) => {
             const device = this.deviceManager.getDevice(element?.key);
-            return this.restartDevice(device?.ip);
+            if (!device) {
+                void vscode.window.showErrorMessage('Device not found');
+                return;
+            }
+            return this.restartDevice(device.ip);
         });
         this.registerCommand('devicesView.checkAndInstallUpdates', (element: { key: string }) => {
             const device = this.deviceManager.getDevice(element?.key);
-            return this.checkForUpdates(device?.ip);
+            if (!device) {
+                void vscode.window.showErrorMessage('Device not found');
+                return;
+            }
+            return this.checkForUpdates(device.ip);
         });
     }
 
