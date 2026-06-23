@@ -13,8 +13,77 @@
     window.vscode = acquireVsCodeApi();
 
     let deviceAvailable = false;
+    let deviceInfo: any = null;
+    
+    // Helper function to compare semantic versions
+    function semverGte(version: string, minVersion: string): boolean {
+        if (!version) return false;
+        
+        const parseVersion = (v: string) => {
+            const parts = v.split('.').map(p => parseInt(p, 10));
+            return { major: parts[0] || 0, minor: parts[1] || 0, patch: parts[2] || 0 };
+        };
+        
+        const v1 = parseVersion(version);
+        const v2 = parseVersion(minVersion);
+        
+        if (v1.major !== v2.major) return v1.major > v2.major;
+        if (v1.minor !== v2.minor) return v1.minor > v2.minor;
+        return v1.patch >= v2.patch;
+    }
+    
+    $: softwareVersion = deviceInfo?.['software-version'] || deviceInfo?.softwareVersion || '';
+    $: supportsDeviceActions = semverGte(softwareVersion, '15.0.4');
+    $: deviceActionTooltip = supportsDeviceActions 
+        ? '' 
+        : 'Requires software version 15.0.4 or later';
+    
+    let isRestarting = false;
+    let isCheckingUpdates = false;
+    
+    async function onRestartDevice() {
+        if (!supportsDeviceActions || isRestarting) return;
+        
+        isRestarting = true;
+        try {
+            const response = await intermediary.sendCommand(ViewProviderCommand.restartDevice);
+            if (!response.cancelled) {
+                // Device will restart, so reset the flag after a delay
+                setTimeout(() => {
+                    isRestarting = false;
+                }, 3000);
+            } else {
+                isRestarting = false;
+            }
+        } catch (e) {
+            console.error('Error restarting device:', e);
+            isRestarting = false;
+        }
+    }
+    
+    async function onCheckForUpdates() {
+        if (!supportsDeviceActions || isCheckingUpdates) return;
+        
+        isCheckingUpdates = true;
+        try {
+            const response = await intermediary.sendCommand(ViewProviderCommand.checkForUpdates);
+            if (!response.cancelled) {
+                // Update check initiated, reset flag after a delay
+                setTimeout(() => {
+                    isCheckingUpdates = false;
+                }, 3000);
+            } else {
+                isCheckingUpdates = false;
+            }
+        } catch (e) {
+            console.error('Error checking for updates:', e);
+            isCheckingUpdates = false;
+        }
+    }
+    
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         deviceAvailable = message.context.deviceAvailable;
+        deviceInfo = message.context.deviceInfo;
         requestScreenshot();
     });
 
@@ -377,6 +446,30 @@
 <svelte:window on:keydown={onKeydown} />
 <div id="container" on:mouseenter="{onMouseEnter}" on:mouseleave="{onMouseLeave}">
     {#if deviceAvailable}
+    <div id="deviceActions" style="margin: 10px; display: flex; gap: 10px;">
+        <vscode-button 
+            disabled={!supportsDeviceActions || isRestarting}
+            title={supportsDeviceActions ? 'Restart this device' : deviceActionTooltip}
+            on:click={onRestartDevice}>
+            {#if isRestarting}
+                <vscode-progress-ring style="width: 16px; height: 16px;"></vscode-progress-ring>
+                Restarting...
+            {:else}
+                Restart Device
+            {/if}
+        </vscode-button>
+        <vscode-button 
+            disabled={!supportsDeviceActions || isCheckingUpdates}
+            title={supportsDeviceActions ? 'Check for and install software updates' : deviceActionTooltip}
+            on:click={onCheckForUpdates}>
+            {#if isCheckingUpdates}
+                <vscode-progress-ring style="width: 16px; height: 16px;"></vscode-progress-ring>
+                Checking...
+            {:else}
+                Check and Install Updates
+            {/if}
+        </vscode-button>
+    </div>
     <div
         id="screenshotContainer"
         class:isInspectingNodes="{isInspectingNodes}"

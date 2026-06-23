@@ -1,5 +1,6 @@
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import type { ChannelPublishedEvent } from 'roku-debug';
+import { rokuDeploy } from 'roku-deploy';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { BaseRdbViewProvider } from './BaseRdbViewProvider';
 import { ViewProviderId } from './ViewProviderId';
@@ -42,6 +43,94 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
                 this.postOrQueueMessage(this.createResponseMessage(message, {
                     success: false
                 }));
+            }
+            return true;
+        });
+
+        this.addMessageCommandCallback(ViewProviderCommand.restartDevice, async (message) => {
+            try {
+                const confirm = await vscode.window.showWarningMessage(
+                    'Are you sure you want to restart this device? This will close all running channels.',
+                    { modal: true },
+                    'Restart'
+                );
+                
+                if (confirm !== 'Restart') {
+                    this.postOrQueueMessage(this.createResponseMessage(message, {
+                        success: false,
+                        cancelled: true
+                    }));
+                    return true;
+                }
+
+                const device = this.dependencies.rtaManager.device;
+                const deviceConfig = this.dependencies.rtaManager.deviceConfig;
+                
+                if (!device || !deviceConfig) {
+                    throw new Error('No device connected');
+                }
+
+                await rokuDeploy.rebootDevice({
+                    host: deviceConfig.host,
+                    password: deviceConfig.password,
+                    timeout: 10000
+                });
+
+                this.postOrQueueMessage(this.createResponseMessage(message, {
+                    success: true
+                }));
+                
+                void vscode.window.showInformationMessage('Device restart initiated successfully');
+            } catch (e) {
+                this.postOrQueueMessage(this.createResponseMessage(message, {
+                    success: false,
+                    error: e.message
+                }));
+                void vscode.window.showErrorMessage(`Failed to restart device: ${e.message}`);
+            }
+            return true;
+        });
+
+        this.addMessageCommandCallback(ViewProviderCommand.checkForUpdates, async (message) => {
+            try {
+                const confirm = await vscode.window.showInformationMessage(
+                    'Check for software updates on this device? The device will check for and install any available updates.',
+                    { modal: true },
+                    'Check for Updates'
+                );
+                
+                if (confirm !== 'Check for Updates') {
+                    this.postOrQueueMessage(this.createResponseMessage(message, {
+                        success: false,
+                        cancelled: true
+                    }));
+                    return true;
+                }
+
+                const device = this.dependencies.rtaManager.device;
+                const deviceConfig = this.dependencies.rtaManager.deviceConfig;
+                
+                if (!device || !deviceConfig) {
+                    throw new Error('No device connected');
+                }
+
+                await rokuDeploy.checkForUpdate({
+                    host: deviceConfig.host,
+                    password: deviceConfig.password,
+                    timeout: 10000
+                });
+
+                this.postOrQueueMessage(this.createResponseMessage(message, {
+                    success: true
+                }));
+                
+                void vscode.window.showInformationMessage('Software update check initiated successfully');
+            } catch (e) {
+                this.postOrQueueMessage(this.createResponseMessage(message, {
+                    success: false,
+                    error: e.message
+                }));
+                void vscode.window.showErrorMessage(`Failed to check for updates: ${e.message}`);
             }
             return true;
         });
