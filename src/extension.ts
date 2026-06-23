@@ -27,6 +27,7 @@ import { WhatsNewManager } from './managers/WhatsNewManager';
 import type { CustomRequestEvent, ProcessCrashEventData } from 'roku-debug';
 import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent, isProcessStagingDirCustomRequest } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
+import { debugSessionManager } from './managers/DebugSessionManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
 import { DiagnosticManager } from './managers/DiagnosticManager';
@@ -162,7 +163,9 @@ export class Extension {
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             try {
-                await vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
+                //target the BrightScript session explicitly — in a dual BRS/JS session the JS
+                //session may be active, and only roku-debug answers this custom request.
+                await debugSessionManager.getActiveBrightScriptSession()?.customRequest('rendezvous.clearHistory');
             } catch { }
 
             //also clear the local rendezvous list
@@ -304,8 +307,14 @@ export class Extension {
         this.brightScriptCommands.registerCommands();
         sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel, userInputManager);
 
-        vscode.debug.onDidStartDebugSession(this.onDidStartDebugSession.bind(this));
-        vscode.debug.onDidTerminateDebugSession(this.onDidTerminateDebugSession.bind(this));
+        // The DebugSessionManager is the single source of truth for live sessions, BRS<->JS
+        // grouping, and joint teardown. React to ITS lifecycle events rather than vscode's
+        // directly, so everything sees the same tracked/grouped state.
+        debugSessionManager.register(context);
+        context.subscriptions.push(
+            debugSessionManager.onDidStartSession(this.onDidStartDebugSession.bind(this)),
+            debugSessionManager.onDidTerminateSession(this.onDidTerminateDebugSession.bind(this))
+        );
 
         let brightscriptConfig = util.getConfiguration('brightscript');
         if (brightscriptConfig?.outputPanelStartupBehavior) {
@@ -330,16 +339,9 @@ export class Extension {
         //await languageServerPromise;
     }
 
-    /**
-     * Track active debug sessions for telemetry/UI purposes
-     */
-    private debugSessions = new Set<DebugSessionWithLinks>();
-
-    private onDidStartDebugSession(debugSession: DebugSessionWithLinks) {
-        //add to our active sessions for tracking
-        this.debugSessions.add(debugSession);
-
-        //if this is a brightscript debug session
+    private onDidStartDebugSession(debugSession: vscode.DebugSession) {
+        //session tracking + BRS<->JS linking is owned by debugSessionManager; react only to
+        //the brightscript session here for our domain-specific startup work.
         if (debugSession.type === 'brightscript') {
             this.logOutputManager.onDidStartDebugSession();
             this.webviewViewProviderManager.onDidStartDebugSession(debugSession);
@@ -351,35 +353,10 @@ export class Extension {
             }
             this.diagnosticManager.clear();
         }
-
-        // When our JS session starts, find the BRS session by ID and link them bidirectionally
-        // so either terminating causes the other to also terminate.
-        if (debugSession.configuration._isBrightscriptJsSession) {
-            const brsSession = [...this.debugSessions].find(s => s.id === debugSession.configuration._brightscriptParentSessionId);
-            if (brsSession) {
-                brsSession.configuration.linkedSessions ??= [];
-                brsSession.configuration.linkedSessions.push(debugSession);
-                debugSession.configuration.linkedSessions ??= [];
-                debugSession.configuration.linkedSessions.push(brsSession);
-            }
-        }
-
-        // When the pwa-node child session starts (child of our JS session), link it into the
-        // cleanup chain so terminating any session tears down the others.
-        if ((debugSession.parentSession as DebugSessionWithLinks)?.configuration?._isBrightscriptJsSession) {
-            const jsSession = debugSession.parentSession as DebugSessionWithLinks;
-            jsSession.configuration.linkedSessions ??= [];
-            jsSession.configuration.linkedSessions.push(debugSession);
-            debugSession.configuration.linkedSessions ??= [];
-            debugSession.configuration.linkedSessions.push(jsSession);
-        }
     }
 
-    private async onDidTerminateDebugSession(debugSession: DebugSessionWithLinks) {
-        //remove from our tracking first
-        this.debugSessions.delete(debugSession);
-
-        //if this is a brightscript debug session
+    private onDidTerminateDebugSession(debugSession: vscode.DebugSession) {
+        //session tracking + joint teardown of linked sessions is owned by debugSessionManager.
         if (debugSession.type === 'brightscript') {
             this.chanperfStatusBar.hide();
             const config = debugSession.configuration as BrightScriptLaunchConfiguration;
@@ -389,18 +366,9 @@ export class Extension {
             this.webviewViewProviderManager.onDidTerminateDebugSession(debugSession);
         }
         this.diagnosticManager.clear();
-
-        //terminate any linked debug sessions
-        for (const linkedSession of debugSession.configuration?.linkedSessions ?? []) {
-            try {
-                await vscode.debug.stopDebugging(linkedSession);
-            } catch (e) {
-                console.error(`Error stopping linked debug session with id ${linkedSession.id}`, e);
-            }
-        }
     }
 
-    private async attachJsDebugger(parentSession: DebugSessionWithLinks, tsPath: string) {
+    private async attachJsDebugger(parentSession: vscode.DebugSession, tsPath: string) {
         const launchConfig = parentSession.configuration as BrightScriptLaunchConfiguration;
         tsPath = tsPath.replace(/\s*pkg:/, '');
         // const tsDir = path.dirname(tsPath);
@@ -417,7 +385,7 @@ export class Extension {
         // To more quickly close the node debugger in that situation, we will run much shorter "attach" windows
         // in a loop until we successfully attach or until the parent session ends.
 
-        while (this.debugSessions.has(parentSession)) {
+        while (debugSessionManager.isLive(parentSession)) {
             // The node debugger attaches against the bundle's local rootDir. If that directory has
             // been deleted (e.g. a `dist-build/bundle` wiped mid-session), vscode rejects the attach
             // synchronously with a modal "The configured `cwd` ... does not exist." Since that
@@ -708,14 +676,4 @@ export class Extension {
 export const extension = new Extension();
 export async function activate(context: vscode.ExtensionContext) {
     await extension.activate(context);
-}
-
-/**
- * Debug session that also supports linking other debug sessions together in its configuration (for joint shutdown)
- */
-interface DebugSessionWithLinks extends vscode.DebugSession {
-    configuration: vscode.DebugConfiguration & {
-        linkedSessions?: DebugSessionWithLinks[];
-        _isBrightscriptJsSession?: boolean;
-    };
 }

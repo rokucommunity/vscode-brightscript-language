@@ -1,4 +1,5 @@
-import * as vscode from 'vscode';
+import type { DebugSession } from 'vscode';
+import { debugSessionManager } from '../managers/DebugSessionManager';
 import type {
     SolidChildrenData,
     SolidDevtoolsPerfSample,
@@ -35,40 +36,12 @@ export class SolidDevtoolsTransport {
     /** base64 chars per evaluate — safely under the ~1000-char result cap. */
     private static readonly CHUNK = 800;
 
-    /** Sessions that are (or hang off) the BrightScript-spawned JS debug session. */
-    private candidateSessions = new Set<vscode.DebugSession>();
-
     /** Cached evaluable session so the panel's many small requests (roots, children,
      * version polls) don't re-probe every candidate each time. Cleared on a failed
-     * evaluate or when the session terminates. */
-    private cachedSession: vscode.DebugSession | undefined;
+     * evaluate or once the session is no longer live (per the DebugSessionManager). */
+    private cachedSession: DebugSession | undefined;
 
     private lazyChain: Promise<unknown> = Promise.resolve();
-
-    /**
-     * Capture the BrightScript-spawned JS session(s) so requests can target the
-     * CDP-connected one. Registers trackers for both node + pwa-node (incl. js-debug
-     * child sessions) — the resolver figures out which one accepts `evaluate`.
-     */
-    public register(context: vscode.ExtensionContext): void {
-        const factory: vscode.DebugAdapterTrackerFactory = {
-            createDebugAdapterTracker: (session: vscode.DebugSession) => {
-                this.candidateSessions.add(session);
-                return undefined;
-            }
-        };
-        context.subscriptions.push(
-            vscode.debug.registerDebugAdapterTrackerFactory('node', factory),
-            vscode.debug.registerDebugAdapterTrackerFactory('pwa-node', factory)
-        );
-    }
-
-    public onDidTerminateDebugSession(session: vscode.DebugSession): void {
-        this.candidateSessions.delete(session);
-        if (this.cachedSession === session) {
-            this.cachedSession = undefined;
-        }
-    }
 
     // ---- typed bridge calls (what the view provider consumes) -------------------
 
@@ -138,42 +111,16 @@ export class SolidDevtoolsTransport {
 
     // ---- session resolution ------------------------------------------------------
 
-    private isBrightscriptJs(session: vscode.DebugSession | undefined): boolean {
-        return session?.configuration?._isBrightscriptJsSession === true;
-    }
-
-    /**
-     * Ordered list of sessions to try `evaluate` against. vscode-js-debug exposes a
-     * logical PARENT session that has no CDP target (customRequest there fails
-     * instantly with "debug session not found"); the evaluable runtime lives in a
-     * CHILD session — and that's also what the Debug Console targets via
-     * activeDebugSession. So: the active session first, then children of our
-     * brightscript-spawned JS session, then the JS session itself, then anything else.
-     */
-    private resolveTargetSessions(): vscode.DebugSession[] {
-        const live = [...this.candidateSessions];
-        const ordered: Array<vscode.DebugSession | undefined> = [
-            vscode.debug.activeDebugSession,
-            ...live.filter(s => this.isBrightscriptJs(s.parentSession)),
-            ...live.filter(s => this.isBrightscriptJs(s)),
-            ...live
-        ];
-        const seen = new Set<string>();
-        const result: vscode.DebugSession[] = [];
-        for (const s of ordered) {
-            if (s && !seen.has(s.id)) {
-                seen.add(s.id);
-                result.push(s);
-            }
-        }
-        return result;
-    }
-
-    private async ensureSession(): Promise<vscode.DebugSession | undefined> {
-        if (this.cachedSession) {
+    private async ensureSession(): Promise<DebugSession | undefined> {
+        // Keep the cached session only while it's still live — the manager drops sessions
+        // on terminate, which replaces the old onDidTerminateDebugSession cache-clearing.
+        if (this.cachedSession && debugSessionManager.isLive(this.cachedSession)) {
             return this.cachedSession;
         }
-        for (const candidate of this.resolveTargetSessions()) {
+        this.cachedSession = undefined;
+        // The manager hands back evaluable JS sessions best-first (CDP child before its
+        // parent, which has no CDP target); probe each until one accepts `evaluate`.
+        for (const candidate of debugSessionManager.getEvaluableJsSessions()) {
             const r = await this.evaluate(candidate, 'typeof globalThis.__SDT');
             if (r.ok) {
                 this.log(`using debug session "${candidate.name}" (typeof __SDT = ${this.unquote(r.result)})`);
@@ -190,7 +137,7 @@ export class SolidDevtoolsTransport {
      * which would jam the serialized lazy chain — bound every round-trip. */
     private static readonly EVALUATE_TIMEOUT_MS = 15000;
 
-    private async evaluate(session: vscode.DebugSession, expression: string): Promise<{ ok: boolean; result?: string; error?: string }> {
+    private async evaluate(session: DebugSession, expression: string): Promise<{ ok: boolean; result?: string; error?: string }> {
         let timer: ReturnType<typeof setTimeout>;
         try {
             // NOTE: `context:'watch'` does not echo to the Debug Console, and no

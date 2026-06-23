@@ -29,7 +29,6 @@ export class SolidDevtoolsViewProvider extends BaseWebviewViewProvider {
             // stream each timed round-trip to the webview's perf overlay
             (sample) => this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onSolidDevtoolsPerfSample, { sample: sample }))
         );
-        this.transport.register(context);
 
         this.registerCommand(VscodeCommand.openSolidDevtoolsInPanel, async () => {
             await this.createOrRevealWebviewPanel();
@@ -61,10 +60,6 @@ export class SolidDevtoolsViewProvider extends BaseWebviewViewProvider {
     }
 
     private static readonly panelOpenContextKey = 'brightscript.solidDevtoolsPanelOpen';
-
-    public onDidTerminateDebugSession(e: vscode.DebugSession) {
-        this.transport.onDidTerminateDebugSession(e);
-    }
 
     /** A new app launch means a new owner graph — node ids from the previous run are
      * meaningless, so drop the persisted expansion/selection and tell the view to
