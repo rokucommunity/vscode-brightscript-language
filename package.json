@@ -497,16 +497,6 @@
                     "group": "navigation@2"
                 },
                 {
-                    "command": "extension.brightscript.devicesView.restartDevice",
-                    "when": "view == devicesView && viewItem =~ /^device-/",
-                    "group": "actions@1"
-                },
-                {
-                    "command": "extension.brightscript.devicesView.checkAndInstallUpdates",
-                    "when": "view == devicesView && viewItem =~ /^device-/",
-                    "group": "actions@2"
-                },
-                {
                     "command": "extension.brightscript.addDeviceToUserSettings",
                     "when": "view == devicesView && (viewItem == 'device' || viewItem == 'device-workspace')",
                     "group": "settings@1"
