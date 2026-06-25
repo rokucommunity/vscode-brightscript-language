@@ -779,8 +779,11 @@ export class BrightScriptCommands {
         }
 
         const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to restart ${target.label}? This will close all running channels.`,
-            { modal: true },
+            `Restart Device?`,
+            {
+                detail: `Any running apps or processes will be terminated.\n\n${target.label}`,
+                modal: true
+            },
             'Restart'
         );
         if (confirm !== 'Restart') {
@@ -795,9 +798,8 @@ export class BrightScriptCommands {
         try {
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: `Restarting ${target.label}`
+                title: `Requesting restarting ${target.label}`
             }, () => rokuDeploy.rebootDevice({ host: target.host, password: password, timeout: 10000 }));
-            void util.showTimedNotification(`Restart initiated on ${target.label}`);
         } catch (e) {
             void vscode.window.showErrorMessage(`Failed to restart device: ${e.message}`);
         }
@@ -814,9 +816,12 @@ export class BrightScriptCommands {
         }
 
         const confirm = await vscode.window.showInformationMessage(
-            `Check for software updates on ${target.label}? The device will check for and install any available updates.`,
-            { modal: true },
-            'Check for Updates'
+            `Check for Updates?`,
+            {
+                detail: `Device will check for app and Roku OS updates.\n\nAny running apps or processes will be terminated.\n\n${target.label}`,
+                modal: true
+            },
+            `Check for Updates`
         );
         if (confirm !== 'Check for Updates') {
             return;
@@ -830,9 +835,8 @@ export class BrightScriptCommands {
         try {
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: `Checking for software updates on ${target.label}`
+                title: `Checking for updates: ${target.label}`
             }, () => rokuDeploy.checkForUpdate({ host: target.host, password: password, timeout: 10000 }));
-            void util.showTimedNotification(`Software update check initiated on ${target.label}`);
         } catch (e) {
             void vscode.window.showErrorMessage(`Failed to check for updates: ${e.message}`);
         }
