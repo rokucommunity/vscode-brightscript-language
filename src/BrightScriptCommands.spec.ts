@@ -281,6 +281,7 @@ describe('BrightScriptFileUtils ', () => {
         let showWarningStub: sinon.SinonStub;
         let showInfoStub: sinon.SinonStub;
         let showErrorStub: sinon.SinonStub;
+        let showTimedNotificationStub: sinon.SinonStub;
         let promptForPasswordStub: sinon.SinonStub;
 
         const device = { ip: '1.2.3.4', serialNumber: 'SN123', deviceInfo: {} };
@@ -314,6 +315,8 @@ describe('BrightScriptFileUtils ', () => {
             showInfoStub = sandbox.stub(vscode.window, 'showInformationMessage') as sinon.SinonStub;
             showInfoStub.resolves('Check for Updates');
             showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves();
+            //the real helper runs a multi-second timer loop; stub it out
+            showTimedNotificationStub = sandbox.stub(Object.getPrototypeOf(util), 'showTimedNotification').resolves();
             vscode.context.workspaceState['_data'] = {};
         });
 
@@ -330,6 +333,7 @@ describe('BrightScriptFileUtils ', () => {
             assert.isTrue(rebootStub.calledOnce);
             assert.equal(rebootStub.firstCall.args[0].host, '1.2.3.4');
             assert.equal(rebootStub.firstCall.args[0].password, 'storedpw');
+            assert.isTrue(showTimedNotificationStub.calledOnce, 'shows a timed success notification');
             assert.isFalse(showErrorStub.called);
         });
 
@@ -432,6 +436,7 @@ describe('BrightScriptFileUtils ', () => {
             assert.isTrue(checkForUpdateStub.calledOnce);
             assert.equal(checkForUpdateStub.firstCall.args[0].host, '1.2.3.4');
             assert.equal(checkForUpdateStub.firstCall.args[0].password, 'storedpw');
+            assert.isTrue(showTimedNotificationStub.calledOnce, 'shows a timed success notification');
         });
 
         it('checkForUpdates aborts when the confirmation is dismissed', async () => {

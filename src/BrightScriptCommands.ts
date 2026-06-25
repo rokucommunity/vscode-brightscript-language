@@ -793,8 +793,11 @@ export class BrightScriptCommands {
         }
 
         try {
-            await rokuDeploy.rebootDevice({ host: target.host, password: password, timeout: 10000 });
-            void vscode.window.showInformationMessage(`Restart initiated on ${target.label}`);
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Restarting ${target.label}`
+            }, () => rokuDeploy.rebootDevice({ host: target.host, password: password, timeout: 10000 }));
+            void util.showTimedNotification(`Restart initiated on ${target.label}`);
         } catch (e) {
             void vscode.window.showErrorMessage(`Failed to restart device: ${e.message}`);
         }
@@ -825,8 +828,11 @@ export class BrightScriptCommands {
         }
 
         try {
-            await rokuDeploy.checkForUpdate({ host: target.host, password: password, timeout: 10000 });
-            void vscode.window.showInformationMessage(`Software update check initiated on ${target.label}`);
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Checking for software updates on ${target.label}`
+            }, () => rokuDeploy.checkForUpdate({ host: target.host, password: password, timeout: 10000 }));
+            void util.showTimedNotification(`Software update check initiated on ${target.label}`);
         } catch (e) {
             void vscode.window.showErrorMessage(`Failed to check for updates: ${e.message}`);
         }
