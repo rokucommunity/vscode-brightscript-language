@@ -274,7 +274,6 @@ describe('BrightScriptFileUtils ', () => {
         let sandbox: sinon.SinonSandbox;
         let localCommands: BrightScriptCommands;
         let deviceManager: any;
-        let credentialStore: any;
         let userInputManager: any;
         let rebootStub: sinon.SinonStub;
         let checkForUpdateStub: sinon.SinonStub;
@@ -282,7 +281,6 @@ describe('BrightScriptFileUtils ', () => {
         let showInfoStub: sinon.SinonStub;
         let showErrorStub: sinon.SinonStub;
         let showTimedNotificationStub: sinon.SinonStub;
-        let promptForPasswordStub: sinon.SinonStub;
 
         const device = { ip: '1.2.3.4', serialNumber: 'SN123', deviceInfo: {} };
 
@@ -291,22 +289,15 @@ describe('BrightScriptFileUtils ', () => {
             deviceManager = {
                 validateAndAddDevice: sandbox.stub().resolves(device),
                 getDevice: sandbox.stub().returns(device),
-                getDeviceDisplayName: sandbox.stub().returns('Roku Express – 1.2.3.4'),
-                validateDevicePassword: sandbox.stub().resolves('ok'),
-                getDefaultPassword: sandbox.stub().returns(undefined)
+                getDeviceDisplayName: sandbox.stub().returns('Roku Express – 1.2.3.4')
             };
-            credentialStore = {
-                getPassword: sandbox.stub().resolves(undefined),
-                setPassword: sandbox.stub().resolves()
-            };
+            //password resolution is delegated to UserInputManager (tested in its own spec)
             userInputManager = {
-                promptForHost: sandbox.stub().resolves('1.2.3.4')
+                promptForHost: sandbox.stub().resolves('1.2.3.4'),
+                resolveDevicePassword: sandbox.stub().resolves({ status: 'ok', password: 'pw' })
             };
             //ctor: remoteControlManager, whatsNewManager, context, deviceManager, userInputManager, localPackageManager, credentialStore
-            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, userInputManager, {} as any, credentialStore);
-            //prompt is only reached when no stored candidate works; default to a cancel
-            promptForPasswordStub = sandbox.stub(localCommands as any, 'promptForDevicePassword');
-            promptForPasswordStub.resolves(undefined);
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, userInputManager, {} as any, {} as any);
 
             rebootStub = sandbox.stub(rokuDeploy, 'rebootDevice').resolves({} as any);
             checkForUpdateStub = sandbox.stub(rokuDeploy, 'checkForUpdate').resolves({} as any);
@@ -324,65 +315,50 @@ describe('BrightScriptFileUtils ', () => {
             sandbox.restore();
         });
 
-        it('resolves and passes a validated stored password to rokuDeploy.rebootDevice', async () => {
-            credentialStore.getPassword.resolves('storedpw');
+        it('passes the resolved password to rokuDeploy.rebootDevice and shows a timed success notification', async () => {
+            userInputManager.resolveDevicePassword.resolves({ status: 'ok', password: 'pw' });
 
             await localCommands.restartDevice('1.2.3.4');
 
-            assert.isTrue(deviceManager.validateDevicePassword.calledWith('1.2.3.4', 'storedpw'));
             assert.isTrue(rebootStub.calledOnce);
             assert.equal(rebootStub.firstCall.args[0].host, '1.2.3.4');
-            assert.equal(rebootStub.firstCall.args[0].password, 'storedpw');
+            assert.equal(rebootStub.firstCall.args[0].password, 'pw');
             assert.isTrue(showTimedNotificationStub.calledOnce, 'shows a timed success notification');
             assert.isFalse(showErrorStub.called);
         });
 
-        it('falls back to the default password when nothing is stored', async () => {
-            credentialStore.getPassword.resolves(undefined);
-            deviceManager.getDefaultPassword.returns('rokudev');
+        it('resolves the password against the probed device, offering remotePassword as an extra candidate', async () => {
+            vscode.context.workspaceState['_data'].remotePassword = 'global-pw';
 
             await localCommands.restartDevice('1.2.3.4');
 
-            assert.isTrue(rebootStub.calledOnce);
-            assert.equal(rebootStub.firstCall.args[0].password, 'rokudev');
-            assert.isFalse(promptForPasswordStub.called, 'should not prompt when a candidate works');
+            assert.isTrue(deviceManager.validateAndAddDevice.calledWith('1.2.3.4'));
+            assert.isTrue(userInputManager.resolveDevicePassword.calledOnce);
+            const args = userInputManager.resolveDevicePassword.firstCall.args[0];
+            assert.equal(args.host, '1.2.3.4');
+            assert.equal(args.serialNumber, 'SN123');
+            assert.deepEqual(args.extraCandidates, ['global-pw']);
         });
 
-        it('prompts and re-validates when no stored candidate is accepted', async () => {
-            //no stored / default candidates
-            promptForPasswordStub.onFirstCall().resolves('wrong');
-            promptForPasswordStub.onSecondCall().resolves('right');
-            deviceManager.validateDevicePassword.withArgs('1.2.3.4', 'wrong').resolves('bad-password');
-            deviceManager.validateDevicePassword.withArgs('1.2.3.4', 'right').resolves('ok');
-
-            await localCommands.restartDevice('1.2.3.4');
-
-            assert.isTrue(promptForPasswordStub.calledTwice);
-            assert.isTrue(rebootStub.calledOnce);
-            assert.equal(rebootStub.firstCall.args[0].password, 'right');
-        });
-
-        it('aborts without prompting or rebooting when the confirmation is dismissed', async () => {
-            credentialStore.getPassword.resolves('storedpw');
+        it('aborts without resolving a password or rebooting when the confirmation is dismissed', async () => {
             showWarningStub.resolves(undefined);
 
             await localCommands.restartDevice('1.2.3.4');
 
-            assert.isFalse(deviceManager.validateDevicePassword.called, 'password should not be resolved when cancelled');
+            assert.isFalse(userInputManager.resolveDevicePassword.called, 'password should not be resolved when cancelled');
             assert.isFalse(rebootStub.called);
         });
 
-        it('cancels when the password prompt is dismissed', async () => {
-            //no candidates → prompt path; promptForPasswordStub defaults to undefined (cancel)
+        it('cancels when password resolution is cancelled', async () => {
+            userInputManager.resolveDevicePassword.resolves({ status: 'cancelled' });
+
             await localCommands.restartDevice('1.2.3.4');
 
-            assert.isTrue(promptForPasswordStub.calledOnce);
             assert.isFalse(rebootStub.called);
         });
 
         it('shows an error and does not reboot when the device is unreachable', async () => {
-            credentialStore.getPassword.resolves('storedpw');
-            deviceManager.validateDevicePassword.resolves('unreachable');
+            userInputManager.resolveDevicePassword.resolves({ status: 'unreachable' });
 
             await localCommands.restartDevice('1.2.3.4');
 
@@ -391,8 +367,6 @@ describe('BrightScriptFileUtils ', () => {
         });
 
         it('always prompts for the device with the picker when no host is provided', async () => {
-            credentialStore.getPassword.resolves('storedpw');
-
             await localCommands.restartDevice();
 
             assert.isTrue(userInputManager.promptForHost.calledOnce);
@@ -407,35 +381,17 @@ describe('BrightScriptFileUtils ', () => {
 
             assert.isFalse(rebootStub.called);
             assert.isFalse(deviceManager.validateAndAddDevice.called);
+            assert.isFalse(userInputManager.resolveDevicePassword.called);
         });
 
-        it('persists an accepted password to the credential store only when an entry already exists', async () => {
-            credentialStore.getPassword.resolves('storedpw');
-
-            await localCommands.restartDevice('1.2.3.4');
-
-            assert.isTrue(credentialStore.setPassword.calledWith('SN123', 'storedpw'));
-            assert.equal(vscode.context.workspaceState['_data'].remotePassword, 'storedpw');
-        });
-
-        it('does not seed the credential store for a never-stored password', async () => {
-            credentialStore.getPassword.resolves(undefined);
-            deviceManager.getDefaultPassword.returns('rokudev');
-
-            await localCommands.restartDevice('1.2.3.4');
-
-            assert.isFalse(credentialStore.setPassword.called);
-            assert.equal(vscode.context.workspaceState['_data'].remotePassword, 'rokudev');
-        });
-
-        it('checkForUpdates resolves the password and calls rokuDeploy.checkForUpdate', async () => {
-            credentialStore.getPassword.resolves('storedpw');
+        it('checkForUpdates passes the resolved password to rokuDeploy.checkForUpdate', async () => {
+            userInputManager.resolveDevicePassword.resolves({ status: 'ok', password: 'pw' });
 
             await localCommands.checkForUpdates('1.2.3.4');
 
             assert.isTrue(checkForUpdateStub.calledOnce);
             assert.equal(checkForUpdateStub.firstCall.args[0].host, '1.2.3.4');
-            assert.equal(checkForUpdateStub.firstCall.args[0].password, 'storedpw');
+            assert.equal(checkForUpdateStub.firstCall.args[0].password, 'pw');
             assert.isTrue(showTimedNotificationStub.calledOnce, 'shows a timed success notification');
         });
 
@@ -448,7 +404,6 @@ describe('BrightScriptFileUtils ', () => {
         });
 
         it('surfaces a rokuDeploy failure as an error message', async () => {
-            credentialStore.getPassword.resolves('storedpw');
             rebootStub.rejects(new Error('boom'));
 
             await localCommands.restartDevice('1.2.3.4');

@@ -867,130 +867,25 @@ export class BrightScriptCommands {
     }
 
     /**
-     * Resolve a developer password that the device actually accepts, mirroring the debug
-     * launch flow: try every known credential source in order, validate each against the
-     * device, and prompt (re-prompting after a rejection) when none are accepted.
-     *
-     * The accepted password is persisted following the same rules as a debug launch, so
-     * subsequent commands resolve without re-prompting.
-     *
-     * Returns the validated password, or undefined when the device is unreachable or the
-     * user cancels the prompt.
+     * Resolve a developer password the device accepts, delegating the candidate/validate/prompt/
+     * persist flow to the shared resolver. The global `remotePassword` fallback is offered as an
+     * extra candidate. Shows an error and returns undefined when the device is unreachable, and
+     * returns undefined when the user cancels the prompt.
      */
     private async resolveValidatedPassword(host: string, serialNumber: string | undefined): Promise<string | undefined> {
-        const candidates = await this.collectPasswordCandidates(serialNumber);
-        for (const candidate of candidates) {
-            const validation = await this.deviceManager.validateDevicePassword(host, candidate);
-            if (validation === 'ok') {
-                await this.persistAcceptedPassword(serialNumber, candidate);
-                return candidate;
-            }
-            if (validation === 'unreachable') {
-                void vscode.window.showErrorMessage(`Device at ${host} is unreachable.`);
-                return undefined;
-            }
-            // 'bad-password' — fall through to the next candidate
+        const resolution = await this.userInputManager.resolveDevicePassword({
+            host: host,
+            serialNumber: serialNumber,
+            extraCandidates: [await this.context.workspaceState.get('remotePassword')]
+        });
+        if (resolution.status === 'unreachable') {
+            void vscode.window.showErrorMessage(`Device at ${host} is unreachable.`);
+            return undefined;
         }
-
-        // No stored / configured candidate was accepted. Prompt, re-prompting after each
-        // bad-password attempt until the user enters a working one or cancels (empty / Esc).
-        let placeholder = candidates.length > 0
-            ? 'The password was rejected by the device. Try again, or press Esc to cancel.'
-            : 'The Roku development webserver password.';
-        while (true) {
-            const value = await this.promptForDevicePassword(placeholder);
-            if (!value) {
-                return undefined;
-            }
-            const validation = await this.deviceManager.validateDevicePassword(host, value);
-            if (validation === 'ok') {
-                await this.persistAcceptedPassword(serialNumber, value);
-                return value;
-            }
-            if (validation === 'unreachable') {
-                void vscode.window.showErrorMessage(`Device at ${host} is unreachable.`);
-                return undefined;
-            }
-            placeholder = 'The password was rejected by the device. Try again, or press Esc to cancel.';
+        if (resolution.status === 'cancelled') {
+            return undefined;
         }
-    }
-
-    /**
-     * Build the ordered, de-duplicated list of candidate passwords to try when resolving
-     * credentials for a device-targeted command. Variable placeholders and empty values are
-     * filtered out so the validation loop only sees real passwords.
-     */
-    private async collectPasswordCandidates(serialNumber: string | undefined): Promise<string[]> {
-        const candidates: string[] = [];
-        const addCandidate = (value: string | undefined | null) => {
-            const trimmed = value?.trim();
-            // eslint-disable-next-line no-template-curly-in-string
-            if (!trimmed || trimmed === '${promptForPassword}' || trimmed === '${activeHostPassword}') {
-                return;
-            }
-            candidates.push(trimmed);
-        };
-
-        if (serialNumber) {
-            addCandidate(await this.credentialStore.getPassword(serialNumber));
-
-            const scanScope = (devices: ConfiguredDevice[] | undefined) => {
-                for (const entry of devices ?? []) {
-                    if (entry.serialNumber === serialNumber) {
-                        addCandidate(entry.password);
-                    }
-                }
-            };
-            const rootInspection = vscode.workspace.getConfiguration('brightscript').inspect<ConfiguredDevice[]>('devices');
-            scanScope(rootInspection?.globalValue);
-            scanScope(rootInspection?.workspaceValue);
-            for (const folder of vscode.workspace.workspaceFolders ?? []) {
-                const folderInspection = vscode.workspace.getConfiguration('brightscript', folder.uri).inspect<ConfiguredDevice[]>('devices');
-                scanScope(folderInspection?.workspaceFolderValue);
-            }
-        }
-
-        addCandidate(this.deviceManager.getDefaultPassword());
-        addCandidate(await this.context.workspaceState.get('remotePassword'));
-
-        // Dedupe while preserving insertion order so a password referenced by multiple
-        // sources is only validated once.
-        return Array.from(new Set(candidates));
-    }
-
-    /**
-     * Persist an accepted password the same way a debug launch does: refresh the credential
-     * store only when an entry already exists for this serial (persisting is an explicit
-     * opt-in via `setDevicePassword`/settings), and update the global `remotePassword` fallback.
-     */
-    private async persistAcceptedPassword(serialNumber: string | undefined, password: string): Promise<void> {
-        if (serialNumber && (await this.credentialStore.getPassword(serialNumber)) !== undefined) {
-            await this.credentialStore.setPassword(serialNumber, password);
-        }
-        await this.context.workspaceState.update('remotePassword', password);
-    }
-
-    /**
-     * Password input dialog. Returns the typed value, or undefined on Esc / hide.
-     */
-    private async promptForDevicePassword(placeholder: string): Promise<string | undefined> {
-        const input = vscode.window.createInputBox();
-        input.placeholder = placeholder;
-        input.password = true;
-        try {
-            return await new Promise<string | undefined>(resolve => {
-                input.onDidAccept(() => {
-                    resolve(input.value);
-                    input.hide();
-                });
-                input.onDidHide(() => {
-                    resolve(undefined);
-                });
-                input.show();
-            });
-        } finally {
-            input.dispose();
-        }
+        return resolution.password;
     }
 
     public async sendRemoteCommand(key: string, host?: string, literalCharacter = false) {

@@ -83,12 +83,13 @@ export class Extension {
         this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
         this.extensionOutputChannel.appendLine('Extension startup');
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel);
+        const credentialStore = new CredentialStore(context);
         let userInputManager = new UserInputManager(
-            this.deviceManager
+            this.deviceManager,
+            credentialStore
         );
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
-        const credentialStore = new CredentialStore(context);
         this.brightScriptCommands = new BrightScriptCommands(
             this.remoteControlManager,
             this.whatsNewManager,
