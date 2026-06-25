@@ -3897,6 +3897,18 @@
                 "icon": "$(refresh)"
             },
             {
+                "command": "extension.brightscript.devicesView.restartDevice",
+                "title": "Restart Device",
+                "category": "BrightScript",
+                "icon": "$(debug-restart)"
+            },
+            {
+                "command": "extension.brightscript.devicesView.checkAndInstallUpdates",
+                "title": "Check for Software Updates",
+                "category": "BrightScript",
+                "icon": "$(cloud-download)"
+            },
+            {
                 "command": "extension.brightscript.addDeviceToUserSettings",
                 "title": "Add to User Settings",
                 "category": "BrightScript"
