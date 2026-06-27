@@ -9,6 +9,7 @@
     import { utils as rtaUtils } from 'roku-test-automation/client/dist/utils';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
+    import { probeMedia } from './probeMedia';
 
     window.vscode = acquireVsCodeApi();
 
@@ -33,18 +34,98 @@
         utils.setStorageValue('enableScreenshotCaptureAutoRefresh', enableScreenshotCaptureAutoRefresh);
     }
 
-    // Which source the view renders: live device screenshots (default) or a WebRTC stream
-    type RokuDeviceViewMode = 'screenshot' | 'webrtc';
+    // Which source the view renders. Screenshot is the default; the rest are stream/capture
+    // types used to probe what playback the VSCode webview actually supports.
+    type RokuDeviceViewMode = 'screenshot' | 'webrtc' | 'video' | 'mjpeg';
     let viewMode: RokuDeviceViewMode = utils.getStorageValue('rokuDeviceViewMode', 'screenshot') as RokuDeviceViewMode;
     $: utils.setStorageValue('rokuDeviceViewMode', viewMode);
 
+    // Probe what this particular webview build can actually play. Codec/container support
+    // varies by platform and Electron build (e.g. VS Code's ffmpeg ships no WebM demuxer), so
+    // we only offer modes that work here and surface the detected support.
+    //
+    // canPlayType()/isTypeSupported() are NOT reliable for this: they report the compiled codec
+    // allowlist without knowing whether the matching container demuxer exists, so they claim
+    // WebM is playable even when it isn't. Native <video> support is therefore probed by actually
+    // loading a tiny clip of each type and watching for 'loadeddata' (works) vs 'error' (no).
+    interface DeviceViewModeOption {
+        value: RokuDeviceViewMode;
+        label: string;
+        supported: boolean;
+    }
+
+    const hasWebRTC = typeof RTCPeerConnection !== 'undefined';
+
+    let videoProbesComplete = false;
+    let canPlayMp4 = false;
+    let canPlayWebmVp8 = false;
+    let canPlayWebmVp9 = false;
+    let videoCodecSummary = 'detecting…';
+
+    // Resolves true if the clip actually loads a frame, false if the element errors out
+    function probePlayable(dataUri: string): Promise<boolean> {
+        return new Promise((resolve) => {
+            const probe = document.createElement('video');
+            probe.muted = true;
+            probe.preload = 'auto';
+            let settled = false;
+            const finish = (result: boolean) => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                probe.removeAttribute('src');
+                probe.load();
+                resolve(result);
+            };
+            probe.addEventListener('loadeddata', () => finish(true));
+            probe.addEventListener('error', () => finish(false));
+            // Safety net in case neither event fires
+            setTimeout(() => finish(false), 3000);
+            probe.src = dataUri;
+        });
+    }
+
+    async function runVideoProbes() {
+        const results = await Promise.all([
+            probePlayable(probeMedia.mp4H264),
+            probePlayable(probeMedia.webmVp8),
+            probePlayable(probeMedia.webmVp9)
+        ]);
+        canPlayMp4 = results[0];
+        canPlayWebmVp8 = results[1];
+        canPlayWebmVp9 = results[2];
+        videoCodecSummary = `MP4/H.264 ${canPlayMp4 ? '✓' : '✗'} · WebM/VP8 ${canPlayWebmVp8 ? '✓' : '✗'} · WebM/VP9 ${canPlayWebmVp9 ? '✓' : '✗'}`;
+        videoProbesComplete = true;
+    }
+    void runVideoProbes();
+
+    $: hasNativeVideo = canPlayMp4 || canPlayWebmVp8 || canPlayWebmVp9;
+
+    $: availableModes = ([
+        { value: 'screenshot', label: 'Screenshot', supported: true },
+        { value: 'webrtc', label: 'WebRTC (WHEP)', supported: hasWebRTC },
+        // Show Video URL until the load-probes finish, then keep it only if a native container plays
+        { value: 'video', label: 'Video URL', supported: !videoProbesComplete || hasNativeVideo },
+        // MJPEG is just multipart JPEG frames in an <img>; no codec/container dependency
+        { value: 'mjpeg', label: 'MJPEG', supported: true }
+    ] as DeviceViewModeOption[]).filter((option) => option.supported);
+
+    // If the persisted mode isn't supported in this webview, fall back to screenshot
+    $: if (!availableModes.some((option) => option.value === viewMode)) {
+        viewMode = 'screenshot';
+    }
+
     function onViewModeChange() {
+        // Tear down whatever the previous mode had running
+        stopStream();
+        streamStatusText = '';
+        // Each mode remembers its own last-used URL
+        streamUrl = (utils.getStorageValue(`deviceViewStreamUrl.${viewMode}`, '') ?? '') as string;
         if (viewMode === 'screenshot') {
-            // Leaving WebRTC mode: tear down the stream and resume screenshot capture
-            stopWebrtc();
             void requestScreenshot();
         }
-        // Entering WebRTC mode: the screenshot loop is gated on viewMode and stops on its own
+        // The screenshot capture loop is gated on viewMode, so it stops on its own when leaving
     }
 
     // We can't observe the image height directly so we observe the surrounding div instead
@@ -315,16 +396,68 @@
         }
     }
 
-    // #region WebRTC stream prototype
-    // Receives a WebRTC stream via WHEP (WebRTC-HTTP Egress Protocol): POST an SDP offer
-    // to the URL, get an SDP answer back, then render the resulting track in a <video>.
-    // This runs entirely in the webview's Chromium context (no extension host involvement).
-    let webrtcStreamUrl = utils.getStorageValue('webrtcStreamUrl', '');
-    $: utils.setStorageValue('webrtcStreamUrl', webrtcStreamUrl);
+    // #region Stream / capture modes
+    // Everything here runs in the webview's Chromium context (no extension host involvement).
+    // Each mode exercises a different playback path so we can see what the webview supports:
+    //   webrtc -> RTCPeerConnection + <video>  (WHEP signaling, sub-second latency)
+    //   video  -> native <video src> (progressive mp4/webm)
+    //   mjpeg  -> native <img src> (multipart/x-mixed-replace)
+    let streamUrl = (utils.getStorageValue(`deviceViewStreamUrl.${viewMode}`, '') ?? '') as string;
+    $: if (viewMode !== 'screenshot') {
+        utils.setStorageValue(`deviceViewStreamUrl.${viewMode}`, streamUrl);
+    }
 
-    let isWebrtcActive = false;
-    let webrtcStatusText = '';
+    let isStreaming = false;
+    let streamStatusText = '';
     let videoElement: HTMLVideoElement;
+    let mjpegSrc = '';
+
+    let urlPlaceholder = '';
+    $: urlPlaceholder = {
+        webrtc: 'WHEP URL (e.g. http://localhost:8889/mystream/whep)',
+        video: 'Direct video URL (.mp4 / H.264 — see support above)',
+        mjpeg: 'MJPEG URL (multipart/x-mixed-replace)'
+    }[viewMode] ?? '';
+
+    function startStream() {
+        if (isStreaming) {
+            return;
+        }
+        if (!streamUrl) {
+            streamStatusText = 'Enter a URL first';
+            return;
+        }
+        streamStatusText = 'Connecting…';
+        switch (viewMode) {
+            case 'webrtc': void startWebrtc(); break;
+            case 'video': startVideo(); break;
+            case 'mjpeg': startMjpeg(); break;
+        }
+    }
+
+    function stopStream() {
+        // WebRTC teardown
+        if (whepResourceUrl) {
+            // Best-effort teardown of the server-side WHEP session
+            void fetch(whepResourceUrl, { method: 'DELETE' }).catch(() => {});
+            whepResourceUrl = null;
+        }
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+        // Shared <video> / <img> teardown
+        if (videoElement) {
+            videoElement.pause();
+            videoElement.removeAttribute('src');
+            videoElement.srcObject = null;
+            videoElement.load();
+        }
+        mjpegSrc = '';
+        isStreaming = false;
+    }
+
+    // --- WebRTC (WHEP) ---
     let peerConnection: RTCPeerConnection | null = null;
     let whepResourceUrl: string | null = null;
 
@@ -348,16 +481,7 @@
     }
 
     async function startWebrtc() {
-        if (isWebrtcActive) {
-            return;
-        }
-        if (!webrtcStreamUrl) {
-            webrtcStatusText = 'Enter a WHEP stream URL first';
-            return;
-        }
-
         try {
-            webrtcStatusText = 'Connecting…';
             const connection = new RTCPeerConnection({
                 iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
             });
@@ -374,9 +498,9 @@
             };
 
             connection.onconnectionstatechange = () => {
-                webrtcStatusText = connection.connectionState;
+                streamStatusText = connection.connectionState;
                 if (['failed', 'disconnected', 'closed'].includes(connection.connectionState)) {
-                    stopWebrtc();
+                    stopStream();
                 }
             };
 
@@ -384,12 +508,11 @@
             await connection.setLocalDescription(offer);
             await waitForIceGathering(connection);
 
-            const response = await fetch(webrtcStreamUrl, {
+            const response = await fetch(streamUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/sdp' },
                 body: connection.localDescription.sdp
             });
-
             if (!response.ok) {
                 throw new Error(`WHEP request failed: ${response.status} ${response.statusText}`);
             }
@@ -397,35 +520,33 @@
             // WHEP returns a resource URL we DELETE later to tear the session down cleanly
             const location = response.headers.get('Location');
             if (location) {
-                whepResourceUrl = new URL(location, webrtcStreamUrl).toString();
+                whepResourceUrl = new URL(location, streamUrl).toString();
             }
 
-            const answerSdp = await response.text();
-            await connection.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-
-            isWebrtcActive = true;
-            webrtcStatusText = 'Streaming';
+            await connection.setRemoteDescription({ type: 'answer', sdp: await response.text() });
+            isStreaming = true;
+            streamStatusText = 'Streaming';
         } catch (e) {
-            webrtcStatusText = `Error: ${e.message}`;
+            streamStatusText = `Error: ${e.message}`;
             console.error('WebRTC start error', e);
-            stopWebrtc();
+            stopStream();
         }
     }
 
-    function stopWebrtc() {
-        if (whepResourceUrl) {
-            // Best-effort teardown of the server-side WHEP session
-            void fetch(whepResourceUrl, { method: 'DELETE' }).catch(() => {});
-            whepResourceUrl = null;
-        }
-        if (peerConnection) {
-            peerConnection.close();
-            peerConnection = null;
-        }
-        if (videoElement) {
-            videoElement.srcObject = null;
-        }
-        isWebrtcActive = false;
+    // --- Native <video src> (progressive mp4/webm) ---
+    function startVideo() {
+        videoElement.src = streamUrl;
+        videoElement.onloadeddata = () => { streamStatusText = 'Playing'; };
+        videoElement.onerror = () => { streamStatusText = 'Video failed to load'; };
+        void videoElement.play().catch(() => {});
+        isStreaming = true;
+    }
+
+    // --- Native <img> MJPEG (multipart/x-mixed-replace) ---
+    function startMjpeg() {
+        mjpegSrc = streamUrl;
+        isStreaming = true;
+        streamStatusText = 'Loading…';
     }
     // #endregion
 
@@ -508,25 +629,32 @@
         padding: 6px 10px;
     }
 
-    #webrtcControls {
+    #modeBar .capabilityNote {
+        font-size: 11px;
+        opacity: 0.8;
+        white-space: nowrap;
+    }
+
+    #streamControls {
         display: flex;
         gap: 6px;
         align-items: center;
         padding: 0 10px 6px;
     }
 
-    #webrtcControls input {
+    #streamControls input {
         flex: 1 1 auto;
         min-width: 0;
     }
 
-    #webrtcControls .webrtcStatus {
+    #streamControls .streamStatus {
         font-size: 11px;
         opacity: 0.8;
         white-space: nowrap;
     }
 
-    #webrtcVideo {
+    #streamVideo,
+    #streamImage {
         display: block;
         width: 100%;
         max-width: 100vw;
@@ -540,64 +668,81 @@
         <label for="deviceViewMode">Mode:</label>
         <!-- svelte-ignore a11y-no-onchange -->
         <select id="deviceViewMode" bind:value={viewMode} on:change={onViewModeChange}>
-            <option value="screenshot">Screenshot</option>
-            <option value="webrtc">WebRTC</option>
+            {#each availableModes as option}
+                <option value={option.value}>{option.label}</option>
+            {/each}
         </select>
+        {#if viewMode === 'video'}
+            <span class="capabilityNote" title="Native <video> support detected in this webview">{videoCodecSummary}</span>
+        {/if}
     </div>
 
-    {#if viewMode === 'webrtc'}
-        <div id="webrtcControls">
+    {#if viewMode === 'screenshot'}
+        {#if deviceAvailable}
+        <div
+            id="screenshotContainer"
+            class:isInspectingNodes="{isInspectingNodes}"
+            bind:clientWidth={screenshotContainerWidth}
+            bind:clientHeight={screenshotContainerHeight}
+            on:mousemove={onImageMouseMove}
+            on:mousedown={onMouseDown}
+            data-vscode-context={'{"preventDefaultContextMenuItems": true}'}>
+
+            <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
+            <div class:hide={!focusedNode} id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
+
+            <!-- only show image if we have a url to avoid showing as broken image -->
+            {#if screenshotUrl}
+                <img
+                    id="screenshot"
+                    alt="Screenshot from Roku device"
+                    src="{screenshotUrl}" />
+            {/if}
+
+        </div>
+        {:else}
+            <div style="margin: 0 10px">
+                <OdcSetManualIpAddress />
+            </div>
+        {/if}
+    {:else}
+        <div id="streamControls">
             <input
                 type="text"
-                placeholder="WHEP stream URL (e.g. http://host:8889/mystream/whep)"
-                bind:value={webrtcStreamUrl}
-                disabled={isWebrtcActive} />
-            {#if isWebrtcActive}
-                <button on:click={stopWebrtc}>Stop</button>
+                placeholder={urlPlaceholder}
+                bind:value={streamUrl}
+                disabled={isStreaming} />
+            {#if isStreaming}
+                <button on:click={stopStream}>Stop</button>
             {:else}
-                <button on:click={startWebrtc}>Start</button>
+                <button on:click={startStream}>Start</button>
             {/if}
-            {#if webrtcStatusText}
-                <span class="webrtcStatus">{webrtcStatusText}</span>
+            {#if streamStatusText}
+                <span class="streamStatus">{streamStatusText}</span>
             {/if}
         </div>
 
-        <!-- svelte-ignore a11y-media-has-caption -->
-        <video
-            bind:this={videoElement}
-            class:hide={!isWebrtcActive}
-            id="webrtcVideo"
-            autoplay
-            playsinline
-            muted
-            controls>
-        </video>
-    {:else if deviceAvailable}
-    <div
-        id="screenshotContainer"
-        class:isInspectingNodes="{isInspectingNodes}"
-        bind:clientWidth={screenshotContainerWidth}
-        bind:clientHeight={screenshotContainerHeight}
-        on:mousemove={onImageMouseMove}
-        on:mousedown={onMouseDown}
-        data-vscode-context={'{"preventDefaultContextMenuItems": true}'}>
-
-        <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
-        <div class:hide={!focusedNode} id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
-
-        <!-- only show image if we have a url to avoid showing as broken image -->
-        {#if screenshotUrl}
-            <img
-                id="screenshot"
-                alt="Screenshot from Roku device"
-                src="{screenshotUrl}" />
+        {#if viewMode === 'mjpeg'}
+            {#if mjpegSrc}
+                <img
+                    id="streamImage"
+                    alt="MJPEG stream"
+                    src={mjpegSrc}
+                    on:load={() => streamStatusText = 'Streaming'}
+                    on:error={() => streamStatusText = 'Image failed to load'} />
+            {/if}
+        {:else}
+            <!-- svelte-ignore a11y-media-has-caption -->
+            <video
+                bind:this={videoElement}
+                class:hide={!isStreaming}
+                id="streamVideo"
+                autoplay
+                playsinline
+                muted
+                controls>
+            </video>
         {/if}
-
-    </div>
-    {:else}
-        <div style="margin: 0 10px">
-            <OdcSetManualIpAddress />
-        </div>
     {/if}
 </div>
 
