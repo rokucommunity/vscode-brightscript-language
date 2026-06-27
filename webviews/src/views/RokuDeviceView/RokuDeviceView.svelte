@@ -33,6 +33,20 @@
         utils.setStorageValue('enableScreenshotCaptureAutoRefresh', enableScreenshotCaptureAutoRefresh);
     }
 
+    // Which source the view renders: live device screenshots (default) or a WebRTC stream
+    type RokuDeviceViewMode = 'screenshot' | 'webrtc';
+    let viewMode: RokuDeviceViewMode = utils.getStorageValue('rokuDeviceViewMode', 'screenshot') as RokuDeviceViewMode;
+    $: utils.setStorageValue('rokuDeviceViewMode', viewMode);
+
+    function onViewModeChange() {
+        if (viewMode === 'screenshot') {
+            // Leaving WebRTC mode: tear down the stream and resume screenshot capture
+            stopWebrtc();
+            void requestScreenshot();
+        }
+        // Entering WebRTC mode: the screenshot loop is gated on viewMode and stops on its own
+    }
+
     // We can't observe the image height directly so we observe the surrounding div instead
     let screenshotContainerWidth = 0;
     let screenshotContainerHeight = 0;
@@ -230,7 +244,7 @@
 
     let currentlyCapturingScreenshot = false;
     async function requestScreenshot() {
-        if (!deviceAvailable || currentlyCapturingScreenshot) {
+        if (viewMode !== 'screenshot' || !deviceAvailable || currentlyCapturingScreenshot) {
             return;
         }
 
@@ -300,6 +314,120 @@
                 break;
         }
     }
+
+    // #region WebRTC stream prototype
+    // Receives a WebRTC stream via WHEP (WebRTC-HTTP Egress Protocol): POST an SDP offer
+    // to the URL, get an SDP answer back, then render the resulting track in a <video>.
+    // This runs entirely in the webview's Chromium context (no extension host involvement).
+    let webrtcStreamUrl = utils.getStorageValue('webrtcStreamUrl', '');
+    $: utils.setStorageValue('webrtcStreamUrl', webrtcStreamUrl);
+
+    let isWebrtcActive = false;
+    let webrtcStatusText = '';
+    let videoElement: HTMLVideoElement;
+    let peerConnection: RTCPeerConnection | null = null;
+    let whepResourceUrl: string | null = null;
+
+    // Wait for ICE gathering to finish so the offer carries all candidates (non-trickle WHEP)
+    function waitForIceGathering(connection: RTCPeerConnection) {
+        return new Promise<void>((resolve) => {
+            if (connection.iceGatheringState === 'complete') {
+                resolve();
+                return;
+            }
+            const onStateChange = () => {
+                if (connection.iceGatheringState === 'complete') {
+                    connection.removeEventListener('icegatheringstatechange', onStateChange);
+                    resolve();
+                }
+            };
+            connection.addEventListener('icegatheringstatechange', onStateChange);
+            // Fallback in case gathering stalls behind a slow/unreachable STUN server
+            setTimeout(resolve, 2000);
+        });
+    }
+
+    async function startWebrtc() {
+        if (isWebrtcActive) {
+            return;
+        }
+        if (!webrtcStreamUrl) {
+            webrtcStatusText = 'Enter a WHEP stream URL first';
+            return;
+        }
+
+        try {
+            webrtcStatusText = 'Connecting…';
+            const connection = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            peerConnection = connection;
+
+            // We only want to receive media, not send any
+            connection.addTransceiver('video', { direction: 'recvonly' });
+            connection.addTransceiver('audio', { direction: 'recvonly' });
+
+            connection.ontrack = (event) => {
+                if (videoElement && event.streams[0]) {
+                    videoElement.srcObject = event.streams[0];
+                }
+            };
+
+            connection.onconnectionstatechange = () => {
+                webrtcStatusText = connection.connectionState;
+                if (['failed', 'disconnected', 'closed'].includes(connection.connectionState)) {
+                    stopWebrtc();
+                }
+            };
+
+            const offer = await connection.createOffer();
+            await connection.setLocalDescription(offer);
+            await waitForIceGathering(connection);
+
+            const response = await fetch(webrtcStreamUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/sdp' },
+                body: connection.localDescription.sdp
+            });
+
+            if (!response.ok) {
+                throw new Error(`WHEP request failed: ${response.status} ${response.statusText}`);
+            }
+
+            // WHEP returns a resource URL we DELETE later to tear the session down cleanly
+            const location = response.headers.get('Location');
+            if (location) {
+                whepResourceUrl = new URL(location, webrtcStreamUrl).toString();
+            }
+
+            const answerSdp = await response.text();
+            await connection.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+
+            isWebrtcActive = true;
+            webrtcStatusText = 'Streaming';
+        } catch (e) {
+            webrtcStatusText = `Error: ${e.message}`;
+            console.error('WebRTC start error', e);
+            stopWebrtc();
+        }
+    }
+
+    function stopWebrtc() {
+        if (whepResourceUrl) {
+            // Best-effort teardown of the server-side WHEP session
+            void fetch(whepResourceUrl, { method: 'DELETE' }).catch(() => {});
+            whepResourceUrl = null;
+        }
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+        if (videoElement) {
+            videoElement.srcObject = null;
+        }
+        isWebrtcActive = false;
+    }
+    // #endregion
 
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
@@ -372,11 +500,79 @@
     .hide {
         display: none;
     }
+
+    #modeBar {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 6px 10px;
+    }
+
+    #webrtcControls {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 0 10px 6px;
+    }
+
+    #webrtcControls input {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    #webrtcControls .webrtcStatus {
+        font-size: 11px;
+        opacity: 0.8;
+        white-space: nowrap;
+    }
+
+    #webrtcVideo {
+        display: block;
+        width: 100%;
+        max-width: 100vw;
+        max-height: 100vh;
+    }
 </style>
 
 <svelte:window on:keydown={onKeydown} />
 <div id="container" on:mouseenter="{onMouseEnter}" on:mouseleave="{onMouseLeave}">
-    {#if deviceAvailable}
+    <div id="modeBar">
+        <label for="deviceViewMode">Mode:</label>
+        <!-- svelte-ignore a11y-no-onchange -->
+        <select id="deviceViewMode" bind:value={viewMode} on:change={onViewModeChange}>
+            <option value="screenshot">Screenshot</option>
+            <option value="webrtc">WebRTC</option>
+        </select>
+    </div>
+
+    {#if viewMode === 'webrtc'}
+        <div id="webrtcControls">
+            <input
+                type="text"
+                placeholder="WHEP stream URL (e.g. http://host:8889/mystream/whep)"
+                bind:value={webrtcStreamUrl}
+                disabled={isWebrtcActive} />
+            {#if isWebrtcActive}
+                <button on:click={stopWebrtc}>Stop</button>
+            {:else}
+                <button on:click={startWebrtc}>Start</button>
+            {/if}
+            {#if webrtcStatusText}
+                <span class="webrtcStatus">{webrtcStatusText}</span>
+            {/if}
+        </div>
+
+        <!-- svelte-ignore a11y-media-has-caption -->
+        <video
+            bind:this={videoElement}
+            class:hide={!isWebrtcActive}
+            id="webrtcVideo"
+            autoplay
+            playsinline
+            muted
+            controls>
+        </video>
+    {:else if deviceAvailable}
     <div
         id="screenshotContainer"
         class:isInspectingNodes="{isInspectingNodes}"
