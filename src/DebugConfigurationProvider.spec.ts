@@ -54,8 +54,8 @@ describe('BrightScriptConfigurationProvider', () => {
         sinon.stub(DeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
         const globalStateManager = new GlobalStateManager(vscode.context);
         deviceManager = new DeviceManager(vscode.context, globalStateManager);
-        userInputManager = new UserInputManager(deviceManager);
         credentialStore = new CredentialStore(vscode.context);
+        userInputManager = new UserInputManager(deviceManager, credentialStore);
 
         configProvider = new BrightScriptDebugConfigurationProvider(
             vscode.context,
@@ -419,92 +419,6 @@ describe('BrightScriptConfigurationProvider', () => {
         });
     });
 
-    describe('collectPasswordCandidates', () => {
-        const callCollect = (
-            config: Partial<BrightScriptLaunchConfiguration>,
-            result: Partial<BrightScriptLaunchConfiguration>,
-            serialNumber: string | undefined
-        ): Promise<string[]> => (configProvider as any).collectPasswordCandidates(config, result, serialNumber);
-
-        it('returns an empty list when every source is empty or a variable placeholder', async () => {
-            const candidates = await callCollect(
-                { password: '${promptForPassword}' },
-                { password: '${activeHostPassword}' },
-                undefined
-            );
-            expect(candidates).to.deep.equal([]);
-        });
-
-        it('filters out falsy entries', async () => {
-            const candidates = await callCollect(
-                { password: '' },
-                { password: undefined as any },
-                undefined
-            );
-            expect(candidates).to.deep.equal([]);
-        });
-
-        it('includes the default, result, and config password in that order', async () => {
-            sinon.stub(deviceManager, 'getDefaultPassword').returns('default-pw');
-            const candidates = await callCollect(
-                { password: 'config-pw' },
-                { password: 'result-pw' },
-                undefined
-            );
-            expect(candidates).to.deep.equal(['default-pw', 'result-pw', 'config-pw']);
-        });
-
-        it('dedupes candidates that appear in multiple sources, preserving first occurrence', async () => {
-            sinon.stub(deviceManager, 'getDefaultPassword').returns('shared-pw');
-            const candidates = await callCollect(
-                { password: 'shared-pw' },
-                { password: 'shared-pw' },
-                undefined
-            );
-            expect(candidates).to.deep.equal(['shared-pw']);
-        });
-
-        it('trims whitespace from candidates before deduping', async () => {
-            sinon.stub(deviceManager, 'getDefaultPassword').returns('  padded  ');
-            const candidates = await callCollect(
-                { password: 'padded' },
-                { password: 'padded' },
-                undefined
-            );
-            expect(candidates).to.deep.equal(['padded']);
-        });
-
-        it('puts the cred-store password first when a serial number is known', async () => {
-            sinon.stub(deviceManager, 'getDefaultPassword').returns('default-pw');
-            await credentialStore.setPassword('SN-001', 'cred-store-pw');
-            const candidates = await callCollect(
-                { password: 'config-pw' },
-                { password: 'result-pw' },
-                'SN-001'
-            );
-            expect(candidates).to.deep.equal(['cred-store-pw', 'default-pw', 'result-pw', 'config-pw']);
-        });
-
-        it('skips cred-store and settings-by-SN sources when the serial number is undefined', async () => {
-            await credentialStore.setPassword('SN-001', 'cred-store-pw');
-            const candidates = await callCollect(
-                { password: 'config-pw' },
-                { password: 'result-pw' },
-                undefined
-            );
-            expect(candidates).to.not.include('cred-store-pw');
-        });
-
-        it('excludes variable placeholders even when wrapped in whitespace', async () => {
-            const candidates = await callCollect(
-                { password: '  ${promptForPassword}  ' },
-                { password: '  ${activeHostPassword}  ' },
-                undefined
-            );
-            expect(candidates).to.deep.equal([]);
-        });
-    });
-
     describe('processPasswordParameter', () => {
         const callProcess = (
             config: Partial<BrightScriptLaunchConfiguration>,
@@ -578,7 +492,7 @@ describe('BrightScriptConfigurationProvider', () => {
             const stub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
             stub.onFirstCall().resolves('bad-password');
             stub.onSecondCall().resolves('ok');
-            (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves('typed-pw');
+            (sinon.stub(userInputManager as any, 'promptForDevicePassword') as any).resolves('typed-pw');
 
             const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
             const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
@@ -588,7 +502,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('throws when the user cancels (empty) the password prompt', async () => {
             sinon.stub(deviceManager, 'validateDevicePassword').resolves('bad-password');
-            (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves(undefined);
+            (sinon.stub(userInputManager as any, 'promptForDevicePassword') as any).resolves(undefined);
 
             let threw: Error | undefined;
             try {
@@ -603,7 +517,7 @@ describe('BrightScriptConfigurationProvider', () => {
             const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
             validateStub.onCall(0).resolves('bad-password'); // first candidate
             validateStub.onCall(1).resolves('bad-password'); // first typed attempt
-            const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
+            const promptStub = sinon.stub(userInputManager as any, 'promptForDevicePassword') as any;
             promptStub.onCall(0).resolves('still-wrong');
             promptStub.onCall(1).resolves(undefined); // user cancels the retry
 
@@ -623,7 +537,7 @@ describe('BrightScriptConfigurationProvider', () => {
             validateStub.onCall(0).resolves('bad-password'); // first candidate
             validateStub.onCall(1).resolves('bad-password'); // first typed attempt
             validateStub.onCall(2).resolves('ok'); // second typed attempt
-            const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
+            const promptStub = sinon.stub(userInputManager as any, 'promptForDevicePassword') as any;
             promptStub.onCall(0).resolves('first-try');
             promptStub.onCall(1).resolves('correct-pw');
 
@@ -759,7 +673,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 validateStub.onCall(0).resolves('bad-password'); // existing cred-store entry (candidate #1)
                 validateStub.onCall(1).resolves('bad-password'); // result.password
                 validateStub.onCall(2).resolves('ok'); // typed password
-                (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves('typed-pw');
+                (sinon.stub(userInputManager as any, 'promptForDevicePassword') as any).resolves('typed-pw');
 
                 const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
                 await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
@@ -771,7 +685,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
                 validateStub.onCall(0).resolves('bad-password');
                 validateStub.onCall(1).resolves('ok');
-                (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves('typed-pw');
+                (sinon.stub(userInputManager as any, 'promptForDevicePassword') as any).resolves('typed-pw');
 
                 const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
                 await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-NEW' });

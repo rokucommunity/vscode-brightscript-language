@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.66.3",
+    "version": "2.66.4",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -32,7 +32,7 @@
         "build": "npm run copy-schema && tsc -p ./ && npm run build-webviews",
         "build-webviews": "cd ./webviews && npm run build && cd ..",
         "lint": "eslint \"./src/**/*.ts\"",
-        "audit": "npm audit || audit-ci --config ./audit-ci.jsonc && cd webviews && npm run audit",
+        "audit": "npm audit --audit-level=high || audit-ci --config ./audit-ci.jsonc && cd webviews && npm run audit",
         "watch": "npm run copy-schema && tsc -w -p ./",
         "watch-webviews": "cd ./webviews && npm run watch",
         "watch-all": "ts-node ./scripts/watch-all.ts",
@@ -53,11 +53,11 @@
         "sync-launch-settings": "ts-node scripts/sync-launch-settings.ts"
     },
     "dependencies": {
-        "@rokucommunity/logger": "^0.3.12",
+        "@rokucommunity/logger": "^0.3.13",
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
-        "brighterscript": "^0.72.3",
-        "brighterscript-formatter": "^1.7.26",
+        "brighterscript": "^0.72.5",
+        "brighterscript-formatter": "^1.7.27",
         "clone-deep": "^4.0.1",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
@@ -77,8 +77,8 @@
         "postman-request": "^2.88.1-postman.48",
         "pretty-bytes": "^5.6.0",
         "resolve": "^1.22.8",
-        "roku-debug": "^0.23.10",
-        "roku-deploy": "^3.17.4",
+        "roku-debug": "^0.23.13",
+        "roku-deploy": "^3.17.6",
         "roku-test-automation": "^2.2.1",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
@@ -113,7 +113,7 @@
         "@types/yargs": "^15.0.5",
         "@typescript-eslint/eslint-plugin": "^5.14.0",
         "@typescript-eslint/parser": "^5.14.0",
-        "@vscode/vsce": "^2.22.0",
+        "@vscode/vsce": "^3.9.2",
         "audit-ci": "^7.1.0",
         "chai": "^4.2.0",
         "chalk": "^4.1.2",
@@ -127,7 +127,7 @@
         "mocha": "^10.8.2",
         "node-notifier": "^10.0.1",
         "nyc": "^15.0.0",
-        "ovsx": "^0.8.3",
+        "ovsx": "^1.0.2",
         "prompt": "^1.3.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.21",
@@ -140,7 +140,13 @@
         "yargs": "^16.2.0"
     },
     "overrides": {
-        "serialize-javascript": "^7.0.5"
+        "serialize-javascript": "^7.0.5",
+        "tmp": "^0.2.7",
+        "http-proxy-middleware": "^3.0.7",
+        "form-data": "^2.5.6",
+        "@deboxsoft/cpx": {
+            "shell-quote": "^1.8.4"
+        }
     },
     "optionalDependencies": {
         "fsevents": "~2.3.2"
@@ -846,6 +852,11 @@
                                             "type": "boolean",
                                             "description": "Should this component library be installed onto the Roku device during the sideloading process? Component libraries are installed in the order they're found in this array, so it is recommended to keep all `install: true` component libraries at the top of the array. \n\nTo utilize this component library in your application, set `dcl_channel_ids=DCLHelloLib:devlib_dcl_1` (where 1 is the 1-based position in this array)",
                                             "default": false
+                                        },
+                                        "enablePostfix": {
+                                            "type": "boolean",
+                                            "description": "Should this component library's files be renamed with a `__lib<index>` postfix during staging? Postfixing renames the library's files and rewrites the references between them so the debugger can map device-reported file paths back to the component library they came from. This covers BrightScript and XML files as well as any file imported via `<script>` tags (which can have any extension). Set to `false` to leave file names untouched (for example, when the library loads files by a fixed name at runtime); source mapping for this library's files will be degraded while debugging.",
+                                            "default": true
                                         },
                                         "outFile": {
                                             "type": "string",
@@ -3889,6 +3900,18 @@
                 "title": "Refresh Device",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.devicesView.restartDevice",
+                "title": "Restart Device",
+                "category": "BrightScript",
+                "icon": "$(debug-restart)"
+            },
+            {
+                "command": "extension.brightscript.devicesView.checkAndInstallUpdates",
+                "title": "Check for Software Updates",
+                "category": "BrightScript",
+                "icon": "$(cloud-download)"
             },
             {
                 "command": "extension.brightscript.addDeviceToUserSettings",

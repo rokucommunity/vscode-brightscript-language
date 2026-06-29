@@ -72,6 +72,101 @@ describe('NetworkChangeMonitor', () => {
             expect(getNetworkHash()).to.equal('no-network');
         });
 
+        it('excludes IPv6 link-local addresses (fe80::/10)', () => {
+            // Real interface
+            networkInterfacesStub.returns({
+                'en0': [{
+                    address: '192.168.1.100',
+                    netmask: '255.255.255.0',
+                    family: 'IPv4',
+                    internal: false
+                }]
+            });
+            const hashRealOnly = getNetworkHash();
+
+            // Same real interface plus a bunch of link-local-only interfaces
+            // (VPN tunnels, AirDrop, etc.) — should produce the same hash.
+            networkInterfacesStub.returns({
+                'en0': [{
+                    address: '192.168.1.100',
+                    netmask: '255.255.255.0',
+                    family: 'IPv4',
+                    internal: false
+                }],
+                'awdl0': [{
+                    address: 'fe80::2c21:e0ff:fe03:9ee5',
+                    netmask: 'ffff:ffff:ffff:ffff::',
+                    family: 'IPv6',
+                    internal: false
+                }],
+                'utun0': [{
+                    address: 'fe80::c295:9871:8607:4b6f',
+                    netmask: 'ffff:ffff:ffff:ffff::',
+                    family: 'IPv6',
+                    internal: false
+                }]
+            });
+            const hashWithLinkLocal = getNetworkHash();
+
+            expect(hashRealOnly).to.equal(hashWithLinkLocal);
+        });
+
+        it('excludes IPv4 link-local addresses (169.254/16)', () => {
+            networkInterfacesStub.returns({
+                'en0': [{
+                    address: '192.168.1.100',
+                    netmask: '255.255.255.0',
+                    family: 'IPv4',
+                    internal: false
+                }]
+            });
+            const hashRealOnly = getNetworkHash();
+
+            networkInterfacesStub.returns({
+                'en0': [{
+                    address: '192.168.1.100',
+                    netmask: '255.255.255.0',
+                    family: 'IPv4',
+                    internal: false
+                }],
+                'en1': [{
+                    address: '169.254.42.17',
+                    netmask: '255.255.0.0',
+                    family: 'IPv4',
+                    internal: false
+                }]
+            });
+            const hashWithApipa = getNetworkHash();
+
+            expect(hashRealOnly).to.equal(hashWithApipa);
+        });
+
+        it('keeps non-link-local IPv6 addresses (e.g. ULA)', () => {
+            // A hard-coded device IP could be an IPv6 ULA, so we must hash these.
+            networkInterfacesStub.returns({
+                'en0': [{
+                    address: 'fd1b:f33d:a9f:30d5:1842:621b:8739:48d7',
+                    netmask: 'ffff:ffff:ffff:ffff::',
+                    family: 'IPv6',
+                    internal: false
+                }]
+            });
+            const hash1 = getNetworkHash();
+
+            networkInterfacesStub.returns({
+                'en0': [{
+                    address: 'fd1b:f33d:a9f:30d5:aaaa:bbbb:cccc:dddd',
+                    netmask: 'ffff:ffff:ffff:ffff::',
+                    family: 'IPv6',
+                    internal: false
+                }]
+            });
+            const hash2 = getNetworkHash();
+
+            expect(hash1).to.not.equal(hash2);
+            expect(hash1).to.not.equal('no-network');
+        });
+
         it('excludes internal/loopback interfaces', () => {
             networkInterfacesStub.returns({
                 'lo0': [{

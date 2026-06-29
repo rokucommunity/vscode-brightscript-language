@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "18.20.4"
+          node-version: "20.19.4"
       - run: npm ci
       - run: npx ts-node scripts/create-vsix.ts ${{ github.event.inputs.branch }}
       - uses: actions/upload-artifact@v4
