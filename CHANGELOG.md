@@ -6,6 +6,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.67.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.4...v2.67.0) - 2026-06-29
+### Added
+ - Add enablePostfix option to component library launch schema ([#832](https://github.com/rokucommunity/vscode-brightscript-language/pull/832))
+ - Add restart device and software update commands to Devices panel ([#829](https://github.com/rokucommunity/vscode-brightscript-language/pull/829))
+### Changed
+ - Security enhancements ([#836](https://github.com/rokucommunity/vscode-brightscript-language/pull/836))
+ - Show an empty-state for empty Perfetto trace files ([#831](https://github.com/rokucommunity/vscode-brightscript-language/pull/831))
+ - Security enhancements ([#830](https://github.com/rokucommunity/vscode-brightscript-language/pull/830))
+ - Advertise processStagingDir capability and handle the reverse request ([#826](https://github.com/rokucommunity/vscode-brightscript-language/pull/826))
+ - upgrade to [@rokucommunity/logger@0.4.0](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#040---2026-06-29). Notable changes since 0.3.13:
+     - Reduce public API surface and implement API Extractor ([#30](https://github.com/rokucommunity/logger/pull/30))
+     - chore: Reduce prod deps 6 → 1 (inline single-use helpers) + consolidate source-map-support ([#29](https://github.com/rokucommunity/logger/pull/29))
+ - upgrade to [brighterscript@0.73.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0730---2026-06-29). Notable changes since 0.72.5:
+     - Validate eval/rsg_version against firmware lifecycle ([#1698](https://github.com/rokucommunity/brighterscript/pull/1698))
+     - Remove more prod deps: (drop array-flat-polyfill/readline, consolidate minimatch into micromatch) ([#1737](https://github.com/rokucommunity/brighterscript/pull/1737))
+     - Replace single-use deps with util/formatUtils helpers ([#1736](https://github.com/rokucommunity/brighterscript/pull/1736))
+     - chore: remove dead production dependencies ([#1735](https://github.com/rokucommunity/brighterscript/pull/1735))
+     - Bump form-data from 2.5.5 to 2.5.6 ([#1733](https://github.com/rokucommunity/brighterscript/pull/1733))
+ - upgrade to [brighterscript-formatter@1.8.0](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#180---2026-06-29). Notable changes since 1.7.27:
+     - Add forLoopTerminator option and fix bogus next handling ([#130](https://github.com/rokucommunity/brighterscript-formatter/pull/130))
+     - Fix multi-line indentation regression from 1.7.28 (#143) ([#145](https://github.com/rokucommunity/brighterscript-formatter/pull/145))
+     - Multi-line Function parameters ([#140](https://github.com/rokucommunity/brighterscript-formatter/pull/140))
+     - Bump form-data from 2.5.5 to 2.5.6 ([#141](https://github.com/rokucommunity/brighterscript-formatter/pull/141))
+ - upgrade to [roku-debug@0.23.14](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02314---2026-06-29). Notable changes since 0.23.12:
+     - Improve debug console completions ([#376](https://github.com/rokucommunity/roku-debug/pull/376))
+     - Add per-component-library option to disable file postfixing ([#378](https://github.com/rokucommunity/roku-debug/pull/378))
+     - Report empty Perfetto trace files on stop ([#377](https://github.com/rokucommunity/roku-debug/pull/377))
+     - Fix telnet rendezvous status detection for fallback activation ([#371](https://github.com/rokucommunity/roku-debug/pull/371))
+     - Retry temp-dir deletes in test teardown to clear transient Windows locks ([#375](https://github.com/rokucommunity/roku-debug/pull/375))
+     - Log temp-dir contents when test teardown fails to delete it ([#368](https://github.com/rokucommunity/roku-debug/pull/368))
+     - Bump form-data from 2.5.5 to 2.5.6 ([#369](https://github.com/rokucommunity/roku-debug/pull/369))
+     - Fix ~30s delay when stopping a Perfetto recording ([#373](https://github.com/rokucommunity/roku-debug/pull/373))
+     - Bump ws from 8.20.1 to 8.21.0 ([#372](https://github.com/rokucommunity/roku-debug/pull/372))
+     - Add processStagingDir reverse request support ([#366](https://github.com/rokucommunity/roku-debug/pull/366))
+ - upgrade to [roku-test-automation@2.2.2](https://github.com/rokucommunity/roku-test-automation/blob/master/CHANGELOG.md#222---2026-03-26). Notable changes since 2.2.1:
+     - Merge pull request #155 from triwav/aa_stack_overflow_fix ([89c59e1](https://github.com/rokucommunity/roku-test-automation/commit/89c59e1))
+     - Merge pull request #154 from triwav/update_documentation_2026 ([7dcbb89](https://github.com/rokucommunity/roku-test-automation/commit/7dcbb89))
+### Fixed
+ - Fix boolean field toggles in SceneGraph Inspector node detail page ([#835](https://github.com/rokucommunity/vscode-brightscript-language/pull/835))
+
+
+
 ## [2.66.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.3...v2.66.4) - 2026-06-10
 ### Changed
  - upgrade to [@rokucommunity/logger@0.3.13](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#0313---2026-06-08). Notable changes since 0.3.12:
