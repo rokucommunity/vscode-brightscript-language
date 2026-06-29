@@ -36,7 +36,7 @@
 
     // Which source the view renders. Screenshot is the default; the rest are stream/capture
     // types used to probe what playback the VSCode webview actually supports.
-    type RokuDeviceViewMode = 'screenshot' | 'webrtc' | 'video' | 'mjpeg';
+    type RokuDeviceViewMode = 'screenshot' | 'webrtc' | 'webcam' | 'video' | 'mjpeg';
     let viewMode: RokuDeviceViewMode = utils.getStorageValue('rokuDeviceViewMode', 'screenshot') as RokuDeviceViewMode;
     $: utils.setStorageValue('rokuDeviceViewMode', viewMode);
 
@@ -55,6 +55,21 @@
     }
 
     const hasWebRTC = typeof RTCPeerConnection !== 'undefined';
+    const hasMediaDevices = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+    // getUserMedia is gated by the webview iframe's Permissions-Policy. VS Code's webview iframe
+    // currently omits camera/microphone, so the call is rejected ("not allowed in this document")
+    // even though the API exists. Only offer the Webcam mode when the document actually permits
+    // camera capture, so a mode we cannot support is omitted rather than shown and failing. If an
+    // upstream proposed API ever injects allow=camera on the webview iframe, this flips to true.
+    const cameraAllowedByPolicy = (() => {
+        try {
+            const policy = (document as any).featurePolicy;
+            return typeof policy?.allowsFeature === 'function' ? policy.allowsFeature('camera') : false;
+        } catch {
+            return false;
+        }
+    })();
+    const canUseWebcam = hasMediaDevices && cameraAllowedByPolicy;
 
     let videoProbesComplete = false;
     let canPlayMp4 = false;
@@ -105,6 +120,8 @@
     $: availableModes = ([
         { value: 'screenshot', label: 'Screenshot', supported: true },
         { value: 'webrtc', label: 'WebRTC (WHEP)', supported: hasWebRTC },
+        // Webcam / USB capture device via getUserMedia (omitted unless the iframe policy allows camera)
+        { value: 'webcam', label: 'Webcam', supported: canUseWebcam },
         // Show Video URL until the load-probes finish, then keep it only if a native container plays
         { value: 'video', label: 'Video URL', supported: !videoProbesComplete || hasNativeVideo },
         // MJPEG is just multipart JPEG frames in an <img>; no codec/container dependency
@@ -124,6 +141,8 @@
         streamUrl = (utils.getStorageValue(`deviceViewStreamUrl.${viewMode}`, '') ?? '') as string;
         if (viewMode === 'screenshot') {
             void requestScreenshot();
+        } else if (viewMode === 'webcam') {
+            void refreshVideoInputs();
         }
         // The screenshot capture loop is gated on viewMode, so it stops on its own when leaving
     }
@@ -423,6 +442,11 @@
         if (isStreaming) {
             return;
         }
+        if (viewMode === 'webcam') {
+            streamStatusText = 'Requesting camera…';
+            void startWebcam();
+            return;
+        }
         if (!streamUrl) {
             streamStatusText = 'Enter a URL first';
             return;
@@ -445,6 +469,11 @@
         if (peerConnection) {
             peerConnection.close();
             peerConnection = null;
+        }
+        // Webcam teardown
+        if (webcamStream) {
+            webcamStream.getTracks().forEach((track) => track.stop());
+            webcamStream = null;
         }
         // Shared <video> / <img> teardown
         if (videoElement) {
@@ -548,6 +577,76 @@
         isStreaming = true;
         streamStatusText = 'Loading…';
     }
+
+    // --- Webcam / USB capture device (getUserMedia) ---
+    // enumerateDevices() lists cameras even before permission, but their labels stay empty until
+    // a capture is granted. getUserMedia() is the part historically blocked in VSCode webviews,
+    // so Start surfaces the exact outcome rather than assuming.
+    let videoInputDevices: MediaDeviceInfo[] = [];
+    let selectedDeviceId = '';
+    let webcamStream: MediaStream | null = null;
+    // 'granted' | 'denied' | 'prompt' | 'unknown' — reveals which gate is blocking before/after a request
+    let cameraPermissionState = '';
+
+    async function refreshCameraPermission() {
+        if (!navigator.permissions?.query) {
+            cameraPermissionState = 'unknown';
+            return;
+        }
+        try {
+            // 'camera' isn't in the default PermissionName union, hence the cast
+            const status = await navigator.permissions.query({ name: 'camera' as PermissionName });
+            cameraPermissionState = status.state;
+            status.addEventListener('change', () => { cameraPermissionState = status.state; });
+        } catch {
+            cameraPermissionState = 'unknown';
+        }
+    }
+
+    async function refreshVideoInputs() {
+        if (!navigator.mediaDevices?.enumerateDevices) {
+            return;
+        }
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            videoInputDevices = devices.filter((device) => device.kind === 'videoinput');
+            if (!videoInputDevices.some((device) => device.deviceId === selectedDeviceId)) {
+                selectedDeviceId = videoInputDevices[0]?.deviceId ?? '';
+            }
+        } catch (e) {
+            console.error('enumerateDevices failed', e);
+        }
+    }
+
+    async function startWebcam() {
+        try {
+            const constraints: MediaStreamConstraints = {
+                video: selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : true,
+                audio: false
+            };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            webcamStream = stream;
+            if (videoElement) {
+                videoElement.srcObject = stream;
+            }
+            isStreaming = true;
+            streamStatusText = 'Capturing';
+            // Labels are only exposed after capture is allowed, so refresh to pick them up
+            await refreshVideoInputs();
+            void refreshCameraPermission();
+        } catch (e) {
+            streamStatusText = `getUserMedia failed: ${e.name} — ${e.message}`;
+            console.error('getUserMedia error', e);
+            void refreshCameraPermission();
+        }
+    }
+
+    if (canUseWebcam) {
+        void refreshVideoInputs();
+        void refreshCameraPermission();
+        // Hotplug: re-enumerate when a USB camera is connected or disconnected
+        navigator.mediaDevices.addEventListener('devicechange', () => void refreshVideoInputs());
+    }
     // #endregion
 
     // Required by any view so we can know that the view is ready to receive messages
@@ -642,7 +741,8 @@
         padding: 0 10px 6px;
     }
 
-    #streamControls input {
+    #streamControls input,
+    #streamControls select {
         flex: 1 1 auto;
         min-width: 0;
     }
@@ -674,6 +774,8 @@
         </select>
         {#if viewMode === 'video'}
             <span class="capabilityNote" title="Native <video> support detected in this webview">{videoCodecSummary}</span>
+        {:else if viewMode === 'webcam'}
+            <span class="capabilityNote" title="Video input devices and camera permission detected in this webview">{videoInputDevices.length} camera(s) detected{cameraPermissionState ? ` · permission: ${cameraPermissionState}` : ''}</span>
         {/if}
     </div>
 
@@ -707,11 +809,24 @@
         {/if}
     {:else}
         <div id="streamControls">
-            <input
-                type="text"
-                placeholder={urlPlaceholder}
-                bind:value={streamUrl}
-                disabled={isStreaming} />
+            {#if viewMode === 'webcam'}
+                <!-- svelte-ignore a11y-no-onchange -->
+                <select bind:value={selectedDeviceId} disabled={isStreaming}>
+                    {#if videoInputDevices.length === 0}
+                        <option value="">No cameras detected</option>
+                    {/if}
+                    {#each videoInputDevices as device, index}
+                        <option value={device.deviceId}>{device.label || `Camera ${index + 1} (label hidden until capture allowed)`}</option>
+                    {/each}
+                </select>
+                <button on:click={() => void refreshVideoInputs()} disabled={isStreaming}>Refresh</button>
+            {:else}
+                <input
+                    type="text"
+                    placeholder={urlPlaceholder}
+                    bind:value={streamUrl}
+                    disabled={isStreaming} />
+            {/if}
             {#if isStreaming}
                 <button on:click={stopStream}>Stop</button>
             {:else}
