@@ -853,6 +853,11 @@
                                             "description": "Should this component library be installed onto the Roku device during the sideloading process? Component libraries are installed in the order they're found in this array, so it is recommended to keep all `install: true` component libraries at the top of the array. \n\nTo utilize this component library in your application, set `dcl_channel_ids=DCLHelloLib:devlib_dcl_1` (where 1 is the 1-based position in this array)",
                                             "default": false
                                         },
+                                        "enablePostfix": {
+                                            "type": "boolean",
+                                            "description": "Should this component library's files be renamed with a `__lib<index>` postfix during staging? Postfixing renames the library's files and rewrites the references between them so the debugger can map device-reported file paths back to the component library they came from. This covers BrightScript and XML files as well as any file imported via `<script>` tags (which can have any extension). Set to `false` to leave file names untouched (for example, when the library loads files by a fixed name at runtime); source mapping for this library's files will be degraded while debugging.",
+                                            "default": true
+                                        },
                                         "outFile": {
                                             "type": "string",
                                             "description": "A file name and extension used as the static file name for the zip. You can use manifest values in this property such as ${title} to be inferred from the library's manifest file.",
