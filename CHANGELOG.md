@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - `enablePostfix` option to component library launch schema ([#832](https://github.com/rokucommunity/vscode-brightscript-language/pull/832))
  - `restart device` and `software update` commands ([#829](https://github.com/rokucommunity/vscode-brightscript-language/pull/829))
 ### Changed
- - Reduced unessisary unnecessary production dependencies
+ - Reduced unnecessary production dependencies
  - Advertise processStagingDir capability and handle the reverse request ([#826](https://github.com/rokucommunity/vscode-brightscript-language/pull/826))
 ### Fixed
  - Show an empty-state for empty Perfetto trace files ([#831](https://github.com/rokucommunity/vscode-brightscript-language/pull/831))
