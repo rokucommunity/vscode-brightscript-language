@@ -21,6 +21,7 @@ import { vscodeContextManager } from './managers/VscodeContextManager';
 import type { CredentialStore } from './managers/CredentialStore';
 import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { DEVICE_FILTER_KEYS } from './deviceFilters';
+import { rokuDeploy } from 'roku-deploy';
 
 export class BrightScriptCommands {
 
@@ -766,6 +767,131 @@ export class BrightScriptCommands {
         });
     }
 
+    /**
+     * Restart a Roku device. When `host` is omitted (e.g. invoked from the command palette)
+     * a device picker is shown. Resolves and validates the developer password the same way a
+     * debug launch does before issuing the reboot.
+     */
+    public async restartDevice(host?: string): Promise<void> {
+        const target = await this.resolveDeviceHost(host);
+        if (!target) {
+            return;
+        }
+
+        const confirm = await vscode.window.showWarningMessage(
+            `Restart Device?`,
+            {
+                detail: `Any running apps or processes will be terminated.\n\n${target.label}`,
+                modal: true
+            },
+            'Restart'
+        );
+        if (confirm !== 'Restart') {
+            return;
+        }
+
+        const password = await this.resolveValidatedPassword(target.host, target.serialNumber);
+        if (password === undefined) {
+            return;
+        }
+
+        try {
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Requesting restarting ${target.label}`
+            }, () => rokuDeploy.rebootDevice({ host: target.host, password: password, timeout: 10000 }));
+        } catch (e) {
+            void vscode.window.showErrorMessage(`Failed to restart device: ${e.message}`);
+        }
+    }
+
+    /**
+     * Ask a Roku device to check for and install any available software updates. Host and
+     * password are resolved the same way as `restartDevice`.
+     */
+    public async checkForUpdates(host?: string): Promise<void> {
+        const target = await this.resolveDeviceHost(host);
+        if (!target) {
+            return;
+        }
+
+        const confirm = await vscode.window.showInformationMessage(
+            `Check for Updates?`,
+            {
+                detail: `Device will check for app and Roku OS updates.\n\nAny running apps or processes will be terminated.\n\n${target.label}`,
+                modal: true
+            },
+            `Check for Updates`
+        );
+        if (confirm !== 'Check for Updates') {
+            return;
+        }
+
+        const password = await this.resolveValidatedPassword(target.host, target.serialNumber);
+        if (password === undefined) {
+            return;
+        }
+
+        try {
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Checking for updates: ${target.label}`
+            }, () => rokuDeploy.checkForUpdate({ host: target.host, password: password, timeout: 10000 }));
+        } catch (e) {
+            void vscode.window.showErrorMessage(`Failed to check for updates: ${e.message}`);
+        }
+    }
+
+    /**
+     * Resolve the device a device-targeted command should act on.
+     *
+     * When `host` is provided (e.g. from a Devices view tree item) it is used directly.
+     * Otherwise the device picker is always shown; these are device-specific actions, so we
+     * never silently fall back to the active device. The resolved host is probed so the caller
+     * has a fresh serial number for password lookup and a friendly display label for prompts.
+     *
+     * Returns undefined when the user cancels device selection.
+     */
+    private async resolveDeviceHost(host?: string): Promise<{ host: string; serialNumber: string | undefined; label: string } | undefined> {
+        if (!host) {
+            try {
+                host = await this.userInputManager.promptForHost();
+            } catch {
+                // promptForHost rejects when the user dismisses the picker; treat as a cancel.
+                return undefined;
+            }
+        }
+        if (!host) {
+            return undefined;
+        }
+
+        const device = await this.deviceManager.validateAndAddDevice(host);
+        const label = device ? this.deviceManager.getDeviceDisplayName(device, true) : host;
+        return { host: host, serialNumber: device?.serialNumber, label: label };
+    }
+
+    /**
+     * Resolve a developer password the device accepts, delegating the candidate/validate/prompt/
+     * persist flow to the shared resolver. The global `remotePassword` fallback is offered as an
+     * extra candidate. Shows an error and returns undefined when the device is unreachable, and
+     * returns undefined when the user cancels the prompt.
+     */
+    private async resolveValidatedPassword(host: string, serialNumber: string | undefined): Promise<string | undefined> {
+        const resolution = await this.userInputManager.resolveDevicePassword({
+            host: host,
+            serialNumber: serialNumber,
+            extraCandidates: [await this.context.workspaceState.get('remotePassword')]
+        });
+        if (resolution.status === 'unreachable') {
+            void vscode.window.showErrorMessage(`Device at ${host} is unreachable.`);
+            return undefined;
+        }
+        if (resolution.status === 'cancelled') {
+            return undefined;
+        }
+        return resolution.password;
+    }
+
     public async sendRemoteCommand(key: string, host?: string, literalCharacter = false) {
         for (const notifier of this.keypressNotifiers) {
             notifier(key, literalCharacter);
@@ -1035,6 +1161,15 @@ export class BrightScriptCommands {
             this.registerCommand(`devicesView.toggleFilter.${key}.active`, handler);
         }
         this.registerCommand('devicesView.resetFilters', () => devicesViewProvider.resetFilters());
+        // These also appear in the command palette, where there's no tree element; resolving
+        // a missing/unknown key to undefined lets `restartDevice`/`checkForUpdates` fall back
+        // to the active device or device picker.
+        this.registerCommand('devicesView.restartDevice', (element?: { key?: string }) => {
+            return this.restartDevice(element?.key ? this.deviceManager.getDevice(element.key)?.ip : undefined);
+        });
+        this.registerCommand('devicesView.checkAndInstallUpdates', (element?: { key?: string }) => {
+            return this.checkForUpdates(element?.key ? this.deviceManager.getDevice(element.key)?.ip : undefined);
+        });
     }
 
     private async sendAsciiToDevice(character: string) {

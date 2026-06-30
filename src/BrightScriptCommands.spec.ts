@@ -17,6 +17,7 @@ Module.prototype.require = function hijacked(file) {
 
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { util } from './util';
+import { rokuDeploy } from 'roku-deploy';
 
 describe('BrightScriptFileUtils ', () => {
     let commands: BrightScriptCommands;
@@ -266,6 +267,179 @@ describe('BrightScriptFileUtils ', () => {
 
             assert.isTrue(showWarningStub.calledOnce);
             assert.isFalse(showTimedNotificationStub.called);
+        });
+    });
+
+    describe('restartDevice / checkForUpdates', () => {
+        let sandbox: sinon.SinonSandbox;
+        let localCommands: BrightScriptCommands;
+        let deviceManager: any;
+        let userInputManager: any;
+        let rebootStub: sinon.SinonStub;
+        let checkForUpdateStub: sinon.SinonStub;
+        let showWarningStub: sinon.SinonStub;
+        let showInfoStub: sinon.SinonStub;
+        let showErrorStub: sinon.SinonStub;
+
+        const device = { ip: '1.2.3.4', serialNumber: 'SN123', deviceInfo: {} };
+
+        beforeEach(() => {
+            sandbox = sinon.createSandbox();
+            deviceManager = {
+                validateAndAddDevice: sandbox.stub().resolves(device),
+                getDevice: sandbox.stub().returns(device),
+                getDeviceDisplayName: sandbox.stub().returns('Roku Express – 1.2.3.4')
+            };
+            //password resolution is delegated to UserInputManager (tested in its own spec)
+            userInputManager = {
+                promptForHost: sandbox.stub().resolves('1.2.3.4'),
+                resolveDevicePassword: sandbox.stub().resolves({ status: 'ok', password: 'pw' })
+            };
+            //ctor: remoteControlManager, whatsNewManager, context, deviceManager, userInputManager, localPackageManager, credentialStore
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, userInputManager, {} as any, {} as any);
+
+            rebootStub = sandbox.stub(rokuDeploy, 'rebootDevice').resolves({} as any);
+            checkForUpdateStub = sandbox.stub(rokuDeploy, 'checkForUpdate').resolves({} as any);
+            showWarningStub = sandbox.stub(vscode.window, 'showWarningMessage') as sinon.SinonStub;
+            showWarningStub.resolves('Restart');
+            showInfoStub = sandbox.stub(vscode.window, 'showInformationMessage') as sinon.SinonStub;
+            showInfoStub.resolves('Check for Updates');
+            showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves();
+            vscode.context.workspaceState['_data'] = {};
+        });
+
+        afterEach(() => {
+            sandbox.restore();
+        });
+
+        it('passes the resolved password to rokuDeploy.rebootDevice', async () => {
+            userInputManager.resolveDevicePassword.resolves({ status: 'ok', password: 'pw' });
+
+            await localCommands.restartDevice('1.2.3.4');
+
+            assert.isTrue(rebootStub.calledOnce);
+            assert.equal(rebootStub.firstCall.args[0].host, '1.2.3.4');
+            assert.equal(rebootStub.firstCall.args[0].password, 'pw');
+            assert.isFalse(showErrorStub.called);
+        });
+
+        it('resolves the password against the probed device, offering remotePassword as an extra candidate', async () => {
+            vscode.context.workspaceState['_data'].remotePassword = 'global-pw';
+
+            await localCommands.restartDevice('1.2.3.4');
+
+            assert.isTrue(deviceManager.validateAndAddDevice.calledWith('1.2.3.4'));
+            assert.isTrue(userInputManager.resolveDevicePassword.calledOnce);
+            const args = userInputManager.resolveDevicePassword.firstCall.args[0];
+            assert.equal(args.host, '1.2.3.4');
+            assert.equal(args.serialNumber, 'SN123');
+            assert.deepEqual(args.extraCandidates, ['global-pw']);
+        });
+
+        it('aborts without resolving a password or rebooting when the confirmation is dismissed', async () => {
+            showWarningStub.resolves(undefined);
+
+            await localCommands.restartDevice('1.2.3.4');
+
+            assert.isFalse(userInputManager.resolveDevicePassword.called, 'password should not be resolved when cancelled');
+            assert.isFalse(rebootStub.called);
+        });
+
+        it('cancels when password resolution is cancelled', async () => {
+            userInputManager.resolveDevicePassword.resolves({ status: 'cancelled' });
+
+            await localCommands.restartDevice('1.2.3.4');
+
+            assert.isFalse(rebootStub.called);
+        });
+
+        it('shows an error and does not reboot when the device is unreachable', async () => {
+            userInputManager.resolveDevicePassword.resolves({ status: 'unreachable' });
+
+            await localCommands.restartDevice('1.2.3.4');
+
+            assert.isFalse(rebootStub.called);
+            assert.isTrue(showErrorStub.calledOnce);
+        });
+
+        it('always prompts for the device with the picker when no host is provided', async () => {
+            await localCommands.restartDevice();
+
+            assert.isTrue(userInputManager.promptForHost.calledOnce);
+            assert.isTrue(rebootStub.calledOnce);
+            assert.equal(rebootStub.firstCall.args[0].host, '1.2.3.4');
+        });
+
+        it('cancels when the device picker is dismissed', async () => {
+            userInputManager.promptForHost.rejects(new Error('No host was selected'));
+
+            await localCommands.restartDevice();
+
+            assert.isFalse(rebootStub.called);
+            assert.isFalse(deviceManager.validateAndAddDevice.called);
+            assert.isFalse(userInputManager.resolveDevicePassword.called);
+        });
+
+        it('checkForUpdates passes the resolved password to rokuDeploy.checkForUpdate', async () => {
+            userInputManager.resolveDevicePassword.resolves({ status: 'ok', password: 'pw' });
+
+            await localCommands.checkForUpdates('1.2.3.4');
+
+            assert.isTrue(checkForUpdateStub.calledOnce);
+            assert.equal(checkForUpdateStub.firstCall.args[0].host, '1.2.3.4');
+            assert.equal(checkForUpdateStub.firstCall.args[0].password, 'pw');
+        });
+
+        it('checkForUpdates aborts when the confirmation is dismissed', async () => {
+            showInfoStub.resolves(undefined);
+
+            await localCommands.checkForUpdates('1.2.3.4');
+
+            assert.isFalse(checkForUpdateStub.called);
+        });
+
+        it('surfaces a rokuDeploy failure as an error message', async () => {
+            rebootStub.rejects(new Error('boom'));
+
+            await localCommands.restartDevice('1.2.3.4');
+
+            assert.isTrue(showErrorStub.calledOnce);
+            assert.include(showErrorStub.firstCall.args[0], 'boom');
+        });
+
+        describe('command registration', () => {
+            let capturedCommands: Record<string, (...args: any[]) => any>;
+            let restartStub: sinon.SinonStub;
+            let updatesStub: sinon.SinonStub;
+
+            beforeEach(() => {
+                capturedCommands = {};
+                sandbox.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
+                    capturedCommands[name] = cb;
+                });
+                restartStub = sandbox.stub(localCommands, 'restartDevice').resolves();
+                updatesStub = sandbox.stub(localCommands, 'checkForUpdates').resolves();
+                localCommands.registerDevicesViewCommands({ toggleFilter: () => { }, resetFilters: () => { } } as any);
+            });
+
+            it('maps the tree element key to the device ip', async () => {
+                deviceManager.getDevice.withArgs('SN123').returns({ ip: '1.2.3.4' });
+
+                await capturedCommands['extension.brightscript.devicesView.restartDevice']({ key: 'SN123' });
+                await capturedCommands['extension.brightscript.devicesView.checkAndInstallUpdates']({ key: 'SN123' });
+
+                assert.isTrue(restartStub.calledOnce);
+                assert.equal(restartStub.firstCall.args[0], '1.2.3.4');
+                assert.isTrue(updatesStub.calledOnce);
+                assert.equal(updatesStub.firstCall.args[0], '1.2.3.4');
+            });
+
+            it('passes undefined (picker fallback) when invoked with no element', async () => {
+                await capturedCommands['extension.brightscript.devicesView.restartDevice']();
+
+                assert.isTrue(restartStub.calledOnce);
+                assert.equal(restartStub.firstCall.args[0], undefined);
+            });
         });
     });
 

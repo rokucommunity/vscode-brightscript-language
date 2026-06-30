@@ -4,7 +4,8 @@ import type {
     QuickPickItem
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
+import type { ConfiguredDevice, DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
+import type { CredentialStore } from './CredentialStore';
 import { icons } from '../icons';
 import { vscodeContextManager } from './VscodeContextManager';
 import { util } from '../util';
@@ -31,10 +32,19 @@ const manualLabel = 'Enter manually';
 export const scanForDevicesItemId = `${Number.MAX_SAFE_INTEGER - 1}`;
 const scanForDevicesLabel = 'Scan for devices';
 
+/**
+ * The outcome of resolving a developer password for a device.
+ */
+export type DevicePasswordResolution =
+    | { status: 'ok'; password: string }
+    | { status: 'unreachable' }
+    | { status: 'cancelled' };
+
 export class UserInputManager {
 
     public constructor(
-        private deviceManager: DeviceManager
+        private deviceManager: DeviceManager,
+        private credentialStore: CredentialStore
     ) { }
 
     public async promptForHostManual(): Promise<string | undefined> {
@@ -56,6 +66,137 @@ export class UserInputManager {
                 return probed.ip;
             }
             await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${value}. Check the IP and confirm developer mode is enabled.`);
+        }
+    }
+
+    /**
+     * Resolve a developer password that the device at `host` accepts.
+     *
+     * Every known candidate is tried in order (stored credential, configured
+     * `brightscript.devices[].password`, the default device password, and any caller-provided
+     * `extraCandidates`), each validated against the device. The first accepted candidate wins.
+     * If none are accepted, the user is prompted, re-prompting after each rejection until they
+     * enter a working password or cancel. An accepted password refreshes the credential store
+     * entry when one already exists; callers that keep a global password fallback persist that
+     * themselves.
+     *
+     * @returns `ok` with the accepted password, `unreachable` when the device can't be contacted,
+     *          or `cancelled` when the user dismisses the prompt.
+     */
+    public async resolveDevicePassword(options: { host: string; serialNumber: string | undefined; extraCandidates?: Array<string | undefined> }): Promise<DevicePasswordResolution> {
+        const { host, serialNumber } = options;
+        const candidates = await this.collectDevicePasswordCandidates(serialNumber, options.extraCandidates);
+
+        for (const candidate of candidates) {
+            const validation = await this.deviceManager.validateDevicePassword(host, candidate);
+            if (validation === 'ok') {
+                await this.persistDevicePassword(serialNumber, candidate);
+                return { status: 'ok', password: candidate };
+            }
+            if (validation === 'unreachable') {
+                return { status: 'unreachable' };
+            }
+            // 'bad-password' — fall through to the next candidate
+        }
+
+        // No stored / configured candidate was accepted. Prompt, re-prompting after each
+        // bad-password attempt until the user enters a working one or cancels (empty / Esc).
+        let placeholder = candidates.length > 0
+            ? 'The password was rejected by the device. Try again, or press Esc to cancel.'
+            : 'The Roku development webserver password.';
+        while (true) {
+            const value = await this.promptForDevicePassword(placeholder);
+            if (!value) {
+                return { status: 'cancelled' };
+            }
+            const validation = await this.deviceManager.validateDevicePassword(host, value);
+            if (validation === 'ok') {
+                await this.persistDevicePassword(serialNumber, value);
+                return { status: 'ok', password: value };
+            }
+            if (validation === 'unreachable') {
+                return { status: 'unreachable' };
+            }
+            placeholder = 'The password was rejected by the device. Try again, or press Esc to cancel.';
+        }
+    }
+
+    /**
+     * Build the ordered, de-duplicated list of candidate passwords to try when resolving
+     * credentials for a device. Variable placeholders and empty values are filtered out so the
+     * validation loop only sees real passwords. `extraCandidates` are appended after the
+     * standard sources (e.g. launch-config values for a debug session).
+     */
+    private async collectDevicePasswordCandidates(serialNumber: string | undefined, extraCandidates?: Array<string | undefined>): Promise<string[]> {
+        const candidates: string[] = [];
+        const addCandidate = (value: string | undefined | null) => {
+            const trimmed = value?.trim();
+            // eslint-disable-next-line no-template-curly-in-string
+            if (!trimmed || trimmed === '${promptForPassword}' || trimmed === '${activeHostPassword}') {
+                return;
+            }
+            candidates.push(trimmed);
+        };
+
+        if (serialNumber) {
+            addCandidate(await this.credentialStore.getPassword(serialNumber));
+
+            const scanScope = (devices: ConfiguredDevice[] | undefined) => {
+                for (const entry of devices ?? []) {
+                    if (entry.serialNumber === serialNumber) {
+                        addCandidate(entry.password);
+                    }
+                }
+            };
+            const rootInspection = vscode.workspace.getConfiguration('brightscript').inspect<ConfiguredDevice[]>('devices');
+            scanScope(rootInspection?.globalValue);
+            scanScope(rootInspection?.workspaceValue);
+            for (const folder of vscode.workspace.workspaceFolders ?? []) {
+                const folderInspection = vscode.workspace.getConfiguration('brightscript', folder.uri).inspect<ConfiguredDevice[]>('devices');
+                scanScope(folderInspection?.workspaceFolderValue);
+            }
+        }
+
+        addCandidate(this.deviceManager.getDefaultPassword());
+        for (const extra of extraCandidates ?? []) {
+            addCandidate(extra);
+        }
+
+        // Dedupe while preserving insertion order so a password referenced by multiple
+        // sources is only validated once.
+        return Array.from(new Set(candidates));
+    }
+
+    /**
+     * Persist an accepted password by refreshing the credential store, but only when an entry
+     * already exists for this serial (storing a brand-new entry is an explicit opt-in elsewhere).
+     */
+    private async persistDevicePassword(serialNumber: string | undefined, password: string): Promise<void> {
+        if (serialNumber && (await this.credentialStore.getPassword(serialNumber)) !== undefined) {
+            await this.credentialStore.setPassword(serialNumber, password);
+        }
+    }
+
+    /**
+     * Password input dialog. Returns the typed value, or undefined on Esc / hide.
+     */
+    private async promptForDevicePassword(placeholder: string): Promise<string | undefined> {
+        const input = vscode.window.createInputBox();
+        input.placeholder = placeholder;
+        input.password = true;
+        try {
+            return await new Promise<string | undefined>(resolve => {
+                input.onDidAccept(() => {
+                    resolve(input.value);
+                    input.hide();
+                });
+                input.onDidHide(() => {
+                    resolve(undefined);
+                });
+                input.show();
+            });
+        } finally {
+            input.dispose();
         }
     }
 
