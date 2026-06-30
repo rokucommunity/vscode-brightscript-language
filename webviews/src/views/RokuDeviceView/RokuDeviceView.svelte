@@ -9,6 +9,7 @@
     import { utils as rtaUtils } from 'roku-test-automation/client/dist/utils';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
+    import { probeMedia } from './probeMedia';
 
     window.vscode = acquireVsCodeApi();
 
@@ -31,6 +32,119 @@
     $:{
         intermediary.setVscodeContext('brightscript.rokuDeviceView.enableScreenshotCaptureAutoRefresh', enableScreenshotCaptureAutoRefresh);
         utils.setStorageValue('enableScreenshotCaptureAutoRefresh', enableScreenshotCaptureAutoRefresh);
+    }
+
+    // Which source the view renders. Screenshot is the default; the rest are stream/capture
+    // types used to probe what playback the VSCode webview actually supports.
+    type RokuDeviceViewMode = 'screenshot' | 'webrtc' | 'webcam' | 'video' | 'mjpeg';
+    let viewMode: RokuDeviceViewMode = utils.getStorageValue('rokuDeviceViewMode', 'screenshot') as RokuDeviceViewMode;
+    $: utils.setStorageValue('rokuDeviceViewMode', viewMode);
+
+    // Probe what this particular webview build can actually play. Codec/container support
+    // varies by platform and Electron build (e.g. VS Code's ffmpeg ships no WebM demuxer), so
+    // we only offer modes that work here and surface the detected support.
+    //
+    // canPlayType()/isTypeSupported() are NOT reliable for this: they report the compiled codec
+    // allowlist without knowing whether the matching container demuxer exists, so they claim
+    // WebM is playable even when it isn't. Native <video> support is therefore probed by actually
+    // loading a tiny clip of each type and watching for 'loadeddata' (works) vs 'error' (no).
+    interface DeviceViewModeOption {
+        value: RokuDeviceViewMode;
+        label: string;
+        supported: boolean;
+    }
+
+    const hasWebRTC = typeof RTCPeerConnection !== 'undefined';
+    const hasMediaDevices = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+    // getUserMedia is gated by the webview iframe's Permissions-Policy. VS Code's webview iframe
+    // currently omits camera/microphone, so the call is rejected ("not allowed in this document")
+    // even though the API exists. Only offer the Webcam mode when the document actually permits
+    // camera capture, so a mode we cannot support is omitted rather than shown and failing. If an
+    // upstream proposed API ever injects allow=camera on the webview iframe, this flips to true.
+    const cameraAllowedByPolicy = (() => {
+        try {
+            const policy = (document as any).featurePolicy;
+            return typeof policy?.allowsFeature === 'function' ? policy.allowsFeature('camera') : false;
+        } catch {
+            return false;
+        }
+    })();
+    const canUseWebcam = hasMediaDevices && cameraAllowedByPolicy;
+
+    let videoProbesComplete = false;
+    let canPlayMp4 = false;
+    let canPlayWebmVp8 = false;
+    let canPlayWebmVp9 = false;
+    let videoCodecSummary = 'detecting…';
+
+    // Resolves true if the clip actually loads a frame, false if the element errors out
+    function probePlayable(dataUri: string): Promise<boolean> {
+        return new Promise((resolve) => {
+            const probe = document.createElement('video');
+            probe.muted = true;
+            probe.preload = 'auto';
+            let settled = false;
+            const finish = (result: boolean) => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                probe.removeAttribute('src');
+                probe.load();
+                resolve(result);
+            };
+            probe.addEventListener('loadeddata', () => finish(true));
+            probe.addEventListener('error', () => finish(false));
+            // Safety net in case neither event fires
+            setTimeout(() => finish(false), 3000);
+            probe.src = dataUri;
+        });
+    }
+
+    async function runVideoProbes() {
+        const results = await Promise.all([
+            probePlayable(probeMedia.mp4H264),
+            probePlayable(probeMedia.webmVp8),
+            probePlayable(probeMedia.webmVp9)
+        ]);
+        canPlayMp4 = results[0];
+        canPlayWebmVp8 = results[1];
+        canPlayWebmVp9 = results[2];
+        videoCodecSummary = `MP4/H.264 ${canPlayMp4 ? '✓' : '✗'} · WebM/VP8 ${canPlayWebmVp8 ? '✓' : '✗'} · WebM/VP9 ${canPlayWebmVp9 ? '✓' : '✗'}`;
+        videoProbesComplete = true;
+    }
+    void runVideoProbes();
+
+    $: hasNativeVideo = canPlayMp4 || canPlayWebmVp8 || canPlayWebmVp9;
+
+    $: availableModes = ([
+        { value: 'screenshot', label: 'Screenshot', supported: true },
+        { value: 'webrtc', label: 'WebRTC (WHEP)', supported: hasWebRTC },
+        // Webcam / USB capture device via getUserMedia (omitted unless the iframe policy allows camera)
+        { value: 'webcam', label: 'Webcam', supported: canUseWebcam },
+        // Show Video URL until the load-probes finish, then keep it only if a native container plays
+        { value: 'video', label: 'Video URL', supported: !videoProbesComplete || hasNativeVideo },
+        // MJPEG is just multipart JPEG frames in an <img>; no codec/container dependency
+        { value: 'mjpeg', label: 'MJPEG', supported: true }
+    ] as DeviceViewModeOption[]).filter((option) => option.supported);
+
+    // If the persisted mode isn't supported in this webview, fall back to screenshot
+    $: if (!availableModes.some((option) => option.value === viewMode)) {
+        viewMode = 'screenshot';
+    }
+
+    function onViewModeChange() {
+        // Tear down whatever the previous mode had running
+        stopStream();
+        streamStatusText = '';
+        // Each mode remembers its own last-used URL
+        streamUrl = (utils.getStorageValue(`deviceViewStreamUrl.${viewMode}`, '') ?? '') as string;
+        if (viewMode === 'screenshot') {
+            void requestScreenshot();
+        } else if (viewMode === 'webcam') {
+            void refreshVideoInputs();
+        }
+        // The screenshot capture loop is gated on viewMode, so it stops on its own when leaving
     }
 
     // We can't observe the image height directly so we observe the surrounding div instead
@@ -230,7 +344,7 @@
 
     let currentlyCapturingScreenshot = false;
     async function requestScreenshot() {
-        if (!deviceAvailable || currentlyCapturingScreenshot) {
+        if (viewMode !== 'screenshot' || !deviceAvailable || currentlyCapturingScreenshot) {
             return;
         }
 
@@ -300,6 +414,240 @@
                 break;
         }
     }
+
+    // #region Stream / capture modes
+    // Everything here runs in the webview's Chromium context (no extension host involvement).
+    // Each mode exercises a different playback path so we can see what the webview supports:
+    //   webrtc -> RTCPeerConnection + <video>  (WHEP signaling, sub-second latency)
+    //   video  -> native <video src> (progressive mp4/webm)
+    //   mjpeg  -> native <img src> (multipart/x-mixed-replace)
+    let streamUrl = (utils.getStorageValue(`deviceViewStreamUrl.${viewMode}`, '') ?? '') as string;
+    $: if (viewMode !== 'screenshot') {
+        utils.setStorageValue(`deviceViewStreamUrl.${viewMode}`, streamUrl);
+    }
+
+    let isStreaming = false;
+    let streamStatusText = '';
+    let videoElement: HTMLVideoElement;
+    let mjpegSrc = '';
+
+    let urlPlaceholder = '';
+    $: urlPlaceholder = {
+        webrtc: 'WHEP URL (e.g. http://localhost:8889/mystream/whep)',
+        video: 'Direct video URL (.mp4 / H.264 — see support above)',
+        mjpeg: 'MJPEG URL (multipart/x-mixed-replace)'
+    }[viewMode] ?? '';
+
+    function startStream() {
+        if (isStreaming) {
+            return;
+        }
+        if (viewMode === 'webcam') {
+            streamStatusText = 'Requesting camera…';
+            void startWebcam();
+            return;
+        }
+        if (!streamUrl) {
+            streamStatusText = 'Enter a URL first';
+            return;
+        }
+        streamStatusText = 'Connecting…';
+        switch (viewMode) {
+            case 'webrtc': void startWebrtc(); break;
+            case 'video': startVideo(); break;
+            case 'mjpeg': startMjpeg(); break;
+        }
+    }
+
+    function stopStream() {
+        // WebRTC teardown
+        if (whepResourceUrl) {
+            // Best-effort teardown of the server-side WHEP session
+            void fetch(whepResourceUrl, { method: 'DELETE' }).catch(() => {});
+            whepResourceUrl = null;
+        }
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+        // Webcam teardown
+        if (webcamStream) {
+            webcamStream.getTracks().forEach((track) => track.stop());
+            webcamStream = null;
+        }
+        // Shared <video> / <img> teardown
+        if (videoElement) {
+            videoElement.pause();
+            videoElement.removeAttribute('src');
+            videoElement.srcObject = null;
+            videoElement.load();
+        }
+        mjpegSrc = '';
+        isStreaming = false;
+    }
+
+    // --- WebRTC (WHEP) ---
+    let peerConnection: RTCPeerConnection | null = null;
+    let whepResourceUrl: string | null = null;
+
+    // Wait for ICE gathering to finish so the offer carries all candidates (non-trickle WHEP)
+    function waitForIceGathering(connection: RTCPeerConnection) {
+        return new Promise<void>((resolve) => {
+            if (connection.iceGatheringState === 'complete') {
+                resolve();
+                return;
+            }
+            const onStateChange = () => {
+                if (connection.iceGatheringState === 'complete') {
+                    connection.removeEventListener('icegatheringstatechange', onStateChange);
+                    resolve();
+                }
+            };
+            connection.addEventListener('icegatheringstatechange', onStateChange);
+            // Fallback in case gathering stalls behind a slow/unreachable STUN server
+            setTimeout(resolve, 2000);
+        });
+    }
+
+    async function startWebrtc() {
+        try {
+            const connection = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            peerConnection = connection;
+
+            // We only want to receive media, not send any
+            connection.addTransceiver('video', { direction: 'recvonly' });
+            connection.addTransceiver('audio', { direction: 'recvonly' });
+
+            connection.ontrack = (event) => {
+                if (videoElement && event.streams[0]) {
+                    videoElement.srcObject = event.streams[0];
+                }
+            };
+
+            connection.onconnectionstatechange = () => {
+                streamStatusText = connection.connectionState;
+                if (['failed', 'disconnected', 'closed'].includes(connection.connectionState)) {
+                    stopStream();
+                }
+            };
+
+            const offer = await connection.createOffer();
+            await connection.setLocalDescription(offer);
+            await waitForIceGathering(connection);
+
+            const response = await fetch(streamUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/sdp' },
+                body: connection.localDescription.sdp
+            });
+            if (!response.ok) {
+                throw new Error(`WHEP request failed: ${response.status} ${response.statusText}`);
+            }
+
+            // WHEP returns a resource URL we DELETE later to tear the session down cleanly
+            const location = response.headers.get('Location');
+            if (location) {
+                whepResourceUrl = new URL(location, streamUrl).toString();
+            }
+
+            await connection.setRemoteDescription({ type: 'answer', sdp: await response.text() });
+            isStreaming = true;
+            streamStatusText = 'Streaming';
+        } catch (e) {
+            streamStatusText = `Error: ${e.message}`;
+            console.error('WebRTC start error', e);
+            stopStream();
+        }
+    }
+
+    // --- Native <video src> (progressive mp4/webm) ---
+    function startVideo() {
+        videoElement.src = streamUrl;
+        videoElement.onloadeddata = () => { streamStatusText = 'Playing'; };
+        videoElement.onerror = () => { streamStatusText = 'Video failed to load'; };
+        void videoElement.play().catch(() => {});
+        isStreaming = true;
+    }
+
+    // --- Native <img> MJPEG (multipart/x-mixed-replace) ---
+    function startMjpeg() {
+        mjpegSrc = streamUrl;
+        isStreaming = true;
+        streamStatusText = 'Loading…';
+    }
+
+    // --- Webcam / USB capture device (getUserMedia) ---
+    // enumerateDevices() lists cameras even before permission, but their labels stay empty until
+    // a capture is granted. getUserMedia() is the part historically blocked in VSCode webviews,
+    // so Start surfaces the exact outcome rather than assuming.
+    let videoInputDevices: MediaDeviceInfo[] = [];
+    let selectedDeviceId = '';
+    let webcamStream: MediaStream | null = null;
+    // 'granted' | 'denied' | 'prompt' | 'unknown' — reveals which gate is blocking before/after a request
+    let cameraPermissionState = '';
+
+    async function refreshCameraPermission() {
+        if (!navigator.permissions?.query) {
+            cameraPermissionState = 'unknown';
+            return;
+        }
+        try {
+            // 'camera' isn't in the default PermissionName union, hence the cast
+            const status = await navigator.permissions.query({ name: 'camera' as PermissionName });
+            cameraPermissionState = status.state;
+            status.addEventListener('change', () => { cameraPermissionState = status.state; });
+        } catch {
+            cameraPermissionState = 'unknown';
+        }
+    }
+
+    async function refreshVideoInputs() {
+        if (!navigator.mediaDevices?.enumerateDevices) {
+            return;
+        }
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            videoInputDevices = devices.filter((device) => device.kind === 'videoinput');
+            if (!videoInputDevices.some((device) => device.deviceId === selectedDeviceId)) {
+                selectedDeviceId = videoInputDevices[0]?.deviceId ?? '';
+            }
+        } catch (e) {
+            console.error('enumerateDevices failed', e);
+        }
+    }
+
+    async function startWebcam() {
+        try {
+            const constraints: MediaStreamConstraints = {
+                video: selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : true,
+                audio: false
+            };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            webcamStream = stream;
+            if (videoElement) {
+                videoElement.srcObject = stream;
+            }
+            isStreaming = true;
+            streamStatusText = 'Capturing';
+            // Labels are only exposed after capture is allowed, so refresh to pick them up
+            await refreshVideoInputs();
+            void refreshCameraPermission();
+        } catch (e) {
+            streamStatusText = `getUserMedia failed: ${e.name} — ${e.message}`;
+            console.error('getUserMedia error', e);
+            void refreshCameraPermission();
+        }
+    }
+
+    if (canUseWebcam) {
+        void refreshVideoInputs();
+        void refreshCameraPermission();
+        // Hotplug: re-enumerate when a USB camera is connected or disconnected
+        navigator.mediaDevices.addEventListener('devicechange', () => void refreshVideoInputs());
+    }
+    // #endregion
 
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
@@ -372,36 +720,144 @@
     .hide {
         display: none;
     }
+
+    #modeBar {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 6px 10px;
+    }
+
+    #modeBar .capabilityNote {
+        font-size: 11px;
+        opacity: 0.8;
+        white-space: nowrap;
+    }
+
+    #streamControls {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 0 10px 6px;
+    }
+
+    #streamControls input,
+    #streamControls select {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    #streamControls .streamStatus {
+        font-size: 11px;
+        opacity: 0.8;
+        white-space: nowrap;
+    }
+
+    #streamVideo,
+    #streamImage {
+        display: block;
+        width: 100%;
+        max-width: 100vw;
+        max-height: 100vh;
+    }
 </style>
 
 <svelte:window on:keydown={onKeydown} />
 <div id="container" on:mouseenter="{onMouseEnter}" on:mouseleave="{onMouseLeave}">
-    {#if deviceAvailable}
-    <div
-        id="screenshotContainer"
-        class:isInspectingNodes="{isInspectingNodes}"
-        bind:clientWidth={screenshotContainerWidth}
-        bind:clientHeight={screenshotContainerHeight}
-        on:mousemove={onImageMouseMove}
-        on:mousedown={onMouseDown}
-        data-vscode-context={'{"preventDefaultContextMenuItems": true}'}>
-
-        <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
-        <div class:hide={!focusedNode} id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
-
-        <!-- only show image if we have a url to avoid showing as broken image -->
-        {#if screenshotUrl}
-            <img
-                id="screenshot"
-                alt="Screenshot from Roku device"
-                src="{screenshotUrl}" />
+    <div id="modeBar">
+        <label for="deviceViewMode">Mode:</label>
+        <!-- svelte-ignore a11y-no-onchange -->
+        <select id="deviceViewMode" bind:value={viewMode} on:change={onViewModeChange}>
+            {#each availableModes as option}
+                <option value={option.value}>{option.label}</option>
+            {/each}
+        </select>
+        {#if viewMode === 'video'}
+            <span class="capabilityNote" title="Native <video> support detected in this webview">{videoCodecSummary}</span>
+        {:else if viewMode === 'webcam'}
+            <span class="capabilityNote" title="Video input devices and camera permission detected in this webview">{videoInputDevices.length} camera(s) detected{cameraPermissionState ? ` · permission: ${cameraPermissionState}` : ''}</span>
         {/if}
-
     </div>
-    {:else}
-        <div style="margin: 0 10px">
-            <OdcSetManualIpAddress />
+
+    {#if viewMode === 'screenshot'}
+        {#if deviceAvailable}
+        <div
+            id="screenshotContainer"
+            class:isInspectingNodes="{isInspectingNodes}"
+            bind:clientWidth={screenshotContainerWidth}
+            bind:clientHeight={screenshotContainerHeight}
+            on:mousemove={onImageMouseMove}
+            on:mousedown={onMouseDown}
+            data-vscode-context={'{"preventDefaultContextMenuItems": true}'}>
+
+            <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
+            <div class:hide={!focusedNode} id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
+
+            <!-- only show image if we have a url to avoid showing as broken image -->
+            {#if screenshotUrl}
+                <img
+                    id="screenshot"
+                    alt="Screenshot from Roku device"
+                    src="{screenshotUrl}" />
+            {/if}
+
         </div>
+        {:else}
+            <div style="margin: 0 10px">
+                <OdcSetManualIpAddress />
+            </div>
+        {/if}
+    {:else}
+        <div id="streamControls">
+            {#if viewMode === 'webcam'}
+                <!-- svelte-ignore a11y-no-onchange -->
+                <select bind:value={selectedDeviceId} disabled={isStreaming}>
+                    {#if videoInputDevices.length === 0}
+                        <option value="">No cameras detected</option>
+                    {/if}
+                    {#each videoInputDevices as device, index}
+                        <option value={device.deviceId}>{device.label || `Camera ${index + 1} (label hidden until capture allowed)`}</option>
+                    {/each}
+                </select>
+                <button on:click={() => void refreshVideoInputs()} disabled={isStreaming}>Refresh</button>
+            {:else}
+                <input
+                    type="text"
+                    placeholder={urlPlaceholder}
+                    bind:value={streamUrl}
+                    disabled={isStreaming} />
+            {/if}
+            {#if isStreaming}
+                <button on:click={stopStream}>Stop</button>
+            {:else}
+                <button on:click={startStream}>Start</button>
+            {/if}
+            {#if streamStatusText}
+                <span class="streamStatus">{streamStatusText}</span>
+            {/if}
+        </div>
+
+        {#if viewMode === 'mjpeg'}
+            {#if mjpegSrc}
+                <img
+                    id="streamImage"
+                    alt="MJPEG stream"
+                    src={mjpegSrc}
+                    on:load={() => streamStatusText = 'Streaming'}
+                    on:error={() => streamStatusText = 'Image failed to load'} />
+            {/if}
+        {:else}
+            <!-- svelte-ignore a11y-media-has-caption -->
+            <video
+                bind:this={videoElement}
+                class:hide={!isStreaming}
+                id="streamVideo"
+                autoplay
+                playsinline
+                muted
+                controls>
+            </video>
+        {/if}
     {/if}
 </div>
 
