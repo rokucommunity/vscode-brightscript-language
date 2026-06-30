@@ -1447,13 +1447,32 @@
         ],
         "languages": [
             {
-                "id": "jsonc",
+                "id": "bsconfig",
                 "filenamePatterns": [
                     "bsconfig.json",
-                    "*bsconfig*.json",
+                    "*bsconfig*.json"
+                ],
+                "aliases": [
+                    "BrighterScript Config"
+                ],
+                "icon": {
+                    "light": "./images/icons/bsconfig.svg",
+                    "dark": "./images/icons/bsconfig.svg"
+                }
+            },
+            {
+                "id": "brsconfig",
+                "filenamePatterns": [
                     "brsconfig.json",
                     "*brsconfig*.json"
-                ]
+                ],
+                "aliases": [
+                    "BrightScript Config"
+                ],
+                "icon": {
+                    "light": "./images/icons/brsconfig.svg",
+                    "dark": "./images/icons/brsconfig.svg"
+                }
             },
             {
                 "id": "brightscript",
@@ -1522,6 +1541,16 @@
             }
         ],
         "grammars": [
+            {
+                "language": "bsconfig",
+                "scopeName": "source.json.bsconfig",
+                "path": "./syntaxes/jsonc.tmLanguage.json"
+            },
+            {
+                "language": "brsconfig",
+                "scopeName": "source.json.bsconfig",
+                "path": "./syntaxes/jsonc.tmLanguage.json"
+            },
             {
                 "language": "brightscript",
                 "scopeName": "source.brs",
