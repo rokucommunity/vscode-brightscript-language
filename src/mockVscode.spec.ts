@@ -224,12 +224,16 @@ export let vscode = {
         }),
         createQuickPick: () => {
             class QuickPick {
-                private emitter = new EventEmitter();
+                public emitter = new EventEmitter();
 
                 public placeholder = '';
 
                 public items: QuickPickItem[];
                 public keepScrollPosition = false;
+                public value = '';
+                public busy = false;
+                public buttons: any[] = [];
+                public activeItems: QuickPickItem[] = [];
 
                 public show() { }
 
@@ -247,6 +251,14 @@ export let vscode = {
 
                 public onDidChangeSelection(cb) {
                     this.emitter.on('didChangeSelection', cb);
+                }
+
+                public onDidChangeActive(cb) {
+                    this.emitter.on('didChangeActive', cb);
+                }
+
+                public onDidTriggerButton(cb) {
+                    this.emitter.on('didTriggerButton', cb);
                 }
 
                 public dispose() {

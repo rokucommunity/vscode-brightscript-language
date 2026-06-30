@@ -1,4 +1,5 @@
 import { Deferred } from 'brighterscript';
+import type { DeviceInfoRaw } from 'roku-deploy';
 import type {
     Disposable,
     QuickPickItem
@@ -47,7 +48,7 @@ export class UserInputManager {
         private credentialStore: CredentialStore
     ) { }
 
-    public async promptForHostManual(): Promise<string | undefined> {
+    public async promptForHostManual(): Promise<{ host: string; deviceInfo: DeviceInfoRaw | undefined } | undefined> {
         while (true) {
             const value = await vscode.window.showInputBox({
                 placeHolder: 'Please enter the IP address of your Roku device',
@@ -63,7 +64,8 @@ export class UserInputManager {
                 }
             );
             if (probed) {
-                return probed.ip;
+                //probing gathers the device info the same way as the picker; return it alongside the host
+                return { host: probed.ip, deviceInfo: probed.deviceInfo };
             }
             await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${value}. Check the IP and confirm developer mode is enabled.`);
         }
@@ -203,9 +205,9 @@ export class UserInputManager {
     /**
      * Prompt the user to pick a host from a list of devices
      */
-    public async promptForHost(options?: { defaultValue?: string }) {
+    public async promptForHost(options?: { defaultValue?: string }): Promise<{ host: string | undefined; deviceInfo: DeviceInfoRaw | undefined }> {
 
-        const deferred = new Deferred<{ ip: string; manual?: boolean } | { ip?: string; manual: true }>();
+        const deferred = new Deferred<{ ip?: string; deviceInfo?: DeviceInfoRaw; manual?: boolean }>();
         const disposables: Array<Disposable> = [];
 
         //create the quickpick item
@@ -276,7 +278,7 @@ export class UserInputManager {
                             return;
                         }
                         this.deviceManager.setLastUsedDeviceIp(device.ip);
-                        deferred.resolve(device);
+                        deferred.resolve({ ip: device.ip, deviceInfo: device.deviceInfo });
                     }
                     quickPick.dispose();
                 }
@@ -293,7 +295,7 @@ export class UserInputManager {
                     return;
                 }
                 this.deviceManager.setLastUsedDeviceIp(probed.ip);
-                deferred.resolve({ ip: probed.ip });
+                deferred.resolve({ ip: probed.ip, deviceInfo: probed.deviceInfo });
                 quickPick.dispose();
             }
         });
@@ -431,9 +433,10 @@ export class UserInputManager {
         const result = await deferred.promise;
         dispose();
         if (result?.manual === true) {
-            return this.promptForHostManual();
+            const manual = await this.promptForHostManual();
+            return { host: manual?.host, deviceInfo: manual?.deviceInfo };
         } else {
-            return result?.ip;
+            return { host: result?.ip, deviceInfo: result?.deviceInfo };
         }
     }
 

@@ -142,16 +142,16 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result = await this.processLogfilePath(folder, result);
             result = this.processDapLogFilePath(folder, result);
 
-            const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
-            statusbarItem.text = '$(sync~spin) Fetching device info';
-            statusbarItem.show();
-            try {
-                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true, timeout: 4000 });
-            } catch (e) {
-                // a failed deviceInfo request should NOT fail the launch
-                console.error(`Failed to fetch device info for ${result.host}`, e);
+            // `processHostParameter` already probed the device, so its raw device-info is available without
+            // another network round-trip. Attach the raw info to the launch config so the debug session can
+            // reuse it, and enhance a local copy here for the developer-mode check + telemetry below.
+            const rawDeviceInfo = device?.deviceInfo && Object.keys(device.deviceInfo).length > 0
+                ? device.deviceInfo
+                : undefined;
+            if (rawDeviceInfo) {
+                result.deviceInfo = rawDeviceInfo;
+                deviceInfo = rokuDeploy.normalizeDeviceInfo(rawDeviceInfo);
             }
-            statusbarItem.dispose();
 
             if (deviceInfo && !deviceInfo.developerEnabled) {
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
@@ -502,7 +502,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             if (healthyActiveHost) {
                 config.host = healthyActiveHost;
             } else {
-                config.host = await this.userInputManager.promptForHost();
+                config.host = (await this.userInputManager.promptForHost()).host;
             }
         }
 

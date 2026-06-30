@@ -292,7 +292,7 @@ describe('BrightScriptFileUtils ', () => {
             };
             //password resolution is delegated to UserInputManager (tested in its own spec)
             userInputManager = {
-                promptForHost: sandbox.stub().resolves('1.2.3.4'),
+                promptForHost: sandbox.stub().resolves({ host: '1.2.3.4', deviceInfo: undefined }),
                 resolveDevicePassword: sandbox.stub().resolves({ status: 'ok', password: 'pw' })
             };
             //ctor: remoteControlManager, whatsNewManager, context, deviceManager, userInputManager, localPackageManager, credentialStore

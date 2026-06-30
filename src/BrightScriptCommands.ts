@@ -387,7 +387,7 @@ export class BrightScriptCommands {
 
         this.registerCommand('openRegistryInBrowser', async (host: string) => {
             if (!host) {
-                host = await this.userInputManager.promptForHost();
+                host = (await this.userInputManager.promptForHost()).host;
             }
 
             let responseText = await util.spinAsync('Fetching app list', async () => {
@@ -439,7 +439,7 @@ export class BrightScriptCommands {
                 ip = deviceOrItem;
             }
             if (!ip) {
-                ip = await this.userInputManager.promptForHost();
+                ip = (await this.userInputManager.promptForHost()).host;
             }
             if (!ip) {
                 throw new Error('Tried to set active device but failed.');
@@ -855,7 +855,7 @@ export class BrightScriptCommands {
     private async resolveDeviceHost(host?: string): Promise<{ host: string; serialNumber: string | undefined; label: string } | undefined> {
         if (!host) {
             try {
-                host = await this.userInputManager.promptForHost();
+                host = (await this.userInputManager.promptForHost()).host;
             } catch {
                 // promptForHost rejects when the user dismisses the picker; treat as a cancel.
                 return undefined;
@@ -929,7 +929,7 @@ export class BrightScriptCommands {
             this.host = config.get('host');
             // eslint-disable-next-line no-template-curly-in-string
             if ((!this.host || this.host === '${promptForHost}') && showPrompt) {
-                this.host = await this.userInputManager.promptForHost();
+                this.host = (await this.userInputManager.promptForHost()).host;
             }
         }
         if (!this.host) {

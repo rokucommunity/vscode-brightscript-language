@@ -99,7 +99,7 @@ export class RekeyAndPackageCommand {
     }
 
     private async getRekeyManualEntries(rekeyConfig: RekeyConfig, defaultValues) {
-        rekeyConfig.host = await this.userInputManager.promptForHost({ defaultValue: rekeyConfig?.host ?? defaultValues?.host });
+        rekeyConfig.host = (await this.userInputManager.promptForHost({ defaultValue: rekeyConfig?.host ?? defaultValues?.host })).host;
 
         rekeyConfig.password = await vscode.window.showInputBox({
             title: 'Enter password for the Roku device you want to rekey',
@@ -234,7 +234,7 @@ export class RekeyAndPackageCommand {
                     break;
             }
 
-            rokuDeployOptions.host = await this.userInputManager.promptForHost({ defaultValue: rokuDeployOptions?.host ?? '' });
+            rokuDeployOptions.host = (await this.userInputManager.promptForHost({ defaultValue: rokuDeployOptions?.host ?? '' })).host;
 
             rokuDeployOptions.password = await vscode.window.showInputBox({
                 title: 'Enter password for the Roku device',

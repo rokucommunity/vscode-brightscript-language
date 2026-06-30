@@ -156,6 +156,61 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(config.password).to.equal('pass1234');
         });
 
+        describe('device info', () => {
+            it('attaches the raw device info from the probed device to the resolved config without a separate network request', async () => {
+                sinon.stub(configProvider, 'getBsConfig').returns({});
+                const deviceInfo = {
+                    'serial-number': 'abc123',
+                    'developer-enabled': 'true',
+                    'software-version': '11.5.0'
+                };
+                sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '1.2.3.4', deviceInfo: deviceInfo } as any);
+
+                const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                    host: '1.2.3.4',
+                    type: 'brightscript',
+                    password: 'aaaa'
+                });
+
+                //the raw device info should be passed straight through to the launch config
+                expect(config.deviceInfo).to.eql(deviceInfo);
+                //device info is reused from the probe, so no extra getDeviceInfo network request should happen
+                expect((rokuDeploy.getDeviceInfo as any).called).to.be.false;
+            });
+
+            it('throws when the probed device reports developer mode disabled', async () => {
+                sinon.stub(configProvider, 'getBsConfig').returns({});
+                sinon.stub(deviceManager, 'validateAndAddDevice').resolves({
+                    ip: '1.2.3.4',
+                    deviceInfo: { 'developer-enabled': 'false' }
+                } as any);
+
+                try {
+                    await configProvider.resolveDebugConfiguration(folder, <any>{
+                        host: '1.2.3.4',
+                        type: 'brightscript',
+                        password: 'aaaa'
+                    });
+                    assert.fail('Should have thrown exception');
+                } catch (e) {
+                    expect((e as Error)?.message).to.contain('developer mode is disabled');
+                }
+            });
+
+            it('leaves deviceInfo unset when the probe returns no device info', async () => {
+                sinon.stub(configProvider, 'getBsConfig').returns({});
+                sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '1.2.3.4', deviceInfo: {} } as any);
+
+                const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                    host: '1.2.3.4',
+                    type: 'brightscript',
+                    password: 'aaaa'
+                });
+
+                expect(config.deviceInfo).to.be.undefined;
+            });
+        });
+
         it('uses the default values if not provided', async () => {
             const config = await configProvider.resolveDebugConfiguration(folder, <any>{ type: 'brightscript' });
             const configDefaults = (configProvider as any).configDefaults;
