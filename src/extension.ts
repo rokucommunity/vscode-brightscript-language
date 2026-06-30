@@ -92,12 +92,13 @@ export class Extension {
         const rokuDevConfigProvider = new RokuDevConfigProvider();
         context.subscriptions.push(rokuDevConfigProvider);
         this.deviceManager.addConfiguredDeviceProvider(rokuDevConfigProvider);
+        const credentialStore = new CredentialStore(context);
         let userInputManager = new UserInputManager(
-            this.deviceManager
+            this.deviceManager,
+            credentialStore
         );
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
-        const credentialStore = new CredentialStore(context);
         this.brightScriptCommands = new BrightScriptCommands(
             this.remoteControlManager,
             this.whatsNewManager,

@@ -21,7 +21,7 @@ import type { DeviceInfo } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
 import type { BrightScriptCommands } from './BrightScriptCommands';
 import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
-import type { ConfiguredDevice, DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
+import type { DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
 import type { CredentialStore } from './managers/CredentialStore';
 
 
@@ -554,12 +554,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             const validation = await this.deviceManager.validateDevicePassword(host, legacyPassword);
             if (validation === 'ok') {
                 await this.clearLegacyIpKeyedPassword(host);
-                // A legacy entry is explicit historical opt-in: seed the cred store so
-                // acceptPassword's "refresh existing" branch persists it forward.
+                // A legacy entry is explicit historical opt-in: persist it to the cred store
+                // (unconditionally, unlike the normal "refresh existing only" gate) and the
+                // global fallback, then use it.
                 if (serialNumber) {
                     await this.credentialStore.setPassword(serialNumber, legacyPassword);
                 }
-                await this.acceptPassword(result, legacyPassword, serialNumber);
+                result.password = legacyPassword;
+                await this.context.workspaceState.update('remotePassword', legacyPassword);
                 return result;
             } else if (validation === 'bad-password') {
                 // Reads don't use the legacy store anymore, so a proven-wrong entry is dead weight.
@@ -569,136 +571,24 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             // fall through to the normal candidate flow, which will surface its own error.
         }
 
-        const candidates = await this.collectPasswordCandidates(config, result, serialNumber);
-
-        for (const candidate of candidates) {
-            const validation = await this.deviceManager.validateDevicePassword(host, candidate);
-            if (validation === 'ok') {
-                await this.acceptPassword(result, candidate, serialNumber);
-                return result;
-            }
-            if (validation === 'unreachable') {
-                throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
-            }
-            // 'bad-password' — fall through to the next candidate
+        // Resolve and validate the password against the device, trying the launch config's own
+        // `result.password`/`config.password` after the standard credential sources. The resolver
+        // prompts (and persists an accepted password) the same way it does for the other commands.
+        const resolution = await this.userInputManager.resolveDevicePassword({
+            host: host,
+            serialNumber: serialNumber,
+            extraCandidates: [result.password, config.password]
+        });
+        if (resolution.status === 'unreachable') {
+            throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
         }
-
-        // No stored / configured candidate was accepted. Prompt the user, and keep
-        // re-prompting after each bad-password attempt until they either enter a
-        // working one or cancel (empty / Esc). Cred-store persistence is gated
-        // inside acceptPassword by whether an entry already exists for this SN.
-        let placeholder = (candidates ?? []).length > 0 ? 'The password was rejected by the device. Try again, or press Esc to cancel.' : 'The Roku development webserver password.';
-        while (true) {
-            const value = await this.promptForPassword(placeholder);
-            if (!value) {
-                throw new Error('Debug session terminated: password is required.');
-            }
-            const validation = await this.deviceManager.validateDevicePassword(host, value);
-            if (validation === 'unreachable') {
-                throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
-            }
-            if (validation === 'ok') {
-                await this.acceptPassword(result, value, serialNumber);
-                return result;
-            }
-            // 'bad-password' — re-prompt with a hint so the user knows why their input came back.
-            placeholder = 'The password was rejected by the device. Try again, or press Esc to cancel.';
+        if (resolution.status === 'cancelled') {
+            throw new Error('Debug session terminated: password is required.');
         }
-    }
-
-    /**
-     * Password input dialog. Returns the typed value, or undefined on Esc / hide.
-     */
-    private async promptForPassword(placeholder: string): Promise<string | undefined> {
-        const input = vscode.window.createInputBox();
-        input.placeholder = placeholder;
-        try {
-            return await new Promise<string | undefined>(resolve => {
-                input.onDidAccept(() => {
-                    resolve(input.value);
-                    input.hide();
-                });
-                input.onDidHide(() => {
-                    resolve(undefined);
-                });
-                input.show();
-            });
-        } finally {
-            input.dispose();
-        }
-    }
-
-    /**
-     * Build the ordered, de-duplicated list of candidate passwords to try when
-     * resolving credentials for a launch. Variable placeholders and empty
-     * values are filtered out so the validation loop only sees real passwords.
-     */
-    private async collectPasswordCandidates(
-        config: BrightScriptLaunchConfiguration,
-        result: BrightScriptLaunchConfiguration,
-        serialNumber: string | undefined
-    ): Promise<string[]> {
-        const candidates: string[] = [];
-        const addCandidate = (value: string | undefined | null) => {
-            if (!value) {
-                return;
-            }
-            const trimmed = value.trim();
-            if (!trimmed) {
-                return;
-            }
-            if (trimmed === '${promptForPassword}' || trimmed === '${activeHostPassword}') {
-                return;
-            }
-            candidates.push(trimmed);
-        };
-
-        if (serialNumber) {
-            addCandidate(await this.credentialStore.getPassword(serialNumber));
-
-            const scanScope = (devices: ConfiguredDevice[] | undefined) => {
-                for (const entry of devices ?? []) {
-                    if (entry.serialNumber === serialNumber) {
-                        addCandidate(entry.password);
-                    }
-                }
-            };
-            const rootInspection = vscode.workspace.getConfiguration('brightscript').inspect<ConfiguredDevice[]>('devices');
-            scanScope(rootInspection?.globalValue);
-            scanScope(rootInspection?.workspaceValue);
-            for (const folder of vscode.workspace.workspaceFolders ?? []) {
-                const folderInspection = vscode.workspace.getConfiguration('brightscript', folder.uri).inspect<ConfiguredDevice[]>('devices');
-                scanScope(folderInspection?.workspaceFolderValue);
-            }
-        }
-
-        addCandidate(this.deviceManager.getDefaultPassword());
-        addCandidate(result.password);
-        addCandidate(config.password);
-
-        // Dedupe while preserving insertion order (Set iterates in insertion order),
-        // so a password referenced by multiple sources is still only validated once.
-        return Array.from(new Set(candidates));
-    }
-
-    /**
-     * Commit an accepted password: write it to the resolved config and update the
-     * global `remotePassword` fallback. When the cred store already has an entry
-     * for this serial, refresh it so future launches short-circuit on candidate #1.
-     * If no entry exists yet, the cred store is left alone, since persisting a
-     * password is an explicit user opt-in (via the `setDevicePassword` command,
-     * `brightscript.devices[].password` in settings, or legacy migration).
-     */
-    private async acceptPassword(
-        result: BrightScriptLaunchConfiguration,
-        password: string,
-        serialNumber: string | undefined
-    ): Promise<void> {
-        result.password = password;
-        if (serialNumber && (await this.credentialStore.getPassword(serialNumber)) !== undefined) {
-            await this.credentialStore.setPassword(serialNumber, password);
-        }
-        await this.context.workspaceState.update('remotePassword', password);
+        result.password = resolution.password;
+        // Keep the global password fallback in sync so later launches resolve without re-prompting.
+        await this.context.workspaceState.update('remotePassword', resolution.password);
+        return result;
     }
 
     private readonly legacyPasswordStoreKey = 'devicePasswords';
