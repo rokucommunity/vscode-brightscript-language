@@ -502,7 +502,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             if (healthyActiveHost) {
                 config.host = healthyActiveHost;
             } else {
-                config.host = (await this.userInputManager.promptForHost()).host;
+                config.host = (await this.userInputManager.promptForHost())?.host;
             }
         }
 

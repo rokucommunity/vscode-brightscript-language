@@ -48,7 +48,7 @@ export class UserInputManager {
         private credentialStore: CredentialStore
     ) { }
 
-    public async promptForHostManual(): Promise<{ host: string; deviceInfo: DeviceInfoRaw | undefined } | undefined> {
+    public async promptForHostManual(): Promise<{ host: string; deviceInfo: DeviceInfoRaw } | undefined> {
         while (true) {
             const value = await vscode.window.showInputBox({
                 placeHolder: 'Please enter the IP address of your Roku device',
@@ -205,9 +205,9 @@ export class UserInputManager {
     /**
      * Prompt the user to pick a host from a list of devices
      */
-    public async promptForHost(options?: { defaultValue?: string }): Promise<{ host: string | undefined; deviceInfo: DeviceInfoRaw | undefined }> {
+    public async promptForHost(options?: { defaultValue?: string }): Promise<{ host: string; deviceInfo: DeviceInfoRaw } | undefined> {
 
-        const deferred = new Deferred<{ ip?: string; deviceInfo?: DeviceInfoRaw; manual?: boolean }>();
+        const deferred = new Deferred<{ ip: string; deviceInfo: DeviceInfoRaw; manual?: false } | { manual: true }>();
         const disposables: Array<Disposable> = [];
 
         //create the quickpick item
@@ -432,11 +432,10 @@ export class UserInputManager {
         refreshList();
         const result = await deferred.promise;
         dispose();
-        if (result?.manual === true) {
-            const manual = await this.promptForHostManual();
-            return { host: manual?.host, deviceInfo: manual?.deviceInfo };
+        if (result.manual === true) {
+            return this.promptForHostManual();
         } else {
-            return { host: result?.ip, deviceInfo: result?.deviceInfo };
+            return { host: result.ip, deviceInfo: result.deviceInfo };
         }
     }
 
