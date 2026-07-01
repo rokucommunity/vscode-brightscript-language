@@ -247,6 +247,89 @@ describe('UserInputManager', () => {
             quickPick?.hide();
             await promptPromise.catch(() => { });
         });
+
+        it('returns the host and the raw device info for a typed-in IP', async () => {
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            const deviceInfo = {
+                'serial-number': 'abc123',
+                'software-version': '11.5.0'
+            };
+            sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '1.2.3.4', deviceInfo: deviceInfo } as any);
+
+            const promptPromise = userInputManager.promptForHost();
+
+            //let the picker finish setting up
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            //simulate the user typing an IP and pressing enter
+            quickPick.value = '1.2.3.4';
+            quickPick.emitter.emit('didAccept');
+
+            const result = await promptPromise;
+            expect(result).to.eql({ host: '1.2.3.4', deviceInfo: deviceInfo });
+        });
+
+        it('returns the manually-entered host along with the probed device info', async () => {
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+            const deviceInfo = {
+                'serial-number': 'manual123',
+                'software-version': '11.5.0'
+            };
+            //manual entry probes the device the same way, so the gathered device info comes back too
+            sinon.stub(userInputManager, 'promptForHostManual').resolves({ host: '9.8.7.6', deviceInfo: deviceInfo });
+
+            const promptPromise = userInputManager.promptForHost();
+
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            //simulate the user selecting the "manual entry" item
+            quickPick.emitter.emit('didChangeSelection', [{ id: manualHostItemId, label: 'Enter manually' }]);
+            quickPick.emitter.emit('didAccept');
+
+            const result = await promptPromise;
+            expect(result).to.eql({ host: '9.8.7.6', deviceInfo: deviceInfo });
+        });
+    });
+
+    describe('promptForHostManual', () => {
+        it('probes the typed host and returns it with the gathered device info', async () => {
+            sinon.stub(vscode.window, 'showInputBox').resolves('4.3.2.1');
+            const deviceInfo = {
+                'serial-number': 'manual123',
+                'software-version': '11.5.0'
+            };
+            const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '4.3.2.1', deviceInfo: deviceInfo } as any);
+
+            const result = await userInputManager.promptForHostManual();
+
+            expect(validateStub.calledWith('4.3.2.1')).to.be.true;
+            expect(result).to.eql({ host: '4.3.2.1', deviceInfo: deviceInfo });
+        });
+
+        it('returns undefined when the user cancels the input box', async () => {
+            sinon.stub(vscode.window, 'showInputBox').resolves(undefined);
+            const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice');
+
+            const result = await userInputManager.promptForHostManual();
+
+            expect(result).to.be.undefined;
+            expect(validateStub.called).to.be.false;
+        });
     });
 
     describe('collectDevicePasswordCandidates', () => {

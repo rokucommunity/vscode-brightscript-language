@@ -135,23 +135,17 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
             result = await this.sanitizeConfiguration(result, folder);
             result = await this.processEnvFile(folder, result);
-            const [resultAfterHost, device] = await this.processHostParameter(result);
-            result = resultAfterHost;
-            result = await this.processPasswordParameter(config, result, device);
+            result = await this.processHostParameter(result);
+            result = await this.processPasswordParameter(config, result);
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
             result = this.processDapLogFilePath(folder, result);
 
-            const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
-            statusbarItem.text = '$(sync~spin) Fetching device info';
-            statusbarItem.show();
-            try {
-                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true, timeout: 4000 });
-            } catch (e) {
-                // a failed deviceInfo request should NOT fail the launch
-                console.error(`Failed to fetch device info for ${result.host}`, e);
+            // `processHostParameter` attached the raw device-info it gathered while probing the host.
+            // Enhance a local copy here for the developer-mode check + telemetry (no request to the device).
+            if (result.deviceInfo) {
+                deviceInfo = rokuDeploy.enhanceDeviceInfo(result.deviceInfo);
             }
-            statusbarItem.dispose();
 
             if (deviceInfo && !deviceInfo.developerEnabled) {
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
@@ -483,13 +477,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * ${activeHost} is a deprecated alias for ${promptForHost}.
      * Both use the active device when it's set and passes a health check, otherwise fall back to the device picker.
      *
-     * Returns the updated config alongside the probed `RokuDevice` so downstream
-     * password resolution can look up credentials by serial number without
-     * re-fetching device info. Device is undefined when the resolved host is
-     * unreachable or not a developer-enabled Roku.
+     * Assigns the raw `device-info` gathered while probing the resolved host onto `config.deviceInfo`,
+     * so downstream password resolution and the debug session can reuse it without re-fetching.
+     * Throws if the device couldn't be reached (no device-info came back).
      * @param config  current config object
      */
-    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<[BrightScriptLaunchConfiguration, RokuDevice | undefined]> {
+    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         const trimmedHost = config.host.trim();
         const needsHostPrompt =
             trimmedHost === '' ||
@@ -497,12 +490,16 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             trimmedHost === '${activeHost}' ||
             config?.deepLinkUrl?.includes('${promptForHost}');
 
+        let device: RokuDevice | undefined;
+
         if (needsHostPrompt) {
-            const healthyActiveHost = await this.brightScriptCommands.getHealthyActiveHost();
-            if (healthyActiveHost) {
-                config.host = healthyActiveHost;
-            } else {
-                config.host = await this.userInputManager.promptForHost();
+            // both the active-host lookup and the picker probe + register the device in the device
+            // manager, so reuse it below instead of probing again
+            const resolved = await this.brightScriptCommands.getHealthyActiveHost() ??
+                await this.userInputManager.promptForHost();
+            config.host = resolved?.host;
+            if (resolved?.host) {
+                device = this.deviceManager.getDevice({ ip: resolved.host });
             }
         }
 
@@ -513,11 +510,19 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             await this.context.workspaceState.update('remoteHost', config.host);
         }
 
-        // Probe the resolved host so downstream password resolution has fresh SN/deviceInfo.
-        // Unreachable or filtered hosts yield no registered device; password resolution handles that.
-        const device = await this.deviceManager.validateAndAddDevice(config.host);
+        // If the host didn't come from the picker, probe it so we have fresh SN/deviceInfo.
+        device ??= await this.deviceManager.validateAndAddDevice(config.host);
 
-        return [config, device];
+        // A reachable developer device always returns device-info; its absence means we couldn't reach it.
+        if (!device?.deviceInfo || Object.keys(device.deviceInfo).length === 0) {
+            throw new Error(`Debug session terminated: unable to reach device at '${config.host}'.`);
+        }
+
+        // Attach the raw device-info so downstream password resolution and the debug session can reuse it
+        // without another request to the device.
+        config.deviceInfo = device.deviceInfo;
+
+        return config;
     }
 
     /**
@@ -532,17 +537,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * the user is prompted.
      *
      * @param config  the raw launch configuration as received from VS Code
-     * @param result  the merged/resolved config being built up
-     * @param device  the probed device from `processHostParameter`, or undefined
-     *                when the host is unreachable / not a developer Roku
+     * @param result  the merged/resolved config being built up. Its `deviceInfo` (set by
+     *                `processHostParameter`) supplies the serial number used to look up credentials.
      */
     private async processPasswordParameter(
         config: BrightScriptLaunchConfiguration,
-        result: BrightScriptLaunchConfiguration,
-        device: RokuDevice | undefined
+        result: BrightScriptLaunchConfiguration
     ): Promise<BrightScriptLaunchConfiguration> {
         const host = result.host;
-        const serialNumber = device?.serialNumber;
+        const serialNumber = result.deviceInfo?.['serial-number'];
 
         // Opportunistically drain any legacy IP-keyed password that still lives in
         // workspaceState from pre-refactor extension installs. Reads never consult
