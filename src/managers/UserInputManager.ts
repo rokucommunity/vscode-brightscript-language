@@ -5,7 +5,7 @@ import type {
     QuickPickItem
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { ConfiguredDevice, DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
+import type { ConfiguredDevice, DeviceManager, HostWithDeviceInfo, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import type { CredentialStore } from './CredentialStore';
 import { icons } from '../icons';
 import { vscodeContextManager } from './VscodeContextManager';
@@ -48,7 +48,7 @@ export class UserInputManager {
         private credentialStore: CredentialStore
     ) { }
 
-    public async promptForHostManual(): Promise<{ host: string; deviceInfo: DeviceInfoRaw } | undefined> {
+    public async promptForHostManual(): Promise<HostWithDeviceInfo | undefined> {
         while (true) {
             const value = await vscode.window.showInputBox({
                 placeHolder: 'Please enter the IP address of your Roku device',
@@ -205,7 +205,7 @@ export class UserInputManager {
     /**
      * Prompt the user to pick a host from a list of devices
      */
-    public async promptForHost(options?: { defaultValue?: string }): Promise<{ host: string; deviceInfo: DeviceInfoRaw } | undefined> {
+    public async promptForHost(options?: { defaultValue?: string }): Promise<HostWithDeviceInfo | undefined> {
 
         const deferred = new Deferred<{ ip: string; deviceInfo: DeviceInfoRaw; manual?: false } | { manual: true }>();
         const disposables: Array<Disposable> = [];

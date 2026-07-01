@@ -10,7 +10,7 @@ import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
-import type { ConfiguredDevice, DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
+import type { ConfiguredDevice, DeviceManager, HostWithDeviceInfo, RokuDevice } from './deviceDiscovery/DeviceManager';
 import * as xml2js from 'xml2js';
 import { firstBy } from 'thenby';
 import type { UserInputManager } from './managers/UserInputManager';
@@ -1086,15 +1086,25 @@ export class BrightScriptCommands {
     }
 
     /**
-     * Return the active host IP if one is set and passes a health check; otherwise undefined.
+     * Return the active host (paired with its raw device-info) if one is set and passes a health
+     * check; otherwise undefined. The health check refreshes the device in the device manager, so
+     * the device-info is read back from there without an extra request.
      */
-    public async getHealthyActiveHost(): Promise<string | undefined> {
+    public async getHealthyActiveHost(): Promise<HostWithDeviceInfo | undefined> {
         const activeHost = vscodeContextManager.get<string>('activeHost');
         if (!activeHost) {
             return undefined;
         }
         const isHealthy = await this.deviceManager.healthCheckDevice({ ip: activeHost }, true, false);
-        return isHealthy ? activeHost : undefined;
+        if (!isHealthy) {
+            return undefined;
+        }
+        const deviceInfo = this.deviceManager.getDevice({ ip: activeHost })?.deviceInfo;
+        //deviceInfo is required on HostWithDeviceInfo, so if we couldn't read it back, report no healthy active host
+        if (!deviceInfo) {
+            return undefined;
+        }
+        return { host: activeHost, deviceInfo: deviceInfo };
     }
 
     /**

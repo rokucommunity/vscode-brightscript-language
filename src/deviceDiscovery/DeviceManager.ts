@@ -1409,6 +1409,16 @@ export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
 export type ConfigurationScope = 'user' | 'workspace';
 
 /**
+ * A resolved host paired with the raw `device-info` gathered while probing it. Returned by the
+ * host-resolution flows (device picker, manual entry, active-host lookup) so callers can reuse the
+ * device info without issuing another request to the device.
+ */
+export interface HostWithDeviceInfo {
+    host: string;
+    deviceInfo: DeviceInfoRaw;
+}
+
+/**
  * User-configured device from settings (brightscript.devices)
  */
 export interface ConfiguredDevice {

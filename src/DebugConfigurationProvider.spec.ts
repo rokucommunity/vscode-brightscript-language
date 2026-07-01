@@ -84,8 +84,8 @@ describe('BrightScriptConfigurationProvider', () => {
             // Override any properties that would cause a prompt if not overridden
             configDefaults.host = '192.168.1.100';
             configDefaults.password = 'aaaa';
-            //return an empty deviceInfo response
-            sinon.stub(rokuDeploy, 'getDeviceInfo').returns(Promise.reject(new Error('Failure during test')));
+            //probing the host resolves a reachable developer device
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'developer-enabled': 'true', 'serial-number': 'SN-TEST' } as any);
             // short-circuit the password candidate validation loop so tests can focus on config resolution logic
             sinon.stub(DeviceManager.prototype, 'validateDevicePassword').resolves('ok');
         });
@@ -197,17 +197,80 @@ describe('BrightScriptConfigurationProvider', () => {
                 }
             });
 
-            it('leaves deviceInfo unset when the probe returns no device info', async () => {
+            it('throws when the probed device returns no device info', async () => {
                 sinon.stub(configProvider, 'getBsConfig').returns({});
                 sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '1.2.3.4', deviceInfo: {} } as any);
 
-                const config = await configProvider.resolveDebugConfiguration(folder, <any>{
-                    host: '1.2.3.4',
-                    type: 'brightscript',
-                    password: 'aaaa'
-                });
+                try {
+                    await configProvider.resolveDebugConfiguration(folder, <any>{
+                        host: '1.2.3.4',
+                        type: 'brightscript',
+                        password: 'aaaa'
+                    });
+                    assert.fail('Should have thrown exception');
+                } catch (e) {
+                    expect((e as Error)?.message).to.contain('unable to reach device');
+                }
+            });
+        });
 
-                expect(config.deviceInfo).to.be.undefined;
+        describe('processHostParameter', () => {
+            it('reuses the device from the picker instead of probing again', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
+                //the picker resolved the host, so the device is already registered
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                sinon.stub(userInputManager, 'promptForHost').resolves({ host: '1.2.3.4', deviceInfo: deviceInfo });
+                const getDeviceStub = sinon.stub(deviceManager, 'getDevice').returns(device);
+                const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves(undefined);
+
+                const result = await (configProvider as any).processHostParameter({ host: '' });
+
+                expect(getDeviceStub.calledWith({ ip: '1.2.3.4' })).to.be.true;
+                expect(validateStub.called).to.be.false;
+                expect(result.deviceInfo).to.eql(deviceInfo);
+            });
+
+            it('reuses the device from the healthy active host instead of probing again', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
+                //the active-host lookup resolved the host, so the device is already registered
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves({ host: '1.2.3.4', deviceInfo: deviceInfo }) };
+                const promptStub = sinon.stub(userInputManager, 'promptForHost');
+                const getDeviceStub = sinon.stub(deviceManager, 'getDevice').returns(device);
+                const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves(undefined);
+
+                const result = await (configProvider as any).processHostParameter({ host: '' });
+
+                expect(promptStub.called).to.be.false;
+                expect(getDeviceStub.calledWith({ ip: '1.2.3.4' })).to.be.true;
+                expect(validateStub.called).to.be.false;
+                expect(result.deviceInfo).to.eql(deviceInfo);
+            });
+
+            it('probes the host and attaches its device info when not chosen through the picker', async () => {
+                const deviceInfo = { 'serial-number': 'abc123' };
+                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
+                const getDeviceStub = sinon.stub(deviceManager, 'getDevice');
+                const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves(device);
+
+                const result = await (configProvider as any).processHostParameter({ host: '1.2.3.4' });
+
+                expect(validateStub.calledWith('1.2.3.4')).to.be.true;
+                expect(getDeviceStub.called).to.be.false;
+                expect(result.deviceInfo).to.eql(deviceInfo);
+            });
+
+            it('throws when the probe yields no device info', async () => {
+                sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '1.2.3.4', deviceInfo: {} } as any);
+
+                let threw: Error | undefined;
+                try {
+                    await (configProvider as any).processHostParameter({ host: '1.2.3.4' });
+                } catch (e) {
+                    threw = e as Error;
+                }
+                expect(threw?.message).to.contain('unable to reach device');
             });
         });
 
@@ -479,7 +542,13 @@ describe('BrightScriptConfigurationProvider', () => {
             config: Partial<BrightScriptLaunchConfiguration>,
             result: Partial<BrightScriptLaunchConfiguration>,
             device: any
-        ) => (configProvider as any).processPasswordParameter(config, result, device);
+        ) => {
+            //processPasswordParameter now reads the serial number from result.deviceInfo instead of a device arg
+            if (device?.serialNumber) {
+                (result as any).deviceInfo = { 'serial-number': device.serialNumber };
+            }
+            return (configProvider as any).processPasswordParameter(config, result);
+        };
 
         /**
          * Register the given serial number in `brightscript.devices[]` user settings

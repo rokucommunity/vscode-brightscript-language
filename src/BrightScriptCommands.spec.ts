@@ -18,6 +18,7 @@ Module.prototype.require = function hijacked(file) {
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { util } from './util';
 import { rokuDeploy } from 'roku-deploy';
+import { vscodeContextManager } from './managers/VscodeContextManager';
 
 describe('BrightScriptFileUtils ', () => {
     let commands: BrightScriptCommands;
@@ -440,6 +441,49 @@ describe('BrightScriptFileUtils ', () => {
                 assert.isTrue(restartStub.calledOnce);
                 assert.equal(restartStub.firstCall.args[0], undefined);
             });
+        });
+    });
+
+    describe('getHealthyActiveHost', () => {
+        let sandbox: sinon.SinonSandbox;
+        let localCommands: BrightScriptCommands;
+        let deviceManager: any;
+
+        beforeEach(() => {
+            sandbox = sinon.createSandbox();
+            deviceManager = {
+                healthCheckDevice: sandbox.stub().resolves(true),
+                getDevice: sandbox.stub().returns({ ip: '1.2.3.4', deviceInfo: { 'serial-number': 'SN123' } })
+            };
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
+            sandbox.stub(vscodeContextManager, 'get').returns('1.2.3.4');
+        });
+
+        afterEach(() => {
+            sandbox.restore();
+        });
+
+        it('returns the host with its device info when the active host is healthy', async () => {
+            const result = await localCommands.getHealthyActiveHost();
+            assert.deepEqual(result, { host: '1.2.3.4', deviceInfo: { 'serial-number': 'SN123' } });
+        });
+
+        it('returns undefined when no active host is set', async () => {
+            (vscodeContextManager.get as sinon.SinonStub).returns(undefined);
+            const result = await localCommands.getHealthyActiveHost();
+            assert.isUndefined(result);
+        });
+
+        it('returns undefined when the active host fails the health check', async () => {
+            deviceManager.healthCheckDevice.resolves(false);
+            const result = await localCommands.getHealthyActiveHost();
+            assert.isUndefined(result);
+        });
+
+        it('returns undefined when no device info could be read back', async () => {
+            deviceManager.getDevice.returns(undefined);
+            const result = await localCommands.getHealthyActiveHost();
+            assert.isUndefined(result);
         });
     });
 
