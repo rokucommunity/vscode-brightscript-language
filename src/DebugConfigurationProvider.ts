@@ -150,7 +150,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 : undefined;
             if (rawDeviceInfo) {
                 result.deviceInfo = rawDeviceInfo;
-                deviceInfo = rokuDeploy.normalizeDeviceInfo(rawDeviceInfo);
+                deviceInfo = rokuDeploy.enhanceDeviceInfo(rawDeviceInfo);
             }
 
             if (deviceInfo && !deviceInfo.developerEnabled) {
