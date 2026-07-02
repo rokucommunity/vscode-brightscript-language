@@ -62,9 +62,19 @@ jobs:
             console.log(`branch: "${branch}"`);
       - run: npm ci
       - run: npx ts-node scripts/create-vsix.ts ${{ steps.info.outputs.branch }}
+      # upload the production .vsix (archive: false only supports a single file, so
+      # upload each .vsix as its own artifact: upload, delete, repackage, upload again)
       - uses: actions/upload-artifact@v7
         with:
-          name: vscode-brightscript-language.vsix
+          name: brightscript.vsix
+          path: .vsix-building/vscode-brightscript-language/*.vsix
+          archive: false
+      - run: rm .vsix-building/vscode-brightscript-language/*.vsix
+      # repackage the extension as the side-by-side "temporary" variant and upload it
+      - run: npx ts-node scripts/create-temp-vsix.ts
+      - uses: actions/upload-artifact@v7
+        with:
+          name: brightscript-temp.vsix
           path: .vsix-building/vscode-brightscript-language/*.vsix
           archive: false
       # Look up this run's artifacts and print their download URLs
