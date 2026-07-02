@@ -1,4 +1,4 @@
-name: create-vsix
+name: build-vsix
 on:
   workflow_dispatch:
     inputs:
