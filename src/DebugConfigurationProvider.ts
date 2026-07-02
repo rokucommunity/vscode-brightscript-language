@@ -134,7 +134,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result.stagingFolderPath = result.stagingDir;
 
             result = await this.sanitizeConfiguration(result, folder);
-            result = await this.processEnvFile(folder, result);
+            result = await this.processEnvVariables(folder, result);
             const [resultAfterHost, device] = await this.processHostParameter(result);
             result = resultAfterHost;
             result = await this.processPasswordParameter(config, result, device);
@@ -421,12 +421,17 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Reads the manifest file and updates any config values that are mapped to it
+     * Resolves any `${env:*}` placeholders in the config using the process environment
+     * and (if present) the optional `.env` file, without mutating `process.env`.
      * @param folder current workspace folder
      * @param config current config object
      */
-    private async processEnvFile(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
-        //process .env file if present
+    private async processEnvVariables(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+        //start with a copy of the current process environment so we never mutate process.env
+        let environmentValues = { ...process.env };
+        let loadedEnvFile = false;
+
+        //layer any values from the .env file on top of the process environment (the .env file is optional)
         if (config.envFile) {
             let envFilePath = config.envFile;
             //resolve ${workspaceFolder} so we can actually load the .env file now
@@ -434,46 +439,55 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 envFilePath = config.envFile.replace('${workspaceFolder}', folder.uri.fsPath);
             }
             if (await this.util.fileExists(envFilePath) === false) {
-                throw new Error(`Cannot find .env file at "${envFilePath}`);
+                //the .env file is optional, so just warn instead of failing the debug session
+                console.warn(`Cannot find .env file at "${envFilePath}". Falling back to the process environment for '\${env:*}' values.`);
+            } else {
+                //parse the .env file, letting its values override the process environment
+                environmentValues = {
+                    ...environmentValues,
+                    ...dotenv.parse(await this.fsExtra.readFile(envFilePath))
+                };
+                loadedEnvFile = true;
             }
-            //parse the .env file
-            let envConfig = dotenv.parse(await this.fsExtra.readFile(envFilePath));
+        }
 
-            // temporarily convert entire config to string for any envConfig replacements.
-            let configString = JSON.stringify(config);
+        //describe where we looked so any "not found" message only mentions the sources we actually used
+        const environmentSourceLabel = loadedEnvFile ? 'environment variable or env file' : 'environment variable';
+
+        // temporarily convert entire config to string for any environment replacements.
+        let configString = JSON.stringify(config);
+        let match: RegExpMatchArray;
+        let regexp = /\$\{env:([\w\d_]*)\}/g;
+        let updatedConfigString = configString;
+
+        // apply any defined values to env placeholders
+        while ((match = regexp.exec(configString))) {
+            let environmentVariableName = match[1];
+            let environmentVariableValue = environmentValues[environmentVariableName];
+
+            if (environmentVariableValue) {
+                updatedConfigString = updatedConfigString.replace(match[0], environmentVariableValue);
+            }
+        }
+
+        config = JSON.parse(updatedConfigString);
+
+        let configDefaults = {
+            rootDir: config.rootDir,
+            ...this.configDefaults
+        };
+
+        // apply any default values to env placeholders
+        for (let key in config) {
+            let configValue = config[key];
             let match: RegExpMatchArray;
-            let regexp = /\$\{env:([\w\d_]*)\}/g;
-            let updatedConfigString = configString;
-
-            // apply any defined values to env placeholders
-            while ((match = regexp.exec(configString))) {
+            //replace all environment variable placeholders with their values
+            while ((match = regexp.exec(configValue))) {
                 let environmentVariableName = match[1];
-                let environmentVariableValue = envConfig[environmentVariableName];
-
-                if (environmentVariableValue) {
-                    updatedConfigString = updatedConfigString.replace(match[0], environmentVariableValue);
-                }
+                configValue = configDefaults[key];
+                console.log(`The configuration value for ${key} was not found in the environment variables${loadedEnvFile ? ' or env file' : ''} under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
             }
-
-            config = JSON.parse(updatedConfigString);
-
-            let configDefaults = {
-                rootDir: config.rootDir,
-                ...this.configDefaults
-            };
-
-            // apply any default values to env placeholders
-            for (let key in config) {
-                let configValue = config[key];
-                let match: RegExpMatchArray;
-                //replace all environment variable placeholders with their values
-                while ((match = regexp.exec(configValue))) {
-                    let environmentVariableName = match[1];
-                    configValue = configDefaults[key];
-                    console.log(`The configuration value for ${key} was not found in the env file under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
-                }
-                config[key] = configValue;
-            }
+            config[key] = configValue;
         }
         return config;
     }
