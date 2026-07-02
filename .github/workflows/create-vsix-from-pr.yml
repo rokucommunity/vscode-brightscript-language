@@ -38,14 +38,31 @@ jobs:
             const sha = '${{ github.event.pull_request.head.sha }}';
             const workflowUrl = '${{ steps.create-vsix.outputs.workflow-url }}';
 
-            const artifactsUrl = `https://github.com/rokucommunity/vscode-brightscript-language/actions/runs/${runId}/attempts/1#artifacts`;
+            // Fetch artifacts from the triggered workflow run
+            const artifactsResponse = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: 'rokucommunity',
+              repo: 'vscode-brightscript-language',
+              run_id: runId,
+            });
+
+            const artifacts = artifactsResponse.data.artifacts;
+            const vsixArtifact = artifacts.find(a => a.name === 'vscode-brightscript-language.vsix');
+
+            if (!vsixArtifact) {
+              console.log('ERROR: Could not find vsix artifact');
+              return;
+            }
+
+            // Construct direct download URL for the artifact
+            const artifactDownloadUrl = `https://github.com/rokucommunity/vscode-brightscript-language/actions/runs/${runId}/attempts/1/artifacts/${vsixArtifact.id}`;
 
             let body = 'Hey there! I just built a new version of the vscode extension based on ' + sha + '.\n\n';
             body += 'You can download the .vsix files here:\n';
-            body += '- **Production**: [vscode-brightscript-language.vsix](' + artifactsUrl + ')\n';
-            body += '- **Temporary (for parallel testing)**: Same artifact, look for `vscode-brightscript-language.vsix` (with `brightscript-temp` package ID)\n\n';
-            body += 'Then follow [these installation instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html).\n\n';
-            body += '[View all build artifacts →](' + workflowUrl + ')';
+            body += '- **Production** (brightscript): [vscode-brightscript-language.vsix](' + artifactDownloadUrl + ')\n';
+            body += '- **Temporary** (brightscript-temp): [vscode-brightscript-language.vsix](' + artifactDownloadUrl + ') ← same artifact, contains both\n\n';
+            body += 'Install whichever one you need via VS Code (Extensions → ... → Install from VSIX). The temporary version has a different package ID so it won\'t conflict with the production version.\n\n';
+            body += 'Then follow [these installation instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html) for full setup.\n\n';
+            body += '[View full workflow run →](' + workflowUrl + ')';
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
