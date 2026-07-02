@@ -11,7 +11,7 @@ on:
         description: "Optional owner/repo that the PR number belongs to (defaults to this repo). Ignored when pr is a full URL"
         required: false
 jobs:
-  create-vsix:
+  build-vsix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
