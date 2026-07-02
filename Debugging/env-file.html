@@ -4638,6 +4638,7 @@ ROKU_USERNAME=rokudev
 ROKU_PASSWORD=password123
 </code></pre>
 <p>This extension uses the <a href="https://www.npmjs.com/package/dotenv">dotenv</a> npm module for parsing the <code>.env</code> files, so see <a href="https://github.com/motdotla/dotenv#rules">this link</a> for syntax information.</p>
+<a href="#process-environment"><h2 id="process-environment">Process environment</h2></a><p>The <code>envFile</code> is optional. Any <code>${env:YOUR_VAR_NAME}</code> reference is resolved against the process environment (the environment VS Code was launched with) as well. When an <code>envFile</code> is provided, its values take precedence over the process environment. If the referenced <code>envFile</code> cannot be found, the extension falls back to the process environment instead of failing the debug session.</p>
             <div id="footer"></div>
         </div>
     </div>
