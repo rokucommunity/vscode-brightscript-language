@@ -1,3 +1,4 @@
+name: build-vsix
 on:
   workflow_dispatch:
     inputs:
