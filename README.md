@@ -41,7 +41,7 @@ For a full list of features and settings, please see our [documentation website]
 
 - [Language Server Errors and Warnings](https://rokucommunity.github.io/vscode-brightscript-language/Editing/error-handling.html) - Ways to handle different errors show by the language server
 - [Code formatting](https://rokucommunity.github.io/vscode-brightscript-language/Editing/code-formatting.html) - How to set up code formatting and the different formatting options.
-- [Code Snippets](https://rokucommunity.github.io/vscode-brightscript-language/Editing/snippets.html) - A collection of useful code sippets
+- [Code Snippets](https://rokucommunity.github.io/vscode-brightscript-language/Editing/snippets.html) - A collection of useful code snippets
 
 ### Tasks
 
