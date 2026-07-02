@@ -28,14 +28,28 @@ jobs:
           token: ${{ env.TOKEN }}
           inputs: '{ "branch": "${{ github.head_ref }}"}'
       #add a comment on the PR
-      - name: Add comment to PR
+      - name: Add comment to PR with artifact download links
         uses: actions/github-script@v5
         with:
           github-token: ${{ env.TOKEN }}
           script: |
+            const { owner, repo } = context.repo;
+            const runId = ${{ steps.create-vsix.outputs.run-id }};
+            const sha = '${{ github.event.pull_request.head.sha }}';
+            const workflowUrl = '${{ steps.create-vsix.outputs.workflow-url }}';
+
+            const artifactsUrl = `https://github.com/rokucommunity/vscode-brightscript-language/actions/runs/${runId}/attempts/1#artifacts`;
+
+            let body = 'Hey there! I just built a new version of the vscode extension based on ' + sha + '.\n\n';
+            body += 'You can download the .vsix files here:\n';
+            body += '- **Production**: [vscode-brightscript-language.vsix](' + artifactsUrl + ')\n';
+            body += '- **Temporary (for parallel testing)**: Same artifact, look for `vscode-brightscript-language.vsix` (with `brightscript.temp` package ID)\n\n';
+            body += 'Then follow [these installation instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html).\n\n';
+            body += '[View all build artifacts →](' + workflowUrl + ')';
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: 'Hey there! I just built a new version of the vscode extension based on ${{ github.event.pull_request.head.sha }}. You can downloaded the .vsix [here](${{steps.create-vsix.outputs.workflow-url}}) and then follow [these installation instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html).'
+              owner: owner,
+              repo: repo,
+              body: body
             })

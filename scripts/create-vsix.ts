@@ -36,8 +36,34 @@ function main() {
         processProject(project, branch);
     }
 
-    log('Building and packaging the extension');
-    execSync('npm run package', { cwd: 'vscode-brightscript-language' });
+    log('All projects processed - .vsix packages created in processProject');
+}
+
+function createVsixPackages(buildVersion: string) {
+    const packageJsonPath = `${tempDir}/vscode-brightscript-language/package.json`;
+
+    // First, create the standard .vsix
+    log('Creating standard .vsix package');
+    execSync('npm run create-package', {
+        cwd: `${tempDir}/vscode-brightscript-language`
+    });
+
+    // Then create a temp version with different package ID
+    log('Creating temporary .vsix package (with brightscript.temp ID)');
+    const packageJson = fsExtra.readJsonSync(packageJsonPath);
+    const originalName = packageJson.name;
+    packageJson.name = 'brightscript.temp';
+    fsExtra.writeJsonSync(packageJsonPath, packageJson, { spaces: 4 });
+
+    execSync('npm run create-package', {
+        cwd: `${tempDir}/vscode-brightscript-language`
+    });
+
+    // Restore original package.json
+    packageJson.name = originalName;
+    fsExtra.writeJsonSync(packageJsonPath, packageJson, { spaces: 4 });
+
+    log('Created both standard and temp .vsix packages');
 }
 
 function processProject(project: Project, branch: string) {
@@ -65,6 +91,11 @@ function processProject(project: Project, branch: string) {
     execSync(`npm i && npm run build && npm pack`, {
         cwd: project.name
     });
+
+    // Create .vsix packages for vscode-brightscript-language
+    if (project.name === 'vscode-brightscript-language') {
+        createVsixPackages(buildVersion);
+    }
 
     project.packagePath = `file:/${tempDir}/${project.name}/${project.name}-${buildVersion}.tgz`;
     project.processed = true;

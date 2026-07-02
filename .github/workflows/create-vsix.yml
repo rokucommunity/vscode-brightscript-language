@@ -19,3 +19,4 @@ jobs:
         with:
           name: vscode-brightscript-language.vsix
           path: .vsix-building/vscode-brightscript-language/*.vsix
+          archive: false
