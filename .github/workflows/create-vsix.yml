@@ -23,7 +23,7 @@ jobs:
       - name: Build vsix
         uses: the-actions-org/workflow-dispatch@v4
         with:
-          workflow: create-vsix
+          workflow: build-vsix
           ref: master
           display-workflow-run-url: true
           repo: rokucommunity/vscode-brightscript-language
