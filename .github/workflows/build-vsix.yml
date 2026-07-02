@@ -117,8 +117,9 @@ jobs:
             const artifacts = ${{ steps.artifacts.outputs.artifacts }};
             const sha = '${{ steps.info.outputs.prSha }}';
 
-            const prod = artifacts.find(a => a.name === 'brightscript.vsix');
-            const temp = artifacts.find(a => a.name === 'brightscript-temp.vsix');
+            //upload-artifact names the artifact after the matched file (which includes the version/timestamp), so match by prefix
+            const temp = artifacts.find(a => a.name.startsWith('brightscript-temp'));
+            const prod = artifacts.find(a => a.name.startsWith('brightscript-') && a !== temp);
 
             let body = 'Hey there! I just built a new version of the vscode extension based on [' + sha.substring(0, 7) + '](https://github.com/' + '${{ steps.info.outputs.prOwner }}' + '/' + '${{ steps.info.outputs.prRepo }}' + '/commit/' + sha + ').\n\n';
             body += 'Download:\n';
