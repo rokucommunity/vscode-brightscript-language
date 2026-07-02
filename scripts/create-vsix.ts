@@ -52,7 +52,13 @@ function createVsixPackages(buildVersion: string) {
     log('Creating temporary .vsix package (with brightscript-temp ID)');
     const packageJson = fsExtra.readJsonSync(packageJsonPath);
     const originalName = packageJson.name;
+    const originalDisplayName = packageJson.displayName;
+    const originalDescription = packageJson.description;
+
     packageJson.name = 'brightscript-temp';
+    packageJson.displayName = 'BrightScript Language (Temporary)';
+    packageJson.description = '[TEMPORARY BUILD] ' + originalDescription;
+
     fsExtra.writeJsonSync(packageJsonPath, packageJson, { spaces: 4 });
 
     execSync('npm run create-package', {
@@ -61,6 +67,8 @@ function createVsixPackages(buildVersion: string) {
 
     // Restore original package.json
     packageJson.name = originalName;
+    packageJson.displayName = originalDisplayName;
+    packageJson.description = originalDescription;
     fsExtra.writeJsonSync(packageJsonPath, packageJson, { spaces: 4 });
 
     log('Created both standard and temp .vsix packages');
