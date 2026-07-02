@@ -24,7 +24,7 @@ jobs:
         uses: the-actions-org/workflow-dispatch@v4
         with:
           workflow: build-vsix
-          ref: dual-vsix
+          ref: master
           display-workflow-run-url: true
           repo: rokucommunity/vscode-brightscript-language
           token: ${{ steps.generate-token.outputs.token }}
