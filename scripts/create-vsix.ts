@@ -73,15 +73,22 @@ function processProject(project: Project, branch: string) {
     });
 
     //`npm pack` names the tarball after the package.json `name` field (scopes become dashes, e.g. `@rokucommunity/logger` -> `rokucommunity-logger-<version>.tgz`)
-    const packageName = fsExtra.readJsonSync(`${project.name}/package.json`).name as string;
-    const tarballName = packageName.replace(/^@/, '').replace('/', '-');
+    project.packageName = fsExtra.readJsonSync(`${project.name}/package.json`).name as string;
+    const tarballName = project.packageName.replace(/^@/, '').replace('/', '-');
     project.packagePath = `file:/${tempDir}/${project.name}/${tarballName}-${buildVersion}.tgz`;
     project.processed = true;
     log(`${project.name}: done`);
 }
 
 interface Project {
+    /**
+     * The name of the GitHub repo, e.g. `logger` for https://github.com/rokucommunity/logger
+     */
     name: string;
+    /**
+     * The published npm package name, e.g. `@rokucommunity/logger`. Populated automatically from the cloned repo's package.json
+     */
+    packageName?: string;
     dependencies: string[];
     packagePath?: string;
     processed: boolean;
