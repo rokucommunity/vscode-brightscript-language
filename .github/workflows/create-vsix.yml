@@ -117,13 +117,14 @@ jobs:
             const artifacts = ${{ steps.artifacts.outputs.artifacts }};
             const sha = '${{ steps.info.outputs.prSha }}';
 
-            let body = 'Hey there! I just built a new version of the vscode extension based on ' + sha + '.\n\n';
+            const prod = artifacts.find(a => a.name === 'brightscript.vsix');
+            const temp = artifacts.find(a => a.name === 'brightscript-temp.vsix');
+
+            let body = 'Hey there! I just built a new version of the vscode extension based on [' + sha.substring(0, 7) + '](https://github.com/' + '${{ steps.info.outputs.prOwner }}' + '/' + '${{ steps.info.outputs.prRepo }}' + '/commit/' + sha + ').\n\n';
             body += 'Download:\n';
-            for (const artifact of artifacts) {
-              body += '- [' + artifact.name + '](' + artifact.url + ')\n';
-            }
-            body += '\nThe download contains two .vsix files: the normal `brightscript` build, and a `brightscript-temp` build that can be installed side-by-side with the production extension without replacing it.\n\n';
-            body += 'Then follow [these installation instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html).';
+            body += '- [brightscript (replaces store version)](' + prod.url + ')\n';
+            body += '- [brightscript-temp (side-by-side install)](' + temp.url + ')\n';
+            body += '\n[Install instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html).';
 
             await github.rest.issues.createComment({
               owner: '${{ steps.info.outputs.prOwner }}',
