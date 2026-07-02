@@ -43,7 +43,7 @@ jobs:
             let body = 'Hey there! I just built a new version of the vscode extension based on ' + sha + '.\n\n';
             body += 'You can download the .vsix files here:\n';
             body += '- **Production**: [vscode-brightscript-language.vsix](' + artifactsUrl + ')\n';
-            body += '- **Temporary (for parallel testing)**: Same artifact, look for `vscode-brightscript-language.vsix` (with `brightscript.temp` package ID)\n\n';
+            body += '- **Temporary (for parallel testing)**: Same artifact, look for `vscode-brightscript-language.vsix` (with `brightscript-temp` package ID)\n\n';
             body += 'Then follow [these installation instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html).\n\n';
             body += '[View all build artifacts →](' + workflowUrl + ')';
 

@@ -49,10 +49,10 @@ function createVsixPackages(buildVersion: string) {
     });
 
     // Then create a temp version with different package ID
-    log('Creating temporary .vsix package (with brightscript.temp ID)');
+    log('Creating temporary .vsix package (with brightscript-temp ID)');
     const packageJson = fsExtra.readJsonSync(packageJsonPath);
     const originalName = packageJson.name;
-    packageJson.name = 'brightscript.temp';
+    packageJson.name = 'brightscript-temp';
     fsExtra.writeJsonSync(packageJsonPath, packageJson, { spaces: 4 });
 
     execSync('npm run create-package', {
