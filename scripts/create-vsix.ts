@@ -8,6 +8,7 @@ const tempDir = s`${__dirname}/../.vsix-building`;
 const baseUrl = 'https://github.com/rokucommunity';
 const projects = [{
     name: 'logger',
+    packageName: '@rokucommunity/logger',
     dependencies: []
 }, {
     name: 'roku-test-automation',
@@ -73,8 +74,7 @@ function processProject(project: Project, branch: string) {
     });
 
     //`npm pack` names the tarball after the package.json `name` field (scopes become dashes, e.g. `@rokucommunity/logger` -> `rokucommunity-logger-<version>.tgz`)
-    project.packageName = fsExtra.readJsonSync(`${project.name}/package.json`).name as string;
-    const tarballName = project.packageName.replace(/^@/, '').replace('/', '-');
+    const tarballName = (project.packageName ?? project.name).replace(/^@/, '').replace('/', '-');
     project.packagePath = `file:/${tempDir}/${project.name}/${tarballName}-${buildVersion}.tgz`;
     project.processed = true;
     log(`${project.name}: done`);
@@ -86,7 +86,7 @@ interface Project {
      */
     name: string;
     /**
-     * The published npm package name, e.g. `@rokucommunity/logger`. Populated automatically from the cloned repo's package.json
+     * The published npm package name, if different from the repo name, e.g. `@rokucommunity/logger`
      */
     packageName?: string;
     dependencies: string[];
