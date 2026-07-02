@@ -7,24 +7,23 @@ const silent = process.argv.includes('--silent');
 const tempDir = s`${__dirname}/../.vsix-building`;
 const baseUrl = 'https://github.com/rokucommunity';
 const projects = [{
-    name: 'roku-deploy',
-    dependencies: []
-}, {
-    name: 'brighterscript',
-    dependencies: ['roku-deploy']
-}, {
-    name: 'roku-debug',
-    dependencies: ['roku-deploy', 'brighterscript']
-}, {
-    name: 'brighterscript-formatter',
-    dependencies: ['brighterscript']
-}, {
     name: 'logger',
-    packageName: '@rokucommunity/logger',
     dependencies: []
 }, {
     name: 'roku-test-automation',
     dependencies: []
+}, {
+    name: 'roku-deploy',
+    dependencies: []
+}, {
+    name: 'brighterscript',
+    dependencies: ['roku-deploy', 'logger']
+}, {
+    name: 'roku-debug',
+    dependencies: ['roku-deploy', 'brighterscript', 'logger']
+}, {
+    name: 'brighterscript-formatter',
+    dependencies: ['brighterscript']
 }, {
     name: 'vscode-brightscript-language',
     dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy', 'logger', 'roku-test-automation']
@@ -74,7 +73,8 @@ function processProject(project: Project, branch: string) {
     });
 
     //`npm pack` names the tarball after the package.json `name` field (scopes become dashes, e.g. `@rokucommunity/logger` -> `rokucommunity-logger-<version>.tgz`)
-    const tarballName = (project.packageName ?? project.name).replace(/^@/, '').replace('/', '-');
+    const packageName = fsExtra.readJsonSync(`${project.name}/package.json`).name as string;
+    const tarballName = packageName.replace(/^@/, '').replace('/', '-');
     project.packagePath = `file:/${tempDir}/${project.name}/${tarballName}-${buildVersion}.tgz`;
     project.processed = true;
     log(`${project.name}: done`);
@@ -82,10 +82,6 @@ function processProject(project: Project, branch: string) {
 
 interface Project {
     name: string;
-    /**
-     * The published npm package name, if different from the repo name (e.g. `logger`'s package is `@rokucommunity/logger`)
-     */
-    packageName?: string;
     dependencies: string[];
     packagePath?: string;
     processed: boolean;
