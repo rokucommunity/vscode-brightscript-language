@@ -451,9 +451,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
         }
 
-        //describe where we looked so any "not found" message only mentions the sources we actually used
-        const environmentSourceLabel = loadedEnvFile ? 'environment variable or env file' : 'environment variable';
-
         // temporarily convert entire config to string for any environment replacements.
         let configString = JSON.stringify(config);
         let match: RegExpMatchArray;
