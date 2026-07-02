@@ -19,8 +19,15 @@ const projects = [{
     name: 'brighterscript-formatter',
     dependencies: ['brighterscript']
 }, {
+    name: 'logger',
+    packageName: '@rokucommunity/logger',
+    dependencies: []
+}, {
+    name: 'roku-test-automation',
+    dependencies: []
+}, {
     name: 'vscode-brightscript-language',
-    dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy']
+    dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy', 'logger', 'roku-test-automation']
 }] as Project[];
 
 function main() {
@@ -66,13 +73,19 @@ function processProject(project: Project, branch: string) {
         cwd: project.name
     });
 
-    project.packagePath = `file:/${tempDir}/${project.name}/${project.name}-${buildVersion}.tgz`;
+    //`npm pack` names the tarball after the package.json `name` field (scopes become dashes, e.g. `@rokucommunity/logger` -> `rokucommunity-logger-<version>.tgz`)
+    const tarballName = (project.packageName ?? project.name).replace(/^@/, '').replace('/', '-');
+    project.packagePath = `file:/${tempDir}/${project.name}/${tarballName}-${buildVersion}.tgz`;
     project.processed = true;
     log(`${project.name}: done`);
 }
 
 interface Project {
     name: string;
+    /**
+     * The published npm package name, if different from the repo name (e.g. `logger`'s package is `@rokucommunity/logger`)
+     */
+    packageName?: string;
     dependencies: string[];
     packagePath?: string;
     processed: boolean;
