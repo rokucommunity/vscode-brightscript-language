@@ -73,6 +73,59 @@ describe('BrightScriptConfigurationProvider', () => {
         sinon.restore();
     });
 
+    describe('applyInspectMode', () => {
+        const tsPath = 'pkg:/source/compiled/index.brs';
+
+        function applyInspectMode(config: Partial<BrightScriptLaunchConfiguration>) {
+            (configProvider as any).applyInspectMode(config);
+            return config as BrightScriptLaunchConfiguration;
+        }
+
+        it('adds inspect=1 form data for a TypeScript/JS app (has ts_path)', () => {
+            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            const config = applyInspectMode({ rootDir: rootDir });
+            expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
+        });
+
+        it('omits `route` so it defaults downstream in roku-deploy', () => {
+            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            const config = applyInspectMode({ rootDir: rootDir });
+            expect(config.packageUploadOverrides.route).to.be.undefined;
+        });
+
+        it('does nothing for a BrightScript-only app (no ts_path)', () => {
+            sinon.stub(configProvider.util, 'getTsPath').returns(undefined);
+            const config = applyInspectMode({ rootDir: rootDir });
+            expect(config.packageUploadOverrides).to.be.undefined;
+        });
+
+        it('merges into existing form data without clobbering other keys', () => {
+            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            const config = applyInspectMode({
+                rootDir: rootDir,
+                packageUploadOverrides: { route: 'custom_route', formData: { custom: 'value' } }
+            });
+            expect(config.packageUploadOverrides.route).to.equal('custom_route');
+            expect(config.packageUploadOverrides.formData.custom).to.equal('value');
+            expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
+        });
+
+        it('does not clobber an explicit user-provided inspect value', () => {
+            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            const config = applyInspectMode({
+                rootDir: rootDir,
+                packageUploadOverrides: { route: 'plugin_install', formData: { inspect: '0' } }
+            });
+            expect(config.packageUploadOverrides.formData.inspect).to.equal('0');
+        });
+
+        it('is applied by resolveDebugConfigurationWithSubstitutedVariables', () => {
+            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            const config = configProvider.resolveDebugConfigurationWithSubstitutedVariables(folder, { rootDir: rootDir } as BrightScriptLaunchConfiguration);
+            expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
+        });
+    });
+
     describe('resolveDebugConfiguration', () => {
         let existingConfigDefaults;
         beforeEach(() => {

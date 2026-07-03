@@ -348,7 +348,7 @@ export class Extension {
             this.webviewViewProviderManager.onDidStartDebugSession(debugSession);
             const configuration = debugSession.configuration as BrightScriptLaunchConfiguration;
 
-            const tsPath = this.getTsPath(configuration.rootDir);
+            const tsPath = util.getTsPath(configuration.rootDir);
             if (tsPath) {
                 this.attachJsDebugger(debugSession, tsPath).catch(e => console.error(e));
             }
@@ -441,13 +441,6 @@ export class Extension {
         }
         // Parent session ended while we were trying to attach
         return false;
-    }
-
-    private getTsPath(rootDir: string) {
-        const contents = fsExtra.readFileSync(`${rootDir}/manifest`).toString();
-        // https://regex101.com/r/qgLxGh/1
-        const tsPath = /ts_path[ \t]*=[ \t]*(.*)?(?=[\r?\n]|$)/ig.exec(contents);
-        return tsPath?.[1]?.trim();
     }
 
     private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {

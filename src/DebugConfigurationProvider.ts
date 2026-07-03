@@ -181,6 +181,35 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
+     * Runs after `resolveDebugConfiguration` (variables substituted) and after the preLaunchTask, so
+     * the app is already built/staged and its manifest is readable here.
+     */
+    public resolveDebugConfigurationWithSubstitutedVariables(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration): BrightScriptLaunchConfiguration {
+        this.applyInspectMode(config);
+        return config;
+    }
+
+    /**
+     * For TS/JS (Solid) apps, append `inspect=1` to the `plugin_install` sideload form so the device
+     * waits for the JS (Hermes) debugger at startup, letting us hit early breakpoints (mirrors the
+     * rsg-sdk `--inspect-persist` flag; ignored on firmware < 16.0). Merges into any existing
+     * `packageUploadOverrides.formData` without clobbering other keys or an explicit `inspect` value.
+     */
+    private applyInspectMode(config: BrightScriptLaunchConfiguration) {
+        const tsPath = this.util.getTsPath(config.rootDir);
+        //BrightScript-only apps have no JS debugger to wait for
+        if (!tsPath) {
+            this.extensionOutputChannel.appendLine(`[inspect] skipped: no ts_path under '${config.rootDir}'`);
+            return;
+        }
+        //`route` defaults to 'plugin_install' downstream, so omit it; cast since the type marks it required
+        config.packageUploadOverrides ??= {} as NonNullable<BrightScriptLaunchConfiguration['packageUploadOverrides']>;
+        config.packageUploadOverrides.formData ??= {};
+        config.packageUploadOverrides.formData.inspect ??= '1';
+        this.extensionOutputChannel.appendLine(`[inspect] applied inspect=1 (ts_path='${tsPath}')`);
+    }
+
+    /**
      * There are several debug-level config values that can be stored in user settings, so get those
      */
     private processUserWorkspaceSettings(config: BrightScriptLaunchConfiguration): BrightScriptLaunchConfiguration {
