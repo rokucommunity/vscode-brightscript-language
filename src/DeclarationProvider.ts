@@ -253,12 +253,21 @@ export class DeclarationProvider implements Disposable {
 
         let namespaces = new Set<string>();
         let classes = new Set<string>();
-        let namespaceSymbol: BrightScriptDeclaration | null;
-        let classSymbol: BrightScriptDeclaration | null;
         let enums = new Set<string>();
         let interfaces = new Set<string>();
-        let interfaceSymbol: BrightScriptDeclaration | null;
-        let enumSymbol: BrightScriptDeclaration | null;
+
+        // Stack of container declarations (namespace/class/interface/enum) that are currently open.
+        // The innermost open container is the parent for any symbols found inside it, so the outline
+        // nests correctly. Each container's bodyRange is closed out when its matching `end` is reached.
+        let containerStack: BrightScriptDeclaration[] = [];
+        const currentContainer = () => (containerStack.length > 0 ? containerStack[containerStack.length - 1] : container);
+        const closeContainer = (kind: SymbolKind, endLine: number, endChar: number) => {
+            const openContainer = containerStack[containerStack.length - 1];
+            if (openContainer && openContainer.kind === kind) {
+                openContainer.bodyRange = openContainer.bodyRange.with({ end: new Position(endLine, endChar) });
+                containerStack.pop();
+            }
+        };
 
         for (const [line, text] of iterlines(input)) {
             // console.log("" + line + ": " + text);
@@ -276,18 +285,12 @@ export class DeclarationProvider implements Disposable {
                 currentFunction = new BrightScriptDeclaration(
                     match[1].trim(),
                     match[1].trim().toLowerCase() === 'new' ? SymbolKind.Constructor : SymbolKind.Function,
-                    container,
+                    currentContainer(),
                     match[2].split(','),
                     new Range(line, match[0].length - match[1].length - match[2].length - 2, line, match[0].length - 1),
                     new Range(line, 0, line, text.length)
                 );
                 symbols.push(currentFunction);
-
-                if (classSymbol) {
-                    currentFunction.container = classSymbol;
-                } else if (namespaceSymbol) {
-                    currentFunction.container = namespaceSymbol;
-                }
                 continue;
             }
 
@@ -297,6 +300,8 @@ export class DeclarationProvider implements Disposable {
                 // console.log("function END");
                 if (currentFunction !== undefined) {
                     currentFunction.bodyRange = currentFunction.bodyRange.with({ end: new Position(funcEndLine, funcEndChar) });
+                    //reset so the function's range isn't stretched over whatever follows it (e.g. a nested namespace)
+                    currentFunction = undefined;
                 }
                 continue;
             }
@@ -311,19 +316,13 @@ export class DeclarationProvider implements Disposable {
                     let varSymbol = new BrightScriptDeclaration(
                         name,
                         SymbolKind.Field,
-                        container,
+                        currentContainer(),
                         undefined,
                         new Range(line, match[0].length - match[1].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
                     );
                     // console.log('FOUND VAR ' + varSymbol.name);
                     symbols.push(varSymbol);
-
-                    if (classSymbol) {
-                        varSymbol.container = classSymbol;
-                    } else if (namespaceSymbol) {
-                        varSymbol.container = namespaceSymbol;
-                    }
                 }
                 continue;
             }
@@ -333,10 +332,13 @@ export class DeclarationProvider implements Disposable {
             if (match !== null) {
                 const name = match[1].trim();
                 if (name) {
-                    namespaceSymbol = new BrightScriptDeclaration(
-                        name,
+                    // For nested/dotted namespaces (e.g. `get.deep`), show only the final
+                    // segment (`deep`) in the outline, matching the language server behavior.
+                    const displayName = name.split('.').pop();
+                    const namespaceSymbol = new BrightScriptDeclaration(
+                        displayName,
                         SymbolKind.Namespace,
-                        container,
+                        currentContainer(),
                         undefined,
                         new Range(line, match[0].length - match[1].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
@@ -344,12 +346,15 @@ export class DeclarationProvider implements Disposable {
                     // console.log('FOUND NAMESPACES ' + namespaceSymbol.name);
                     symbols.push(namespaceSymbol);
                     namespaces.add(name.toLowerCase());
+                    containerStack.push(namespaceSymbol);
                 }
+                continue;
             }
             //end namespace declaration
             match = /^(?: |\t)*end namespace.*$/i.exec(text);
-            if (match !== null && namespaceSymbol) {
-                namespaceSymbol = null;
+            if (match !== null) {
+                closeContainer(SymbolKind.Namespace, line, text.length);
+                continue;
             }
 
             //start enum declaration
@@ -357,10 +362,10 @@ export class DeclarationProvider implements Disposable {
             if (match !== null) {
                 const name = match[1].trim();
                 if (name) {
-                    enumSymbol = new BrightScriptDeclaration(
+                    const enumSymbol = new BrightScriptDeclaration(
                         name,
                         SymbolKind.Enum,
-                        container,
+                        currentContainer(),
                         undefined,
                         new Range(line, match[0].length - match[1].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
@@ -368,12 +373,15 @@ export class DeclarationProvider implements Disposable {
                     // console.log('FOUND enumS ' + enumSymbol.name);
                     symbols.push(enumSymbol);
                     enums.add(name.toLowerCase());
+                    containerStack.push(enumSymbol);
                 }
+                continue;
             }
             //end enum declaration
             match = /^(?: |\t)*end enum.*$/i.exec(text);
-            if (match !== null && enumSymbol) {
-                enumSymbol = null;
+            if (match !== null) {
+                closeContainer(SymbolKind.Enum, line, text.length);
+                continue;
             }
 
             //start class declaration
@@ -381,10 +389,10 @@ export class DeclarationProvider implements Disposable {
             if (match !== null) {
                 const name = match[2].trim();
                 if (name) {
-                    classSymbol = new BrightScriptDeclaration(
+                    const classSymbol = new BrightScriptDeclaration(
                         name,
                         SymbolKind.Class,
-                        container,
+                        currentContainer(),
                         undefined,
                         new Range(line, match[0].length - match[2].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
@@ -392,17 +400,26 @@ export class DeclarationProvider implements Disposable {
                     // console.log('FOUND CLASS ' + classSymbol.name);
                     symbols.push(classSymbol);
                     classes.add(name.toLowerCase());
+                    containerStack.push(classSymbol);
                 }
+                continue;
             }
+            //end class declaration
+            match = /^(?: |\t)*end class.*$/i.exec(text);
+            if (match !== null) {
+                closeContainer(SymbolKind.Class, line, text.length);
+                continue;
+            }
+
             //start interface declaration
             match = /(?:(interface)\s+([a-z_][a-z0-9_]*))\s*(?:extends\s*([a-z_][a-z0-9_]+))*$/i.exec(text);
             if (match !== null) {
                 const name = match[2].trim();
                 if (name) {
-                    interfaceSymbol = new BrightScriptDeclaration(
+                    const interfaceSymbol = new BrightScriptDeclaration(
                         name,
                         SymbolKind.Interface,
-                        container,
+                        currentContainer(),
                         undefined,
                         new Range(line, match[0].length - match[2].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
@@ -410,7 +427,15 @@ export class DeclarationProvider implements Disposable {
                     // console.log('FOUND interface ' + interfaceSymbol.name);
                     symbols.push(interfaceSymbol);
                     interfaces.add(name.toLowerCase());
+                    containerStack.push(interfaceSymbol);
                 }
+                continue;
+            }
+            //end interface declaration
+            match = /^(?: |\t)*end interface.*$/i.exec(text);
+            if (match !== null) {
+                closeContainer(SymbolKind.Interface, line, text.length);
+                continue;
             }
 
         }

@@ -393,17 +393,26 @@ export let vscode = {
         public label: string;
         public documentation: any;
     },
-    Range: class {
+    Range: class Range {
         constructor(startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
             this.startLine = startLine;
             this.startCharacter = startCharacter;
             this.endLine = endLine;
             this.endCharacter = endCharacter;
+            this.start = { line: startLine, character: startCharacter };
+            this.end = { line: endLine, character: endCharacter };
         }
         public startLine: number;
         public startCharacter: number;
         public endLine: number;
         public endCharacter: number;
+        public start: { line: number; character: number };
+        public end: { line: number; character: number };
+        public with(change: { start?: { line: number; character: number }; end?: { line: number; character: number } }) {
+            const start = change.start ?? this.start;
+            const end = change.end ?? this.end;
+            return new Range(start.line, start.character, end.line, end.character);
+        }
     },
     SymbolKind: {
         File: 0,
