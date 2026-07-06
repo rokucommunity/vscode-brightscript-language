@@ -29,3 +29,7 @@ ROKU_PASSWORD=password123
 ```
 
 This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm module for parsing the `.env` files, so see [this link](https://github.com/motdotla/dotenv#rules) for syntax information.
+
+## Process environment
+
+The `envFile` is optional. Any `${env:YOUR_VAR_NAME}` reference is resolved against the process environment (the environment VS Code was launched with) as well. When an `envFile` is provided, its values take precedence over the process environment. If the referenced `envFile` cannot be found, the extension falls back to the process environment instead of failing the debug session.
