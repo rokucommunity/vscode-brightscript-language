@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.67.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.0...v2.67.1) - 2026-07-06
+### Changed
+ - Reuse probed device-info for launch and host selection ([#839](https://github.com/rokucommunity/vscode-brightscript-language/pull/839))
+ - Make .env file optional and support loading system env vars ([#842](https://github.com/rokucommunity/vscode-brightscript-language/pull/842))
+ - upgrade to [brighterscript-formatter@1.8.1](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#181---2026-06-30). Notable changes since 1.8.0:
+     - Fix de-indent of multi-line call continuation lines ending with a closing paren ([#147](https://github.com/rokucommunity/brighterscript-formatter/pull/147))
+ - upgrade to [roku-debug@0.23.15](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02315---2026-07-06). Notable changes since 0.23.14:
+     - Accept device-info in the launch config to skip the device-info request ([#381](https://github.com/rokucommunity/roku-debug/pull/381))
+     - Prevent orphaned debug adapter after client disconnect ([#383](https://github.com/rokucommunity/roku-debug/pull/383))
+ - upgrade to [roku-deploy@3.17.7](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3177---2026-07-06). Notable changes since 3.17.6:
+     - Fix: potential crash in normalizeDeviceInfoFieldValue when supplied non-string values ([#301](https://github.com/rokucommunity/roku-deploy/pull/301))
+
+
 ## [2.67.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.4...v2.67.0) - 2026-06-29
 ### Added
  - `enablePostfix` option to component library launch schema ([#832](https://github.com/rokucommunity/vscode-brightscript-language/pull/832))
