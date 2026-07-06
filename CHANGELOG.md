@@ -9,27 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.67.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.0...v2.67.1) - 2026-07-06
 ### Changed
  - Reuse probed device-info for launch and host selection ([#839](https://github.com/rokucommunity/vscode-brightscript-language/pull/839))
- - Produce temp vsix that doesn't conflict with the prod version ([#841](https://github.com/rokucommunity/vscode-brightscript-language/pull/841))
  - Make .env file optional and support loading system env vars ([#842](https://github.com/rokucommunity/vscode-brightscript-language/pull/842))
  - upgrade to [brighterscript-formatter@1.8.1](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#181---2026-06-30). Notable changes since 1.8.0:
      - Fix de-indent of multi-line call continuation lines ending with a closing paren ([#147](https://github.com/rokucommunity/brighterscript-formatter/pull/147))
  - upgrade to [roku-debug@0.23.15](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02315---2026-07-06). Notable changes since 0.23.14:
-     - chore: Update create-vsix to support multi-vsix and shared bot logic ([#382](https://github.com/rokucommunity/roku-debug/pull/382))
      - Accept device-info in the launch config to skip the device-info request ([#381](https://github.com/rokucommunity/roku-debug/pull/381))
      - Prevent orphaned debug adapter after client disconnect ([#383](https://github.com/rokucommunity/roku-debug/pull/383))
-     - Make packageUploadOverrides route and formData optional ([#380](https://github.com/rokucommunity/roku-debug/pull/380))
  - upgrade to [roku-deploy@3.17.7](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3177---2026-07-06). Notable changes since 3.17.6:
-     - chore: Update create-vsix to support multi-vsix and shared bot logic ([#305](https://github.com/rokucommunity/roku-deploy/pull/305))
-     - Extract normalizeDeviceInfo helper from getDeviceInfo ([#300](https://github.com/rokucommunity/roku-deploy/pull/300))
      - Fix: potential crash in normalizeDeviceInfoFieldValue when supplied non-string values ([#301](https://github.com/rokucommunity/roku-deploy/pull/301))
-     - Declare picomatch as a direct dependency ([#299](https://github.com/rokucommunity/roku-deploy/pull/299))
-     - Inline lodash.camelCase and temp-dir into util ([#298](https://github.com/rokucommunity/roku-deploy/pull/298))
-     - Consolidate date libraries into dependency-free helpers ([#297](https://github.com/rokucommunity/roku-deploy/pull/297))
-     - Bump form-data from 2.5.5 to 2.5.6 ([#293](https://github.com/rokucommunity/roku-deploy/pull/293))
-### Fixed
- - Fix build-vsix job ([#843](https://github.com/rokucommunity/vscode-brightscript-language/pull/843))
- - Fix typo in CHANGELOG.md ([#838](https://github.com/rokucommunity/vscode-brightscript-language/pull/838))
-
 
 
 ## [2.67.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.4...v2.67.0) - 2026-06-29
