@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import { expect, assert } from 'chai';
 import * as path from 'path';
 import { createSandbox } from 'sinon';
 import type { WorkspaceFolder } from 'vscode';
