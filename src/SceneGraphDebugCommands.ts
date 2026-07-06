@@ -190,7 +190,7 @@ export class SceneGraphDebugCommands {
             this.host = config.get('host');
             // eslint-disable-next-line no-template-curly-in-string
             if (!this.host || this.host === '${promptForHost}') {
-                this.host = await this.userInputManager.promptForHost();
+                this.host = (await this.userInputManager.promptForHost())?.host;
             }
         }
         if (!this.host) {
