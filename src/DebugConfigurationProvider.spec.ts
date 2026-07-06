@@ -1,4 +1,4 @@
-import { assert, expect } from 'chai';
+import { expect } from 'chai';
 import * as path from 'path';
 import { createSandbox } from 'sinon';
 import type { WorkspaceFolder } from 'vscode';
@@ -124,22 +124,18 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(config.password).to.equal((configProvider as any).configDefaults.password);
         });
 
-        it('throws on missing .env file', async () => {
-            sinon.restore();
+        it('does not throw on missing .env file and falls back to the process env', async () => {
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
             sinon.stub(configProvider, 'getBsConfig').returns({});
+            sinon.stub(process, 'env').value({ ...process.env, ROKU_PASSWORD: 'pass1234' });
 
-            try {
-                await configProvider.resolveDebugConfiguration(folder, <any>{
-                    host: '127.0.0.1',
-                    type: 'brightscript',
-                    envFile: '${workspaceFolder}/.env',
-                    password: '${env:ROKU_PASSWORD}'
-                });
-                assert.fail('Should have thrown exception');
-            } catch (e) {
-                expect((e as Error)?.message).to.contain('Cannot find .env');
-            }
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                host: '127.0.0.1',
+                type: 'brightscript',
+                envFile: '${workspaceFolder}/.env',
+                password: '${env:ROKU_PASSWORD}'
+            });
+            expect(config.password).to.equal('pass1234');
         });
 
         it('handles non ${workspaceFolder} replacements', async () => {
@@ -460,33 +456,71 @@ describe('BrightScriptConfigurationProvider', () => {
         });
     });
 
-    describe('processEnvFile', () => {
-        function processEnvFile(folder: WorkspaceFolder, config: Partial<BrightScriptLaunchConfiguration> & Record<string, any>) {
-            return configProvider['processEnvFile'](folder, config as any);
+    describe('processEnvVariables', () => {
+        function processEnvVariables(folder: WorkspaceFolder, config: Partial<BrightScriptLaunchConfiguration> & Record<string, any>) {
+            return configProvider['processEnvVariables'](folder, config as any);
         }
-        it('does nothing if .envFile is not specified', async () => {
-            let config = await processEnvFile(folder, {
+        it('leaves placeholder untouched when not found in .envFile or process env', async () => {
+            let config = await processEnvVariables(folder, {
                 rootDir: '${env:ROOT_DIR}'
             });
             expect(config.rootDir).to.equal('${env:ROOT_DIR}');
         });
 
-        it('throws exception when .env file does not exist', async () => {
+        it('reads from process.env when no .envFile is specified', async () => {
+            sinon.stub(process, 'env').value({ ...process.env, SOME_PROCESS_VAR: 'processValue' });
+            let config = await processEnvVariables(folder, {
+                rootDir: '${env:SOME_PROCESS_VAR}'
+            });
+            expect(config.rootDir).to.equal('processValue');
+        });
+
+        it('does not mutate process.env', async () => {
+            fsExtra.outputFileSync(`${rootDir}/.env`, `SOME_ENV_FILE_VAR=envFileValue`);
+            const envBefore = { ...process.env };
+            await processEnvVariables(folder, {
+                envFile: '${workspaceFolder}/.env',
+                rootDir: '${env:SOME_ENV_FILE_VAR}'
+            });
+            expect(process.env).to.eql(envBefore);
+            expect(process.env).to.not.have.property('SOME_ENV_FILE_VAR');
+        });
+
+        it('.envFile values override process.env values', async () => {
+            sinon.stub(process, 'env').value({ ...process.env, SHARED_VAR: 'processValue' });
+            fsExtra.outputFileSync(`${rootDir}/.env`, `SHARED_VAR=envFileValue`);
+            const config = await processEnvVariables(folder, {
+                envFile: '${workspaceFolder}/.env',
+                rootDir: '${env:SHARED_VAR}'
+            });
+            expect(config.rootDir).to.equal('envFileValue');
+        });
+
+        it('does not throw when .env file does not exist', async () => {
             let threw = false;
             try {
-                await processEnvFile(folder, {
+                await processEnvVariables(folder, {
                     envFile: '${workspaceFolder}/.env'
                 });
             } catch (e) {
                 threw = true;
             }
-            expect(threw).to.be.true;
+            expect(threw).to.be.false;
+        });
+
+        it('falls back to process.env when the specified .env file does not exist', async () => {
+            sinon.stub(process, 'env').value({ ...process.env, FALLBACK_VAR: 'fallbackValue' });
+            const config = await processEnvVariables(folder, {
+                envFile: '${workspaceFolder}/.env',
+                rootDir: '${env:FALLBACK_VAR}'
+            });
+            expect(config.rootDir).to.equal('fallbackValue');
         });
 
         it('replaces ${workspaceFolder} in .envFile path', async () => {
             let stub = sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
             try {
-                await processEnvFile(folder, {
+                await processEnvVariables(folder, {
                     envFile: '${workspaceFolder}/.env'
                 });
             } catch (e) { }
@@ -496,7 +530,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('replaces same env value multiple times in a config', async () => {
             fsExtra.outputFileSync(`${rootDir}/.env`, `PASSWORD=password`);
-            let config = await processEnvFile(folder, {
+            let config = await processEnvVariables(folder, {
                 envFile: '${workspaceFolder}/.env',
                 rootDir: '${env:PASSWORD}',
                 stagingDir: '${env:PASSWORD}'
@@ -508,7 +542,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('does not replace text outside of the ${} syntax', async () => {
             fsExtra.outputFileSync(`${rootDir}/.env`, `PASSWORD=password`);
-            const config = await processEnvFile(folder, {
+            const config = await processEnvVariables(folder, {
                 'envFile': '${workspaceFolder}/.env',
                 //this key looks exactly like the text within the ${}, make sure it persists. (dunno why someone would do this...)
                 'env:PASSWORD': '${env:PASSWORD}'
@@ -519,7 +553,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('ignores ${env:} items that are not found in the env file', async () => {
             fsExtra.outputFileSync(`${rootDir}/.env`, `PASSWORD=password`);
-            const config = await processEnvFile(folder, {
+            const config = await processEnvVariables(folder, {
                 envFile: '${workspaceFolder}/.env',
                 rootDir: '${env:NOT_PASSWORD}'
             });
@@ -529,7 +563,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('loads env file when not using ${workspaceFolder} var', async () => {
             fsExtra.outputFileSync(`${tempDir}/.env`, `TEST_ENV_VAR=./somePath`);
-            const config = await processEnvFile(folder, {
+            const config = await processEnvVariables(folder, {
                 envFile: `${tempDir}/.env`,
                 rootDir: '${env:TEST_ENV_VAR}/123'
             });
