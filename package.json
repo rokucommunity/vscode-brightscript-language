@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.67.1",
+    "version": "2.67.2",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -78,7 +78,7 @@
         "postman-request": "^2.88.1-postman.48",
         "pretty-bytes": "^5.6.0",
         "resolve": "^1.22.8",
-        "roku-debug": "^0.23.15",
+        "roku-debug": "^0.23.16",
         "roku-deploy": "^3.17.7",
         "roku-test-automation": "^2.2.2",
         "semver": "^7.1.3",

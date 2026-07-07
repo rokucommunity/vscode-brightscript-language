@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.67.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.1...v2.67.2) - 2026-07-07
+### Changed
+ - upgrade to [roku-debug@0.23.16](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02316---2026-07-07). Notable changes since 0.23.15:
+     - Improve ECP access mode error messages with step-by-step navigation ([#386](https://github.com/rokucommunity/roku-debug/pull/386))
+### Fixed
+ - Crash related to move dayjs missing as prod dependency ([#850](https://github.com/rokucommunity/vscode-brightscript-language/pull/850))
+
+
+
 ## [2.67.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.0...v2.67.1) - 2026-07-06
 ### Changed
  - Reuse probed device-info for launch and host selection ([#839](https://github.com/rokucommunity/vscode-brightscript-language/pull/839))
