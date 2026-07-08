@@ -1180,6 +1180,71 @@ export class BrightScriptCommands {
         this.registerCommand('devicesView.checkAndInstallUpdates', (element?: { key?: string }) => {
             return this.checkForUpdates(element?.key ? this.deviceManager.getDevice(element.key)?.ip : undefined);
         });
+
+        this.registerDeviceContextMenuCommands();
+    }
+
+    /**
+     * Register the commands behind the right-click context menu on a device in the Devices view.
+     * Each receives the clicked tree element and resolves it into the argument shape its
+     * underlying command expects. These are hidden from the command palette (they only make
+     * sense with a tree element), which also lets their titles carry the emoji icons shown
+     * in the context menu.
+     */
+    private registerDeviceContextMenuCommands() {
+        const getDevice = (element?: { key?: string }) => {
+            return element?.key ? this.deviceManager.getDevice(element.key) : undefined;
+        };
+
+        this.registerCommand('devicesView.deviceMenu.setActiveDevice', (element?: { key?: string }) => {
+            return vscode.commands.executeCommand('extension.brightscript.setActiveDevice', element);
+        });
+        this.registerCommand('devicesView.deviceMenu.captureScreenshot', (element?: { key?: string }) => {
+            return vscode.commands.executeCommand('extension.brightscript.captureScreenshot', getDevice(element)?.ip);
+        });
+        this.registerCommand('devicesView.deviceMenu.switchTvInput', (element?: { key?: string }) => {
+            return vscode.commands.executeCommand('extension.brightscript.changeTvInput', getDevice(element)?.ip);
+        });
+        this.registerCommand('devicesView.deviceMenu.refreshDevice', (element?: { key?: string }) => {
+            return vscode.commands.executeCommand('extension.brightscript.refreshDevice', element);
+        });
+        this.registerCommand('devicesView.deviceMenu.restartDevice', (element?: { key?: string }) => {
+            return this.restartDevice(getDevice(element)?.ip);
+        });
+        this.registerCommand('devicesView.deviceMenu.checkAndInstallUpdates', (element?: { key?: string }) => {
+            return this.checkForUpdates(getDevice(element)?.ip);
+        });
+        this.registerCommand('devicesView.deviceMenu.openWebPortal', (element?: { key?: string }) => {
+            const ip = getDevice(element)?.ip;
+            if (!ip) {
+                return vscode.window.showErrorMessage('Could not determine the IP address for this device');
+            }
+            return vscode.commands.executeCommand('extension.brightscript.openUrl', `http://${ip}`);
+        });
+        this.registerCommand('devicesView.deviceMenu.viewRegistry', (element?: { key?: string }) => {
+            return vscode.commands.executeCommand('extension.brightscript.openRegistryInBrowser', getDevice(element)?.ip);
+        });
+        // Set and Change share a handler; the menu shows one or the other based on whether a password is stored
+        for (const commandName of ['devicesView.deviceMenu.setDevicePassword', 'devicesView.deviceMenu.changeDevicePassword']) {
+            this.registerCommand(commandName, (element?: { key?: string }) => {
+                return vscode.commands.executeCommand('extension.brightscript.setDevicePassword', getDevice(element)?.serialNumber);
+            });
+        }
+        this.registerCommand('devicesView.deviceMenu.clearDevicePassword', (element?: { key?: string }) => {
+            return vscode.commands.executeCommand('extension.brightscript.clearDevicePassword', getDevice(element)?.serialNumber);
+        });
+        this.registerCommand('devicesView.deviceMenu.addToUserSettings', (element?: { key?: string }) => {
+            return vscode.commands.executeCommand('extension.brightscript.addDeviceToUserSettings', element);
+        });
+        this.registerCommand('devicesView.deviceMenu.editInUserSettings', (element?: { key?: string }) => {
+            return vscode.commands.executeCommand('extension.brightscript.editDeviceInUserSettings', element);
+        });
+        this.registerCommand('devicesView.deviceMenu.addToWorkspaceSettings', (element?: { key?: string }) => {
+            return vscode.commands.executeCommand('extension.brightscript.addDeviceToWorkspaceSettings', element);
+        });
+        this.registerCommand('devicesView.deviceMenu.editInWorkspaceSettings', (element?: { key?: string }) => {
+            return vscode.commands.executeCommand('extension.brightscript.editDeviceInWorkspaceSettings', element);
+        });
     }
 
     private async sendAsciiToDevice(character: string) {

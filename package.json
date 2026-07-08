@@ -491,34 +491,79 @@
                     "group": "inline"
                 },
                 {
-                    "command": "extension.brightscript.setActiveDevice",
-                    "when": "view == devicesView && viewItem =~ /^device-/",
-                    "group": "navigation@1"
+                    "command": "extension.brightscript.devicesView.deviceMenu.setActiveDevice",
+                    "when": "view == devicesView && viewItem =~ /^device\\b/",
+                    "group": "1_primary@1"
                 },
                 {
-                    "command": "extension.brightscript.refreshDevice",
-                    "when": "view == devicesView && viewItem =~ /^device-/",
-                    "group": "navigation@2"
+                    "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
+                    "when": "view == devicesView && viewItem =~ /^device\\b/",
+                    "group": "1_primary@2"
                 },
                 {
-                    "command": "extension.brightscript.addDeviceToUserSettings",
-                    "when": "view == devicesView && (viewItem == 'device' || viewItem == 'device-workspace')",
-                    "group": "settings@1"
+                    "command": "extension.brightscript.devicesView.deviceMenu.switchTvInput",
+                    "when": "view == devicesView && viewItem =~ /-isTv\\b/",
+                    "group": "1_primary@3"
                 },
                 {
-                    "command": "extension.brightscript.editDeviceInUserSettings",
-                    "when": "view == devicesView && (viewItem == 'device-user' || viewItem == 'device-user-workspace')",
-                    "group": "settings@1"
+                    "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
+                    "when": "view == devicesView && viewItem =~ /^device\\b/",
+                    "group": "2_device@1"
                 },
                 {
-                    "command": "extension.brightscript.addDeviceToWorkspaceSettings",
-                    "when": "view == devicesView && (viewItem == 'device' || viewItem == 'device-user')",
-                    "group": "settings@2"
+                    "command": "extension.brightscript.devicesView.deviceMenu.restartDevice",
+                    "when": "view == devicesView && viewItem =~ /-canRestart\\b/",
+                    "group": "2_device@2"
                 },
                 {
-                    "command": "extension.brightscript.editDeviceInWorkspaceSettings",
-                    "when": "view == devicesView && (viewItem == 'device-workspace' || viewItem == 'device-user-workspace')",
-                    "group": "settings@2"
+                    "command": "extension.brightscript.devicesView.deviceMenu.checkAndInstallUpdates",
+                    "when": "view == devicesView && viewItem =~ /-canRestart\\b/",
+                    "group": "2_device@3"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.openWebPortal",
+                    "when": "view == devicesView && viewItem =~ /^device\\b/",
+                    "group": "3_web@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.viewRegistry",
+                    "when": "view == devicesView && viewItem =~ /-canViewRegistry\\b/",
+                    "group": "3_web@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.setDevicePassword",
+                    "when": "view == devicesView && viewItem =~ /-noPassword\\b/",
+                    "group": "4_password@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.changeDevicePassword",
+                    "when": "view == devicesView && viewItem =~ /-hasPassword\\b/",
+                    "group": "4_password@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.clearDevicePassword",
+                    "when": "view == devicesView && viewItem =~ /-hasPassword\\b/",
+                    "group": "4_password@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.addToUserSettings",
+                    "when": "view == devicesView && viewItem =~ /-notInUser\\b/",
+                    "group": "5_settings@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.editInUserSettings",
+                    "when": "view == devicesView && viewItem =~ /-inUser\\b/",
+                    "group": "5_settings@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.addToWorkspaceSettings",
+                    "when": "view == devicesView && viewItem =~ /-notInWorkspace\\b/",
+                    "group": "5_settings@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.editInWorkspaceSettings",
+                    "when": "view == devicesView && viewItem =~ /-inWorkspace\\b/",
+                    "group": "5_settings@2"
                 }
             ],
             "explorer/context": [
@@ -701,6 +746,66 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.autoDetected.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.setActiveDevice",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.switchTvInput",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.restartDevice",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.checkAndInstallUpdates",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.openWebPortal",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.viewRegistry",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.setDevicePassword",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.changeDevicePassword",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.clearDevicePassword",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.addToUserSettings",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.editInUserSettings",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.addToWorkspaceSettings",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.editInWorkspaceSettings",
                     "when": "false"
                 }
             ]
@@ -3913,6 +4018,81 @@
                 "title": "Check for Software Updates",
                 "category": "BrightScript",
                 "icon": "$(cloud-download)"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.setActiveDevice",
+                "title": "⭐ Set as Active Device",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
+                "title": "📷 Capture Screenshot",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.switchTvInput",
+                "title": "📺 Switch TV Input",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
+                "title": "🔃 Refresh Device",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.restartDevice",
+                "title": "🔁 Restart Device",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.checkAndInstallUpdates",
+                "title": "🔄 Check for Software Updates",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.openWebPortal",
+                "title": "🔗 Open Device Web Portal",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.viewRegistry",
+                "title": "📋 View Registry",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.setDevicePassword",
+                "title": "🔑 Set Device Password",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.changeDevicePassword",
+                "title": "🔑 Change Device Password",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.clearDevicePassword",
+                "title": "🗑️ Clear Device Password",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.addToUserSettings",
+                "title": "👤 Add to User Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.editInUserSettings",
+                "title": "👤 Edit in User Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.addToWorkspaceSettings",
+                "title": "📁 Add to Workspace Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.editInWorkspaceSettings",
+                "title": "📁 Edit in Workspace Settings",
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.addDeviceToUserSettings",
