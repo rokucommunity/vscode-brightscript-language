@@ -44,7 +44,7 @@ export class WorkspaceEncoding {
     private encoding: string[][];
 
     public find(path: string): string {
-        return this.encoding.find((v) => path.startsWith(v[0]))[1];
+        return this.encoding.find((v) => path.startsWith(v[0]))?.[1] ?? 'utf8';
     }
 
     public reset() {
@@ -179,7 +179,7 @@ export class DeclarationProvider implements Disposable {
                     }
                 });
             });
-            if (input === undefined) {
+            if (input === null) {
                 this.dirty.delete(path);
                 this.onDidDeleteEmitter.fire(new DeclarationDeleteEvent(uri));
                 continue;
@@ -192,11 +192,14 @@ export class DeclarationProvider implements Disposable {
 
     public readDeclarations(uri: Uri, input: string): BrightScriptDeclaration[] {
         const uriPath = util.normalizeFileScheme(uri.toString());
-        const outDir = util.normalizeFileScheme(path.join(vscode.workspace.getWorkspaceFolder(uri).uri.toString(), 'out'));
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+        if (workspaceFolder) {
+            const outDir = util.normalizeFileScheme(path.join(workspaceFolder.uri.toString(), 'out'));
 
-        // Prevents results in the out directory from being returned
-        if (uriPath.startsWith(outDir)) {
-            return [];
+            // Prevents results in the out directory from being returned
+            if (uriPath.startsWith(outDir)) {
+                return [];
+            }
         }
 
         const container = BrightScriptDeclaration.fromUri(uri);
