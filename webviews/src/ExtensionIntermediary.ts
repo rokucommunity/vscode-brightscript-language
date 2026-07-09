@@ -4,7 +4,7 @@ import { RequestType } from 'roku-test-automation/client/dist/types/OnDeviceComp
 import type { VscodeCommand } from '../../src/commands/VscodeCommand';
 import { ViewProviderEvent } from '../../src/viewProviders/ViewProviderEvent';
 import { ViewProviderCommand } from '../../src/viewProviders/ViewProviderCommand';
-import type { DeleteEntireRegistrySectionsArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeArgs, RemoveNodeChildrenArgs, FocusNodeArgs, AppUIResponse, ConvertKeyPathToSceneKeyPathArgs } from 'roku-test-automation';
+import type { DeleteEntireRegistrySectionsArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeArgs, RemoveNodeChildrenArgs, FocusNodeArgs, AppUIResponse } from 'roku-test-automation';
 
 class ExtensionIntermediary {
     private inflightRequests = {};
@@ -268,10 +268,6 @@ class ODCIntermediary {
 
     public async focusNode(args: FocusNodeArgs, options?: RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.focusNode>>(RequestType.focusNode, args, options);
-    }
-
-    public async convertKeyPathToSceneKeyPath(args: ConvertKeyPathToSceneKeyPathArgs, options?: RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.convertKeyPathToSceneKeyPath>>(RequestType.convertKeyPathToSceneKeyPath, args, options);
     }
 }
 

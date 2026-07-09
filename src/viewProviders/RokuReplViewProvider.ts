@@ -75,7 +75,7 @@ export class RokuReplViewProvider extends BaseRdbViewProvider {
                     });
 
                     // Figure out what network interface the Roku device is accessing us from
-                    const { host } = await odc.getServerHost();
+                    const { host } = await odc.getClientHost();
                     this.componentLibraryHost = host;
                 }
 
