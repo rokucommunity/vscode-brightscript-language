@@ -134,24 +134,18 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result.stagingFolderPath = result.stagingDir;
 
             result = await this.sanitizeConfiguration(result, folder);
-            result = await this.processEnvFile(folder, result);
-            const [resultAfterHost, device] = await this.processHostParameter(result);
-            result = resultAfterHost;
-            result = await this.processPasswordParameter(config, result, device);
+            result = await this.processEnvVariables(folder, result);
+            result = await this.processHostParameter(result);
+            result = await this.processPasswordParameter(config, result);
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
             result = this.processDapLogFilePath(folder, result);
 
-            const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
-            statusbarItem.text = '$(sync~spin) Fetching device info';
-            statusbarItem.show();
-            try {
-                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true, timeout: 4000 });
-            } catch (e) {
-                // a failed deviceInfo request should NOT fail the launch
-                console.error(`Failed to fetch device info for ${result.host}`, e);
+            // `processHostParameter` attached the raw device-info it gathered while probing the host.
+            // Enhance a local copy here for the developer-mode check + telemetry (no request to the device).
+            if (result.deviceInfo) {
+                deviceInfo = rokuDeploy.enhanceDeviceInfo(result.deviceInfo);
             }
-            statusbarItem.dispose();
 
             if (deviceInfo && !deviceInfo.developerEnabled) {
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
@@ -450,12 +444,17 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Reads the manifest file and updates any config values that are mapped to it
+     * Resolves any `${env:*}` placeholders in the config using the process environment
+     * and (if present) the optional `.env` file, without mutating `process.env`.
      * @param folder current workspace folder
      * @param config current config object
      */
-    private async processEnvFile(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
-        //process .env file if present
+    private async processEnvVariables(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+        //start with a copy of the current process environment so we never mutate process.env
+        let environmentValues = { ...process.env };
+        let loadedEnvFile = false;
+
+        //layer any values from the .env file on top of the process environment (the .env file is optional)
         if (config.envFile) {
             let envFilePath = config.envFile;
             //resolve ${workspaceFolder} so we can actually load the .env file now
@@ -463,46 +462,52 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 envFilePath = config.envFile.replace('${workspaceFolder}', folder.uri.fsPath);
             }
             if (await this.util.fileExists(envFilePath) === false) {
-                throw new Error(`Cannot find .env file at "${envFilePath}`);
+                //the .env file is optional, so just warn instead of failing the debug session
+                console.warn(`Cannot find .env file at "${envFilePath}". Falling back to the process environment for '\${env:*}' values.`);
+            } else {
+                //parse the .env file, letting its values override the process environment
+                environmentValues = {
+                    ...environmentValues,
+                    ...dotenv.parse(await this.fsExtra.readFile(envFilePath))
+                };
+                loadedEnvFile = true;
             }
-            //parse the .env file
-            let envConfig = dotenv.parse(await this.fsExtra.readFile(envFilePath));
+        }
 
-            // temporarily convert entire config to string for any envConfig replacements.
-            let configString = JSON.stringify(config);
+        // temporarily convert entire config to string for any environment replacements.
+        let configString = JSON.stringify(config);
+        let match: RegExpMatchArray;
+        let regexp = /\$\{env:([\w\d_]*)\}/g;
+        let updatedConfigString = configString;
+
+        // apply any defined values to env placeholders
+        while ((match = regexp.exec(configString))) {
+            let environmentVariableName = match[1];
+            let environmentVariableValue = environmentValues[environmentVariableName];
+
+            if (environmentVariableValue) {
+                updatedConfigString = updatedConfigString.replace(match[0], environmentVariableValue);
+            }
+        }
+
+        config = JSON.parse(updatedConfigString);
+
+        let configDefaults = {
+            rootDir: config.rootDir,
+            ...this.configDefaults
+        };
+
+        // apply any default values to env placeholders
+        for (let key in config) {
+            let configValue = config[key];
             let match: RegExpMatchArray;
-            let regexp = /\$\{env:([\w\d_]*)\}/g;
-            let updatedConfigString = configString;
-
-            // apply any defined values to env placeholders
-            while ((match = regexp.exec(configString))) {
+            //replace all environment variable placeholders with their values
+            while ((match = regexp.exec(configValue))) {
                 let environmentVariableName = match[1];
-                let environmentVariableValue = envConfig[environmentVariableName];
-
-                if (environmentVariableValue) {
-                    updatedConfigString = updatedConfigString.replace(match[0], environmentVariableValue);
-                }
+                configValue = configDefaults[key];
+                console.log(`The configuration value for ${key} was not found in the environment variables${loadedEnvFile ? ' or env file' : ''} under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
             }
-
-            config = JSON.parse(updatedConfigString);
-
-            let configDefaults = {
-                rootDir: config.rootDir,
-                ...this.configDefaults
-            };
-
-            // apply any default values to env placeholders
-            for (let key in config) {
-                let configValue = config[key];
-                let match: RegExpMatchArray;
-                //replace all environment variable placeholders with their values
-                while ((match = regexp.exec(configValue))) {
-                    let environmentVariableName = match[1];
-                    configValue = configDefaults[key];
-                    console.log(`The configuration value for ${key} was not found in the env file under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
-                }
-                config[key] = configValue;
-            }
+            config[key] = configValue;
         }
         return config;
     }
@@ -512,13 +517,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * ${activeHost} is a deprecated alias for ${promptForHost}.
      * Both use the active device when it's set and passes a health check, otherwise fall back to the device picker.
      *
-     * Returns the updated config alongside the probed `RokuDevice` so downstream
-     * password resolution can look up credentials by serial number without
-     * re-fetching device info. Device is undefined when the resolved host is
-     * unreachable or not a developer-enabled Roku.
+     * Assigns the raw `device-info` gathered while probing the resolved host onto `config.deviceInfo`,
+     * so downstream password resolution and the debug session can reuse it without re-fetching.
+     * Throws if the device couldn't be reached (no device-info came back).
      * @param config  current config object
      */
-    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<[BrightScriptLaunchConfiguration, RokuDevice | undefined]> {
+    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         const trimmedHost = config.host.trim();
         const needsHostPrompt =
             trimmedHost === '' ||
@@ -526,12 +530,16 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             trimmedHost === '${activeHost}' ||
             config?.deepLinkUrl?.includes('${promptForHost}');
 
+        let device: RokuDevice | undefined;
+
         if (needsHostPrompt) {
-            const healthyActiveHost = await this.brightScriptCommands.getHealthyActiveHost();
-            if (healthyActiveHost) {
-                config.host = healthyActiveHost;
-            } else {
-                config.host = await this.userInputManager.promptForHost();
+            // both the active-host lookup and the picker probe + register the device in the device
+            // manager, so reuse it below instead of probing again
+            const resolved = await this.brightScriptCommands.getHealthyActiveHost() ??
+                await this.userInputManager.promptForHost();
+            config.host = resolved?.host;
+            if (resolved?.host) {
+                device = this.deviceManager.getDevice({ ip: resolved.host });
             }
         }
 
@@ -542,11 +550,19 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             await this.context.workspaceState.update('remoteHost', config.host);
         }
 
-        // Probe the resolved host so downstream password resolution has fresh SN/deviceInfo.
-        // Unreachable or filtered hosts yield no registered device; password resolution handles that.
-        const device = await this.deviceManager.validateAndAddDevice(config.host);
+        // If the host didn't come from the picker, probe it so we have fresh SN/deviceInfo.
+        device ??= await this.deviceManager.validateAndAddDevice(config.host);
 
-        return [config, device];
+        // A reachable developer device always returns device-info; its absence means we couldn't reach it.
+        if (!device?.deviceInfo || Object.keys(device.deviceInfo).length === 0) {
+            throw new Error(`Debug session terminated: unable to reach device at '${config.host}'.`);
+        }
+
+        // Attach the raw device-info so downstream password resolution and the debug session can reuse it
+        // without another request to the device.
+        config.deviceInfo = device.deviceInfo;
+
+        return config;
     }
 
     /**
@@ -561,17 +577,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * the user is prompted.
      *
      * @param config  the raw launch configuration as received from VS Code
-     * @param result  the merged/resolved config being built up
-     * @param device  the probed device from `processHostParameter`, or undefined
-     *                when the host is unreachable / not a developer Roku
+     * @param result  the merged/resolved config being built up. Its `deviceInfo` (set by
+     *                `processHostParameter`) supplies the serial number used to look up credentials.
      */
     private async processPasswordParameter(
         config: BrightScriptLaunchConfiguration,
-        result: BrightScriptLaunchConfiguration,
-        device: RokuDevice | undefined
+        result: BrightScriptLaunchConfiguration
     ): Promise<BrightScriptLaunchConfiguration> {
         const host = result.host;
-        const serialNumber = device?.serialNumber;
+        const serialNumber = result.deviceInfo?.['serial-number'];
 
         // Opportunistically drain any legacy IP-keyed password that still lives in
         // workspaceState from pre-refactor extension installs. Reads never consult

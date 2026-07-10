@@ -94,8 +94,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
         // Health check device when expanded (not on every getChildren/devices-changed)
         treeView.onDidExpandElement(e => {
-            const element = e.element as DeviceTreeItem;
-            if (element?.contextValue === 'device' && element.key) {
+            const element = e.element;
+            if (element instanceof DeviceTreeItem && element.key) {
                 const device = this.deviceManager.getDevice(element.key);
                 if (device) {
                     this.deviceManager.healthCheckDevice(device).catch(() => { });
@@ -152,7 +152,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     private devices: Array<RokuDevice>;
 
-    async getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): Promise<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
+    async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
             if (this.devices.length === 0) {
@@ -163,7 +163,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 let items: DeviceTreeItem[] = [];
                 const visibleDevices = this.applyFilters(this.devices);
                 for (const device of visibleDevices) {
-                    // Make a rook item for each device
+                    // Make a root item for each device
                     let treeItem = new DeviceTreeItem(
                         this.deviceManager.getDeviceDisplayName(device),
                         vscode.TreeItemCollapsibleState.Collapsed,
@@ -176,20 +176,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     // Use the device key which is serial-based when available, IP-based as fallback
                     treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`);
                     treeItem.iconPath = this.deviceManager.getIconPath(device);
-
-                    // Set contextValue for context menu actions
-                    // Values: device, device-user, device-workspace, device-user-workspace
-                    const inUser = device.configuredIn?.includes('user');
-                    const inWorkspace = device.configuredIn?.includes('workspace');
-                    let contextValue = 'device';
-                    if (inUser && inWorkspace) {
-                        contextValue = 'device-user-workspace';
-                    } else if (inUser) {
-                        contextValue = 'device-user';
-                    } else if (inWorkspace) {
-                        contextValue = 'device-workspace';
-                    }
-                    treeItem.contextValue = contextValue;
+                    treeItem.contextValue = await this.buildDeviceContextValue(device);
 
                     items.push(treeItem);
                 }
@@ -201,11 +188,165 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 return [];
             }
         } else if (element instanceof DeviceTreeItem) {
+            // Build the device's action items (also available in the right-click context menu),
+            // followed by the expandable device info group
+            let result: Array<vscode.TreeItem> = [];
+
+            const device = this.deviceManager.getDevice(element.key);
+            if (!device) {
+                return;
+            }
+
+            result.push(
+                this.createDeviceInfoTreeItem({
+                    label: '🔗 Open device web portal',
+                    parent: element,
+                    collapsibleState: vscode.TreeItemCollapsibleState.None,
+                    tooltip: 'Open the web portal for this device',
+                    description: device.ip,
+                    command: {
+                        command: 'extension.brightscript.openUrl',
+                        title: 'Open',
+                        arguments: [`http://${device.ip}`]
+                    }
+                })
+            );
+
+            // Device actions that require software version 15.0.4 or later
+            if (semver.satisfies(element.details['software-version'], '>=15.0.4')) {
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: '🔁 Restart Device',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'Restart this device',
+                        command: {
+                            command: 'extension.brightscript.devicesView.restartDevice',
+                            title: 'Restart Device',
+                            arguments: [{ key: element.key }]
+                        }
+                    })
+                );
+
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: '🔄 Check for Software Updates',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'Check for and install software updates',
+                        command: {
+                            command: 'extension.brightscript.devicesView.checkAndInstallUpdates',
+                            title: 'Check for Updates',
+                            arguments: [{ key: element.key }]
+                        }
+                    })
+                );
+            }
+
+            if (semver.satisfies(element.details['software-version'], '>=11')) {
+                // TODO: add ECP system hooks here in the future (like registry call, etc...)
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: '📋 View Registry',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'View the ECP Registry',
+                        description: device.ip,
+                        command: {
+                            command: 'extension.brightscript.openRegistryInBrowser',
+                            title: 'Open',
+                            arguments: [device.ip]
+                        }
+                    })
+                );
+            }
+
+            if (device.serialNumber) {
+                const hasPassword = await this.hasStoredPasswordForSerial(device.serialNumber);
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: hasPassword ? '🔑 Change Device Password' : '🔑 Set Device Password',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: hasPassword ? 'Change the stored developer password for this device' : 'Set password for this device',
+                        command: {
+                            command: 'extension.brightscript.setDevicePassword',
+                            title: hasPassword ? 'Change Device Password' : 'Set Device Password',
+                            arguments: [device.serialNumber]
+                        }
+                    })
+                );
+                if (hasPassword) {
+                    result.push(
+                        this.createDeviceInfoTreeItem({
+                            label: '🗑️ Clear Device Password',
+                            parent: element,
+                            collapsibleState: vscode.TreeItemCollapsibleState.None,
+                            tooltip: 'Clear the stored developer password for this device',
+                            command: {
+                                command: 'extension.brightscript.clearDevicePassword',
+                                title: 'Clear Device Password',
+                                arguments: [device.serialNumber]
+                            }
+                        })
+                    );
+                }
+            }
+
+            result.push(
+                this.createDeviceInfoTreeItem({
+                    label: '⭐ Set as Active Device',
+                    parent: element,
+                    collapsibleState: vscode.TreeItemCollapsibleState.None,
+                    tooltip: 'Set as active device',
+                    command: {
+                        command: 'extension.brightscript.setActiveDevice',
+                        title: 'Set Active Device',
+                        arguments: [device.ip]
+                    }
+                })
+            );
+
+            result.push(
+                this.createDeviceInfoTreeItem({
+                    label: '📷 Capture Screenshot',
+                    parent: element,
+                    collapsibleState: vscode.TreeItemCollapsibleState.None,
+                    tooltip: 'Capture a screenshot',
+                    command: {
+                        command: 'extension.brightscript.captureScreenshot',
+                        title: 'Capture Screenshot',
+                        arguments: [device.ip]
+                    }
+                })
+            );
+
+            if (device.deviceInfo?.['is-tv'] === 'true') {
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: '📺 Switch TV Input',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        description: 'click to change',
+                        tooltip: 'Change the current TV input',
+                        command: {
+                            command: 'extension.brightscript.changeTvInput',
+                            title: 'Switch TV Input',
+                            arguments: [device.ip]
+                        }
+                    })
+                );
+            }
+
+            result.push(new DeviceInfoGroupTreeItem(element));
+
+            return result;
+        } else if (element instanceof DeviceInfoGroupTreeItem) {
             // Process the details of a device
             let result: Array<DeviceInfoTreeItem> = [];
 
             //conceal all of these unique keys
-            const details = this.concealObject(element.details, ['udn', 'device-id', 'advertising-id', 'wifi-mac', 'ethernet-mac', 'serial-number', 'keyed-developer-id']);
+            const details = this.concealObject(element.parent.details, ['udn', 'device-id', 'advertising-id', 'wifi-mac', 'ethernet-mac', 'serial-number', 'keyed-developer-id']);
 
             for (let [key, values] of details) {
                 result.push(
@@ -227,160 +368,39 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 );
             }
 
-            const device = this.deviceManager.getDevice(element.key);
-            if (!device) {
-                return;
-            }
-
-            if (device.deviceInfo?.['is-tv'] === 'true') {
-                result.unshift(
-                    this.createDeviceInfoTreeItem({
-                        label: '📺 Switch TV Input',
-                        parent: element,
-                        collapsibleState: vscode.TreeItemCollapsibleState.None,
-                        description: 'click to change',
-                        tooltip: 'Change the current TV input',
-                        command: {
-                            command: 'extension.brightscript.changeTvInput',
-                            title: 'Switch TV Input',
-                            arguments: [device.ip]
-                        }
-                    })
-                );
-            }
-
-            result.unshift(
-                this.createDeviceInfoTreeItem({
-                    label: '📷 Capture Screenshot',
-                    parent: element,
-                    collapsibleState: vscode.TreeItemCollapsibleState.None,
-                    tooltip: 'Capture a screenshot',
-                    command: {
-                        command: 'extension.brightscript.captureScreenshot',
-                        title: 'Capture Screenshot',
-                        arguments: [device.ip]
-                    }
-                })
-            );
-
-            result.unshift(
-                this.createDeviceInfoTreeItem({
-                    label: '⭐ Set as Active Device',
-                    parent: element,
-                    collapsibleState: vscode.TreeItemCollapsibleState.None,
-                    tooltip: 'Set as active device',
-                    command: {
-                        command: 'extension.brightscript.setActiveDevice',
-                        title: 'Set Active Device',
-                        arguments: [device.ip]
-                    }
-                })
-            );
-
-            if (device.serialNumber) {
-                const hasPassword = await this.hasStoredPasswordForSerial(device.serialNumber);
-                if (hasPassword) {
-                    result.unshift(
-                        this.createDeviceInfoTreeItem({
-                            label: '🗑️ Clear Device Password',
-                            parent: element,
-                            collapsibleState: vscode.TreeItemCollapsibleState.None,
-                            tooltip: 'Clear the stored developer password for this device',
-                            command: {
-                                command: 'extension.brightscript.clearDevicePassword',
-                                title: 'Clear Device Password',
-                                arguments: [device.serialNumber]
-                            }
-                        })
-                    );
-                }
-                result.unshift(
-                    this.createDeviceInfoTreeItem({
-                        label: hasPassword ? '🔑 Change Device Password' : '🔑 Set Device Password',
-                        parent: element,
-                        collapsibleState: vscode.TreeItemCollapsibleState.None,
-                        tooltip: hasPassword ? 'Change the stored developer password for this device' : 'Set password for this device',
-                        command: {
-                            command: 'extension.brightscript.setDevicePassword',
-                            title: hasPassword ? 'Change Device Password' : 'Set Device Password',
-                            arguments: [device.serialNumber]
-                        }
-                    })
-                );
-            }
-
-            if (semver.satisfies(element.details['software-version'], '>=11')) {
-                // TODO: add ECP system hooks here in the future (like registry call, etc...)
-                result.unshift(
-                    this.createDeviceInfoTreeItem({
-                        label: '📋 View Registry',
-                        parent: element,
-                        collapsibleState: vscode.TreeItemCollapsibleState.None,
-                        tooltip: 'View the ECP Registry',
-                        description: device.ip,
-                        command: {
-                            command: 'extension.brightscript.openRegistryInBrowser',
-                            title: 'Open',
-                            arguments: [device.ip]
-                        }
-                    })
-                );
-            }
-
-            // Device actions that require software version 15.0.4 or later
-            if (semver.satisfies(element.details['software-version'], '>=15.0.4')) {
-                result.unshift(
-                    this.createDeviceInfoTreeItem({
-                        label: '🔄 Check for Software Updates',
-                        parent: element,
-                        collapsibleState: vscode.TreeItemCollapsibleState.None,
-                        tooltip: 'Check for and install software updates',
-                        command: {
-                            command: 'extension.brightscript.devicesView.checkAndInstallUpdates',
-                            title: 'Check for Updates',
-                            arguments: [{ key: element.key }]
-                        }
-                    })
-                );
-
-                result.unshift(
-                    this.createDeviceInfoTreeItem({
-                        label: '🔁 Restart Device',
-                        parent: element,
-                        collapsibleState: vscode.TreeItemCollapsibleState.None,
-                        tooltip: 'Restart this device',
-                        command: {
-                            command: 'extension.brightscript.devicesView.restartDevice',
-                            title: 'Restart Device',
-                            arguments: [{ key: element.key }]
-                        }
-                    })
-                );
-            }
-
-            result.unshift(
-                this.createDeviceInfoTreeItem({
-                    label: '🔗 Open device web portal',
-                    parent: element,
-                    collapsibleState: vscode.TreeItemCollapsibleState.None,
-                    tooltip: 'Open the web portal for this device',
-                    description: device.ip,
-                    command: {
-                        command: 'extension.brightscript.openUrl',
-                        title: 'Open',
-                        arguments: [`http://${device.ip}`]
-                    }
-                })
-            );
-
             // Return the device details
             return result;
         }
     }
 
+    /**
+     * Build the contextValue for a device row. The value is a dash-separated list of capability
+     * tokens that the `view/item/context` menu entries in package.json match against with regex
+     * `when` clauses to decide which context menu entries to show for the device.
+     */
+    private async buildDeviceContextValue(device: RokuDevice): Promise<string> {
+        const tokens = ['device'];
+        tokens.push(device.configuredIn?.includes('user') ? 'inUser' : 'notInUser');
+        tokens.push(device.configuredIn?.includes('workspace') ? 'inWorkspace' : 'notInWorkspace');
+        if (device.serialNumber) {
+            tokens.push(await this.hasStoredPasswordForSerial(device.serialNumber) ? 'hasPassword' : 'noPassword');
+        }
+        if (device.deviceInfo?.['is-tv'] === 'true') {
+            tokens.push('isTv');
+        }
+        const softwareVersion = device.deviceInfo?.['software-version'];
+        if (semver.satisfies(softwareVersion, '>=11')) {
+            tokens.push('canViewRegistry');
+        }
+        if (semver.satisfies(softwareVersion, '>=15.0.4')) {
+            tokens.push('canRestart');
+        }
+        return tokens.join('-');
+    }
+
     private createDeviceInfoTreeItem(options: {
         label: string;
-        parent: DeviceTreeItem;
+        parent: DeviceTreeItem | DeviceInfoGroupTreeItem;
         collapsibleState: vscode.TreeItemCollapsibleState;
         key?: string;
         description?: string;
@@ -407,7 +427,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      * Currently we don't modify this element so it is just returned back.
      * @param element the requested element
      */
-    getParent?(element: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<vscode.TreeItem> {
+    getParent?(element: DeviceTreeItem | DeviceInfoGroupTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<vscode.TreeItem> {
         return element?.parent;
     }
 
@@ -573,10 +593,24 @@ class DeviceTreeItem extends vscode.TreeItem {
 
     public readonly parent = null;
 }
+/**
+ * The expandable "Device Info" group shown as the only child of a device. Its children
+ * are the individual device-info fields reported by the device.
+ */
+class DeviceInfoGroupTreeItem extends vscode.TreeItem {
+    constructor(
+        public readonly parent: DeviceTreeItem
+    ) {
+        super('Device Info', vscode.TreeItemCollapsibleState.Collapsed);
+        this.contextValue = 'deviceInfoGroup';
+        this.tooltip = 'Information reported by this device';
+        this.iconPath = new vscode.ThemeIcon('info');
+    }
+}
 class DeviceInfoTreeItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
-        public readonly parent: DeviceTreeItem,
+        public readonly parent: DeviceTreeItem | DeviceInfoGroupTreeItem,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly key: string,
         public readonly description: string,
