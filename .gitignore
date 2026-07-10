@@ -10,3 +10,6 @@ brsconfig.schema.json
 .history
 .tmp
 .vsix-building
+
+# Network captures (may contain live session data); never commit
+*.har
