@@ -81,6 +81,6 @@ If you need to deploy a release of any of the RokuCommunity projects, you can do
 ![image](https://user-images.githubusercontent.com/2544493/179513388-fc044859-8c5e-49a2-853c-9e17ca689a80.png)
     - Change `UNRELEASED` to the semantic version you want to use, save the changelog, then back in the terminal press enter on your keyboard to initialize the release.
     ![image](https://user-images.githubusercontent.com/2544493/179513898-452b8ff3-f01b-4828-b3b0-d00e0c0a31ed.png)
-    - Delete delete any lines from the changelog that aren't overly important to the user (as changelogs should be for humans), since this process populates the changelog with every commit to the master branch for the current project and all commits to changed RokuCommunity dependencies. 
+    - Delete any lines from the changelog that aren't overly important to the user (as changelogs should be for humans), since this process populates the changelog with every commit to the master branch for the current project and all commits to changed RokuCommunity dependencies. 
 
 

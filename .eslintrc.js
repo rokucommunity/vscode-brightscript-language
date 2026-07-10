@@ -15,13 +15,28 @@ module.exports = {
         'no-only-tests',
         'github',
         //local plugin (file:eslint-local-rules) — rules specific to the on-device bridge
-        'bridge'
+        'bridge',
+        'import'
     ],
     extends: [
         'eslint:all',
         'plugin:@typescript-eslint/all'
     ],
     rules: {
+        //fail if a runtime source file imports a package that isn't listed in `dependencies`.
+        //this catches the case where a package used at runtime is only present in `devDependencies`,
+        //which gets stripped when the extension is packaged into a .vsix (see the dayjs regression).
+        //devDependencies are only permitted in the test/tooling globs listed below.
+        'import/no-extraneous-dependencies': ['error', {
+            devDependencies: [
+                'scripts/**',
+                'benchmarks/**',
+                '.eslintrc.js',
+                '**/*.config.*'
+            ],
+            optionalDependencies: false,
+            peerDependencies: true
+        }],
         '@typescript-eslint/parameter-properties': 'off',
         '@typescript-eslint/array-type': 'off',
         '@typescript-eslint/consistent-type-assertions': 'off',
@@ -218,6 +233,8 @@ module.exports = {
     }, {
         files: ['*.spec.ts'],
         rules: {
+            //spec files only run with devDependencies installed, so extraneous-dependency checks don't apply
+            'import/no-extraneous-dependencies': 'off',
             '@typescript-eslint/no-extraneous-class': 'off',
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-call': 'off',
