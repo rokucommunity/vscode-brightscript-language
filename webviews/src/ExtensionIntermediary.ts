@@ -1,10 +1,10 @@
 /** Acts as a middle man that takes request from our views and sends them through vscode message protocol and waits for replies to simplify usage in code */
 import type * as rta from 'roku-test-automation';
-import { RequestType } from 'roku-test-automation/client/dist/types/OnDeviceComponent';
+import { RequestType } from 'roku-test-automation/dist/types/OnDeviceComponent';
 import type { VscodeCommand } from '../../src/commands/VscodeCommand';
 import { ViewProviderEvent } from '../../src/viewProviders/ViewProviderEvent';
 import { ViewProviderCommand } from '../../src/viewProviders/ViewProviderCommand';
-import type { DeleteEntireRegistrySectionsArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeArgs, RemoveNodeChildrenArgs, FocusNodeArgs, AppUIResponse } from 'roku-test-automation';
+import type { DeleteEntireRegistrySectionsArgs, DeleteRegistrySectionsArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeArgs, RemoveNodeChildrenArgs, FocusNodeArgs, AppUIResponse } from 'roku-test-automation';
 
 class ExtensionIntermediary {
     private inflightRequests = {};
@@ -224,10 +224,6 @@ class ODCIntermediary {
 
     public async getNodesWithProperties(args: GetNodesWithPropertiesArgs, options?: RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesWithProperties>>(RequestType.getNodesWithProperties, args, options);
-    }
-
-    public async findNodesAtLocation(args: FindNodesAtLocationArgs, options?: RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.findNodesAtLocation>>(RequestType.findNodesAtLocation, args, options);
     }
 
     public async getVolumeList(args: GetVolumeListArgs, options?: RequestOptions) {

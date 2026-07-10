@@ -6,7 +6,7 @@
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import type { AppUIResponseChild, AppUIResponse } from 'roku-test-automation';
-    import { utils as rtaUtils } from 'roku-test-automation/client/dist/utils';
+    import { utils as rtaUtils } from 'roku-test-automation/dist/utils';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
 
