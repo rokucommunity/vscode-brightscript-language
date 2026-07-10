@@ -67,22 +67,25 @@ afterEach(() => {
 });
 
 describe('DevicesViewProvider', () => {
-    function makeDevice(overrides: { key: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean }) {
+    function makeDevice(overrides: { key: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean; serialNumber?: string; softwareVersion?: string; configuredIn?: string[] }) {
         return {
             key: overrides.key,
             ip: '1.2.3.4',
             deviceState: overrides.deviceState ?? 'online',
             lastDeviceState: overrides.lastDeviceState ?? 'unknown',
             isConfigured: overrides.isConfigured ?? false,
+            ...(overrides.serialNumber !== undefined ? { serialNumber: overrides.serialNumber } : {}),
+            ...(overrides.configuredIn !== undefined ? { configuredIn: overrides.configuredIn } : {}),
             deviceInfo: {
                 'is-tv': overrides.isTv ? 'true' : 'false',
                 'is-stick': overrides.isStick ? 'true' : 'false',
+                ...(overrides.softwareVersion !== undefined ? { 'software-version': overrides.softwareVersion } : {}),
                 ...(overrides.developerEnabled !== undefined ? { 'developer-enabled': overrides.developerEnabled } : {})
             } as any
         } as any;
     }
 
-    function createProvider(devices: any[]) {
+    function createProvider(devices: any[], options?: { storedPasswords?: Record<string, string> }) {
         const emitter = new EventEmitter();
         const deviceManager: any = {
             on: (event: string, handler: any) => emitter.on(event, handler),
@@ -96,7 +99,7 @@ describe('DevicesViewProvider', () => {
         };
         const credentialStore: any = {
             on: () => undefined,
-            getPassword: () => Promise.resolve(undefined)
+            getPassword: (serialNumber: string) => Promise.resolve(options?.storedPasswords?.[serialNumber])
         };
         const provider = new DevicesViewProvider(deviceManager, credentialStore, vscode.context as any);
         return { provider: provider, deviceManager: deviceManager, emitter: emitter };
@@ -118,7 +121,7 @@ describe('DevicesViewProvider', () => {
             ];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['tv-online', 'stick-online', 'stb-online']);
+            expect(items.map(i => (i as any).key)).to.deep.equal(['tv-online', 'stick-online', 'stb-online']);
         });
 
         it('hides TVs when the TV filter is off', async () => {
@@ -130,7 +133,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ tv: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['stb1', 'stick1']);
+            expect(items.map(i => (i as any).key)).to.deep.equal(['stb1', 'stick1']);
         });
 
         it('hides offline devices when the offline filter is off (pending with prior online stays visible)', async () => {
@@ -142,7 +145,7 @@ describe('DevicesViewProvider', () => {
             ];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['on1', 'pending-was-online']);
+            expect(items.map(i => (i as any).key)).to.deep.equal(['on1', 'pending-was-online']);
         });
 
         it('hides online devices when the online filter is off (pending with prior online counts as online)', async () => {
@@ -155,7 +158,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ online: false, offline: true });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['off1', 'pending-first-load']);
+            expect(items.map(i => (i as any).key)).to.deep.equal(['off1', 'pending-first-load']);
         });
 
         it('treats missing developer-enabled as enabled', async () => {
@@ -167,7 +170,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ devModeEnabled: false, devModeDisabled: true, offline: true });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['explicit-off']);
+            expect(items.map(i => (i as any).key)).to.deep.equal(['explicit-off']);
         });
 
         it('hides user-defined devices when the userDefined filter is off', async () => {
@@ -178,7 +181,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ userDefined: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['discovered1']);
+            expect(items.map(i => (i as any).key)).to.deep.equal(['discovered1']);
         });
 
         it('hides auto-detected devices when the autoDetected filter is off', async () => {
@@ -189,14 +192,80 @@ describe('DevicesViewProvider', () => {
             seedFilters({ autoDetected: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['configured1']);
+            expect(items.map(i => (i as any).key)).to.deep.equal(['configured1']);
         });
 
         it('uses defaults when no filter settings are present', async () => {
             const devices = [makeDevice({ key: 'stb-online' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['stb-online']);
+            expect(items.map(i => (i as any).key)).to.deep.equal(['stb-online']);
+        });
+    });
+
+    describe('device tree structure', () => {
+        it('builds a capability-token contextValue for a fully-capable device', async () => {
+            const devices = [makeDevice({ key: 'tv1', isTv: true, softwareVersion: '15.3.4', serialNumber: 'SERIAL1' })];
+            const { provider } = createProvider(devices);
+            const items = await provider.getChildren();
+            expect(items[0].contextValue).to.equal('device-notInUser-notInWorkspace-noPassword-isTv-canViewRegistry-canRestart');
+        });
+
+        it('includes hasPassword and configured-in tokens, and gates version-specific tokens', async () => {
+            const devices = [makeDevice({ key: 'stb1', softwareVersion: '12.0.0', serialNumber: 'SERIAL2', configuredIn: ['user', 'workspace'] })];
+            const { provider } = createProvider(devices, { storedPasswords: { SERIAL2: 'secret' } });
+            const items = await provider.getChildren();
+            expect(items[0].contextValue).to.equal('device-inUser-inWorkspace-hasPassword-canViewRegistry');
+        });
+
+        it('omits password and version-gated tokens when serial number and software version are unknown', async () => {
+            const devices = [makeDevice({ key: 'stb1' })];
+            const { provider } = createProvider(devices);
+            const items = await provider.getChildren();
+            expect(items[0].contextValue).to.equal('device-notInUser-notInWorkspace');
+        });
+
+        it('lists the action items followed by an expandable Device Info group holding the info fields', async () => {
+            const devices = [makeDevice({ key: 'stb1' })];
+            const { provider } = createProvider(devices);
+            const [deviceItem] = await provider.getChildren();
+
+            const deviceChildren = await provider.getChildren(deviceItem);
+            expect(deviceChildren.map(child => child.label)).to.deep.equal([
+                '🔗 Open device web portal',
+                '⭐ Set as Active Device',
+                '📷 Capture Screenshot',
+                'Device Info'
+            ]);
+
+            const deviceInfoGroup = deviceChildren[deviceChildren.length - 1];
+            expect(deviceInfoGroup.collapsibleState).to.equal((vscode as any).TreeItemCollapsibleState.Collapsed);
+
+            const infoItems = await provider.getChildren(deviceInfoGroup);
+            expect(infoItems.map(item => (item as any).key)).to.include.members(['is-tv', 'is-stick']);
+            for (const infoItem of infoItems) {
+                expect((infoItem as any).command?.command).to.equal('extension.brightscript.copyToClipboard');
+            }
+        });
+
+        it('includes the version-gated and device-specific action items when the device supports them', async () => {
+            const devices = [makeDevice({ key: 'tv1', isTv: true, softwareVersion: '15.3.4', serialNumber: 'SERIAL1' })];
+            const { provider } = createProvider(devices, { storedPasswords: { SERIAL1: 'secret' } });
+            const [deviceItem] = await provider.getChildren();
+
+            const deviceChildren = await provider.getChildren(deviceItem);
+            expect(deviceChildren.map(child => child.label)).to.deep.equal([
+                '🔗 Open device web portal',
+                '🔁 Restart Device',
+                '🔄 Check for Software Updates',
+                '📋 View Registry',
+                '🔑 Change Device Password',
+                '🗑️ Clear Device Password',
+                '⭐ Set as Active Device',
+                '📷 Capture Screenshot',
+                '📺 Switch TV Input',
+                'Device Info'
+            ]);
         });
     });
 
@@ -262,7 +331,7 @@ describe('DevicesViewProvider', () => {
             const { provider } = createProvider(devices);
             // Confirm seeded override is honored before the reset
             let items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['stb1']);
+            expect(items.map(i => (i as any).key)).to.deep.equal(['stb1']);
 
             const treeChanged = sinon.spy();
             provider.onDidChangeTreeData(treeChanged);
@@ -271,7 +340,7 @@ describe('DevicesViewProvider', () => {
 
             expect(treeChanged.called).to.be.true;
             items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['tv1', 'stb1']);
+            expect(items.map(i => (i as any).key)).to.deep.equal(['tv1', 'stb1']);
         });
 
         it('is a no-op on persistence when nothing was overridden', async () => {
@@ -298,7 +367,7 @@ describe('DevicesViewProvider', () => {
 
             expect(treeChanged.called).to.be.true;
             const items = await provider.getChildren();
-            expect(items.map(i => (i).key)).to.deep.equal(['stb1']);
+            expect(items.map(i => (i as any).key)).to.deep.equal(['stb1']);
         });
 
         it('ignores changes to unrelated configuration sections', () => {
