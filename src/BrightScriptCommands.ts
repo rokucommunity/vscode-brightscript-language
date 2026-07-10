@@ -444,8 +444,7 @@ export class BrightScriptCommands {
             if (!ip) {
                 throw new Error('Tried to set active device but failed.');
             } else {
-                await this.context.workspaceState.update('remoteHost', ip);
-                await vscodeContextManager.set('activeHost', ip);
+                await this.deviceManager.setActiveDevice(ip);
                 await util.showTimedNotification(`'${ip}' set as active device`);
             }
         });
@@ -588,8 +587,7 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('clearActiveDevice', async () => {
-            await this.context.workspaceState.update('remoteHost', '');
-            await vscodeContextManager.set('activeHost', '');
+            await this.deviceManager.clearActiveDevice();
             await util.showTimedNotification('Active device cleared');
         });
 

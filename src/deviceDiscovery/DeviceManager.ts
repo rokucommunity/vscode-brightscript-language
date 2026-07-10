@@ -102,6 +102,9 @@ export class DeviceManager {
             this.discoveredDevices = [];
             this.loadLastSeenDevices();
 
+            //re-point the active device at its IP on this network (found by serial number)
+            this.syncActiveDevice().catch(() => { });
+
             this.restartRokuFinder();
 
             //this is important for telling the devices view to refresh and health check its devices
@@ -116,6 +119,9 @@ export class DeviceManager {
         // Load configured devices and cached devices (order doesn't matter due to setDevice merge logic)
         this.loadConfiguredDevices().catch(() => { });
         this.loadLastSeenDevices();
+
+        //restore the active device from a previous session (re-resolves its IP by serial number)
+        this.syncActiveDevice().catch(() => { });
 
         // Set up event listeners for the RokuFinder
         this.setupFinderListeners();
@@ -613,6 +619,65 @@ export class DeviceManager {
         }
     }
 
+    /**
+     * Set the active device. Persists the device's serial number (when known) alongside the IP in
+     * workspace storage so the active device can be recovered in future sessions even if its IP changed.
+     */
+    public async setActiveDevice(ip: string): Promise<void> {
+        const serialNumber = this.getDevice({ ip: ip })?.serialNumber;
+        await this.context.workspaceState.update('remoteHost', ip);
+        await this.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: serialNumber, ip: ip } as ActiveDeviceEntry);
+        await vscodeContextManager.set('activeHost', ip);
+    }
+
+    /**
+     * Clear the active device (both the session context and the persisted workspace storage entry)
+     */
+    public async clearActiveDevice(): Promise<void> {
+        await this.context.workspaceState.update('remoteHost', '');
+        await this.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, undefined);
+        await vscodeContextManager.set('activeHost', '');
+    }
+
+    /**
+     * Re-point the active device at its current IP, found by looking up the persisted serial number
+     * in the device stores. Runs on activation (recovers the active device from the previous session),
+     * after a network change, and when discovery sees the device at a new IP.
+     */
+    private async syncActiveDevice(): Promise<void> {
+        const activeDevice = this.context.workspaceState.get<ActiveDeviceEntry>(DeviceManager.ACTIVE_DEVICE_STATE_KEY);
+        if (!activeDevice?.ip && !activeDevice?.serialNumber) {
+            return;
+        }
+
+        //find the device's current IP by serial number (device list first, then the persisted SN↔IP store),
+        //falling back to the last IP we saw it at
+        let currentIp = activeDevice.ip;
+        if (activeDevice.serialNumber) {
+            currentIp = this.getDevice({ serialNumber: activeDevice.serialNumber })?.ip ??
+                this.globalStateManager.getIpForSerial(activeDevice.serialNumber, this.networkId) ??
+                activeDevice.ip;
+        }
+        if (!currentIp) {
+            return;
+        }
+
+        //keep `remoteHost` following the active device, unless something else (e.g. a debug launch) has since pointed it elsewhere
+        const remoteHost = this.context.workspaceState.get<string>('remoteHost');
+        if (!remoteHost || remoteHost === activeDevice.ip || remoteHost === currentIp) {
+            await this.context.workspaceState.update('remoteHost', currentIp);
+        }
+        if (currentIp !== activeDevice.ip) {
+            await this.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: activeDevice.serialNumber, ip: currentIp } as ActiveDeviceEntry);
+        }
+        await vscodeContextManager.set('activeHost', currentIp);
+    }
+
+    /**
+     * workspaceState key where the active device's serial number and last-known IP are persisted
+     */
+    public static readonly ACTIVE_DEVICE_STATE_KEY = 'activeDevice';
+
     public getLastUsedDeviceIp(): string | undefined {
         return this.lastUsedDeviceIp;
     }
@@ -1098,6 +1163,12 @@ export class DeviceManager {
         // Set device state using intelligent defaults (preserves existing online state or uses cache freshness)
         this.setDeviceState({ serialNumber: serialNumber, ip: ip });
 
+        // If this is the active device and it showed up at a new IP, re-point the active device at it
+        const activeDevice = this.context.workspaceState.get<ActiveDeviceEntry>(DeviceManager.ACTIVE_DEVICE_STATE_KEY);
+        if (serialNumber && activeDevice?.serialNumber === serialNumber && activeDevice.ip !== ip) {
+            this.syncActiveDevice().catch(() => { });
+        }
+
         // If a different device is now at this IP, reload configurations
         if (hasMismatch) {
             this.loadConfiguredDevices().catch(() => { });
@@ -1491,6 +1562,15 @@ interface DiscoveredDeviceEntry {
 interface DeviceStateEntry {
     state: DeviceState;
     lastUpdated: number;
+}
+
+/**
+ * Active device pointer persisted in workspaceState under `DeviceManager.ACTIVE_DEVICE_STATE_KEY`.
+ * The serial number is the durable identity; the ip is the last IP the device was seen at.
+ */
+export interface ActiveDeviceEntry {
+    serialNumber?: string;
+    ip?: string;
 }
 
 /**

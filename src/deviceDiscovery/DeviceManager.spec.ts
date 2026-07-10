@@ -5,6 +5,7 @@ import { vscode } from '../mockVscode.spec';
 import type { RokuDevice } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
+import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { util } from '../util';
 
 describe('DeviceManager', () => {
@@ -2044,6 +2045,135 @@ describe('DeviceManager', () => {
             const entry = manager['configuredDevices'][0];
             expect(entry.state).to.equal('unknown');
             expect(entry.lastState).to.equal('online');
+        });
+    });
+
+    describe('active device persistence', () => {
+        it('setActiveDevice persists the serial number alongside the IP', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['discoveredDevices'].push({ ip: '192.168.1.100', serialNumber: 'device-123' });
+
+            await manager.setActiveDevice('192.168.1.100');
+
+            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.100');
+            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
+                serialNumber: 'device-123',
+                ip: '192.168.1.100'
+            });
+        });
+
+        it('setActiveDevice persists just the IP when the serial number is unknown', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            await manager.setActiveDevice('192.168.1.100');
+
+            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
+                serialNumber: undefined,
+                ip: '192.168.1.100'
+            });
+        });
+
+        it('clearActiveDevice clears the persisted entry', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            await manager.setActiveDevice('192.168.1.100');
+
+            await manager.clearActiveDevice();
+
+            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('');
+            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.be.undefined;
+        });
+
+        it('recovers the active device by serial number on startup', async () => {
+            //active device persisted by a previous session at an old IP
+            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
+            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
+            //the SN↔IP store knows the device now lives at a new IP on this network
+            mockGlobalStateManager.setSerialNumberForIp('test-network-hash', '192.168.1.60', 'device-123');
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            await manager['syncActiveDevice']();
+
+            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.60');
+            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
+                serialNumber: 'device-123',
+                ip: '192.168.1.60'
+            });
+            expect(vscodeContextManager.get('activeHost')).to.equal('192.168.1.60');
+        });
+
+        it('leaves remoteHost alone when something else has since pointed it elsewhere', async () => {
+            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
+            //e.g. a debug launch set remoteHost to a different host after the active device was chosen
+            await vscode.context.workspaceState.update('remoteHost', '192.168.1.99');
+            mockGlobalStateManager.setSerialNumberForIp('test-network-hash', '192.168.1.60', 'device-123');
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            await manager['syncActiveDevice']();
+
+            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.99');
+            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
+                serialNumber: 'device-123',
+                ip: '192.168.1.60'
+            });
+        });
+
+        it('re-points the active device when a network change finds it at a new IP', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
+            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
+
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+            mockGlobalStateManager.setSerialNumberForIp('new-network-hash', '10.0.0.5', 'device-123');
+
+            const syncSpy = sinon.spy(manager as any, 'syncActiveDevice');
+            manager['networkChangeMonitor']['onNetworkChanged']();
+            await Promise.all(syncSpy.returnValues);
+
+            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('10.0.0.5');
+            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
+                serialNumber: 'device-123',
+                ip: '10.0.0.5'
+            });
+        });
+
+        it('follows the active device when discovery sees it at a new IP', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
+            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
+
+            const syncSpy = sinon.spy(manager as any, 'syncActiveDevice');
+            manager['setDiscoveredDevice']('192.168.1.60', 'device-123');
+            await Promise.all(syncSpy.returnValues);
+
+            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.60');
+            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
+                serialNumber: 'device-123',
+                ip: '192.168.1.60'
+            });
+        });
+
+        it('does not follow discovery updates for devices that are not the active device', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
+            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
+
+            const syncSpy = sinon.spy(manager as any, 'syncActiveDevice');
+            manager['setDiscoveredDevice']('192.168.1.60', 'device-456');
+            await Promise.all(syncSpy.returnValues);
+
+            expect(syncSpy.called).to.be.false;
+            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.50');
+        });
+
+        it('keeps the last known IP when the serial number cannot be found in the stores', async () => {
+            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
+            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            await manager['syncActiveDevice']();
+
+            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.50');
+            expect(vscodeContextManager.get('activeHost')).to.equal('192.168.1.50');
         });
     });
 
