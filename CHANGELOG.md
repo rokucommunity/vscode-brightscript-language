@@ -8,15 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.67.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.2...v2.67.3) - 2026-07-13
 ### Added
- - Add device commands to Devices view context menu, nest device info ([#853](https://github.com/rokucommunity/vscode-brightscript-language/pull/853))
+ - Indicator for the active device in the Devices panel ([#856](https://github.com/rokucommunity/vscode-brightscript-language/pull/856))
 ### Changed
- - Show an indicator for the active device in the Devices panel ([#856](https://github.com/rokucommunity/vscode-brightscript-language/pull/856))
- - Persist active device and re-resolve its IP by serial number ([#854](https://github.com/rokucommunity/vscode-brightscript-language/pull/854))
+ - Add device commands to Devices panel right-click context menu and nested device info ([#853](https://github.com/rokucommunity/vscode-brightscript-language/pull/853))
+ - Persist active device by serial number and re-resolve its IP across reloads ([#854](https://github.com/rokucommunity/vscode-brightscript-language/pull/854))
+### Fixed
  - upgrade to [@rokucommunity/logger@0.4.1](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#041---2026-07-10). Notable changes since 0.4.0:
      - Serialize Error.cause (recursively) when logging ([#33](https://github.com/rokucommunity/logger/pull/33))
-     - chore: Update create-vsix to support multi-vsix and shared bot logic ([#32](https://github.com/rokucommunity/logger/pull/32))
-### Fixed
- - Fix nested namespace display and nesting in outline ([#848](https://github.com/rokucommunity/vscode-brightscript-language/pull/848))
+ - Nested namespace display and nesting in outline ([#848](https://github.com/rokucommunity/vscode-brightscript-language/pull/848))
 
 
 
