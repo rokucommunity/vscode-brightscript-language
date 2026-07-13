@@ -1197,6 +1197,9 @@ export class BrightScriptCommands {
         this.registerCommand('devicesView.deviceMenu.setActiveDevice', (element?: { key?: string }) => {
             return vscode.commands.executeCommand('extension.brightscript.setActiveDevice', element);
         });
+        this.registerCommand('devicesView.deviceMenu.clearActiveDevice', () => {
+            return vscode.commands.executeCommand('extension.brightscript.clearActiveDevice');
+        });
         this.registerCommand('devicesView.deviceMenu.captureScreenshot', (element?: { key?: string }) => {
             return vscode.commands.executeCommand('extension.brightscript.captureScreenshot', getDevice(element)?.ip);
         });
