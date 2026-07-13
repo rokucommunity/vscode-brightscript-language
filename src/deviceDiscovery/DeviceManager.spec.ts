@@ -2175,6 +2175,54 @@ describe('DeviceManager', () => {
             expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.50');
             expect(vscodeContextManager.get('activeHost')).to.equal('192.168.1.50');
         });
+
+        it('forgets the saved active device when the user picks a different device', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
+            await vscodeContextManager.set('activeHost', '192.168.1.50');
+            manager['discoveredDevices'].push({ ip: '192.168.1.60', serialNumber: 'device-456' });
+
+            await manager.forgetActiveDeviceIfDifferent('192.168.1.60');
+
+            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.be.undefined;
+            expect(vscodeContextManager.get('activeHost')).to.equal('');
+        });
+
+        it('keeps the saved active device when the user picks it at its known IP', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
+
+            await manager.forgetActiveDeviceIfDifferent('192.168.1.50');
+
+            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
+                serialNumber: 'device-123',
+                ip: '192.168.1.50'
+            });
+        });
+
+        it('keeps and re-syncs the saved active device when the user picks it at a new IP', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
+            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
+            //the same device was discovered at a new IP, and the user picked it there
+            manager['discoveredDevices'].push({ ip: '192.168.1.60', serialNumber: 'device-123' });
+
+            await manager.forgetActiveDeviceIfDifferent('192.168.1.60');
+
+            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
+                serialNumber: 'device-123',
+                ip: '192.168.1.60'
+            });
+            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.60');
+        });
+
+        it('does nothing when no active device is saved', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            await manager.forgetActiveDeviceIfDifferent('192.168.1.60');
+
+            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.be.undefined;
+        });
     });
 
     describe('configured devices', () => {

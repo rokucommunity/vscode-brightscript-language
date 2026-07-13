@@ -640,6 +640,31 @@ export class DeviceManager {
     }
 
     /**
+     * Forget the saved active device when the user has explicitly picked a different device.
+     * Called after the device picker resolves in a flow where the active device could not be located,
+     * so the old active device isn't automatically re-activated by `syncActiveDevice` if it comes
+     * back online later. When the picked device IS the active device (possibly at a new IP), the
+     * active device is kept and its pointers are re-synced instead.
+     */
+    public async forgetActiveDeviceIfDifferent(pickedIp: string): Promise<void> {
+        const activeDevice = this.context.workspaceState.get<ActiveDeviceEntry>(DeviceManager.ACTIVE_DEVICE_STATE_KEY);
+        if (!activeDevice?.ip && !activeDevice?.serialNumber) {
+            return;
+        }
+
+        const pickedSerialNumber = this.getDevice({ ip: pickedIp })?.serialNumber;
+        const isSameDevice = pickedIp === activeDevice.ip ||
+            (!!activeDevice.serialNumber && pickedSerialNumber === activeDevice.serialNumber);
+        if (isSameDevice) {
+            await this.syncActiveDevice();
+            return;
+        }
+
+        await this.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, undefined);
+        await vscodeContextManager.set('activeHost', '');
+    }
+
+    /**
      * Re-point the active device at its current IP, found by looking up the persisted serial number
      * in the device stores. Runs on activation (recovers the active device from the previous session),
      * after a network change, and when discovery sees the device at a new IP.
