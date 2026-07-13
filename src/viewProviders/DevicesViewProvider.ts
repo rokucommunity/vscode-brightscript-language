@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { ConfiguredDevice, DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import type { CredentialStore } from '../managers/CredentialStore';
+import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
 import {
@@ -56,11 +57,19 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
         // Pre-populate devices and decorations so they're ready before first render
         this.devices = this.deviceManager.getAllDevices();
-        this.decorationProvider.updateDevices(this.devices);
+        this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
 
         this.deviceManager.on('devices-changed', () => {
             this.handleDevicesChanged();
         });
+
+        // Re-render when the active device changes so the indicator moves to the correct row
+        const unsubscribeContextChange = vscodeContextManager.onChange((key) => {
+            if (key === 'activeHost') {
+                this.handleDevicesChanged();
+            }
+        });
+        this.context.subscriptions.push({ dispose: unsubscribeContextChange });
 
         this.deviceManager.on('scanNeeded-changed', () => {
             if (!this.visible) {
@@ -139,8 +148,25 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     private handleDevicesChanged(): void {
         this.devices = this.deviceManager.getAllDevices();
-        this.decorationProvider.updateDevices(this.devices);
+        this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
         this._onDidChangeTreeData.fire(null);
+    }
+
+    /**
+     * Is this device the active device? The active device is tracked by IP in the
+     * `activeHost` context value (set by the setActiveDevice/clearActiveDevice commands).
+     */
+    private isActiveDevice(device: RokuDevice): boolean {
+        const activeHost = vscodeContextManager.get<string>('activeHost');
+        return !!activeHost && device.ip === activeHost;
+    }
+
+    /**
+     * Get the tree key of the active device, or undefined when no device is active
+     * or the active host doesn't match any known device
+     */
+    private getActiveDeviceKey(): string | undefined {
+        return this.devices?.find(device => this.isActiveDevice(device))?.key;
     }
 
     /**
@@ -157,7 +183,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
             if (this.devices.length === 0) {
                 this.devices = this.deviceManager.getAllDevices();
-                this.decorationProvider.updateDevices(this.devices);
+                this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
             }
             if (this.devices) {
                 let items: DeviceTreeItem[] = [];
@@ -293,19 +319,34 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 }
             }
 
-            result.push(
-                this.createDeviceInfoTreeItem({
-                    label: '⭐ Set as Active Device',
-                    parent: element,
-                    collapsibleState: vscode.TreeItemCollapsibleState.None,
-                    tooltip: 'Set as active device',
-                    command: {
-                        command: 'extension.brightscript.setActiveDevice',
-                        title: 'Set Active Device',
-                        arguments: [device.ip]
-                    }
-                })
-            );
+            if (this.isActiveDevice(device)) {
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: '⭐ Clear Active Device',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'This is the active device. Click to clear it.',
+                        command: {
+                            command: 'extension.brightscript.clearActiveDevice',
+                            title: 'Clear Active Device'
+                        }
+                    })
+                );
+            } else {
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: '⭐ Set as Active Device',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'Set as active device',
+                        command: {
+                            command: 'extension.brightscript.setActiveDevice',
+                            title: 'Set Active Device',
+                            arguments: [device.ip]
+                        }
+                    })
+                );
+            }
 
             result.push(
                 this.createDeviceInfoTreeItem({
@@ -395,6 +436,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         if (semver.satisfies(softwareVersion, '>=15.0.4')) {
             tokens.push('canRestart');
         }
+        tokens.push(this.isActiveDevice(device) ? 'isActive' : 'notActive');
         return tokens.join('-');
     }
 
@@ -629,8 +671,9 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
     readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
 
     private deviceStates = new Map<string, string>();
+    private activeDeviceKey: string | undefined;
 
-    updateDevices(devices: RokuDevice[]): void {
+    updateDevices(devices: RokuDevice[], activeDeviceKey: string | undefined): void {
         const changedUris: vscode.Uri[] = [];
         for (const device of devices) {
             const oldState = this.deviceStates.get(device.key);
@@ -638,6 +681,15 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
                 this.deviceStates.set(device.key, device.deviceState);
                 changedUris.push(vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`));
             }
+        }
+        if (activeDeviceKey !== this.activeDeviceKey) {
+            // Refresh both the row losing the badge and the row gaining it
+            for (const key of [this.activeDeviceKey, activeDeviceKey]) {
+                if (key) {
+                    changedUris.push(vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${key}`));
+                }
+            }
+            this.activeDeviceKey = activeDeviceKey;
         }
         if (changedUris.length > 0) {
             this._onDidChangeFileDecorations.fire(changedUris);
@@ -652,12 +704,17 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
         const deviceKey = uri.path.slice(1); // Remove leading slash (key is "s:..." or "i:...")
         const state = this.deviceStates.get(deviceKey);
 
+        const decoration: vscode.FileDecoration = {};
+        if (deviceKey === this.activeDeviceKey) {
+            //the emoji star renders in its native gold color without tinting the row label
+            //(FileDecoration.color would color the label and badge together)
+            decoration.badge = '⭐';
+            decoration.tooltip = 'Active device';
+        }
         if (state !== 'online') {
-            return {
-                color: new vscode.ThemeColor('disabledForeground')
-            };
+            decoration.color = new vscode.ThemeColor('disabledForeground');
         }
 
-        return undefined;
+        return (decoration.badge || decoration.color) ? decoration : undefined;
     }
 }

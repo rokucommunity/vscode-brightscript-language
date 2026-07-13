@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.67.2",
+    "version": "2.67.3",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -53,7 +53,7 @@
         "sync-launch-settings": "ts-node scripts/sync-launch-settings.ts"
     },
     "dependencies": {
-        "@rokucommunity/logger": "^0.4.0",
+        "@rokucommunity/logger": "^0.4.1",
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "brighterscript": "^0.73.0",
@@ -492,7 +492,12 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.deviceMenu.setActiveDevice",
-                    "when": "view == devicesView && viewItem =~ /^device\\b/",
+                    "when": "view == devicesView && viewItem =~ /-notActive\\b/",
+                    "group": "1_primary@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.clearActiveDevice",
+                    "when": "view == devicesView && viewItem =~ /-isActive\\b/",
                     "group": "1_primary@1"
                 },
                 {
@@ -750,6 +755,10 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.deviceMenu.setActiveDevice",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.clearActiveDevice",
                     "when": "false"
                 },
                 {
@@ -4022,6 +4031,11 @@
             {
                 "command": "extension.brightscript.devicesView.deviceMenu.setActiveDevice",
                 "title": "⭐ Set as Active Device",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.clearActiveDevice",
+                "title": "⭐ Clear Active Device",
                 "category": "BrightScript"
             },
             {

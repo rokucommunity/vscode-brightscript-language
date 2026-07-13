@@ -268,6 +268,32 @@ describe('BrightScriptConfigurationProvider', () => {
                 }
                 expect(threw?.message).to.contain('unable to reach device');
             });
+
+            it('forgets the saved active device when it could not be located and the picker resolved a host', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
+                //the active device failed its health check, so the picker was shown
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                sinon.stub(userInputManager, 'promptForHost').resolves({ host: '1.2.3.4', deviceInfo: deviceInfo });
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+                const forgetStub = sinon.stub(deviceManager, 'forgetActiveDeviceIfDifferent').resolves();
+
+                await (configProvider as any).processHostParameter({ host: '' });
+
+                expect(forgetStub.calledOnceWith('1.2.3.4')).to.be.true;
+            });
+
+            it('does not forget the active device when the active host resolved healthy', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves({ host: '1.2.3.4', deviceInfo: deviceInfo }) };
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+                const forgetStub = sinon.stub(deviceManager, 'forgetActiveDeviceIfDifferent').resolves();
+
+                await (configProvider as any).processHostParameter({ host: '' });
+
+                expect(forgetStub.called).to.be.false;
+            });
         });
 
         it('uses the default values if not provided', async () => {
