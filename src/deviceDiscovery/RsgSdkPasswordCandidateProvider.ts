@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
-import type { DeviceManager } from './DeviceManager';
+import type { ConfiguredDevice, ConfiguredDeviceProvider, DeviceManager } from './DeviceManager';
 import type { RokuDevConfigProvider } from './RokuDevConfigProvider';
 import type { DevicePasswordCandidateProvider } from '../managers/UserInputManager';
 
@@ -16,8 +16,11 @@ import type { DevicePasswordCandidateProvider } from '../managers/UserInputManag
  *   3. `.roku/leases/*.json` lease files — `passwordRef` indirection (`env:NAME` resolved from
  *      the environment; `literal:VALUE` only when `RK_ALLOW_LITERAL_PASSWORD=1`, the same gate
  *      the sdk applies)
- *   4. Environment variables the sdk reads: `ROKU_DEV_PASSWORD` (rk CLI fallback) and
- *      `RK_DEVICE_PASSWORD` (device pool / test client)
+ *   4. The env-var device pairs the sdk reads: `RK_DEVICE_IP`/`RK_DEVICE_PASSWORD` (device
+ *      pool / test client) and `ROKU_DEV_TARGET`/`ROKU_DEV_PASSWORD` (rk CLI fallback)
+ *
+ * Also acts as a ConfiguredDeviceProvider so the env-var device pairs surface in the device
+ * picker / devices view alongside config-file devices.
  *
  * Candidates are only ever *tried* against the device by UserInputManager, so a stale or
  * mismatched value costs one failed validation request and nothing else.
@@ -27,22 +30,71 @@ import type { DevicePasswordCandidateProvider } from '../managers/UserInputManag
  * VSCode (even across a window reload); a full restart is required.
  *
  * This is rsg-specific and is kept in its own file to minimize conflicts when merging
- * upstream master changes into UserInputManager.
+ * upstream master changes into UserInputManager / DeviceManager.
  */
-export class SdkPasswordCandidateProvider implements DevicePasswordCandidateProvider {
+export class RsgSdkPasswordCandidateProvider implements DevicePasswordCandidateProvider, ConfiguredDeviceProvider, vscode.Disposable {
     constructor(
         private deviceManager: DeviceManager,
         private rokuDevConfigProvider: RokuDevConfigProvider
     ) { }
+
+    private readonly _onDidChange = new vscode.EventEmitter<void>();
+    /** The process environment never changes mid-session, so this never fires. */
+    public readonly onDidChange = this._onDidChange.event;
 
     public getPasswordCandidates(host: string | undefined, serialNumber: string | undefined): Array<string | undefined> {
         return [
             this.getMergedDevicePassword(host),
             ...this.rokuDevConfigProvider.getPasswordCandidates(host),
             ...this.getLeasePasswords(host),
-            process.env.ROKU_DEV_PASSWORD,
-            process.env.RK_DEVICE_PASSWORD
+            ...this.getEnvDevices().map(x => x.password)
         ];
+    }
+
+    /**
+     * ConfiguredDeviceProvider contract: surface the env-var device pairs as configured
+     * devices. When both pairs point at the same host, `RK_DEVICE_IP` wins, matching the
+     * sdk precedence.
+     */
+    public getConfiguredDevices(): ConfiguredDevice[] {
+        const devices: ConfiguredDevice[] = [];
+        const seenHosts = new Set<string>();
+
+        for (const { name, host, password } of this.getEnvDevices()) {
+            if (!host || seenHosts.has(host)) {
+                continue;
+            }
+            seenHosts.add(host);
+            const device: ConfiguredDevice = {
+                host: host,
+                name: name
+            };
+            // omit the key entirely when unset so a later-merged source can't be clobbered by undefined
+            if (password) {
+                device.password = password;
+            }
+            devices.push(device);
+        }
+
+        return devices;
+    }
+
+    /**
+     * The single place the sdk's device-targeting environment pairs are read. Ordered
+     * `RK_DEVICE_IP`/`RK_DEVICE_PASSWORD` (device pool / test client) first since it wins
+     * over every other device source in the sdk, then `ROKU_DEV_TARGET`/`ROKU_DEV_PASSWORD`
+     * (rk CLI fallback). Empty or whitespace-only values are treated as unset.
+     */
+    private getEnvDevices(): Array<{ name: string; host: string | undefined; password: string | undefined }> {
+        const envPairs = [
+            { ipVar: 'RK_DEVICE_IP', passwordVar: 'RK_DEVICE_PASSWORD' },
+            { ipVar: 'ROKU_DEV_TARGET', passwordVar: 'ROKU_DEV_PASSWORD' }
+        ];
+        return envPairs.map(({ ipVar, passwordVar }) => ({
+            name: `${ipVar} (env)`,
+            host: process.env[ipVar]?.trim() || undefined,
+            password: process.env[passwordVar]?.trim() || undefined
+        }));
     }
 
     /**
@@ -122,5 +174,9 @@ export class SdkPasswordCandidateProvider implements DevicePasswordCandidateProv
             return ref.slice('literal:'.length);
         }
         return undefined;
+    }
+
+    public dispose() {
+        this._onDidChange.dispose();
     }
 }

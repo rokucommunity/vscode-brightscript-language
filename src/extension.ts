@@ -6,8 +6,7 @@ import * as fsExtra from 'fs-extra';
 import { util } from './util';
 import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import { RokuDevConfigProvider } from './deviceDiscovery/RokuDevConfigProvider';
-import { SdkPasswordCandidateProvider } from './deviceDiscovery/SdkPasswordCandidateProvider';
-import { SdkEnvDeviceProvider } from './deviceDiscovery/SdkEnvDeviceProvider';
+import { RsgSdkPasswordCandidateProvider } from './deviceDiscovery/RsgSdkPasswordCandidateProvider';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
@@ -91,19 +90,19 @@ export class Extension {
         this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
         this.extensionOutputChannel.appendLine('Extension startup');
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel);
-        //register the env provider first so config-file devices override env-derived entries for the same host
-        const sdkEnvDeviceProvider = new SdkEnvDeviceProvider();
-        context.subscriptions.push(sdkEnvDeviceProvider);
-        this.deviceManager.addConfiguredDeviceProvider(sdkEnvDeviceProvider);
         const rokuDevConfigProvider = new RokuDevConfigProvider();
         context.subscriptions.push(rokuDevConfigProvider);
+        const rsgSdkPasswordCandidateProvider = new RsgSdkPasswordCandidateProvider(this.deviceManager, rokuDevConfigProvider);
+        context.subscriptions.push(rsgSdkPasswordCandidateProvider);
+        //register the env-derived devices first so config-file devices override them for the same host
+        this.deviceManager.addConfiguredDeviceProvider(rsgSdkPasswordCandidateProvider);
         this.deviceManager.addConfiguredDeviceProvider(rokuDevConfigProvider);
         const credentialStore = new CredentialStore(context);
         let userInputManager = new UserInputManager(
             this.deviceManager,
             credentialStore
         );
-        userInputManager.addPasswordCandidateProvider(new SdkPasswordCandidateProvider(this.deviceManager, rokuDevConfigProvider));
+        userInputManager.addPasswordCandidateProvider(rsgSdkPasswordCandidateProvider);
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
         this.brightScriptCommands = new BrightScriptCommands(
