@@ -163,5 +163,104 @@ describe('RokuDevConfigProvider', () => {
             expect(devices.length).to.equal(1);
             expect(devices[0].host).to.equal('10.0.0.4');
         });
+
+        it('falls back to the config file defaultPassword when a device has no password', () => {
+            stubFiles({
+                [homeConfigPath]: {
+                    defaultPassword: 'shared-pass',
+                    devices: [
+                        { ip: '10.0.0.1', name: 'No Password' },
+                        { ip: '10.0.0.2', name: 'Own Password', password: 'own-pass' }
+                    ]
+                }
+            });
+
+            provider = new RokuDevConfigProvider();
+
+            expect(provider.getConfiguredDevices()).to.deep.equal([
+                { host: '10.0.0.1', name: 'No Password', password: 'shared-pass' },
+                { host: '10.0.0.2', name: 'Own Password', password: 'own-pass' }
+            ]);
+        });
+
+        it('reads the config from $ROKU_DEV_CONFIG_PATH instead of the home directory when set', () => {
+            const overridePath = path.join(path.sep, 'custom', 'my-config.json');
+            process.env.ROKU_DEV_CONFIG_PATH = overridePath;
+            try {
+                stubFiles({
+                    [homeConfigPath]: { devices: [{ ip: '10.0.0.1', name: 'From Home' }] },
+                    [overridePath]: { devices: [{ ip: '10.0.0.2', name: 'From Override' }] }
+                });
+
+                provider = new RokuDevConfigProvider();
+
+                const devices = provider.getConfiguredDevices();
+                expect(devices.length).to.equal(1);
+                expect(devices[0].name).to.equal('From Override');
+            } finally {
+                delete process.env.ROKU_DEV_CONFIG_PATH;
+            }
+        });
+    });
+
+    describe('getPasswordCandidates', () => {
+        it('returns the matched device password followed by defaultPassword values', () => {
+            stubFiles({
+                [homeConfigPath]: {
+                    defaultPassword: 'home-default',
+                    devices: [{ ip: '10.0.0.1', password: 'device-pass' }]
+                }
+            });
+
+            provider = new RokuDevConfigProvider();
+
+            expect(provider.getPasswordCandidates('10.0.0.1')).to.deep.equal(['device-pass', 'home-default']);
+        });
+
+        it('uses the file defaultPassword for a matched device without its own password', () => {
+            stubFiles({
+                [homeConfigPath]: {
+                    defaultPassword: 'home-default',
+                    devices: [{ ip: '10.0.0.1' }]
+                }
+            });
+
+            provider = new RokuDevConfigProvider();
+
+            expect(provider.getPasswordCandidates('10.0.0.1')).to.deep.equal(['home-default', 'home-default']);
+        });
+
+        it('returns defaultPassword values even when the host is not registered in any config', () => {
+            stubFiles({
+                [homeConfigPath]: {
+                    defaultPassword: 'home-default',
+                    devices: [{ ip: '10.0.0.1', password: 'other-device-pass' }]
+                }
+            });
+
+            provider = new RokuDevConfigProvider();
+
+            expect(provider.getPasswordCandidates('192.168.9.9')).to.deep.equal(['home-default']);
+        });
+
+        it('orders matched passwords most-specific config first', () => {
+            stubFiles({
+                [homeConfigPath]: { devices: [{ ip: '10.0.0.1', password: 'home-pass' }] },
+                [workspaceConfigPath]: { devices: [{ ip: '10.0.0.1', password: 'ws-pass' }] }
+            });
+
+            provider = new RokuDevConfigProvider();
+            provider['workspaceConfigPaths'].add(workspaceConfigPath);
+
+            expect(provider.getPasswordCandidates('10.0.0.1')).to.deep.equal(['ws-pass', 'home-pass']);
+        });
+
+        it('returns an empty list when no configs exist', () => {
+            stubFiles({});
+
+            provider = new RokuDevConfigProvider();
+
+            expect(provider.getPasswordCandidates('10.0.0.1')).to.deep.equal([]);
+        });
     });
 });

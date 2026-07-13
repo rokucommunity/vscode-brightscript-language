@@ -12,7 +12,8 @@ import type { ConfiguredDevice } from './DeviceManager';
  * Discovery sources, ordered from most-specific to least-specific:
  *   1. Every `.roku/roku-dev-config.json` found inside the workspace (any depth)
  *   2. Ancestor `.roku/roku-dev-config.json` files walked upward from each workspace folder
- *   3. `~/roku-dev-config.json`
+ *   3. `~/roku-dev-config.json` (or `$ROKU_DEV_CONFIG_PATH` when set, matching the sdk's
+ *      override of the home-level config location)
  *
  * All unique devices found across all sources are returned. When the same device key (id, or
  * ip as fallback) appears in multiple configs, the more-specific config wins.
@@ -129,18 +130,21 @@ export class RokuDevConfigProvider implements vscode.Disposable {
     }
 
     /**
-     * Read all known roku-dev-config.json files and return the merged device list.
-     * Order: workspace-internal (most specific) → ancestor walk → home (least specific).
-     * First write wins per key, so more-specific entries override less-specific ones.
+     * Read and parse every known roku-dev-config.json, ordered most-specific to least-specific:
+     * workspace-internal → ancestor walk → home (or `$ROKU_DEV_CONFIG_PATH` when set). Missing
+     * files are skipped; unreadable files are skipped with a once-per-error warning.
      */
-    public getConfiguredDevices(): ConfiguredDevice[] {
-        const deviceMap = new Map<string, ConfiguredDevice>();
+    private readConfigs(): RokuDevConfigJson[] {
+        const configs: RokuDevConfigJson[] = [];
         const seenPaths = new Set<string>();
 
+        const homeConfigPath = process.env.ROKU_DEV_CONFIG_PATH
+            ? path.resolve(process.env.ROKU_DEV_CONFIG_PATH)
+            : path.join(os.homedir(), 'roku-dev-config.json');
         const orderedPaths = [
             ...this.workspaceConfigPaths,
             ...this.findAncestorRokuDevConfigPaths(),
-            path.join(os.homedir(), 'roku-dev-config.json')
+            homeConfigPath
         ];
 
         for (const configPath of orderedPaths) {
@@ -152,23 +156,7 @@ export class RokuDevConfigProvider implements vscode.Disposable {
                 if (!fsExtra.existsSync(configPath)) {
                     continue;
                 }
-                const config = fsExtra.readJsonSync(configPath);
-                if (Array.isArray(config?.devices)) {
-                    for (const device of config.devices) {
-                        if (!device?.ip) {
-                            continue;
-                        }
-                        const key = device.id || device.ip;
-                        if (deviceMap.has(key)) {
-                            continue; // already set by a more-specific config
-                        }
-                        deviceMap.set(key, {
-                            host: device.ip,
-                            name: device.name,
-                            password: device.password
-                        });
-                    }
-                }
+                configs.push(fsExtra.readJsonSync(configPath));
                 this.loadErrors.delete(configPath);
             } catch (e) {
                 // Dedupe per-path so a stale broken file doesn't spam on every reload.
@@ -180,7 +168,68 @@ export class RokuDevConfigProvider implements vscode.Disposable {
             }
         }
 
+        return configs;
+    }
+
+    /**
+     * Read all known roku-dev-config.json files and return the merged device list.
+     * Order: workspace-internal (most specific) → ancestor walk → home (least specific).
+     * First write wins per key, so more-specific entries override less-specific ones.
+     */
+    public getConfiguredDevices(): ConfiguredDevice[] {
+        const deviceMap = new Map<string, ConfiguredDevice>();
+
+        for (const config of this.readConfigs()) {
+            if (!Array.isArray(config?.devices)) {
+                continue;
+            }
+            const defaultPassword = typeof config.defaultPassword === 'string' ? config.defaultPassword : undefined;
+            for (const device of config.devices) {
+                if (!device?.ip) {
+                    continue;
+                }
+                const key = device.id || device.ip;
+                if (deviceMap.has(key)) {
+                    continue; // already set by a more-specific config
+                }
+                deviceMap.set(key, {
+                    host: device.ip,
+                    name: device.name,
+                    // per-device password falls back to that file's defaultPassword, matching the sdk's merge
+                    password: device.password ?? defaultPassword
+                });
+            }
+        }
+
         return Array.from(deviceMap.values());
+    }
+
+    /**
+     * Candidate passwords for `host`, ordered the way the sdk resolves them: the matched
+     * device's password (falling back to that file's defaultPassword) from each config in
+     * specificity order, then every remaining defaultPassword — the sdk requires
+     * defaultPassword for sideload even when the device isn't registered in the config.
+     */
+    public getPasswordCandidates(host: string | undefined): string[] {
+        const matched: string[] = [];
+        const defaults: string[] = [];
+
+        for (const config of this.readConfigs()) {
+            const defaultPassword = typeof config?.defaultPassword === 'string' ? config.defaultPassword : undefined;
+            if (host && Array.isArray(config?.devices)) {
+                for (const device of config.devices) {
+                    const password = device?.ip === host ? (device.password ?? defaultPassword) : undefined;
+                    if (password) {
+                        matched.push(password);
+                    }
+                }
+            }
+            if (defaultPassword) {
+                defaults.push(defaultPassword);
+            }
+        }
+
+        return [...matched, ...defaults];
     }
 
     public dispose() {
@@ -190,4 +239,20 @@ export class RokuDevConfigProvider implements vscode.Disposable {
         this.disposables = [];
         this._onDidChange.dispose();
     }
+}
+
+// ---- types ----
+
+/**
+ * Parsed roku-dev-config.json contents (the subset this provider reads). Matches the sdk's
+ * `DevicesJson` shape; parsed from user-authored JSON so every field may be missing or malformed.
+ */
+interface RokuDevConfigJson {
+    defaultPassword?: string;
+    devices?: Array<{
+        id?: string;
+        ip?: string;
+        name?: string;
+        password?: string;
+    }>;
 }

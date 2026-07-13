@@ -6,6 +6,7 @@ import * as fsExtra from 'fs-extra';
 import { util } from './util';
 import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import { RokuDevConfigProvider } from './deviceDiscovery/RokuDevConfigProvider';
+import { RsgSdkPasswordCandidateProvider } from './deviceDiscovery/RsgSdkPasswordCandidateProvider';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
@@ -91,12 +92,17 @@ export class Extension {
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel);
         const rokuDevConfigProvider = new RokuDevConfigProvider();
         context.subscriptions.push(rokuDevConfigProvider);
+        const rsgSdkPasswordCandidateProvider = new RsgSdkPasswordCandidateProvider(this.deviceManager, rokuDevConfigProvider);
+        context.subscriptions.push(rsgSdkPasswordCandidateProvider);
+        //register the env-derived devices first so config-file devices override them for the same host
+        this.deviceManager.addConfiguredDeviceProvider(rsgSdkPasswordCandidateProvider);
         this.deviceManager.addConfiguredDeviceProvider(rokuDevConfigProvider);
         const credentialStore = new CredentialStore(context);
         let userInputManager = new UserInputManager(
             this.deviceManager,
             credentialStore
         );
+        userInputManager.addPasswordCandidateProvider(rsgSdkPasswordCandidateProvider);
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
         this.brightScriptCommands = new BrightScriptCommands(
