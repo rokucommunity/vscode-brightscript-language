@@ -505,7 +505,9 @@ export let vscode = {
         }
         public value: string;
     },
-    ThemeColor: class { },
+    ThemeColor: class {
+        constructor(public readonly id: string) { }
+    },
     ThemeIcon: class {
         constructor(public id: string, public color?: any) { }
     },

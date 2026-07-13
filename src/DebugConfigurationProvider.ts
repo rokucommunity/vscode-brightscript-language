@@ -506,8 +506,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (needsHostPrompt) {
             // both the active-host lookup and the picker probe + register the device in the device
             // manager, so reuse it below instead of probing again
-            const resolved = await this.brightScriptCommands.getHealthyActiveHost() ??
-                await this.userInputManager.promptForHost();
+            let resolved = await this.brightScriptCommands.getHealthyActiveHost();
+            if (!resolved) {
+                resolved = await this.userInputManager.promptForHost();
+                if (resolved?.host) {
+                    //the active device (if there was one) couldn't be located and the user picked a device
+                    //themselves, so forget the saved active device unless they picked that same device
+                    await this.deviceManager.forgetActiveDeviceIfDifferent(resolved.host);
+                }
+            }
             config.host = resolved?.host;
             if (resolved?.host) {
                 device = this.deviceManager.getDevice({ ip: resolved.host });
