@@ -99,6 +99,30 @@
                 "focus": true,
                 "panel": "dedicated"
             }
+        },
+        {
+            "label": "reset-dev",
+            "detail": "Recovery: kill stale tsc/vite/watch-all watchers and Extension Development Host windows for this extension when a launch gets wedged",
+            "type": "shell",
+            "command": "pkill -f 'vscode-brightscript-language.*[w]atch-all\\.ts'; pkill -f 'vscode-brightscript-language.*[t]sc -w'; pkill -f 'vscode-brightscript-language.*[v]ite build --watch'; pkill -f 'extensionDevelopmentPath=[^ ]*vscode-brightscript-language'; echo 'dev environment reset'",
+            "windows": {
+                "command": "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and ($_.CommandLine -match 'vscode-brightscript-language.*([w]atch-all\\.ts|[t]sc -w|[v]ite build --watch)' -or $_.CommandLine -match 'extensionDevelopmentPath=[^ ]*vscode-brightscript-language') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Write-Host 'dev environment reset'",
+                "options": {
+                    "shell": {
+                        "executable": "powershell.exe",
+                        "args": [
+                            "-NoProfile",
+                            "-Command"
+                        ]
+                    }
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
         }
     ]
 }
