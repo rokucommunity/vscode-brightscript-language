@@ -354,10 +354,11 @@ export class Extension {
             this.webviewViewProviderManager.onDidStartDebugSession(debugSession);
             const configuration = debugSession.configuration as BrightScriptLaunchConfiguration;
 
-            const tsPath = this.getTsPath(configuration.rootDir);
-            if (tsPath) {
-                this.attachJsDebugger(debugSession, tsPath).catch(e => console.error(e));
-            }
+            this.resolveJsDebugTarget(configuration).then(target => {
+                if (target) {
+                    return this.attachJsDebugger(debugSession, target);
+                }
+            }).catch(e => console.error(e));
             this.diagnosticManager.clear();
         }
     }
@@ -375,17 +376,40 @@ export class Extension {
         this.diagnosticManager.clear();
     }
 
-    private async attachJsDebugger(parentSession: vscode.DebugSession, tsPath: string) {
-        const launchConfig = parentSession.configuration as BrightScriptLaunchConfiguration;
-        tsPath = tsPath.replace(/\s*pkg:/, '');
-        // const tsDir = path.dirname(tsPath);
+    /**
+     * Find the compiled JS bundle this session should attach the node debugger to (if any).
+     * The app manifest's `ts_path` wins; otherwise fall back to the first component library
+     * with a `tsPath` configured in launch.json.
+     */
+    private async resolveJsDebugTarget(configuration: BrightScriptLaunchConfiguration): Promise<JsDebugTarget | undefined> {
+        const appTsPath = this.getTsPath(configuration.rootDir);
+        if (appTsPath) {
+            const workspaceFolders = vscode.workspace.workspaceFolders || [];
+            //use the stagingDir if provided, otherwise default to what we think it will probably be (hasn't changed in years...)
+            const stagingDir = configuration.stagingDir ?? configuration.stagingFolderPath ?? `${workspaceFolders[0].uri.fsPath}/out/.roku-deploy-staging`;
+            return { tsPath: appTsPath, rootDir: configuration.rootDir, stagingDir: stagingDir };
+        }
+
+        for (const library of configuration.componentLibraries ?? []) {
+            if (!library.tsPath) {
+                continue;
+            }
+            //roku-debug stages each component library in its own folder at `${outDir}/component-libraries/<outFile minus extension>`,
+            //where outFile may contain `${var}` placeholders resolved from the library's manifest. Recreate that path here.
+            const manifestValues = await util.convertManifestToObject(path.join(library.rootDir, 'manifest')) ?? {};
+            const outFileName = library.outFile.replace(/\$\{([\w\d_]+)\}/g, (wholeMatch, name) => (manifestValues[name] ?? wholeMatch).trim());
+            const stagingDir = s`${configuration.outDir}/component-libraries/${path.basename(outFileName, path.extname(outFileName))}`;
+            return { tsPath: library.tsPath, rootDir: library.rootDir, stagingDir: stagingDir };
+        }
+    }
+
+    private async attachJsDebugger(parentSession: vscode.DebugSession, target: JsDebugTarget) {
+        const tsPath = target.tsPath.replace(/\s*(?:lib)?pkg:/, '');
         const workspaceFolders = vscode.workspace.workspaceFolders || [];
-        //use the stagingDir if provided, otherwise default to what we think it will probably be (hasn't changed in years...)
-        const stagingDir = parentSession.configuration.stagingDir ?? parentSession.configuration.stagingFolderPath ?? `${workspaceFolders[0].uri.fsPath}/out/.roku-deploy-staging`;
         //something like ${rootDir}/source/compiled
         const remoteRoot = path.normalize(path.dirname(tsPath));
         //something like ${workspaceFolder}/out/.roku-deploy-staging/source/compiled
-        const localRoot = path.normalize(path.join(stagingDir, remoteRoot));
+        const localRoot = path.normalize(path.join(target.stagingDir, remoteRoot));
 
         // vscode doesn't trigger the onDidStartDebugSession event until the debugger is actually attached.
         // So there's a window where the parent debug session stops while this is still trying to attach.
@@ -399,8 +423,8 @@ export class Extension {
             // rejection never hits the attach timeout below, retrying here would hot-loop and spam
             // the modal as fast as the user can dismiss it. Bail instead — attach cannot succeed
             // without the rootDir, and it will be retried the next time a debug session starts.
-            if (!fsExtra.existsSync(launchConfig.rootDir)) {
-                console.error(`Cannot attach node debugger: rootDir does not exist at '${launchConfig.rootDir}'`);
+            if (!fsExtra.existsSync(target.rootDir)) {
+                console.error(`Cannot attach node debugger: rootDir does not exist at '${target.rootDir}'`);
                 return false;
             }
 
@@ -412,8 +436,8 @@ export class Extension {
                     //use the same debug config name as the parent, but suffix with (JS) so we can identify the JS debug session in the UI
                     name: `${parentSession.configuration.name} (JS)`,
                     request: 'attach',
-                    cwd: launchConfig.rootDir,
-                    address: launchConfig.host,
+                    cwd: target.rootDir,
+                    address: (parentSession.configuration as BrightScriptLaunchConfiguration).host,
                     port: 9999,
                     timeout: 2_000, // Shorter timeout for retry loop
                     sourceMaps: true,
@@ -450,7 +474,12 @@ export class Extension {
     }
 
     private getTsPath(rootDir: string) {
-        const contents = fsExtra.readFileSync(`${rootDir}/manifest`).toString();
+        const manifestPath = `${rootDir}/manifest`;
+        //a missing manifest just means "no ts_path here" — the component library fallback may still apply
+        if (!fsExtra.existsSync(manifestPath)) {
+            return undefined;
+        }
+        const contents = fsExtra.readFileSync(manifestPath).toString();
         // https://regex101.com/r/qgLxGh/1
         const tsPath = /ts_path[ \t]*=[ \t]*(.*)?(?=[\r?\n]|$)/ig.exec(contents);
         return tsPath?.[1]?.trim();
@@ -683,4 +712,21 @@ export class Extension {
 export const extension = new Extension();
 export async function activate(context: vscode.ExtensionContext) {
     await extension.activate(context);
+}
+
+// ---- types ----
+
+interface JsDebugTarget {
+    /**
+     * Device path to the compiled JS bundle (a `ts_path`-style value, e.g. 'pkg:/source/compiled/main.js')
+     */
+    tsPath: string;
+    /**
+     * rootDir of the project the bundle was built from (the app's rootDir, or the component library's)
+     */
+    rootDir: string;
+    /**
+     * The staging directory the debugger copied this project's files into (where the staged .js and .map files live)
+     */
+    stagingDir: string;
 }

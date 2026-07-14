@@ -10,7 +10,7 @@ import type {
     WorkspaceFolder
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { LaunchConfiguration } from 'roku-debug';
+import type { ComponentLibraryConfiguration, LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
@@ -755,4 +755,17 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * @default { activateOnSessionStart: false, deactivateOnSessionEnd: false }
      */
     remoteControlMode?: { activateOnSessionStart?: boolean; deactivateOnSessionEnd?: boolean };
+
+    /**
+     * The list of component libraries to build/host during a debug session, with extension-only additions layered
+     * on top of roku-debug's schema
+     */
+    componentLibraries: Array<ComponentLibraryConfiguration & {
+        /**
+         * Device path to this component library's compiled JS bundle (same meaning as the `ts_path` manifest value,
+         * e.g. 'pkg:/source/compiled/main.js'). When the app's own manifest has no `ts_path`, the first component
+         * library with a `tsPath` becomes the target the JS debugger attaches to.
+         */
+        tsPath?: string;
+    }>;
 }
