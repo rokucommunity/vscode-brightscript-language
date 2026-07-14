@@ -757,6 +757,12 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
     remoteControlMode?: { activateOnSessionStart?: boolean; deactivateOnSessionEnd?: boolean };
 
     /**
+     * Device path to the app's compiled JS bundle the JS debugger should attach to (e.g. 'pkg:/source/compiled/main.js').
+     * Overrides the `ts_path` value from the app's manifest.
+     */
+    tsPath?: string;
+
+    /**
      * The list of component libraries to build/host during a debug session, with extension-only additions layered
      * on top of roku-debug's schema
      */

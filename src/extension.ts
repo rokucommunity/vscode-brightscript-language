@@ -378,11 +378,11 @@ export class Extension {
 
     /**
      * Find the compiled JS bundle this session should attach the node debugger to (if any).
-     * The app manifest's `ts_path` wins; otherwise fall back to the first component library
-     * with a `tsPath` configured in launch.json.
+     * A top-level `tsPath` in launch.json wins, then the app manifest's `ts_path`, then the
+     * first component library with a `tsPath` configured in launch.json.
      */
     private async resolveJsDebugTarget(configuration: BrightScriptLaunchConfiguration): Promise<JsDebugTarget | undefined> {
-        const appTsPath = this.getTsPath(configuration.rootDir);
+        const appTsPath = configuration.tsPath ?? this.getTsPath(configuration.rootDir);
         if (appTsPath) {
             const workspaceFolders = vscode.workspace.workspaceFolders || [];
             //use the stagingDir if provided, otherwise default to what we think it will probably be (hasn't changed in years...)
