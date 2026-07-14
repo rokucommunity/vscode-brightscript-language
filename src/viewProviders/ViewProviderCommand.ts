@@ -13,6 +13,7 @@ export enum ViewProviderCommand {
     sendReplRequest = 'sendReplRequest',
     setManualIpAddress = 'setManualIpAddress',
     setVscodeContext = 'setVscodeContext',
+    showErrorMessage = 'showErrorMessage',
     stopRokuAutomationConfig = 'stopRokuAutomationConfig',
     storeRokuAppOverlays = 'storeRokuAppOverlays',
     storeRokuAutomationConfigs = 'storeRokuAutomationConfigs',

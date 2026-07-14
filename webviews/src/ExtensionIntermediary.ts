@@ -142,6 +142,12 @@ class ExtensionIntermediary {
         this.observedEvents.set(eventName, observedEvent);
     }
 
+    public showErrorMessage(message: string) {
+        this.postMessage(this.createCommandMessage(ViewProviderCommand.showErrorMessage, {
+            message: message
+        }));
+    }
+
     public sendMessageToWebviews(viewIds: string | string[], message) {
         if (!viewIds || (Array.isArray(viewIds) && viewIds.length === 0)) {
             return;
