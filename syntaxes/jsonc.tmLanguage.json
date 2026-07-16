@@ -1,0 +1,8 @@
+{
+    "scopeName": "source.json.bsconfig",
+    "patterns": [
+        {
+            "include": "source.json.comments"
+        }
+    ]
+}
