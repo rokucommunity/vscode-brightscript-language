@@ -1285,6 +1285,10 @@
                                 "description": "A path to an environment variables file.",
                                 "default": ".env"
                             },
+                            "brsconfigPath": {
+                                "type": "string",
+                                "description": "Path to a brsconfig.json file for standard BrightScript projects. When set, the `files`, `rootDir`, and `logLevel` properties from that file are used as base values, with any properties explicitly set in launch.json taking precedence. Supports ${workspaceFolder}."
+                            },
                             "consoleOutput": {
                                 "type": "string",
                                 "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter and rendezvous logs if enabled on the device.",

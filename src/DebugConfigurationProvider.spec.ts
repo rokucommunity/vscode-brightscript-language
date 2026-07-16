@@ -878,4 +878,237 @@ describe('BrightScriptConfigurationProvider', () => {
             });
         });
     });
+
+    describe('getBrsConfig', () => {
+        const workspaceFolderUri = Uri.file(rootDir);
+
+        it('returns undefined when brsconfigPath is not set', () => {
+            const result = configProvider.getBrsConfig(<any>{}, workspaceFolderUri);
+            expect(result).to.be.undefined;
+        });
+
+        it('returns undefined when brsconfigPath is empty string', () => {
+            const result = configProvider.getBrsConfig(<any>{ brsconfigPath: '' }, workspaceFolderUri);
+            expect(result).to.be.undefined;
+        });
+
+        it('reads files, rootDir, and logLevel from brsconfig.json', () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(brsconfigPath, {
+                files: ['manifest', 'source/**/*.brs'],
+                rootDir: 'src',
+                logLevel: 'info'
+            });
+            const result = configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
+            //rootDir is resolved to absolute relative to the config file's location
+            expect(s`${result.rootDir}`).to.equal(s`${rootDir}/src`);
+            expect(result.files).to.deep.equal(['manifest', 'source/**/*.brs']);
+            expect(result.logLevel).to.equal('info');
+        });
+
+        it('ignores cwd in brsconfig.json (brsconfig paths resolve relative to the file)', () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(brsconfigPath, {
+                rootDir: 'src',
+                cwd: '/some/cwd'
+            });
+            const result = configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
+            expect(result).not.to.have.property('cwd');
+            expect(Object.keys(result)).to.deep.equal(['rootDir']);
+        });
+
+        it('omits properties not present in brsconfig.json', () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(brsconfigPath, { rootDir: 'src' });
+            const result = configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
+            expect(Object.keys(result)).to.deep.equal(['rootDir']);
+            expect(result).not.to.have.property('files');
+            expect(result).not.to.have.property('logLevel');
+        });
+
+        it('resolves ${workspaceFolder} in brsconfigPath', () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(brsconfigPath, { rootDir: 'src' });
+            const result = configProvider.getBrsConfig(
+                <any>{ brsconfigPath: '${workspaceFolder}/brsconfig.json' },
+                workspaceFolderUri
+            );
+            expect(s`${result.rootDir}`).to.equal(s`${rootDir}/src`);
+        });
+
+        it('resolves relative brsconfigPath against workspace folder', () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(brsconfigPath, { files: ['manifest'] });
+            const result = configProvider.getBrsConfig(
+                <any>{ brsconfigPath: 'brsconfig.json' },
+                workspaceFolderUri
+            );
+            expect(result).to.deep.equal({ files: ['manifest'] });
+        });
+
+        it('supports `extends` inheritance via brighterscript loadConfigFile', () => {
+            const basePath = s`${rootDir}/brsconfig.base.json`;
+            const childPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(basePath, {
+                rootDir: 'src',
+                files: ['manifest', 'source/**/*'],
+                logLevel: 'warn'
+            });
+            //child overrides logLevel and adds nothing else; rootDir + files inherited from base
+            fsExtra.outputJsonSync(childPath, {
+                extends: 'brsconfig.base.json',
+                logLevel: 'debug'
+            });
+            const result = configProvider.getBrsConfig(<any>{ brsconfigPath: childPath }, workspaceFolderUri);
+            expect(s`${result.rootDir}`).to.equal(s`${rootDir}/src`);
+            expect(result.files).to.deep.equal(['manifest', 'source/**/*']);
+            expect(result.logLevel).to.equal('debug');
+        });
+
+        it('supports JSONC (comments and trailing commas) in brsconfig.json', () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputFileSync(brsconfigPath, `{
+                // this is the project root
+                "rootDir": "src",
+                "logLevel": "info",
+            }`);
+            const result = configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
+            expect(s`${result.rootDir}`).to.equal(s`${rootDir}/src`);
+            expect(result.logLevel).to.equal('info');
+        });
+
+        it('throws a clear error when brsconfig file is missing', () => {
+            expect(() => {
+                configProvider.getBrsConfig(
+                    <any>{ brsconfigPath: `${rootDir}/nonexistent.json` },
+                    workspaceFolderUri
+                );
+            }).to.throw(/Could not load brsconfig file/);
+        });
+
+        it('throws a clear error when brsconfig file contains invalid JSON', () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputFileSync(brsconfigPath, '{ invalid json }');
+            expect(() => {
+                configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
+            }).to.throw(/Could not load brsconfig file/);
+        });
+    });
+
+    describe('brsconfigPath merge in resolveDebugConfiguration', () => {
+        beforeEach(() => {
+            const configDefaults = configProvider['configDefaults'];
+            configDefaults.host = '192.168.1.100';
+            configDefaults.password = 'aaaa';
+            sinon.stub(rokuDeploy, 'getDeviceInfo').returns(Promise.reject(new Error('Failure during test')));
+            sinon.stub(DeviceManager.prototype, 'validateDevicePassword').resolves('ok');
+            sinon.stub(configProvider, 'getBsConfig').returns({});
+        });
+
+        it('applies brsconfig values as base, launch.json values win on conflict', async () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(brsconfigPath, {
+                rootDir: 'from-brsconfig',
+                files: ['from-brsconfig/**/*'],
+                logLevel: 'info'
+            });
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                host: '127.0.0.1',
+                type: 'brightscript',
+                brsconfigPath: brsconfigPath,
+                rootDir: 'from-launch-json'
+            });
+            // launch.json rootDir wins
+            expect(s`${config.rootDir}`).to.contain('from-launch-json');
+            // brsconfig files used because launch.json didn't specify files
+            expect(config.files).to.deep.equal(['from-brsconfig/**/*']);
+            expect(config.logLevel).to.equal('info');
+        });
+
+        it('uses brsconfig rootDir when launch.json does not specify it', async () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(brsconfigPath, { rootDir: `${rootDir}/myapp` });
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                host: '127.0.0.1',
+                type: 'brightscript',
+                brsconfigPath: brsconfigPath
+            });
+            expect(s`${config.rootDir}`).to.contain('myapp');
+        });
+
+        it('does NOT auto-load bsconfig.json when brsconfigPath is set', async () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(brsconfigPath, {
+                rootDir: 'from-brsconfig',
+                logLevel: 'info'
+            });
+
+            //getBsConfig should never be called when brsconfigPath is set
+            (configProvider.getBsConfig as any).returns({
+                rootDir: 'from-bsconfig',
+                logLevel: 'warn'
+            });
+
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                host: '127.0.0.1',
+                type: 'brightscript',
+                brsconfigPath: brsconfigPath
+            });
+
+            // brsconfig values win — bsconfig was ignored entirely
+            expect(s`${config.rootDir}`).to.contain('from-brsconfig');
+            expect(config.logLevel).to.equal('info');
+            expect((configProvider.getBsConfig as any).called).to.be.false;
+        });
+
+        it('still auto-loads bsconfig.json when brsconfigPath is NOT set', async () => {
+            (configProvider.getBsConfig as any).returns({
+                rootDir: 'from-bsconfig',
+                logLevel: 'warn'
+            });
+
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                host: '127.0.0.1',
+                type: 'brightscript'
+            });
+
+            expect(s`${config.rootDir}`).to.contain('from-bsconfig');
+            expect(config.logLevel).to.equal('warn');
+        });
+
+        it('launch.json values override brsconfig.json values', async () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(brsconfigPath, {
+                rootDir: 'from-brsconfig',
+                files: ['from-brsconfig'],
+                logLevel: 'info'
+            });
+
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                host: '127.0.0.1',
+                type: 'brightscript',
+                brsconfigPath: brsconfigPath,
+                logLevel: 'debug'
+            });
+
+            // launch.json wins on logLevel
+            expect(config.logLevel).to.equal('debug');
+            // brsconfig fills in everything launch.json didn't set
+            expect(s`${config.rootDir}`).to.contain('from-brsconfig');
+            expect(config.files).to.deep.equal(['from-brsconfig']);
+        });
+
+        it('surfaces a clear error when brsconfigPath points to a missing file', async () => {
+            try {
+                await configProvider.resolveDebugConfiguration(folder, <any>{
+                    host: '127.0.0.1',
+                    type: 'brightscript',
+                    brsconfigPath: `${rootDir}/does-not-exist.json`
+                });
+                assert.fail('Should have thrown');
+            } catch (e) {
+                expect((e as Error).message).to.contain('Could not load brsconfig file');
+            }
+        });
+    });
 });
