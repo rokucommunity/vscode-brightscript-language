@@ -10,7 +10,7 @@ import type {
     WorkspaceFolder
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { LaunchConfiguration } from 'roku-debug';
+import type { ComponentLibraryConfiguration, LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
@@ -190,7 +190,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * `packageUploadOverrides.formData` without clobbering other keys or an explicit `inspect` value.
      */
     private applyInspectMode(config: BrightScriptLaunchConfiguration) {
-        const tsPath = this.util.getTsPath(config.rootDir);
+        //an explicit `tsPath` in launch.json wins over the staged manifest's `ts_path`
+        const tsPath = config.tsPath ?? this.util.getTsPath(config.rootDir);
         //BrightScript-only apps have no JS debugger to wait for
         if (!tsPath) {
             this.extensionOutputChannel.appendLine(`[inspect] skipped: no ts_path under '${config.rootDir}'`);
@@ -535,8 +536,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (needsHostPrompt) {
             // both the active-host lookup and the picker probe + register the device in the device
             // manager, so reuse it below instead of probing again
-            const resolved = await this.brightScriptCommands.getHealthyActiveHost() ??
-                await this.userInputManager.promptForHost();
+            let resolved = await this.brightScriptCommands.getHealthyActiveHost();
+            if (!resolved) {
+                resolved = await this.userInputManager.promptForHost();
+                if (resolved?.host) {
+                    //the active device (if there was one) couldn't be located and the user picked a device
+                    //themselves, so forget the saved active device unless they picked that same device
+                    await this.deviceManager.forgetActiveDeviceIfDifferent(resolved.host);
+                }
+            }
             config.host = resolved?.host;
             if (resolved?.host) {
                 device = this.deviceManager.getDevice({ ip: resolved.host });
@@ -777,4 +785,23 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * @default { activateOnSessionStart: false, deactivateOnSessionEnd: false }
      */
     remoteControlMode?: { activateOnSessionStart?: boolean; deactivateOnSessionEnd?: boolean };
+
+    /**
+     * Device path to the app's compiled JS bundle the JS debugger should attach to (e.g. 'pkg:/source/compiled/main.js').
+     * Overrides the `ts_path` value from the app's manifest.
+     */
+    tsPath?: string;
+
+    /**
+     * The list of component libraries to build/host during a debug session, with extension-only additions layered
+     * on top of roku-debug's schema
+     */
+    componentLibraries: Array<ComponentLibraryConfiguration & {
+        /**
+         * Device path to this component library's compiled JS bundle (same meaning as the `ts_path` manifest value,
+         * e.g. 'pkg:/source/compiled/main.js'). When the app's own manifest has no `ts_path`, the first component
+         * library with a `tsPath` becomes the target the JS debugger attaches to.
+         */
+        tsPath?: string;
+    }>;
 }
