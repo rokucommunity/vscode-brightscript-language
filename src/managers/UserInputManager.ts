@@ -224,7 +224,7 @@ export class UserInputManager {
             quickPick.busy = busyCount > 0;
         };
 
-        // Subscribe to scan events before triggering refresh so we catch the scan-started event
+        // Subscribe to scan events before triggering a broadcast so we catch the scan-started event
         this.deviceManager.on('scan-started', () => {
             setBusy(true);
         }, disposables);
@@ -235,20 +235,37 @@ export class UserInputManager {
 
         const scanTimeoutMs = 7_000;
         let scanTimeoutId: NodeJS.Timeout | null = null;
-        let hasScanned = this.deviceManager.scan();
-        this.deviceManager.on('scanNeeded-changed', () => {
+
+        // On open, fulfill a queued broadcast order (skip timer-driven `stale`); otherwise do a
+        // normal staleness-gated broadcast. The picker only broadcasts — it never health-checks
+        // every known device (it validates just the one the user selects).
+        const pendingBroadcast = this.deviceManager.getPendingBroadcast();
+        let hasScanned: boolean;
+        if (pendingBroadcast && pendingBroadcast.reason !== 'stale') {
+            this.deviceManager.clearPendingBroadcast();
+            hasScanned = this.deviceManager.broadcast(true);
+        } else {
+            hasScanned = this.deviceManager.broadcast();
+        }
+
+        this.deviceManager.on('broadcast-ordered', (order) => {
+            if (order.reason === 'stale') {
+                return;
+            }
             hasScanned = true;
             if (scanTimeoutId) {
                 clearTimeout(scanTimeoutId);
                 scanTimeoutId = null;
             }
-            this.deviceManager.scan();
+            this.deviceManager.clearPendingBroadcast();
+            this.deviceManager.broadcast(true);
         }, disposables);
+
         scanTimeoutId = setTimeout(() => {
             if (hasScanned) {
                 return;
             }
-            this.deviceManager.scan();
+            this.deviceManager.broadcast();
         }, scanTimeoutMs);
 
         function dispose() {
@@ -265,7 +282,8 @@ export class UserInputManager {
                     if (selectedDevice.label === manualLabel) {
                         deferred.resolve({ manual: true });
                     } else if (selectedDevice.label === scanForDevicesLabel) {
-                        this.deviceManager.refresh(true);
+                        this.deviceManager.broadcast(true);
+                        this.deviceManager.reconcile(true);
                         return;
                     } else {
                         const device = (selectedDevice as any).device as RokuDevice;
@@ -415,7 +433,8 @@ export class UserInputManager {
 
         quickPick.onDidTriggerButton(button => {
             if (button.tooltip === SCAN_FOR_DEVICES) {
-                this.deviceManager.refresh(true);
+                this.deviceManager.broadcast(true);
+                this.deviceManager.reconcile(true);
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
                 this.deviceManager.clearCurrentDeviceList().catch(() => { });
                 void util.showTimedNotification('Clearing device list');

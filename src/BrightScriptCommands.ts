@@ -60,11 +60,13 @@ export class BrightScriptCommands {
 
         //the "Refresh" button in the Devices list
         this.registerCommand('refreshDeviceList', (key: string) => {
-            this.deviceManager.refresh(true);
+            this.deviceManager.broadcast(true);
+            this.deviceManager.reconcile(true);
         });
 
         this.registerCommand('rescanDevices', () => {
-            this.deviceManager.refresh(true);
+            this.deviceManager.broadcast(true);
+            this.deviceManager.reconcile(true);
         });
 
         // Refresh a single device (inline button on hover in devices panel)

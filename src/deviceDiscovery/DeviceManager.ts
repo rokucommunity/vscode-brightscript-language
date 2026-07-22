@@ -3,7 +3,6 @@ import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
 import { rokuDeploy, DeviceUnreachableError, type DeviceInfoRaw } from 'roku-deploy';
-import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
@@ -12,6 +11,32 @@ import { util } from '../util';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { debounce } from 'lodash';
 import { icons } from '../icons';
+import { OrderManager } from './OrderManager';
+import { ConfiguredDeviceManager } from './ConfiguredDeviceManager';
+import { DiscoveredDeviceManager } from './DiscoveredDeviceManager';
+import type {
+    ActiveDeviceEntry,
+    BroadcastOrder,
+    ConfiguredDeviceEntry,
+    DeviceState,
+    DeviceStateEntry,
+    DiscoveredDeviceEntry,
+    PasswordValidationResult,
+    ReconcileOrder,
+    RokuDevice
+} from './types';
+
+// Re-export the public device-discovery types from their canonical home so existing
+// `import { RokuDevice } from '.../DeviceManager'` call sites keep working.
+export type {
+    ActiveDeviceEntry,
+    ConfigurationScope,
+    ConfiguredDevice,
+    DeviceState,
+    HostWithDeviceInfo,
+    PasswordValidationResult,
+    RokuDevice
+} from './types';
 
 export class DeviceManager {
     // #region constructor
@@ -39,8 +64,9 @@ export class DeviceManager {
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
                 if (this.deviceDiscoveryEnabled) {
-                    //emit that we need a scan (will trigger UI to refresh and show devices as needed when enabled)
-                    this.setScanNeeded(true);
+                    //order a broadcast + reconcile so the views discover/health-check devices once enabled
+                    this.orderManager.submitBroadcast('startup');
+                    this.orderManager.submitReconcile('startup');
                     this.systemSleepMonitor.start();
                     void this.activateMonitoring();
                 } else {
@@ -86,7 +112,9 @@ export class DeviceManager {
 
     private setupMonitors() {
         this.systemSleepMonitor = new SystemSleepMonitor(() => {
-            this.setScanNeeded();
+            //order a broadcast + reconcile so the views rescan/health-check on wake
+            this.orderManager.submitBroadcast('sleep');
+            this.orderManager.submitReconcile('sleep');
         });
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
@@ -99,7 +127,7 @@ export class DeviceManager {
             }
 
             //clear and reload discovered devices anytime this network changes (state goes with them)
-            this.discoveredDevices = [];
+            this.discovered.clear();
             this.loadLastSeenDevices();
 
             //re-point the active device at its IP on this network (found by serial number)
@@ -107,8 +135,9 @@ export class DeviceManager {
 
             this.restartRokuFinder();
 
-            //this is important for telling the devices view to refresh and health check its devices
-            this.setScanNeeded();
+            //order a broadcast + reconcile so the views rescan/health-check on the new network
+            this.orderManager.submitBroadcast('network');
+            this.orderManager.submitReconcile('network');
         });
     }
 
@@ -130,13 +159,19 @@ export class DeviceManager {
             // Sleep monitor runs all the time when enabled (ignores focus state)
             this.systemSleepMonitor.start();
 
+            //order a broadcast + reconcile for the views to fulfill when they open
+            this.orderManager.submitBroadcast('startup');
+            this.orderManager.submitReconcile('startup');
+
             this.activateMonitoring().then(() => {
                 const lastSeenDeviceIds = this.globalStateManager.getLastSeenDevices(this.networkId);
                 if (lastSeenDeviceIds.length === 0) {
-                    this.refresh();
-                } else {
-                    this.setScanNeeded();
+                    //nothing cached to show — proactively discover + health-check now
+                    this.broadcast();
+                    this.reconcile();
                 }
+                //else: cached devices are shown immediately; the queued startup orders are
+                //fulfilled when a view opens
             }).catch((e) => {
                 console.error(e);
             });
@@ -145,9 +180,22 @@ export class DeviceManager {
     // #endregion
 
     // Core state and dependencies
-    private configuredDevices: ConfiguredDeviceEntry[] = [];
-    private discoveredDevices: DiscoveredDeviceEntry[] = [];
-    private scanNeeded = false;
+    private configured = new ConfiguredDeviceManager();
+    /**
+     * Live view of the configured devices, owned by {@link ConfiguredDeviceManager}. Returned by
+     * reference so existing in-place reads/mutations (state updates, iteration) keep working.
+     */
+    private get configuredDevices(): ConfiguredDeviceEntry[] {
+        return this.configured.getAll();
+    }
+    private discovered = new DiscoveredDeviceManager(this.globalStateManager, () => this.networkId);
+    /**
+     * Live view of the discovered devices, owned by {@link DiscoveredDeviceManager}. Returned by
+     * reference so existing in-place reads/mutations (state updates, iteration) keep working.
+     */
+    private get discoveredDevices(): DiscoveredDeviceEntry[] {
+        return this.discovered.getAll();
+    }
     private lastUsedDeviceIp: string | undefined = undefined;
     private networkId: string;
 
@@ -155,6 +203,12 @@ export class DeviceManager {
     private systemSleepMonitor: SystemSleepMonitor;
     private networkChangeMonitor: NetworkChangeMonitor;
     private finder = new RokuFinder(this.globalStateManager, this.makeFinderLogger());
+
+    /**
+     * Coordinates deferred broadcast/reconcile work between triggers (startup, network, sleep,
+     * config-enable) and the views that fulfill them. Replaces the legacy `scanNeeded` flag.
+     */
+    private orderManager = new OrderManager();
 
     // Health check tracking and cooldowns
     private resolveDeviceSequence = new Map<string, number>();
@@ -175,8 +229,13 @@ export class DeviceManager {
     public on(eventName: 'devices-changed', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'scan-started', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'scan-ended', handler: () => void, disposables?: Disposable[]): () => void;
-    public on(eventName: 'scanNeeded-changed', handler: () => void, disposables?: Disposable[]): () => void;
+    public on(eventName: 'broadcast-ordered', handler: (order: BroadcastOrder) => void, disposables?: Disposable[]): () => void;
+    public on(eventName: 'reconcile-ordered', handler: (order: ReconcileOrder) => void, disposables?: Disposable[]): () => void;
     public on(eventName: string, handler: (payload: any) => void, disposables?: Disposable[]): () => void {
+        //order events are emitted by the OrderManager's own emitter
+        if (eventName === 'broadcast-ordered' || eventName === 'reconcile-ordered') {
+            return this.orderManager.on(eventName as any, handler as any, disposables);
+        }
         this.emitter.on(eventName, handler);
         const unsubscribe = () => {
             if (this.emitter !== undefined) {
@@ -505,11 +564,13 @@ export class DeviceManager {
     }
 
     /**
-     * Re-scan the network for devices and health-check existing ones
+     * Broadcast an SSDP M-SEARCH to discover devices on the network. Does NOT health-check
+     * existing devices — use {@link reconcile} for that. This is the scan-only path (formerly
+     * `scan()`), used by the device picker to avoid health-checking every known device.
+     * @param force - scan even when device discovery is disabled / a recent scan is still fresh
+     * @returns true if a scan was started, false otherwise
      */
-    public refresh(force = false, doSyntheticDelay = true): boolean {
-        this.healthCheckAllDevices(force, doSyntheticDelay).catch(() => { });
-        // Block automatic scans when device discovery is disabled
+    public broadcast(force = false): boolean {
         if (!force && !this.deviceDiscoveryEnabled) {
             return false;
         }
@@ -517,17 +578,34 @@ export class DeviceManager {
     }
 
     /**
-     * Trigger a network scan for devices without health checking existing devices.
-     * Use this when you just want to discover new devices without verifying existing ones.
-     * @param force - If true, scan even if deviceDiscovery is disabled
-     * @returns true if a scan was started, false otherwise
+     * Health-check all known devices (configured + discovered), marking them online/offline.
+     * Does NOT broadcast for new devices — pair with {@link broadcast} (formerly `refresh()`).
+     * @param force - bypass the per-device health-check cooldown
      */
-    public scan(force = false): boolean {
-        if (!force && !this.deviceDiscoveryEnabled) {
-            return false;
-        }
-        return this.discoverAll(force);
+    public reconcile(force = false, doSyntheticDelay = true): void {
+        this.healthCheckAllDevices(force, doSyntheticDelay).catch(() => { });
     }
+
+    // #region Order queue (view coordination)
+    /**
+     * The pending broadcast order, if a trigger has queued one that no view has fulfilled yet.
+     */
+    public getPendingBroadcast(): BroadcastOrder | null {
+        return this.orderManager.getPendingBroadcast();
+    }
+
+    public getPendingReconcile(): ReconcileOrder | null {
+        return this.orderManager.getPendingReconcile();
+    }
+
+    public clearPendingBroadcast(): void {
+        this.orderManager.clearPendingBroadcast();
+    }
+
+    public clearPendingReconcile(): void {
+        this.orderManager.clearPendingReconcile();
+    }
+    // #endregion
 
     /**
      * Clear discovered devices from the device list, keeping configured devices.
@@ -535,7 +613,7 @@ export class DeviceManager {
      */
     public async clearCurrentDeviceList() {
         // Clear discovered devices (ephemeral)
-        this.discoveredDevices = [];
+        this.discovered.clear();
 
         // Only clear lastUsedDeviceIp if it belonged to a discovered-only device
         if (this.lastUsedDeviceIp) {
@@ -592,8 +670,9 @@ export class DeviceManager {
         // Cooldown is handled by fetchDeviceInfo cache; force bypasses it
         const isHealthy = await this.resolveDevice(device, doSyntheticDelay, force);
         if (!isHealthy && device.isDiscovered) {
-            // force a scan if passive scan is permitted
-            this.refresh(this.deviceDiscoveryEnabled);
+            // a discovered device went dark — health-check everything and rescan (if permitted)
+            this.reconcile(this.deviceDiscoveryEnabled);
+            this.broadcast(this.deviceDiscoveryEnabled);
         }
         return isHealthy;
     }
@@ -716,8 +795,9 @@ export class DeviceManager {
         this.systemSleepMonitor?.dispose?.();
         this.networkChangeMonitor?.dispose?.();
         this.finder?.dispose?.();
-        this.configuredDevices = [];
-        this.discoveredDevices = [];
+        this.orderManager?.dispose?.();
+        this.configured.clear();
+        this.discovered.clear();
         this.emitter.removeAllListeners();
     }
 
@@ -779,7 +859,7 @@ export class DeviceManager {
      */
     private loadLastSeenDevices(): void {
         // Clear discovered devices (ephemeral - reload from network)
-        this.discoveredDevices = [];
+        this.discovered.clear();
 
         // Load cached devices for current network - add to discoveredDevices (state determined by cache freshness)
         const lastSeenDevices = this.globalStateManager.getLastSeenDevices(this.networkId);
@@ -803,73 +883,18 @@ export class DeviceManager {
     }
 
     /**
-     * Load configured devices from VSCode settings.
+     * Load configured devices from VSCode settings and apply their initial device state.
      * Handles removals (devices no longer in config) and adds/updates.
      * Safe to call at startup (removal is no-op when devices array is empty).
-     * Resolves hostnames to IP addresses using DNS lookup.
+     * Settings reading and DNS resolution are delegated to {@link ConfiguredDeviceManager}.
      */
     private async loadConfiguredDevices(): Promise<void> {
-        // Read config from all VSCode scopes
-        const inspection = vscode.workspace.getConfiguration('brightscript').inspect<ConfiguredDevice[]>('devices');
-        const userDevices = inspection?.globalValue ?? [];
-        const workspaceDevices = inspection?.workspaceValue ?? [];
+        await this.configured.load();
 
-        // Build a map tracking which scopes each device is in
-        interface ConfiguredDeviceWithScope extends ConfiguredDevice {
-            configuredIn: ConfigurationScope[];
-        }
-        const deviceMap = new Map<string, ConfiguredDeviceWithScope>();
-
-        function addDevicesFromScope(devices: ConfiguredDevice[], scope: ConfigurationScope) {
-            for (const device of devices) {
-                if (!device?.host) {
-                    continue;
-                }
-                const key = device.serialNumber || device.host;
-                const existing = deviceMap.get(key);
-                const scopes = existing?.configuredIn ?? [];
-                if (!scopes.includes(scope)) {
-                    scopes.push(scope);
-                }
-                deviceMap.set(key, {
-                    ...existing,
-                    ...device,
-                    configuredIn: scopes
-                });
-            }
-        }
-
-        addDevicesFromScope(userDevices, 'user');
-        addDevicesFromScope(workspaceDevices, 'workspace');
-
-        // Clear and rebuild configuredDevices array
-        this.configuredDevices = [];
-
-        // Sort devices by deterministic key for consistent ordering
-        const sortedDevices = Array.from(deviceMap.values()).sort((a, b) => {
-            const keyA = a.serialNumber || a.host;
-            const keyB = b.serialNumber || b.host;
-            return keyA.localeCompare(keyB);
-        });
-
-        for (const configured of sortedDevices) {
-            // Resolve hostname to IP address (handles both hostnames and IPs)
-            let resolvedIp: string | undefined;
-            try {
-                resolvedIp = await rokuDebugUtil.dnsLookup(configured.host);
-            } catch {
-                // DNS lookup failed - resolvedIp remains undefined
-            }
-
-            const ip = resolvedIp ?? configured.host;
-
-            this.configuredDevices.push({
-                ...configured,
-                resolvedIp: resolvedIp
-            });
-
+        for (const entry of this.configured.getAll()) {
+            const ip = entry.resolvedIp ?? entry.host;
             // Set device state using configured serial (not cache - cache might be stale)
-            this.setDeviceState({ serialNumber: configured.serialNumber, ip: ip });
+            this.setDeviceState({ serialNumber: entry.serialNumber, ip: ip });
         }
 
         this.emitDevicesChanged();
@@ -903,7 +928,6 @@ export class DeviceManager {
         // Check if the serial was last seen at this IP (don't trust cache if device moved)
         const cachedIp = serialForCache ? this.globalStateManager.getIpForSerial(serialForCache, this.networkId) : undefined;
         const cacheIsFresh = cached && (Date.now() - cached.createdAt < this.DEVICE_INFO_CACHE_MS) && cachedIp === device.ip;
-        console.log('[TRACE] resolveDevice', device.ip, 'serialForCache=', serialForCache, 'cachedIp=', cachedIp, 'cacheIsFresh=', cacheIsFresh);
 
         // Use cache only if:
         // - Not forced
@@ -1134,8 +1158,7 @@ export class DeviceManager {
      * Discover all Roku devices on the network and watch for new ones that connect
      */
     private discoverAll(force: boolean): boolean {
-        if (force || this.scanNeeded || this.timeSinceLastScan > this.STALE_SCAN_THRESHOLD_MS) {
-            this.scanNeeded = false;
+        if (force || this.timeSinceLastScan > this.STALE_SCAN_THRESHOLD_MS) {
             this.lastScanDate = new Date();
             this.finder.scan();
             return true;
@@ -1153,36 +1176,12 @@ export class DeviceManager {
         // Check for serial mismatch before updating state
         const hasMismatch = this.checkForSerialMismatch(ip, serialNumber);
 
-        // Serial dedupe: if same serial exists at different IP, remove old entry
-        if (serialNumber) {
-            const oldIdx = this.discoveredDevices.findIndex(d => d.ip !== ip && d.serialNumber === serialNumber);
-            if (oldIdx >= 0) {
-                const oldIp = this.discoveredDevices[oldIdx].ip;
-                // Transfer lastUsedDeviceIp to new IP if it was pointing to old IP
-                if (this.lastUsedDeviceIp === oldIp) {
-                    this.lastUsedDeviceIp = ip;
-                }
-                this.discoveredDevices.splice(oldIdx, 1);
-            }
-        }
+        // Array bookkeeping (serial dedupe + IP dedupe) is owned by DiscoveredDeviceManager
+        const { removedIp } = this.discovered.setDevice(ip, serialNumber);
 
-        // IP dedupe: find existing entry at same IP
-        const existingIdx = this.discoveredDevices.findIndex(d => d.ip === ip);
-        const existing = existingIdx >= 0 ? this.discoveredDevices[existingIdx] : undefined;
-
-        if (existing) {
-            // Update existing entry (preserve state fields so setDeviceState below sees the prior state)
-            this.discoveredDevices[existingIdx] = {
-                ...existing,
-                ip: ip,
-                serialNumber: serialNumber ?? existing.serialNumber
-            };
-        } else {
-            // Add new entry
-            this.discoveredDevices.push({
-                ip: ip,
-                serialNumber: serialNumber
-            });
+        // Transfer lastUsedDeviceIp to the new IP if serial dedupe removed the old-IP entry
+        if (removedIp && this.lastUsedDeviceIp === removedIp) {
+            this.lastUsedDeviceIp = ip;
         }
 
         // Set device state using intelligent defaults (preserves existing online state or uses cache freshness)
@@ -1201,27 +1200,18 @@ export class DeviceManager {
     }
 
     /**
-     * Remove a discovered device by IP. Clears from discoveredDevices array,
-     * clears lastUsedDeviceIp if it matches, and removes from lastSeenDevices cache.
+     * Remove a discovered device by IP. Delegates array + lastSeen-cache removal to
+     * DiscoveredDeviceManager, then clears lastUsedDeviceIp if it matches.
      */
     private removeDiscoveredDevice(ip: string): void {
-        // Find the device first to get its serial number
-        const idx = this.discoveredDevices.findIndex(d => d.ip === ip);
-        if (idx < 0) {
+        const device = this.discovered.removeDevice(ip);
+        if (!device) {
             return;
         }
-
-        const device = this.discoveredDevices[idx];
-        this.discoveredDevices.splice(idx, 1);
 
         // Clear lastUsedDeviceIp if it matches
         if (this.lastUsedDeviceIp === ip) {
             this.lastUsedDeviceIp = undefined;
-        }
-
-        // Remove from lastSeenDevices if we have a serial
-        if (device?.serialNumber) {
-            this.globalStateManager.removeLastSeenDevice(this.networkId, device.serialNumber);
         }
     }
 
@@ -1477,17 +1467,6 @@ export class DeviceManager {
         this.networkChangeMonitor.stop();
     }
 
-    /**
-     * Set the flag indicating a scan is needed. Emits 'scanNeeded-changed' event
-     * when the flag flips from false to true.
-     */
-    private setScanNeeded(force = false): void {
-        if (!this.scanNeeded || force) {
-            this.scanNeeded = true;
-            this.emitter.emit('scanNeeded-changed');
-        }
-    }
-
     private emitDevicesChanged = throttleBounce(() => {
         this.emitter.emit('devices-changed');
     }, this.DEVICES_CHANGED_DEBOUNCE_MS);
@@ -1496,157 +1475,6 @@ export class DeviceManager {
         const randomness = Math.random() * ((max - min) + min);
         await util.sleep(randomness);
     }
-}
-
-export type DeviceState = 'offline' | 'unknown' | 'pending' | 'online';
-
-export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
-
-export type ConfigurationScope = 'user' | 'workspace';
-
-/**
- * A resolved host paired with the raw `device-info` gathered while probing it. Returned by the
- * host-resolution flows (device picker, manual entry, active-host lookup) so callers can reuse the
- * device info without issuing another request to the device.
- */
-export interface HostWithDeviceInfo {
-    host: string;
-    deviceInfo: DeviceInfoRaw;
-}
-
-/**
- * User-configured device from settings (brightscript.devices)
- */
-export interface ConfiguredDevice {
-    host: string;
-    name?: string;
-    serialNumber?: string;
-    password?: string;
-}
-
-/**
- * Internal: configured device from settings
- * Extends the raw settings shape with runtime tracking fields.
- * Persists even when device goes offline.
- */
-interface ConfiguredDeviceEntry extends ConfiguredDevice {
-    /**
-     * IP from DNS lookup (updated on resolution)
-     */
-    resolvedIp?: string;
-    /**
-     * Which settings scopes this device is configured in
-     */
-    configuredIn?: ConfigurationScope[];
-    /**
-     * Current device state (inline on entry)
-     */
-    state?: DeviceState;
-    /**
-     * Previous state, updated by setDeviceState before each transition. Undefined when no
-     * state has been recorded yet — readers should treat that as 'unknown'.
-     */
-    lastState?: DeviceState;
-    /**
-     * Timestamp of last state update
-     */
-    stateLastUpdated?: number;
-}
-
-/**
- * Internal: discovered device from network
- * Removed when device goes offline (ephemeral)
- */
-interface DiscoveredDeviceEntry {
-    /**
-     * Current IP from SSDP/resolution
-     */
-    ip: string;
-    /**
-     * Serial number from device-info response
-     */
-    serialNumber?: string;
-    /**
-     * Current device state (inline on entry)
-     */
-    state?: DeviceState;
-    /**
-     * Previous state, updated by setDeviceState before each transition. Undefined when no
-     * state has been recorded yet — readers should treat that as 'unknown'.
-     */
-    lastState?: DeviceState;
-    /**
-     * Timestamp of last state update
-     */
-    stateLastUpdated?: number;
-}
-
-/**
- * Device state with timestamp, returned by getDeviceState
- */
-interface DeviceStateEntry {
-    state: DeviceState;
-    lastUpdated: number;
-}
-
-/**
- * Active device pointer persisted in workspaceState under `DeviceManager.ACTIVE_DEVICE_STATE_KEY`.
- * The serial number is the durable identity; the ip is the last IP the device was seen at.
- */
-export interface ActiveDeviceEntry {
-    serialNumber?: string;
-    ip?: string;
-}
-
-/**
- * Full device details returned by public API
- * Built on-demand by merging configured and discovered device data
- */
-export interface RokuDevice {
-    /**
-     * Computed IP from resolution order: discovered > resolvedIp > host
-     */
-    ip: string;
-    /**
-     * Serial number from discovered or configured
-     */
-    serialNumber?: string;
-    /**
-     * Encoded device key: "s:{serial}" or "i:{ip}"
-     */
-    key: string;
-    /**
-     * Device state: online, offline, pending (currently checking), or unknown (never checked)
-     */
-    deviceState: DeviceState;
-    /**
-     * Previous device state: online, offline, pending (currently checking), or unknown (never checked)
-     */
-    lastDeviceState: DeviceState;
-    /**
-     * Cached device info from GlobalStateManager
-     */
-    deviceInfo: Record<string, any>;
-    /**
-     * True if device exists in discoveredDevices array
-     */
-    isDiscovered: boolean;
-    /**
-     * True if device exists in configuredDevices array
-     */
-    isConfigured: boolean;
-    /**
-     * Which settings scopes this device is configured in
-     */
-    configuredIn?: ConfigurationScope[];
-    /**
-     * User-provided name from config
-     */
-    configuredName?: string;
-    /**
-     * User-provided password from config
-     */
-    configuredPassword?: string;
 }
 
 function throttleBounce<T extends (...args: any[]) => void>(

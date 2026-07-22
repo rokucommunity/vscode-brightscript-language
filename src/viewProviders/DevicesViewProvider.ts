@@ -71,11 +71,21 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         });
         this.context.subscriptions.push({ dispose: unsubscribeContextChange });
 
-        this.deviceManager.on('scanNeeded-changed', () => {
-            if (!this.visible) {
+        // While the panel is visible, fulfill live broadcast/reconcile orders as they arrive,
+        // except timer-driven `stale` ones (avoid surprise scans while the user is looking).
+        this.deviceManager.on('broadcast-ordered', (order) => {
+            if (!this.visible || order.reason === 'stale') {
                 return;
             }
-            this.deviceManager.refresh();
+            this.deviceManager.clearPendingBroadcast();
+            this.deviceManager.broadcast(true);
+        });
+        this.deviceManager.on('reconcile-ordered', (order) => {
+            if (!this.visible || order.reason === 'stale') {
+                return;
+            }
+            this.deviceManager.clearPendingReconcile();
+            this.deviceManager.reconcile(order.reason === 'refresh-clicked');
         });
 
         // Re-render when a device's stored password changes so the Clear item appears/disappears
@@ -98,7 +108,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (!this.visible) {
                 return;
             }
-            this.deviceManager.refresh();
+            this.fulfillPendingOrders();
         });
 
         // Health check device when expanded (not on every getChildren/devices-changed)
@@ -119,6 +129,24 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.deviceManager.on('scan-ended', () => {
             this.endScanProgress();
         });
+    }
+
+    /**
+     * When the panel becomes visible, fulfill any broadcast/reconcile orders that were queued
+     * while it was hidden. On-open fulfills every reason (timer-driven `stale` orders are still
+     * staleness-gated by passing force=false).
+     */
+    private fulfillPendingOrders() {
+        const broadcast = this.deviceManager.getPendingBroadcast();
+        if (broadcast) {
+            this.deviceManager.clearPendingBroadcast();
+            this.deviceManager.broadcast(broadcast.reason !== 'stale');
+        }
+        const reconcile = this.deviceManager.getPendingReconcile();
+        if (reconcile) {
+            this.deviceManager.clearPendingReconcile();
+            this.deviceManager.reconcile(reconcile.reason === 'refresh-clicked');
+        }
     }
 
     private showScanProgress() {

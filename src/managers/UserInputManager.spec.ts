@@ -219,9 +219,9 @@ describe('UserInputManager', () => {
     });
 
     describe('promptForHost', () => {
-        it('calls scan() instead of refresh() when picker opens', async () => {
-            const scanSpy = sinon.spy(deviceManager, 'scan');
-            const refreshSpy = sinon.spy(deviceManager, 'refresh');
+        it('broadcasts (scan-only) without reconciling when picker opens', async () => {
+            const scanSpy = sinon.spy(deviceManager, 'broadcast');
+            const refreshSpy = sinon.spy(deviceManager, 'reconcile');
 
             // Capture the quickPick instance when created
             let quickPick: any;
@@ -239,7 +239,7 @@ describe('UserInputManager', () => {
                 setTimeout(resolve, 10);
             });
 
-            // Verify scan was called, not refresh
+            // Verify broadcast (scan-only) was called, and reconcile (health-check-all) was not
             expect(scanSpy.called).to.be.true;
             expect(refreshSpy.called).to.be.false;
 
