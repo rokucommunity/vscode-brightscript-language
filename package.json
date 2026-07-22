@@ -904,6 +904,13 @@
                                 "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
                                 "default": "${workspaceFolder}"
                             },
+                            "tsPath": {
+                                "type": "string",
+                                "description": "Device path to the app's compiled JS bundle the JS debugger should attach to. Overrides the `ts_path` value from the app's manifest.",
+                                "examples": [
+                                    "pkg:/source/compiled/main.js"
+                                ]
+                            },
                             "debugRootDir": {
                                 "type": "string",
                                 "deprecationMessage": "Deprecated. Use sourceDirs instead",
@@ -1002,6 +1009,13 @@
                                                 "LibName.zip"
                                             ],
                                             "pattern": "^(.*)(\\.zip)$"
+                                        },
+                                        "tsPath": {
+                                            "type": "string",
+                                            "description": "Device path to this component library's compiled JS bundle (same meaning as the `ts_path` manifest value). When the app's own manifest has no `ts_path`, the first component library with a `tsPath` becomes the target the JS debugger attaches to.",
+                                            "examples": [
+                                                "pkg:/source/compiled/main.js"
+                                            ]
                                         },
                                         "files": {
                                             "type": "array",
