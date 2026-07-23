@@ -123,6 +123,12 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
         });
 
+        it('applies inspect mode when waitForJsDebugger is undefined (defaults to waiting)', () => {
+            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            const config = applyInspectMode({ rootDir: rootDir });
+            expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
+        });
+
         it('does nothing when component libraries exist but none have a tsPath', () => {
             sinon.stub(configProvider.util, 'getTsPath').returns(undefined);
             const config = applyInspectMode({
