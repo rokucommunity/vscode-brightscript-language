@@ -193,7 +193,9 @@ describe('DeviceManager', () => {
         });
 
         async function settle() {
-            await new Promise<void>(resolve => setTimeout(resolve, 20));
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 20);
+            });
         }
 
         it('hydrates unknown devices with no cache when getAllDevices is called', async () => {
@@ -428,7 +430,7 @@ describe('DeviceManager', () => {
         it('healthCheckDevice failure on a discovered device submits an unhealthy-device broadcast order', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => true);
-            sinon.stub(manager as any, 'resolveDevice').resolves(false);
+            sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(false) as any);
             const scanStub = sinon.stub(manager['finder'], 'scan');
 
             const device = createMockDevice({ ip: '192.168.1.50', serialNumber: 'sick-device' });
@@ -444,7 +446,7 @@ describe('DeviceManager', () => {
         it('suppresses the unhealthy-device order when a scan ran within the last minute', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => true);
-            sinon.stub(manager as any, 'resolveDevice').resolves(false);
+            sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(false) as any);
             manager['lastScanDate'] = new Date();
 
             const device = createMockDevice({ ip: '192.168.1.50', serialNumber: 'sick-device' });
@@ -458,7 +460,7 @@ describe('DeviceManager', () => {
         it('suppresses the unhealthy-device order when discovery is disabled', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             //default test config has discovery disabled
-            sinon.stub(manager as any, 'resolveDevice').resolves(false);
+            sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(false) as any);
 
             const device = createMockDevice({ ip: '192.168.1.50', serialNumber: 'sick-device' });
             addDiscoveredDevice(device);
@@ -471,7 +473,7 @@ describe('DeviceManager', () => {
         it('healthCheckAllDevices submits an unhealthy-device order instead of scanning directly', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => true);
-            sinon.stub(manager as any, 'resolveDevice').resolves(false);
+            sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(false) as any);
             const scanStub = sinon.stub(manager['finder'], 'scan');
 
             addDiscoveredDevice(createMockDevice({ ip: '192.168.1.50', serialNumber: 'sick-device' }));

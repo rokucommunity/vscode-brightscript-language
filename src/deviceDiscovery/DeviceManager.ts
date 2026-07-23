@@ -681,14 +681,6 @@ export class DeviceManager {
         return this.orderManager.getPendingReconcile();
     }
 
-    public clearPendingBroadcast(): void {
-        this.orderManager.clearPendingBroadcast();
-    }
-
-    public clearPendingReconcile(): void {
-        this.orderManager.clearPendingReconcile();
-    }
-
     /**
      * Atomically consume the pending broadcast order (get + clear). The first consumer gets the
      * order; concurrent consumers get null and should skip fulfillment.
@@ -1258,7 +1250,7 @@ export class DeviceManager {
     private fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw | undefined> {
         const key = `${ip}:${port}`;
         let inFlight = this.inFlightDeviceInfo.get(key);
-        if (!inFlight) {
+        if (inFlight === undefined) {
             //safe to share: fetchDeviceInfoInner never rejects (it catches and returns undefined)
             inFlight = this.fetchDeviceInfoInner(ip, port).finally(() => {
                 this.inFlightDeviceInfo.delete(key);
@@ -1373,14 +1365,14 @@ export class DeviceManager {
             if (key.startsWith('s:')) {
                 const serial = key.slice(2);
                 if (serial) {
-                    configured = this.configuredDevices.find(c => c.serialNumber === serial);
-                    discovered = this.discoveredDevices.find(d => d.serialNumber === serial);
+                    configured = this.configured.findBySerial(serial);
+                    discovered = this.discovered.findBySerial(serial);
                 }
             } else if (key.startsWith('i:')) {
                 const ip = key.slice(2);
                 if (ip) {
-                    configured = this.configuredDevices.find(c => c.resolvedIp === ip || c.host === ip);
-                    discovered = this.discoveredDevices.find(d => d.ip === ip);
+                    configured = this.configured.findByIp(ip);
+                    discovered = this.discovered.findByIp(ip);
                 }
             }
         } else {
@@ -1388,17 +1380,13 @@ export class DeviceManager {
             const lookup = keyOrLookup;
 
             if (lookup.serialNumber) {
-                configured = this.configuredDevices.find(c => c.serialNumber === lookup.serialNumber);
-                discovered = this.discoveredDevices.find(d => d.serialNumber === lookup.serialNumber);
+                configured = this.configured.findBySerial(lookup.serialNumber);
+                discovered = this.discovered.findBySerial(lookup.serialNumber);
             }
 
             if (lookup.ip) {
-                if (!configured) {
-                    configured = this.configuredDevices.find(c => c.resolvedIp === lookup.ip || c.host === lookup.ip);
-                }
-                if (!discovered) {
-                    discovered = this.discoveredDevices.find(d => d.ip === lookup.ip);
-                }
+                configured ??= this.configured.findByIp(lookup.ip);
+                discovered ??= this.discovered.findByIp(lookup.ip);
             }
         }
 
