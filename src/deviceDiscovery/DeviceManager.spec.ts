@@ -181,6 +181,85 @@ describe('DeviceManager', () => {
         });
     });
 
+    describe('trigger order routing', () => {
+        it('config change submits a config-changed reconcile order instead of health-checking directly', () => {
+            //capture the manager's own config-change handler (emitting on the shared mock emitter
+            //would also wake unrelated module singletons subscribed by other specs)
+            let configHandler: (e: any) => void;
+            sinon.stub(vscode.workspace, 'onDidChangeConfiguration').callsFake(((handler: any) => {
+                configHandler = handler;
+                return { dispose: () => { } };
+            }) as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const healthCheckStub = sinon.stub(manager as any, 'healthCheckAllDevices').resolves();
+
+            configHandler({
+                affectsConfiguration: (section: string) => section === 'brightscript.devices'
+            });
+
+            expect(manager.getPendingReconcile()).to.include({ reason: 'config-changed' });
+            expect(healthCheckStub.called).to.be.false;
+        });
+
+        it('healthCheckDevice failure on a discovered device submits an unhealthy-device broadcast order', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => true);
+            sinon.stub(manager as any, 'resolveDevice').resolves(false);
+            const scanStub = sinon.stub(manager['finder'], 'scan');
+
+            const device = createMockDevice({ ip: '192.168.1.50', serialNumber: 'sick-device' });
+            addDiscoveredDevice(device);
+
+            const isHealthy = await manager.healthCheckDevice(device);
+
+            expect(isHealthy).to.be.false;
+            expect(manager.getPendingBroadcast()).to.include({ reason: 'unhealthy-device' });
+            expect(scanStub.called).to.be.false;
+        });
+
+        it('suppresses the unhealthy-device order when a scan ran within the last minute', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => true);
+            sinon.stub(manager as any, 'resolveDevice').resolves(false);
+            manager['lastScanDate'] = new Date();
+
+            const device = createMockDevice({ ip: '192.168.1.50', serialNumber: 'sick-device' });
+            addDiscoveredDevice(device);
+
+            await manager.healthCheckDevice(device);
+
+            expect(manager.getPendingBroadcast()).to.be.null;
+        });
+
+        it('suppresses the unhealthy-device order when discovery is disabled', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            //default test config has discovery disabled
+            sinon.stub(manager as any, 'resolveDevice').resolves(false);
+
+            const device = createMockDevice({ ip: '192.168.1.50', serialNumber: 'sick-device' });
+            addDiscoveredDevice(device);
+
+            await manager.healthCheckDevice(device);
+
+            expect(manager.getPendingBroadcast()).to.be.null;
+        });
+
+        it('healthCheckAllDevices submits an unhealthy-device order instead of scanning directly', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => true);
+            sinon.stub(manager as any, 'resolveDevice').resolves(false);
+            const scanStub = sinon.stub(manager['finder'], 'scan');
+
+            addDiscoveredDevice(createMockDevice({ ip: '192.168.1.50', serialNumber: 'sick-device' }));
+
+            await manager['healthCheckAllDevices'](false, false);
+
+            expect(manager.getPendingBroadcast()).to.include({ reason: 'unhealthy-device' });
+            expect(scanStub.called).to.be.false;
+        });
+    });
+
     describe('stale timers', () => {
         it('activateMonitoring starts the stale order timers, deactivateMonitoring stops them', async () => {
             const clock = sinon.useFakeTimers();

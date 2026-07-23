@@ -17,12 +17,14 @@ import { DiscoveredDeviceManager } from './DiscoveredDeviceManager';
 import type {
     ActiveDeviceEntry,
     BroadcastOrder,
+    BroadcastReason,
     ConfiguredDeviceEntry,
     DeviceState,
     DeviceStateEntry,
     DiscoveredDeviceEntry,
     PasswordValidationResult,
     ReconcileOrder,
+    ReconcileReason,
     RokuDevice
 } from './types';
 
@@ -80,11 +82,11 @@ export class DeviceManager {
                 this.emitDevicesChanged();
             }
 
-            //if the `devices` setting was changed, re-apply configured devices and health check them
+            //if the `devices` setting was changed, re-apply configured devices immediately (cheap,
+            //local) and order a health check for the views to fulfill when one is visible
             if (event?.affectsConfiguration('brightscript.devices')) {
-                this.loadConfiguredDevices().then(() => {
-                    return this.healthCheckAllDevices(false, true);
-                }).catch(() => { });
+                this.loadConfiguredDevices().catch(() => { });
+                this.orderManager.submitReconcile('config-changed');
             }
 
             //if the `defaultDevicePassword` setting was changed, refresh any device views that rely on it
@@ -209,6 +211,7 @@ export class DeviceManager {
     private readonly FRESH_CACHE_THRESHOLD_MS = 5 * 60 * 1_000; // 5 minutes - cache fresher than this = online on load
     private readonly STALE_DEVICE_AFTER_SCAN_MS = 10_000; // 10 seconds - health check devices with cache older than this after scan
     private readonly OFFLINE_COOLDOWN_MS = 5_000; // 5 seconds - minimum time between resolve attempts for offline devices
+    private readonly UNHEALTHY_BROADCAST_MIN_INTERVAL_MS = 60_000; // 1 minute - suppress unhealthy-device broadcast orders this soon after a scan
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
 
     // Notifications and event debouncing
@@ -581,6 +584,23 @@ export class DeviceManager {
 
     // #region Order queue (view coordination)
     /**
+     * Submit a broadcast (SSDP scan) order for a view to fulfill. Note that non-stale reasons
+     * overwrite each other in the pending slot — a `config-changed` submitted after a
+     * `refresh-clicked` wins the slot (and its non-forced fulfillment), by design of the
+     * single-slot model.
+     */
+    public submitBroadcast(reason: BroadcastReason): void {
+        this.orderManager.submitBroadcast(reason);
+    }
+
+    /**
+     * Submit a reconcile (health-check-all) order for a view to fulfill.
+     */
+    public submitReconcile(reason: ReconcileReason): void {
+        this.orderManager.submitReconcile(reason);
+    }
+
+    /**
      * The pending broadcast order, if a trigger has queued one that no view has fulfilled yet.
      */
     public getPendingBroadcast(): BroadcastOrder | null {
@@ -679,11 +699,27 @@ export class DeviceManager {
         // Cooldown is handled by fetchDeviceInfo cache; force bypasses it
         const isHealthy = await this.resolveDevice(device, doSyntheticDelay, force);
         if (!isHealthy && device.isDiscovered) {
-            // a discovered device went dark — health-check everything and rescan (if permitted)
-            this.reconcile(this.deviceDiscoveryEnabled);
-            this.broadcast(this.deviceDiscoveryEnabled);
+            // a discovered device went dark — order a rescan for the views to fulfill
+            // (resolveDevice already removed the device, so no reconcile sweep is needed)
+            this.submitUnhealthyDeviceBroadcast();
         }
         return isHealthy;
+    }
+
+    /**
+     * Submit an `unhealthy-device` broadcast order (a discovered device failed a health check, so
+     * the network picture may have changed). Rate-limited: suppressed when discovery is disabled or
+     * when a scan ran within the last minute — this is the terminating guard for the potential
+     * scan → health-check → fail → scan feedback loop.
+     */
+    private submitUnhealthyDeviceBroadcast(): void {
+        if (!this.deviceDiscoveryEnabled) {
+            return;
+        }
+        if (this.timeSinceLastScan < this.UNHEALTHY_BROADCAST_MIN_INTERVAL_MS) {
+            return;
+        }
+        this.orderManager.submitBroadcast('unhealthy-device');
     }
 
     /**
@@ -1082,7 +1118,7 @@ export class DeviceManager {
         }
         this.emitDevicesChanged();
 
-        // Health check all devices - if any discovered device is unhealthy, trigger a scan
+        // Health check all devices - if any discovered device is unhealthy, order a scan
         let needsScan = false;
         await Promise.all([...allIps].map(async (ip) => {
             const isHealthy = await this.resolveDevice({ ip: ip }, doSyntheticDelay, force);
@@ -1092,7 +1128,7 @@ export class DeviceManager {
         }));
 
         if (needsScan) {
-            this.discoverAll(this.deviceDiscoveryEnabled);
+            this.submitUnhealthyDeviceBroadcast();
         }
     }
 

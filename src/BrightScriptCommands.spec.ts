@@ -150,6 +150,46 @@ describe('BrightScriptFileUtils ', () => {
         });
     });
 
+    describe('refreshDeviceList / rescanDevices', () => {
+        let capturedCommands: Record<string, (...args: any[]) => any>;
+        let deviceManager: any;
+
+        beforeEach(() => {
+            deviceManager = {
+                submitBroadcast: sinon.stub(),
+                submitReconcile: sinon.stub(),
+                broadcast: sinon.stub(),
+                reconcile: sinon.stub()
+            };
+            const localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
+            capturedCommands = {};
+            sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
+                capturedCommands[name] = cb;
+            });
+            localCommands.registerCommands();
+        });
+
+        afterEach(() => {
+            (vscode.commands.registerCommand as any).restore();
+        });
+
+        it('refreshDeviceList submits refresh-clicked orders instead of scanning directly', () => {
+            capturedCommands['extension.brightscript.refreshDeviceList']();
+            assert.isTrue(deviceManager.submitBroadcast.calledOnceWith('refresh-clicked'));
+            assert.isTrue(deviceManager.submitReconcile.calledOnceWith('refresh-clicked'));
+            assert.isTrue(deviceManager.broadcast.notCalled);
+            assert.isTrue(deviceManager.reconcile.notCalled);
+        });
+
+        it('rescanDevices submits refresh-clicked orders instead of scanning directly', () => {
+            capturedCommands['extension.brightscript.rescanDevices']();
+            assert.isTrue(deviceManager.submitBroadcast.calledOnceWith('refresh-clicked'));
+            assert.isTrue(deviceManager.submitReconcile.calledOnceWith('refresh-clicked'));
+            assert.isTrue(deviceManager.broadcast.notCalled);
+            assert.isTrue(deviceManager.reconcile.notCalled);
+        });
+    });
+
     describe('clearDefaultDevicePassword', () => {
         let localCommands: BrightScriptCommands;
         let capturedCommands: Record<string, (...args: any[]) => any>;

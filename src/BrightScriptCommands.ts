@@ -58,15 +58,16 @@ export class BrightScriptCommands {
             await this.sendRemoteCommand(key);
         });
 
-        //the "Refresh" button in the Devices list
+        //the "Refresh" button in the Devices list. Submits orders rather than scanning directly —
+        //a visible view fulfills them immediately (forced, since the reason is refresh-clicked)
         this.registerCommand('refreshDeviceList', (key: string) => {
-            this.deviceManager.broadcast(true);
-            this.deviceManager.reconcile(true);
+            this.deviceManager.submitBroadcast('refresh-clicked');
+            this.deviceManager.submitReconcile('refresh-clicked');
         });
 
         this.registerCommand('rescanDevices', () => {
-            this.deviceManager.broadcast(true);
-            this.deviceManager.reconcile(true);
+            this.deviceManager.submitBroadcast('refresh-clicked');
+            this.deviceManager.submitReconcile('refresh-clicked');
         });
 
         // Refresh a single device (inline button on hover in devices panel)

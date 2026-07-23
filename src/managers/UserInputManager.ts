@@ -304,8 +304,10 @@ export class UserInputManager {
                     if (selectedDevice.label === manualLabel) {
                         deferred.resolve({ manual: true });
                     } else if (selectedDevice.label === scanForDevicesLabel) {
-                        this.deviceManager.broadcast(true);
-                        this.deviceManager.reconcile(true);
+                        //an explicit "scan" click is the refresh-clicked trigger — submit orders;
+                        //this picker (or another visible view) fulfills them immediately
+                        this.deviceManager.submitBroadcast('refresh-clicked');
+                        this.deviceManager.submitReconcile('refresh-clicked');
                         return;
                     } else {
                         const device = (selectedDevice as any).device as RokuDevice;
@@ -455,8 +457,10 @@ export class UserInputManager {
 
         quickPick.onDidTriggerButton(button => {
             if (button.tooltip === SCAN_FOR_DEVICES) {
-                this.deviceManager.broadcast(true);
-                this.deviceManager.reconcile(true);
+                //an explicit "scan" click is the refresh-clicked trigger — submit orders;
+                //this picker (or another visible view) fulfills them immediately
+                this.deviceManager.submitBroadcast('refresh-clicked');
+                this.deviceManager.submitReconcile('refresh-clicked');
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
                 this.deviceManager.clearCurrentDeviceList().catch(() => { });
                 void util.showTimedNotification('Clearing device list');
