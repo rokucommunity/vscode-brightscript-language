@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import * as rokuDeploy from 'roku-deploy';
+import { rokuDeploy, RokuDeploy } from 'roku-deploy';
+import type { FileEntry } from 'roku-deploy';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
 import * as path from 'path';
 import { readFileSync } from 'fs-extra';
@@ -58,7 +59,12 @@ export class RekeyAndPackageCommand {
             }
         }
 
-        await rokuDeploy.rekeyDevice(rekeyConfig);
+        await rokuDeploy.rekeyDevice({
+            device: { host: rekeyConfig.host },
+            password: rekeyConfig.password,
+            signingPassword: rekeyConfig.signingPassword,
+            pkg: rekeyConfig.rekeySignedPackage
+        });
         void vscode.window.showInformationMessage(`Device successfully rekeyed!`);
     }
 
@@ -257,20 +263,23 @@ export class RekeyAndPackageCommand {
             }
 
             //normalize a few options
-            rokuDeployOptions.outFile ??= rokuDeploy.getOptions(rokuDeployOptions).outFile;
+            rokuDeployOptions.outFile ??= RokuDeploy.defaults.outFile;
             rokuDeployOptions.outDir = standardizePath(rokuDeployOptions.outDir ?? `${workspaceFolder}/out`);
             rokuDeployOptions.rootDir = standardizePath(rokuDeployOptions.rootDir);
-            rokuDeployOptions.retainStagingDir = true;
             if (rokuDeployOptions.rekeySignedPackage?.length > 0) {
                 rokuDeployOptions.rekeySignedPackage = standardizePath(rokuDeployOptions.rekeySignedPackage);
             }
+
+            const stagingDir = rokuDeploy.getStagingDir({ outDir: rokuDeployOptions.outDir });
+            const zipPath = rokuDeploy.getOutputZipPath({ outDir: rokuDeployOptions.outDir, outFile: rokuDeployOptions.outFile });
+            const pkgPath = rokuDeploy.getOutputPkgPath({ outDir: rokuDeployOptions.outDir, outFile: rokuDeployOptions.outFile });
 
             let details = [
                 `host: ${rokuDeployOptions.host}`,
                 `password: ${rokuDeployOptions.password}`,
                 `signing password: ${rokuDeployOptions.signingPassword}`,
                 `outDir: ${rokuDeployOptions.outDir}`,
-                `outFile: ${rokuDeployOptions.outFile}.pkg`,
+                `outFile: ${path.basename(pkgPath)}`,
                 `rootDir: ${rokuDeployOptions.rootDir}`
             ];
 
@@ -287,17 +296,38 @@ export class RekeyAndPackageCommand {
             }, confirmText, changeText);
 
             if (response === confirmText) {
+                const device = { host: rokuDeployOptions.host };
+
                 if (rekeyFlag) {
                     //rekey device
-                    await rokuDeploy.rekeyDevice(rokuDeployOptions);
+                    await rokuDeploy.rekeyDevice({
+                        device: device,
+                        password: rokuDeployOptions.password,
+                        signingPassword: rokuDeployOptions.signingPassword,
+                        pkg: rokuDeployOptions.rekeySignedPackage
+                    });
                 }
 
-                //create a zip and pkg file of the app based on the selected launch config
-                await rokuDeploy.createPackage(rokuDeployOptions);
-                let remotePkgPath = await rokuDeploy.signExistingPackage(rokuDeployOptions);
-                await rokuDeploy.retrieveSignedPackage(remotePkgPath, rokuDeployOptions);
-                const outPath = standardizePath(`${rokuDeployOptions.outDir}/${rokuDeployOptions.outFile}`);
-                let successfulMessage = `Package successfully created at ${outPath}`;
+                //create a zip of the app based on the selected launch config
+                await rokuDeploy.stage({
+                    rootDir: rokuDeployOptions.rootDir,
+                    files: rokuDeployOptions.files,
+                    out: stagingDir
+                });
+                await rokuDeploy.zip({
+                    dir: stagingDir,
+                    out: zipPath
+                });
+
+                //sign the app installed on the device and download the signed package
+                await rokuDeploy.createSignedPackage({
+                    device: device,
+                    password: rokuDeployOptions.password,
+                    signingPassword: rokuDeployOptions.signingPassword,
+                    manifestPath: standardizePath(`${stagingDir}/manifest`),
+                    out: pkgPath
+                });
+                let successfulMessage = `Package successfully created at ${pkgPath}`;
                 void vscode.window.showInformationMessage(successfulMessage, 'View in folder').then(() => {
                     return open(rokuDeployOptions.outDir);
                 });
@@ -435,7 +465,7 @@ interface RokuDeployOptions {
     rootDir: string;
     outDir: string;
     outFile: string;
-    retainStagingDir: boolean;
+    files?: FileEntry[];
     host: string;
     password: string;
     signingPassword: string;

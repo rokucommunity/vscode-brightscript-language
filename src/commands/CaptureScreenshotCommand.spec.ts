@@ -2,7 +2,7 @@ import { vscode } from '../mockVscode.spec';
 import { createSandbox } from 'sinon';
 import { CaptureScreenshotCommand } from './CaptureScreenshotCommand';
 import { BrightScriptCommands } from '../BrightScriptCommands';
-import * as rokuDeploy from 'roku-deploy';
+import { rokuDeploy } from 'roku-deploy';
 import { expect } from 'chai';
 import URI from 'vscode-uri';
 import { standardizePath as s } from 'brighterscript';
@@ -59,7 +59,7 @@ describe('CaptureScreenshotCommand', () => {
 
     it('shows error message when captureScreenshot fails', async () => {
         const stub = sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        sinon.stub(rokuDeploy, 'takeScreenshot').rejects(new Error('Screenshot failed'));
+        sinon.stub(rokuDeploy, 'captureScreenshot').rejects(new Error('Screenshot failed'));
         const stubError = sinon.stub(vscode.window, 'showErrorMessage');
 
         await command['captureScreenshot']('1.1.1.1');
@@ -70,16 +70,16 @@ describe('CaptureScreenshotCommand', () => {
 
     it('uses temp dir when screenshotDir is not defined', async () => {
         sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password' });
+        expect(stub.getCall(0).args[0]).to.eql({ device: { host: '1.1.1.1' }, password: 'password', out: true });
     });
 
     it('uses screenshotDir with single workspace', async () => {
         sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
         workspace._configuration = {
             'brightscript.screenshotDir': '${workspaceFolder}/screenshots'
         };
@@ -93,12 +93,12 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace/screenshots` });
+        expect(stub.getCall(0).args[0]).to.eql({ device: { host: '1.1.1.1' }, password: 'password', out: true, screenshotDir: s`${cwd}/workspace/screenshots` });
     });
 
     it('uses relative screenshotDir with single workspace', async () => {
         sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
         workspace._configuration = {
             'brightscript.screenshotDir': 'screenshots'
         };
@@ -112,12 +112,12 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace/screenshots` });
+        expect(stub.getCall(0).args[0]).to.eql({ device: { host: '1.1.1.1' }, password: 'password', out: true, screenshotDir: s`${cwd}/workspace/screenshots` });
     });
 
     it('uses screenshotDir with multiple workspace', async () => {
         sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
         const workspaceFolders = [
             {
                 uri: URI.file(s`${cwd}/workspace1`),
@@ -138,12 +138,12 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace2/screenshots` });
+        expect(stub.getCall(0).args[0]).to.eql({ device: { host: '1.1.1.1' }, password: 'password', out: true, screenshotDir: s`${cwd}/workspace2/screenshots` });
     });
 
     it('uses relative screenshotDir with multiple workspace', async () => {
         sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
         const workspaceFolders = [
             {
                 uri: URI.file(s`${cwd}/workspace1`),
@@ -164,6 +164,6 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace2/screenshots` });
+        expect(stub.getCall(0).args[0]).to.eql({ device: { host: '1.1.1.1' }, password: 'password', out: true, screenshotDir: s`${cwd}/workspace2/screenshots` });
     });
 });

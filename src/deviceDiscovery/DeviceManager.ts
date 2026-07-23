@@ -602,7 +602,7 @@ export class DeviceManager {
      */
     public async validateDevicePassword(host: string, password: string): Promise<PasswordValidationResult> {
         try {
-            const accepted = await rokuDeploy.validateDeveloperPassword({ host: host, password: password });
+            const accepted = await rokuDeploy.validateDeveloperPassword({ device: { host: host }, password: password });
             return accepted ? 'ok' : 'bad-password';
         } catch (e) {
             if (e instanceof DeviceUnreachableError) {
@@ -1020,8 +1020,8 @@ export class DeviceManager {
     private async fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw> {
         try {
             const info = await rokuDeploy.getDeviceInfo({
-                host: ip,
-                remotePort: port,
+                device: { host: ip },
+                ecpPort: port,
                 timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
             });
             if (info['serial-number']) {
