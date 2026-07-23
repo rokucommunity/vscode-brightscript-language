@@ -190,11 +190,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * `packageUploadOverrides.formData` without clobbering other keys or an explicit `inspect` value.
      */
     private applyInspectMode(config: BrightScriptLaunchConfiguration) {
-        //an explicit `tsPath` in launch.json wins over the staged manifest's `ts_path`
-        const tsPath = config.tsPath ?? this.util.getTsPath(config.rootDir);
+        //same precedence as `resolveJsDebugTarget` in extension.ts: an explicit `tsPath` in
+        //launch.json wins over the staged manifest's `ts_path`, then any component library
+        //with a `tsPath` (its JS runs in the same runtime, so the device still needs to wait)
+        const tsPath = config.tsPath ??
+            this.util.getTsPath(config.rootDir) ??
+            config.componentLibraries?.find(library => library.tsPath)?.tsPath;
         //BrightScript-only apps have no JS debugger to wait for
         if (!tsPath) {
-            this.extensionOutputChannel.appendLine(`[inspect] skipped: no ts_path under '${config.rootDir}'`);
+            this.extensionOutputChannel.appendLine(`[inspect] skipped: no ts_path under '${config.rootDir}' and no component library tsPath`);
             return;
         }
         //`route` defaults to 'plugin_install' downstream, so omit it; cast since the type marks it required

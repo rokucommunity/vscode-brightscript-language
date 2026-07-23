@@ -99,6 +99,27 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(config.packageUploadOverrides).to.be.undefined;
         });
 
+        it('adds inspect=1 when only a component library has a tsPath', () => {
+            sinon.stub(configProvider.util, 'getTsPath').returns(undefined);
+            const config = applyInspectMode({
+                rootDir: rootDir,
+                componentLibraries: [
+                    { rootDir: rootDir, outFile: 'lib.zip' },
+                    { rootDir: rootDir, outFile: 'lib2.zip', tsPath: tsPath }
+                ] as any
+            });
+            expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
+        });
+
+        it('does nothing when component libraries exist but none have a tsPath', () => {
+            sinon.stub(configProvider.util, 'getTsPath').returns(undefined);
+            const config = applyInspectMode({
+                rootDir: rootDir,
+                componentLibraries: [{ rootDir: rootDir, outFile: 'lib.zip' }] as any
+            });
+            expect(config.packageUploadOverrides).to.be.undefined;
+        });
+
         it('merges into existing form data without clobbering other keys', () => {
             sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
             const config = applyInspectMode({
