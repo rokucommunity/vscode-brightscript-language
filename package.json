@@ -3440,13 +3440,18 @@
                 "category": "BrightScript"
             },
             {
-                "command": "extension.brightscript.rce.setToken",
-                "title": "Set Cloud Emulator Token",
+                "command": "extension.brightscript.rce.addAccount",
+                "title": "Add Cloud Emulator Account",
                 "category": "BrightScript"
             },
             {
-                "command": "extension.brightscript.rce.clearToken",
-                "title": "Clear Cloud Emulator Token",
+                "command": "extension.brightscript.rce.switchAccount",
+                "title": "Switch Cloud Emulator Account",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.rce.removeAccount",
+                "title": "Remove Cloud Emulator Account",
                 "category": "BrightScript"
             },
             {
