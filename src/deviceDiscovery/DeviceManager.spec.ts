@@ -13,6 +13,7 @@ import { util } from '../util';
 describe('DeviceManager', () => {
     let manager: DeviceManager;
     let mockGlobalStateManager: any;
+    let queueHydrationStub: sinon.SinonStub;
 
     function createMockDevice(overrides: Partial<RokuDevice> & { deviceInfo?: any; serialNumber?: string | null } = {}): RokuDevice {
         // Explicit null means no serial, undefined means use default
@@ -161,6 +162,10 @@ describe('DeviceManager', () => {
 
         // Mock window state
         (vscode.window as any).state = { focused: false };
+
+        // Neutralize read-triggered background hydration so tests with unknown/uncached fixtures
+        // stay deterministic. The 'lazy hydration on read' describe restores this per-test.
+        queueHydrationStub = sinon.stub(DeviceManager.prototype as any, 'queueHydration');
     });
 
     afterEach(() => {
@@ -178,6 +183,140 @@ describe('DeviceManager', () => {
             manager['orderManager'].submitBroadcast('network');
 
             expect(eventSpy.calledOnce).to.be.true;
+        });
+    });
+
+    describe('lazy hydration on read', () => {
+        beforeEach(() => {
+            //these tests exercise the real hydration mechanism
+            queueHydrationStub.restore();
+        });
+
+        async function settle() {
+            await new Promise<void>(resolve => setTimeout(resolve, 20));
+        }
+
+        it('hydrates unknown devices with no cache when getAllDevices is called', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'serial-number': 'hydrate-1' } as any);
+
+            addDiscoveredDevice(createMockDevice({ ip: '192.168.1.30', serialNumber: 'hydrate-1', deviceState: 'unknown' }));
+
+            const devices = manager.getAllDevices();
+            //the read itself returns immediately with the un-hydrated snapshot
+            expect(devices[0].deviceState).to.equal('unknown');
+
+            await settle();
+
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+            expect(manager.getDeviceState({ ip: '192.168.1.30' }).state).to.equal('online');
+
+            //a follow-up read finds a fresh cache and does not fetch again
+            manager.getAllDevices();
+            await settle();
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+        });
+
+        it('does not hydrate online devices with a fresh cache', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'serial-number': 'fresh-1' } as any);
+
+            //deviceInfo present = fresh cache entry created by the helper
+            addDiscoveredDevice(createMockDevice({
+                ip: '192.168.1.31',
+                serialNumber: 'fresh-1',
+                deviceState: 'online',
+                deviceInfo: { 'default-device-name': 'Fresh Roku' }
+            }));
+
+            manager.getAllDevices();
+            await settle();
+
+            expect(getDeviceInfoStub.called).to.be.false;
+        });
+
+        it('hydrates online devices whose cache is older than 8 hours', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'serial-number': 'old-1' } as any);
+
+            addDiscoveredDevice(createMockDevice({ ip: '192.168.1.32', serialNumber: 'old-1', deviceState: 'online' }));
+            //cache exists but is 9 hours old
+            mockGlobalStateManager.setCachedDevice('old-1', {
+                serialNumber: 'old-1',
+                deviceInfo: { 'serial-number': 'old-1' },
+                createdAt: Date.now() - (9 * 60 * 60 * 1_000)
+            });
+
+            manager.getAllDevices();
+            await settle();
+
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+        });
+
+        it('only fetches once when reads repeat while a hydration is in flight', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            let resolveFetch: (value: any) => void;
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').returns(new Promise<any>(resolve => {
+                resolveFetch = resolve;
+            }) as any);
+
+            addDiscoveredDevice(createMockDevice({ ip: '192.168.1.33', serialNumber: 'busy-1', deviceState: 'unknown' }));
+
+            manager.getAllDevices();
+            manager.getAllDevices();
+            manager.getAllDevices();
+
+            resolveFetch({ 'serial-number': 'busy-1' });
+            await settle();
+
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+        });
+
+        it('applies a per-IP retry cooldown after a failed hydration', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('unreachable'));
+
+            //configured device (persists on failure) with a stale cache — the one shape that
+            //still qualifies for hydration after a failed attempt
+            addConfiguredDevice(createMockDevice({ ip: '192.168.1.34', serialNumber: 'flaky-1', deviceState: 'unknown', isConfigured: true, isDiscovered: false }));
+            mockGlobalStateManager.setCachedDevice('flaky-1', {
+                serialNumber: 'flaky-1',
+                deviceInfo: { 'serial-number': 'flaky-1' },
+                createdAt: Date.now() - (9 * 60 * 60 * 1_000)
+            });
+
+            manager.getAllDevices();
+            await settle();
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+
+            //immediate re-read: still within the cooldown, no second attempt
+            manager.getAllDevices();
+            await settle();
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+
+            //age the last attempt past the hydration cooldown — the next read retries.
+            //(also age the offline-state timestamp: in production the 5-minute hydration cooldown
+            //always outlives resolveDevice's 5-second offline cooldown, but this test skips ahead)
+            manager['hydrationLastAttempt'].set('192.168.1.34', Date.now() - (5 * 60 * 1_000) - 1);
+            for (const entry of manager['configuredDevices']) {
+                entry.stateLastUpdated = Date.now() - 6_000;
+            }
+            manager.getAllDevices();
+            await settle();
+            expect(getDeviceInfoStub.calledTwice).to.be.true;
+        });
+
+        it('getDevice hydrates the single returned device', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'serial-number': 'single-1' } as any);
+
+            addDiscoveredDevice(createMockDevice({ ip: '192.168.1.35', serialNumber: 'single-1', deviceState: 'unknown' }));
+
+            manager.getDevice({ ip: '192.168.1.35' });
+            await settle();
+
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+            expect(manager.getDeviceState({ ip: '192.168.1.35' }).state).to.equal('online');
         });
     });
 

@@ -212,6 +212,12 @@ export class DeviceManager {
     private readonly STALE_DEVICE_AFTER_SCAN_MS = 10_000; // 10 seconds - health check devices with cache older than this after scan
     private readonly OFFLINE_COOLDOWN_MS = 5_000; // 5 seconds - minimum time between resolve attempts for offline devices
     private readonly UNHEALTHY_BROADCAST_MIN_INTERVAL_MS = 60_000; // 1 minute - suppress unhealthy-device broadcast orders this soon after a scan
+
+    // Lazy hydration (background device-info refresh triggered by view reads)
+    private readonly HYDRATION_MAX_CACHE_AGE_MS = 8 * 60 * 60 * 1_000; // 8 hours - cache older than this re-hydrates on read
+    private readonly HYDRATION_RETRY_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes - minimum time between hydration attempts per IP
+    private hydrationInFlight = new Set<string>();
+    private hydrationLastAttempt = new Map<string, number>();
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
 
     // Notifications and event debouncing
@@ -273,6 +279,9 @@ export class DeviceManager {
             }
         }
 
+        if (device) {
+            this.queueHydration([device]);
+        }
         return device;
     }
 
@@ -291,10 +300,71 @@ export class DeviceManager {
 
     /**
      * Get a list of all roku devices.
-     * Returns all devices without filtering.
+     * Returns all devices without filtering. Returns immediately from in-memory data; devices
+     * with missing or old cached info are hydrated in the background (see {@link queueHydration})
+     * and a `devices-changed` event fires when fresh data arrives.
      */
     public getAllDevices(): RokuDevice[] {
-        return this.buildAllDevices();
+        const devices = this.buildAllDevices();
+        this.queueHydration(devices);
+        return devices;
+    }
+
+    /**
+     * Does this device need a background device-info refresh?
+     * - never resolved (`unknown` with no cache), or
+     * - cached info older than {@link HYDRATION_MAX_CACHE_AGE_MS} (regardless of state)
+     */
+    private needsHydration(device: RokuDevice): boolean {
+        //a resolve is already in flight somewhere (required guard: the cache-age condition below
+        //is state-independent, so without this a pending device would re-queue on every read)
+        if (device.deviceState === 'pending') {
+            return false;
+        }
+        const cached = device.serialNumber ? this.globalStateManager.getCachedDevice(device.serialNumber) : undefined;
+        if (!cached) {
+            return device.deviceState === 'unknown';
+        }
+        return Date.now() - cached.createdAt > this.HYDRATION_MAX_CACHE_AGE_MS;
+    }
+
+    /**
+     * The "lazy hydration on read" mechanism from the design doc: queue background device-info
+     * fetches for devices that need one, then return immediately. As each resolve completes,
+     * `devices-changed` fires and views re-render with the fresh data.
+     *
+     * Re-entrancy protection (views call getAllDevices on every devices-changed, and resolves emit
+     * devices-changed, so this must converge):
+     * - while a fetch is in flight the device is `pending` and its IP is in `hydrationInFlight`
+     * - success renews the cache timestamp, so neither hydration condition holds anymore
+     * - failure removes discovered entries entirely; configured entries go `offline` (not `unknown`)
+     * - failure with a still-old cache would re-qualify — `hydrationLastAttempt` caps that at one
+     *   attempt per IP per {@link HYDRATION_RETRY_COOLDOWN_MS}
+     */
+    private queueHydration(devices: RokuDevice[]): void {
+        const now = Date.now();
+        for (const device of devices) {
+            if (!this.needsHydration(device)) {
+                continue;
+            }
+            if (this.hydrationInFlight.has(device.ip)) {
+                continue;
+            }
+            const lastAttempt = this.hydrationLastAttempt.get(device.ip);
+            if (lastAttempt !== undefined && now - lastAttempt < this.HYDRATION_RETRY_COOLDOWN_MS) {
+                continue;
+            }
+
+            //timestamp at queue time so even instantly-failing attempts are rate-limited
+            this.hydrationLastAttempt.set(device.ip, now);
+            this.hydrationInFlight.add(device.ip);
+            //silent background refresh: no synthetic delay, not forced (offline cooldown applies)
+            void this.resolveDevice({ ip: device.ip, serialNumber: device.serialNumber }, false, false)
+                .catch(() => { })
+                .finally(() => {
+                    this.hydrationInFlight.delete(device.ip);
+                });
+        }
     }
 
     /**
@@ -674,6 +744,7 @@ export class DeviceManager {
         // Clear all timestamps and per-device state
         this.lastScanDate = null;
         this.resolveDeviceSequence.clear();
+        this.hydrationLastAttempt.clear();
 
         // Reset configured device states to unknown
         for (const entry of this.configuredDevices) {
@@ -945,7 +1016,7 @@ export class DeviceManager {
         this.emitDevicesChanged();
     }
 
-    private async resolveDevice(device: RokuDevice | { ip: string }, doSyntheticDelay = true, force = false): Promise<boolean> {
+    private async resolveDevice(device: RokuDevice | { ip: string; serialNumber?: string }, doSyntheticDelay = true, force = false): Promise<boolean> {
         // Extract serial from device if available (for proper state key management)
         const knownSerial = 'serialNumber' in device ? device.serialNumber : undefined;
 
