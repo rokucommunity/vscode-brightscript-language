@@ -6,6 +6,7 @@ import type { RokuDevice } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
 import { util } from '../util';
+import { EventEmitter } from 'eventemitter3';
 
 describe('DeviceManager', () => {
     let manager: DeviceManager;
@@ -1308,6 +1309,167 @@ describe('DeviceManager', () => {
             expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', 'stale-device')).to.be.true;
         });
     });
+
+    /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+    describe('cloud emulator devices', () => {
+        function rceDevice(overrides: Record<string, any> = {}) {
+            return {
+                id: 83,
+                name: 'Chris',
+                device_type: 'tv',
+                serial_number: 'XY020078HH5S',
+                status: 'running',
+                created_at: '2026-01-01',
+                running_device: {
+                    instance_api_url: 'https://device.rce.roku.com/instance/abc',
+                    firmware_version_id: 'rce-fw:15.2.4-tv_prod',
+                    instance_uuid: 'uuid-1',
+                    created_at: '2026-01-01',
+                    snapshot_id: 1,
+                    id: 1,
+                    device_id: 83,
+                    max_runtime: 3600
+                },
+                ...overrides
+            };
+        }
+
+        it('merges rce devices into getAllDevices with mapped state and synthesized deviceInfo', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([rceDevice()] as any);
+
+            const device = manager.getAllDevices().find(x => x.rce);
+            expect(device.key).to.equal('s:XY020078HH5S');
+            expect(device.serialNumber).to.equal('XY020078HH5S');
+            expect(device.deviceState).to.equal('online');
+            expect(device.deviceInfo['user-device-name']).to.equal('Chris');
+            expect(device.deviceInfo['software-version']).to.equal('15.2.4');
+            expect(device.rce).to.include({
+                id: '83',
+                status: 'running',
+                instanceUrl: 'https://device.rce.roku.com/instance/abc'
+            });
+        });
+
+        it('maps shutdown and pending statuses, and keys by id when the esn is missing', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([
+                rceDevice({ id: 84, serial_number: null, status: 'shutdown', running_device: null }),
+                rceDevice({ id: 85, serial_number: 'ESN85', status: 'pending', running_device: null })
+            ] as any);
+
+            const devices = manager.getAllDevices().filter(x => x.rce);
+            const byId = devices.find(x => x.key === 'rce:84');
+            expect(byId.deviceState).to.equal('offline');
+            const byEsn = devices.find(x => x.key === 's:ESN85');
+            expect(byEsn.deviceState).to.equal('pending');
+        });
+
+        it('getDevice finds rce devices by key and by serial number', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([rceDevice()] as any);
+
+            expect(manager.getDevice('s:XY020078HH5S')?.rce?.id).to.equal('83');
+            expect(manager.getDevice({ serialNumber: 'XY020078HH5S' })?.rce?.id).to.equal('83');
+
+            manager['onRceDevices']([rceDevice({ serial_number: null })] as any);
+            expect(manager.getDevice('rce:83')?.rce?.id).to.equal('83');
+        });
+
+        it('consumes the devices event from an injected RceFinder and replaces the list on every poll', () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            fakeFinder.emit('devices', [rceDevice()]);
+            expect(manager.getAllDevices().filter(x => x.rce).length).to.equal(1);
+
+            //the next poll replaces the list rather than accumulating
+            fakeFinder.emit('devices', []);
+            expect(manager.getAllDevices().filter(x => x.rce).length).to.equal(0);
+        });
+
+        it('fetches real device-info for running devices and renders it over the synthesized info', async () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            fakeFinder.getDeviceOption = () => Promise.resolve({ instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'secret' });
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                'serial-number': 'XY020078HH5S',
+                'friendly-model-name': 'Roku 4K TV',
+                'model-number': '2910X',
+                'software-version': '15.2.4',
+                'user-device-name': ''
+            } as any);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            manager['onRceDevices']([rceDevice()] as any);
+            await manager['resolveRceDevices']();
+
+            //probed through roku-deploy's device option using the live instance url
+            expect(getDeviceInfoStub.getCall(0).args[0].device).to.eql({
+                instanceUrl: 'https://device.rce.roku.com/instance/abc',
+                rceToken: 'secret'
+            });
+
+            const device = manager.getAllDevices().find(x => x.rce);
+            //real device-info fields render
+            expect(device.deviceInfo['model-number']).to.equal('2910X');
+            expect(device.deviceInfo['friendly-model-name']).to.equal('Roku 4K TV');
+            //the management-api device name still wins for display
+            expect(device.deviceInfo['user-device-name']).to.equal('Chris');
+        });
+
+        it('health checks rce devices through the management api instead of a LAN probe', async () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            let scanCount = 0;
+            fakeFinder.scan = () => {
+                scanCount++;
+                return Promise.resolve();
+            };
+            fakeFinder.getDeviceOption = () => Promise.resolve(undefined);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+            manager['onRceDevices']([rceDevice()] as any);
+
+            const healthy = await manager.healthCheckDevice({ serialNumber: 'XY020078HH5S' });
+
+            expect(scanCount).to.equal(1);
+            expect(healthy).to.be.true;
+            //no LAN probe was attempted (there is no ip to probe)
+            expect(getDeviceInfoStub.called).to.be.false;
+        });
+
+        it('resolveDevice never probes rce devices and reports their management-api state', async () => {
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([rceDevice()] as any);
+            const device = manager.getDevice('s:XY020078HH5S');
+
+            expect(await manager['resolveDevice'](device)).to.be.true;
+            expect(getDeviceInfoStub.called).to.be.false;
+        });
+
+        it('skips the device-info fetch for devices that are not running or have no esn', async () => {
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([
+                rceDevice({ status: 'shutdown', running_device: null }),
+                rceDevice({ id: 99, serial_number: null })
+            ] as any);
+
+            await manager['resolveRceDevices']();
+
+            expect(getDeviceInfoStub.called).to.be.false;
+        });
+    });
+    /* eslint-enable camelcase */
 
     describe('getDevice', () => {
         it('returns full device with deviceInfo when found', () => {

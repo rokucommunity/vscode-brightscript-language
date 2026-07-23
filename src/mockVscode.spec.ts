@@ -20,6 +20,7 @@ afterEach(() => {
     vscode.workspace.findFiles = () => [] as any;
     vscode.context.globalState['_data'] = {};
     vscode.context.workspaceState['_data'] = {};
+    vscode.context.secrets['_data'] = {};
 });
 
 export let vscode = {
@@ -121,6 +122,20 @@ export let vscode = {
             },
             get: function(key: string) {
                 return this._data[key];
+            }
+        } as any,
+        secrets: {
+            _data: {},
+            store: function(key: string, value: string) {
+                this._data[key] = value;
+                return Promise.resolve();
+            },
+            get: function(key: string) {
+                return Promise.resolve(this._data[key]);
+            },
+            delete: function(key: string) {
+                delete this._data[key];
+                return Promise.resolve();
             }
         } as any,
         globalStorageUri: URI.file(tempDir),

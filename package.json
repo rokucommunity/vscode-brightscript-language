@@ -3440,6 +3440,16 @@
                 "category": "BrightScript"
             },
             {
+                "command": "extension.brightscript.rce.setToken",
+                "title": "Set Cloud Emulator Token",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.rce.clearToken",
+                "title": "Clear Cloud Emulator Token",
+                "category": "BrightScript"
+            },
+            {
                 "command": "extension.brightscript.startTracing",
                 "title": "Start Perfetto Tracing",
                 "icon": "$(record)"

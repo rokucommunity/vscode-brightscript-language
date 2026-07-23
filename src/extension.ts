@@ -5,6 +5,8 @@ import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
 import { DeviceManager } from './deviceDiscovery/DeviceManager';
+import { RceFinder } from './deviceDiscovery/RceFinder';
+import { RceManager } from './managers/RceManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
@@ -82,7 +84,10 @@ export class Extension {
         this.telemetryManager.sendStartupEvent();
         this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
         this.extensionOutputChannel.appendLine('Extension startup');
-        this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel);
+        const rceManager = new RceManager(context);
+        rceManager.register(context);
+        const rceFinder = new RceFinder(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
+        this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel, rceFinder);
         const credentialStore = new CredentialStore(context);
         let userInputManager = new UserInputManager(
             this.deviceManager,
