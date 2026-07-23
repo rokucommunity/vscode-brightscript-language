@@ -1433,7 +1433,10 @@ export class DeviceManager {
         });
 
         this.finder.on('lost', (ip: string) => {
+            //the device announced ssdp:byebye — no health check needed, it said so itself.
+            //Discovered entries are removed; configured entries at this IP persist but go offline.
             this.removeDiscoveredDevice(ip);
+            this.setDeviceState({ ip: ip }, 'offline');
             this.emitDevicesChanged();
         });
 

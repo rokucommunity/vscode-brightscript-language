@@ -181,6 +181,47 @@ describe('DeviceManager', () => {
         });
     });
 
+    describe('ssdp:byebye (finder lost event)', () => {
+        it('removes the discovered entry and marks configured entries at that IP offline', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const device = createMockDevice({
+                ip: '192.168.1.77',
+                serialNumber: 'bye-device',
+                isConfigured: true,
+                isDiscovered: true,
+                deviceState: 'online'
+            });
+            addDevice(device);
+
+            manager['finder'].emit('lost', '192.168.1.77');
+
+            //discovered entry is gone
+            expect(manager['discoveredDevices'].find(d => d.ip === '192.168.1.77')).to.be.undefined;
+            //configured entry persists but is offline, with the previous state preserved
+            const configured = manager['configuredDevices'].find(c => c.host === '192.168.1.77');
+            expect(configured.state).to.equal('offline');
+            expect(configured.lastState).to.equal('online');
+        });
+
+        it('is a no-op for configured devices at other IPs', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            addConfiguredDevice(createMockDevice({
+                ip: '192.168.1.88',
+                serialNumber: 'other-device',
+                isConfigured: true,
+                isDiscovered: false,
+                deviceState: 'online'
+            }));
+
+            manager['finder'].emit('lost', '192.168.1.77');
+
+            const configured = manager['configuredDevices'].find(c => c.host === '192.168.1.88');
+            expect(configured.state).to.equal('online');
+        });
+    });
+
     describe('trigger order routing', () => {
         it('config change submits a config-changed reconcile order instead of health-checking directly', () => {
             //capture the manager's own config-change handler (emitting on the shared mock emitter
