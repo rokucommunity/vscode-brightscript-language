@@ -382,7 +382,7 @@ export class Extension {
      * first component library with a `tsPath` configured in launch.json.
      */
     private async resolveJsDebugTarget(configuration: BrightScriptLaunchConfiguration): Promise<JsDebugTarget | undefined> {
-        const appTsPath = configuration.tsPath ?? this.getTsPath(configuration.rootDir);
+        const appTsPath = configuration.tsPath ?? util.getTsPath(configuration.rootDir);
         if (appTsPath) {
             const workspaceFolders = vscode.workspace.workspaceFolders || [];
             //use the stagingDir if provided, otherwise default to what we think it will probably be (hasn't changed in years...)
@@ -471,18 +471,6 @@ export class Extension {
         }
         // Parent session ended while we were trying to attach
         return false;
-    }
-
-    private getTsPath(rootDir: string) {
-        const manifestPath = `${rootDir}/manifest`;
-        //a missing manifest just means "no ts_path here" — the component library fallback may still apply
-        if (!fsExtra.existsSync(manifestPath)) {
-            return undefined;
-        }
-        const contents = fsExtra.readFileSync(manifestPath).toString();
-        // https://regex101.com/r/qgLxGh/1
-        const tsPath = /ts_path[ \t]*=[ \t]*(.*)?(?=[\r?\n]|$)/ig.exec(contents);
-        return tsPath?.[1]?.trim();
     }
 
     private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
