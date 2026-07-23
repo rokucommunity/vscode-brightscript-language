@@ -11,6 +11,7 @@ import { ViewProviderCommand } from './ViewProviderCommand';
 import type { VscodeCommand } from '../commands/VscodeCommand';
 import type { RtaManager } from '../managers/RtaManager';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
+import type { RceManager } from '../managers/RceManager';
 
 export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(
@@ -18,6 +19,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         protected dependencies: {
             rtaManager: RtaManager;
             brightscriptCommands: BrightScriptCommands;
+            rceManager: RceManager;
         }
     ) {
         this.webviewBasePath = path.join(extensionContext.extensionPath, 'dist', 'webviews');
@@ -316,9 +318,11 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         const packageJsonPath = path.join(this.extensionContext.extensionPath, 'package.json');
         const packageJson = JSON.parse(await fsExtra.readFile(packageJsonPath, 'utf8'));
 
-        for (const view of [...packageJson.contributes.views.debug, ...packageJson.contributes.views['vscode-brightscript-language']]) {
-            if (view.id === viewId) {
-                return view.name;
+        for (const viewContainerId of Object.keys(packageJson.contributes.views)) {
+            for (const view of packageJson.contributes.views[viewContainerId]) {
+                if (view.id === viewId) {
+                    return view.name;
+                }
             }
         }
 

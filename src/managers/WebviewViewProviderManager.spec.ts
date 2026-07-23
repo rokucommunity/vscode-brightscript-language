@@ -4,6 +4,7 @@ import { vscode } from '../mockVscode.spec';
 import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
 import { WebviewViewProviderManager } from './WebviewViewProviderManager';
 import { RtaManager } from './RtaManager';
+import { RceManager } from './RceManager';
 import { BrightScriptCommands } from '../BrightScriptCommands';
 
 
@@ -15,6 +16,7 @@ describe('WebviewViewProviderManager', () => {
     const config = {} as BrightScriptLaunchConfiguration;
     let webviewViewProviderManager: WebviewViewProviderManager;
     let rtaManager: RtaManager;
+    let rceManager: RceManager;
     const brightScriptCommands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
 
     before(() => {
@@ -37,7 +39,8 @@ describe('WebviewViewProviderManager', () => {
         before(() => {
             spy = sinon.spy(vscode.window, 'registerWebviewViewProvider');
             rtaManager = new RtaManager(context);
-            webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, brightScriptCommands);
+            rceManager = new RceManager(context);
+            webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, rceManager, brightScriptCommands);
         });
 
         it('initializes webview providers and calls registerWebviewViewProvider for each', () => {
@@ -47,6 +50,7 @@ describe('WebviewViewProviderManager', () => {
         it('assigns dependencies to each webviewViewProvider', () => {
             for (const webviewViewProvider of webviewViewProviderManager.getWebviewViewProviders()) {
                 expect(webviewViewProvider['dependencies']['rtaManager']).to.equal(rtaManager);
+                expect(webviewViewProvider['dependencies']['rceManager']).to.equal(rceManager);
                 expect(webviewViewProvider['dependencies']['brightScriptCommands']).to.equal(brightScriptCommands);
             }
             expect(spy.callCount).to.equal(webviewViewProviderManager.getWebviewViewProviders().length);
@@ -66,7 +70,8 @@ describe('WebviewViewProviderManager', () => {
             };
 
             rtaManager = new RtaManager(context);
-            webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, brightScriptCommands);
+            rceManager = new RceManager(context);
+            webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, rceManager, brightScriptCommands);
             rtaManager.setWebviewViewProviderManager(webviewViewProviderManager);
         });
 

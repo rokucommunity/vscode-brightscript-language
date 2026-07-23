@@ -196,10 +196,22 @@
                     "id": "vscode-brightscript-language",
                     "title": "BrightScript Language",
                     "icon": "images/icons/logo.svg"
+                },
+                {
+                    "id": "roku-cloud-emulator",
+                    "title": "Roku Cloud Emulator",
+                    "icon": "images/icons/rce-logo.svg"
                 }
             ]
         },
         "views": {
+            "roku-cloud-emulator": [
+                {
+                    "id": "rceManagementView",
+                    "name": "Device Manager",
+                    "type": "webview"
+                }
+            ],
             "vscode-brightscript-language": [
                 {
                     "id": "rokuProjectsView",
