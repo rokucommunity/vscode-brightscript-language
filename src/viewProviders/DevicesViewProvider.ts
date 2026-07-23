@@ -73,18 +73,24 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
         // While the panel is visible, fulfill live broadcast/reconcile orders as they arrive,
         // except timer-driven `stale` ones (avoid surprise scans while the user is looking).
+        // takePending* is the atomic claim: if another visible consumer (e.g. the device picker)
+        // already took this order, we get null and skip — one order, one fulfillment.
         this.deviceManager.on('broadcast-ordered', (order) => {
             if (!this.visible || order.reason === 'stale') {
                 return;
             }
-            this.deviceManager.clearPendingBroadcast();
+            if (!this.deviceManager.takePendingBroadcast()) {
+                return;
+            }
             this.deviceManager.broadcast(true);
         });
         this.deviceManager.on('reconcile-ordered', (order) => {
             if (!this.visible || order.reason === 'stale') {
                 return;
             }
-            this.deviceManager.clearPendingReconcile();
+            if (!this.deviceManager.takePendingReconcile()) {
+                return;
+            }
             this.deviceManager.reconcile(order.reason === 'refresh-clicked');
         });
 
@@ -137,14 +143,12 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      * staleness-gated by passing force=false).
      */
     private fulfillPendingOrders() {
-        const broadcast = this.deviceManager.getPendingBroadcast();
+        const broadcast = this.deviceManager.takePendingBroadcast();
         if (broadcast) {
-            this.deviceManager.clearPendingBroadcast();
             this.deviceManager.broadcast(broadcast.reason !== 'stale');
         }
-        const reconcile = this.deviceManager.getPendingReconcile();
+        const reconcile = this.deviceManager.takePendingReconcile();
         if (reconcile) {
-            this.deviceManager.clearPendingReconcile();
             this.deviceManager.reconcile(reconcile.reason === 'refresh-clicked');
         }
     }
