@@ -605,6 +605,22 @@ export class DeviceManager {
     public clearPendingReconcile(): void {
         this.orderManager.clearPendingReconcile();
     }
+
+    /**
+     * Atomically consume the pending broadcast order (get + clear). The first consumer gets the
+     * order; concurrent consumers get null and should skip fulfillment.
+     */
+    public takePendingBroadcast(): BroadcastOrder | null {
+        return this.orderManager.takePendingBroadcast();
+    }
+
+    /**
+     * Atomically consume the pending reconcile order (get + clear). The first consumer gets the
+     * order; concurrent consumers get null and should skip fulfillment.
+     */
+    public takePendingReconcile(): ReconcileOrder | null {
+        return this.orderManager.takePendingReconcile();
+    }
     // #endregion
 
     /**

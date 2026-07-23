@@ -88,6 +88,28 @@ export class OrderManager {
         return this.pendingReconcile;
     }
 
+    /**
+     * Atomically consume the pending broadcast order (get + clear in one step). Because
+     * `submitBroadcast` fills the pending slot before emitting, a live-event handler can use
+     * this as a "did another consumer already fulfill this order?" guard — the first taker
+     * gets the order, everyone else gets null.
+     */
+    public takePendingBroadcast(): BroadcastOrder | null {
+        const order = this.pendingBroadcast;
+        this.pendingBroadcast = null;
+        return order;
+    }
+
+    /**
+     * Atomically consume the pending reconcile order (get + clear in one step).
+     * See {@link takePendingBroadcast} for the single-consumer semantics.
+     */
+    public takePendingReconcile(): ReconcileOrder | null {
+        const order = this.pendingReconcile;
+        this.pendingReconcile = null;
+        return order;
+    }
+
     public clearPendingBroadcast(): void {
         this.pendingBroadcast = null;
     }

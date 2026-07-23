@@ -119,6 +119,39 @@ describe('OrderManager', () => {
             expect(manager.getPendingReconcile()).to.be.null;
             expect(manager.getPendingBroadcast()).to.not.be.null;
         });
+
+        it('takePendingBroadcast returns the pending order and empties the slot', () => {
+            manager.submitBroadcast('network');
+            expect(manager.takePendingBroadcast()).to.include({ type: 'broadcast', reason: 'network' });
+            expect(manager.getPendingBroadcast()).to.be.null;
+            //a second take gets nothing — the order was already consumed
+            expect(manager.takePendingBroadcast()).to.be.null;
+        });
+
+        it('takePendingReconcile returns the pending order and empties the slot', () => {
+            manager.submitReconcile('sleep');
+            expect(manager.takePendingReconcile()).to.include({ type: 'reconcile', reason: 'sleep' });
+            expect(manager.getPendingReconcile()).to.be.null;
+            expect(manager.takePendingReconcile()).to.be.null;
+        });
+
+        it('takePending returns null when nothing is pending', () => {
+            expect(manager.takePendingBroadcast()).to.be.null;
+            expect(manager.takePendingReconcile()).to.be.null;
+        });
+
+        it('take on one slot does not disturb the other', () => {
+            manager.submitBroadcast('network');
+            manager.submitReconcile('config-changed');
+            manager.takePendingBroadcast();
+            expect(manager.getPendingReconcile()).to.include({ reason: 'config-changed' });
+        });
+
+        it('take after a stale merge returns the surviving non-stale order', () => {
+            manager.submitBroadcast('network');
+            manager.submitBroadcast('stale');
+            expect(manager.takePendingBroadcast()).to.include({ reason: 'network' });
+        });
     });
 
     describe('on()', () => {
