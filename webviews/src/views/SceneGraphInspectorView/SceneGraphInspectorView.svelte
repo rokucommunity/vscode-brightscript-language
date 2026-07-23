@@ -174,8 +174,7 @@
             if (node) {
                 node = utils.getShallowCloneOfAppUIResponseChild(node);
 
-                if ((node.base !== 'appUI' && node.base !== selectNode?.base) || node.keyPath !== selectNode?.keyPath) {
-                    // If the focused node is not the same as the currently selected node, we want to inspect it
+                if (node.base !== selectNode?.base || node.keyPath !== selectNode?.keyPath) {
 
                     selectNode = node;
                     expandNode = node;

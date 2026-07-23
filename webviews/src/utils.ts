@@ -1,5 +1,4 @@
-import { odc } from './ExtensionIntermediary';
-import type { AppUIResponseChildWithAppUIKeyPath } from './shared/types';
+import type { AppUIResponseChild } from 'roku-test-automation';
 
 type AllowedStorageTypes = string | number | boolean | Record<string, string | number | boolean>;
 
@@ -69,22 +68,8 @@ class Utils {
     /**
      * Helps improve performance by removing the children from the AppUIResponseChild object to make the object being passed around much smaller
      */
-    public getShallowCloneOfAppUIResponseChild(appUIResponseChild: AppUIResponseChildWithAppUIKeyPath) {
+    public getShallowCloneOfAppUIResponseChild(appUIResponseChild: AppUIResponseChild) {
         return { ...appUIResponseChild, children: [] };
-    }
-
-    /** Provides a central spot to convert key path to be scene based to avoid extra appUI calls */
-    public async convertAppUIKeyPathToSceneKeyPath(child: AppUIResponseChildWithAppUIKeyPath) {
-        const { keyPath } = await odc.convertKeyPathToSceneKeyPath({
-            base: child.base,
-            keyPath: child.keyPath
-        });
-
-        // Keeping existing appUI key path to allow more fallback options if needed
-        child.appUIKeyPath = child.keyPath;
-
-        child.base = 'scene';
-        child.keyPath = keyPath;
     }
 }
 

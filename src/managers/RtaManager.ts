@@ -86,8 +86,7 @@ export class RtaManager {
     }
 
     public async getAppUI(requestorId: string) {
-        await this.sendOdcRequest(requestorId, 'assignElementIdOnAllNodes', { args: {}, options: {} });
-        this.lastAppUIResponse = await rta.ecp.getAppUI();
+        this.lastAppUIResponse = await rta.ecp.getAppUI(this.onDeviceComponent);
 
         const viewIds = [];
         if (requestorId === ViewProviderId.rokuDeviceView) {
