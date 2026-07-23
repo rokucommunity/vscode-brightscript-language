@@ -181,6 +181,49 @@ describe('DeviceManager', () => {
         });
     });
 
+    describe('fetchDeviceInfo in-flight de-dupe', () => {
+        it('shares a single HTTP request between concurrent callers for the same ip:port', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            let resolveFetch: (value: any) => void;
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').returns(new Promise((resolve) => {
+                resolveFetch = resolve;
+            }) as any);
+
+            const first = manager['fetchDeviceInfo']('192.168.1.10', 8060);
+            const second = manager['fetchDeviceInfo']('192.168.1.10', 8060);
+
+            resolveFetch({ 'serial-number': 'shared-1' });
+
+            const [firstResult, secondResult] = await Promise.all([first, second]);
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+            expect(firstResult['serial-number']).to.equal('shared-1');
+            expect(secondResult['serial-number']).to.equal('shared-1');
+        });
+
+        it('does not share requests across different IPs', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'serial-number': 'x' } as any);
+
+            await Promise.all([
+                manager['fetchDeviceInfo']('192.168.1.10', 8060),
+                manager['fetchDeviceInfo']('192.168.1.11', 8060)
+            ]);
+
+            expect(getDeviceInfoStub.calledTwice).to.be.true;
+        });
+
+        it('makes a fresh request after the shared one settles', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'serial-number': 'x' } as any);
+
+            await manager['fetchDeviceInfo']('192.168.1.10', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.10', 8060);
+
+            expect(getDeviceInfoStub.calledTwice).to.be.true;
+        });
+    });
+
     describe('ssdp:byebye (finder lost event)', () => {
         it('removes the discovered entry and marks configured entries at that IP offline', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
@@ -1158,7 +1201,7 @@ describe('DeviceManager', () => {
             expect(result).to.be.true;
         });
 
-        it('ignores stale health check response when newer check completes first', async () => {
+        it('concurrent health checks of the same device share one request (first one wins)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             (vscode.window as any).state = { focused: true };
 
@@ -1169,43 +1212,27 @@ describe('DeviceManager', () => {
             sinon.stub(manager, 'reconcile');
             sinon.stub(manager, 'broadcast');
 
-            // Create two controllable promises for the health checks
-            let rejectSlowCheck: (err: Error) => void;
-            let resolveFastCheck: (value: any) => void;
-            const slowCheckPromise = new Promise<any>((_resolve, reject) => {
-                rejectSlowCheck = reject;
-            });
-            const fastCheckPromise = new Promise<any>(resolve => {
-                resolveFastCheck = resolve;
-            });
+            let resolveFetch: (value: any) => void;
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').returns(new Promise<any>(resolve => {
+                resolveFetch = resolve;
+            }) as any);
 
-            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
-            getDeviceInfoStub.onFirstCall().returns(slowCheckPromise);
-            getDeviceInfoStub.onSecondCall().returns(fastCheckPromise);
+            // Start two concurrent health checks — they share the single in-flight request,
+            // so a fast/slow divergence for the same device can't happen at the fetch level
+            const firstResult = manager.healthCheckDevice(device, true, false);
+            const secondResult = manager.healthCheckDevice(device, true, false);
 
-            // Start first (slow) health check - will return unhealthy
-            const slowResult = manager.healthCheckDevice(device, true);
-
-            // Start second (fast) health check - will return healthy
-            const fastResult = manager.healthCheckDevice(device, true);
-
-            // Fast check completes first with healthy result
-            resolveFastCheck({
+            resolveFetch({
                 'device-id': 'device-123',
                 'serial-number': 'device-123',
                 'default-device-name': 'Roku Express'
             });
-            await fastResult;
 
-            // Device should be online (fast check succeeded)
-            expect(manager.getAllDevices().length).to.equal(1);
-            expect(manager.getAllDevices()[0].deviceState).to.equal('online');
+            const [first, second] = await Promise.all([firstResult, secondResult]);
 
-            // Slow check completes later with unhealthy result
-            rejectSlowCheck(new Error('Device not responding'));
-            await slowResult;
-
-            // Device should STILL be online - slow check result was ignored (stale)
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+            expect(first).to.be.true;
+            expect(second).to.be.true;
             expect(manager.getAllDevices().length).to.equal(1);
             expect(manager.getAllDevices()[0].deviceState).to.equal('online');
         });

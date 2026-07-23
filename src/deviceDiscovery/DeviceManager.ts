@@ -1173,10 +1173,34 @@ export class DeviceManager {
     }
 
     /**
-     * Fetch device info from the network. Always makes a network request.
-     * Caches the result in globalStateManager for future lookups.
+     * In-flight device-info requests by `ip:port`. Concurrent callers share one HTTP request
+     * (the doc's "first one wins" de-dupe rule for a device within a single flow). This is
+     * complementary to `resolveDeviceSequence`, which is last-wins for *applying* the result —
+     * the first fetch supplies the data, the newest resolve call applies the state.
      */
-    private async fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw> {
+    private inFlightDeviceInfo = new Map<string, Promise<DeviceInfoRaw | undefined>>();
+
+    /**
+     * Fetch device info from the network, sharing any request already in flight for the same
+     * ip:port. Caches the result in globalStateManager for future lookups.
+     */
+    private fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw | undefined> {
+        const key = `${ip}:${port}`;
+        let inFlight = this.inFlightDeviceInfo.get(key);
+        if (!inFlight) {
+            //safe to share: fetchDeviceInfoInner never rejects (it catches and returns undefined)
+            inFlight = this.fetchDeviceInfoInner(ip, port).finally(() => {
+                this.inFlightDeviceInfo.delete(key);
+            });
+            this.inFlightDeviceInfo.set(key, inFlight);
+        }
+        return inFlight;
+    }
+
+    /**
+     * Fetch device info from the network. Always makes a network request.
+     */
+    private async fetchDeviceInfoInner(ip: string, port: number): Promise<DeviceInfoRaw> {
         try {
             const info = await rokuDeploy.getDeviceInfo({
                 host: ip,
