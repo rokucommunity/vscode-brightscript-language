@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as rokuDeploy from 'roku-deploy';
+import { rokuDeploy } from 'roku-deploy';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
 import { util } from '../util';
 
@@ -77,13 +77,15 @@ export class CaptureScreenshotCommand {
             }, async (options) => {
                 const screenshotDir = await this.getScreenshotDir();
 
-                let screenshotPath = await rokuDeploy.takeScreenshot({
-                    host: host,
+                let screenshotResult = await rokuDeploy.captureScreenshot({
+                    device: { host: host },
                     password: password,
-                    ...(screenshotDir && { outDir: screenshotDir })
+                    //save the screenshot to disk (in screenshotDir when configured, otherwise the OS temp directory)
+                    out: true,
+                    ...(screenshotDir && { screenshotDir: screenshotDir })
                 });
 
-                return screenshotPath;
+                return screenshotResult.filePath;
             });
 
             if (screenshotPath) {

@@ -319,7 +319,7 @@ describe('BrightScriptFileUtils ', () => {
             await localCommands.restartDevice('1.2.3.4');
 
             assert.isTrue(rebootStub.calledOnce);
-            assert.equal(rebootStub.firstCall.args[0].host, '1.2.3.4');
+            assert.equal(rebootStub.firstCall.args[0].device.host, '1.2.3.4');
             assert.equal(rebootStub.firstCall.args[0].password, 'pw');
             assert.isFalse(showErrorStub.called);
         });
@@ -368,7 +368,7 @@ describe('BrightScriptFileUtils ', () => {
 
             assert.isTrue(userInputManager.promptForHost.calledOnce);
             assert.isTrue(rebootStub.calledOnce);
-            assert.equal(rebootStub.firstCall.args[0].host, '1.2.3.4');
+            assert.equal(rebootStub.firstCall.args[0].device.host, '1.2.3.4');
         });
 
         it('cancels when the device picker is dismissed', async () => {
@@ -387,7 +387,7 @@ describe('BrightScriptFileUtils ', () => {
             await localCommands.checkForUpdates('1.2.3.4');
 
             assert.isTrue(checkForUpdateStub.calledOnce);
-            assert.equal(checkForUpdateStub.firstCall.args[0].host, '1.2.3.4');
+            assert.equal(checkForUpdateStub.firstCall.args[0].device.host, '1.2.3.4');
             assert.equal(checkForUpdateStub.firstCall.args[0].password, 'pw');
         });
 
