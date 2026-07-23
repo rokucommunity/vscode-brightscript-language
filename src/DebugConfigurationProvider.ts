@@ -190,6 +190,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * `packageUploadOverrides.formData` without clobbering other keys or an explicit `inspect` value.
      */
     private applyInspectMode(config: BrightScriptLaunchConfiguration) {
+        //escape hatch (launch.json or the `brightscript.debug.waitForJsDebugger` user setting)
+        if (config.waitForJsDebugger === false) {
+            this.extensionOutputChannel.appendLine(`[inspect] skipped: waitForJsDebugger is false`);
+            return;
+        }
         //same precedence as `resolveJsDebugTarget` in extension.ts: an explicit `tsPath` in
         //launch.json wins over the staged manifest's `ts_path`, then any component library
         //with a `tsPath` (its JS runs in the same runtime, so the device still needs to wait)
@@ -795,6 +800,14 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * Overrides the `ts_path` value from the app's manifest.
      */
     tsPath?: string;
+
+    /**
+     * When launching a TS/JS app, ask the device to hold app startup until the JS debugger attaches
+     * (by appending `inspect=1` to the sideload form) so breakpoints in startup code get hit.
+     * Set to false as an escape hatch in case this causes launch issues.
+     * @default true
+     */
+    waitForJsDebugger?: boolean;
 
     /**
      * The list of component libraries to build/host during a debug session, with extension-only additions layered

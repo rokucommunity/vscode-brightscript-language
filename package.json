@@ -911,6 +911,11 @@
                                     "pkg:/source/compiled/main.js"
                                 ]
                             },
+                            "waitForJsDebugger": {
+                                "type": "boolean",
+                                "description": "When launching a TS/JS app, ask the device to hold app startup until the JS debugger attaches (by appending `inspect=1` to the sideload form) so breakpoints in startup code get hit. Set to false as an escape hatch in case this causes launch issues.",
+                                "default": true
+                            },
                             "debugRootDir": {
                                 "type": "string",
                                 "deprecationMessage": "Deprecated. Use sourceDirs instead",
@@ -2798,6 +2803,12 @@
                         "type": "boolean",
                         "default": true,
                         "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md",
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.waitForJsDebugger": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "When launching a TS/JS app, ask the device to hold app startup until the JS debugger attaches (by appending `inspect=1` to the sideload form) so breakpoints in startup code get hit. Set to false as an escape hatch in case this causes launch issues.",
                         "scope": "resource"
                     },
                     "brightscript.debug.enableSourceMaps": {
