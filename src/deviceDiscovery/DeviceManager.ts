@@ -159,20 +159,13 @@ export class DeviceManager {
             // Sleep monitor runs all the time when enabled (ignores focus state)
             this.systemSleepMonitor.start();
 
-            //order a broadcast + reconcile for the views to fulfill when they open
+            //order a broadcast + reconcile for the views to fulfill when they open.
+            //No proactive scan here even on a cold cache — per the design doc, no network
+            //traffic happens until a view is actually visible to consume these orders.
             this.orderManager.submitBroadcast('startup');
             this.orderManager.submitReconcile('startup');
 
-            this.activateMonitoring().then(() => {
-                const lastSeenDeviceIds = this.globalStateManager.getLastSeenDevices(this.networkId);
-                if (lastSeenDeviceIds.length === 0) {
-                    //nothing cached to show — proactively discover + health-check now
-                    this.broadcast();
-                    this.reconcile();
-                }
-                //else: cached devices are shown immediately; the queued startup orders are
-                //fulfilled when a view opens
-            }).catch((e) => {
+            this.activateMonitoring().catch((e) => {
                 console.error(e);
             });
         }
@@ -1375,11 +1368,15 @@ export class DeviceManager {
 
     private async activateMonitoring() {
         this.networkChangeMonitor.start();
+        //periodically submit `stale` broadcast/reconcile orders so long-lived sessions
+        //eventually refresh (views decide whether/how to fulfill them)
+        this.orderManager.startStaleTimers();
         await this.startRokuFinder();
     }
 
     private deactivateMonitoring() {
         this.networkChangeMonitor.stop();
+        this.orderManager.stopStaleTimers();
         this.stopRokuFinder();
     }
 

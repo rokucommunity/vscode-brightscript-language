@@ -4,6 +4,8 @@ import { rokuDeploy, DeviceUnreachableError, InvalidDeviceResponseCodeError } fr
 import { vscode } from '../mockVscode.spec';
 import type { RokuDevice } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
+import { RokuFinder } from './RokuFinder';
+import { OrderManager } from './OrderManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { util } from '../util';
@@ -176,6 +178,63 @@ describe('DeviceManager', () => {
             manager['orderManager'].submitBroadcast('network');
 
             expect(eventSpy.calledOnce).to.be.true;
+        });
+    });
+
+    describe('stale timers', () => {
+        it('activateMonitoring starts the stale order timers, deactivateMonitoring stops them', async () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager['finder'], 'start').resolves();
+                sinon.stub(manager['networkChangeMonitor'], 'start');
+                sinon.stub(manager['networkChangeMonitor'], 'stop');
+
+                await manager['activateMonitoring']();
+
+                clock.tick(OrderManager.DEFAULT_RECONCILE_STALE_MS);
+                expect(manager.getPendingReconcile()).to.include({ reason: 'stale' });
+
+                clock.tick(OrderManager.DEFAULT_BROADCAST_STALE_MS);
+                expect(manager.getPendingBroadcast()).to.include({ reason: 'stale' });
+
+                //consume the pending orders, stop monitoring, and verify no new stale orders arrive
+                manager.takePendingBroadcast();
+                manager.takePendingReconcile();
+                manager['deactivateMonitoring']();
+
+                clock.tick(OrderManager.DEFAULT_BROADCAST_STALE_MS * 2);
+                expect(manager.getPendingBroadcast()).to.be.null;
+                expect(manager.getPendingReconcile()).to.be.null;
+            } finally {
+                clock.restore();
+            }
+        });
+    });
+
+    describe('startup behavior', () => {
+        it('does not proactively scan on a cold cache — startup orders queue instead', async () => {
+            //enable device discovery for this test
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: true,
+                    showInfoMessages: false
+                }
+            } as any);
+            //prevent real UDP sockets and observe scan calls
+            sinon.stub(RokuFinder.prototype, 'start').resolves();
+            const scanStub = sinon.stub(RokuFinder.prototype, 'scan');
+
+            //cold cache: getLastSeenDevices already returns [] from the default mock
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            //let the async activateMonitoring settle
+            await Promise.resolve();
+
+            expect(scanStub.called).to.be.false;
+            expect(manager.getPendingBroadcast()).to.include({ reason: 'startup' });
+            expect(manager.getPendingReconcile()).to.include({ reason: 'startup' });
         });
     });
 
