@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.65.0",
+    "version": "2.67.3",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -32,7 +32,7 @@
         "build": "npm run copy-schema && tsc -p ./ && npm run build-webviews",
         "build-webviews": "cd ./webviews && npm run build && cd ..",
         "lint": "eslint \"./src/**/*.ts\"",
-        "audit": "npm audit || audit-ci --config ./audit-ci.jsonc && cd webviews && npm run audit",
+        "audit": "npm audit --audit-level=high || audit-ci --config ./audit-ci.jsonc && cd webviews && npm run audit",
         "watch": "npm run copy-schema && tsc -w -p ./",
         "watch-webviews": "cd ./webviews && npm run watch",
         "watch-all": "ts-node ./scripts/watch-all.ts",
@@ -53,12 +53,13 @@
         "sync-launch-settings": "ts-node scripts/sync-launch-settings.ts"
     },
     "dependencies": {
-        "@rokucommunity/logger": "^0.3.11",
+        "@rokucommunity/logger": "^0.4.1",
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
-        "brighterscript": "^0.72.1",
-        "brighterscript-formatter": "^1.7.25",
+        "brighterscript": "^0.73.0",
+        "brighterscript-formatter": "^1.8.1",
         "clone-deep": "^4.0.1",
+        "dayjs": "^1.11.12",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
         "eventemitter3": "^5.0.1",
@@ -69,6 +70,7 @@
         "iconv-lite": "0.4.24",
         "jszip": "^3.10.1",
         "just-throttle": "^4.0.1",
+        "lodash": "^4.17.21",
         "md5": "^2.3.0",
         "minimatch": "^3.1.2",
         "node-cache": "^4.2.0",
@@ -77,9 +79,9 @@
         "postman-request": "^2.88.1-postman.48",
         "pretty-bytes": "^5.6.0",
         "resolve": "^1.22.8",
-        "roku-debug": "^0.23.7",
-        "roku-deploy": "^3.17.2",
-        "roku-test-automation": "^2.2.1",
+        "roku-debug": "^0.23.16",
+        "roku-deploy": "^3.17.7",
+        "roku-test-automation": "^2.2.2",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
         "strip-ansi": "^5.2.0",
@@ -113,21 +115,20 @@
         "@types/yargs": "^15.0.5",
         "@typescript-eslint/eslint-plugin": "^5.14.0",
         "@typescript-eslint/parser": "^5.14.0",
-        "@vscode/vsce": "^2.22.0",
+        "@vscode/vsce": "^3.9.2",
         "audit-ci": "^7.1.0",
         "chai": "^4.2.0",
         "chalk": "^4.1.2",
         "changelog-parser": "^2.8.0",
-        "dayjs": "^1.11.12",
         "deferred": "^0.7.11",
         "eslint": "^8.10.0",
         "eslint-plugin-github": "^4.3.5",
+        "eslint-plugin-import": "^2.26.0",
         "eslint-plugin-no-only-tests": "^2.6.0",
-        "lodash": "^4.17.21",
         "mocha": "^10.8.2",
         "node-notifier": "^10.0.1",
         "nyc": "^15.0.0",
-        "ovsx": "^0.8.3",
+        "ovsx": "^1.0.2",
         "prompt": "^1.3.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.21",
@@ -140,7 +141,13 @@
         "yargs": "^16.2.0"
     },
     "overrides": {
-        "serialize-javascript": "^7.0.5"
+        "serialize-javascript": "^7.0.5",
+        "tmp": "^0.2.7",
+        "http-proxy-middleware": "^3.0.7",
+        "form-data": "^2.5.6",
+        "@deboxsoft/cpx": {
+            "shell-quote": "^1.8.4"
+        }
     },
     "optionalDependencies": {
         "fsevents": "~2.3.2"
@@ -253,6 +260,13 @@
                 }
             ]
         },
+        "submenus": [
+            {
+                "id": "brightscript.devicesView.filters",
+                "label": "Filter Devices",
+                "icon": "$(filter)"
+            }
+        ],
         "menus": {
             "editor/title": [
                 {
@@ -303,6 +317,11 @@
                     "command": "extension.brightscript.rendezvous.clearHistory",
                     "when": "debugType == 'brightscript' && view == rendezvousView",
                     "group": "navigation"
+                },
+                {
+                    "submenu": "brightscript.devicesView.filters",
+                    "when": "view == devicesView",
+                    "group": "navigation@0"
                 },
                 {
                     "command": "extension.brightscript.enableDeviceDiscovery",
@@ -472,34 +491,84 @@
                     "group": "inline"
                 },
                 {
-                    "command": "extension.brightscript.setActiveDevice",
-                    "when": "view == devicesView && viewItem =~ /^device-/",
-                    "group": "navigation@1"
+                    "command": "extension.brightscript.devicesView.deviceMenu.setActiveDevice",
+                    "when": "view == devicesView && viewItem =~ /-notActive\\b/",
+                    "group": "1_primary@1"
                 },
                 {
-                    "command": "extension.brightscript.refreshDevice",
-                    "when": "view == devicesView && viewItem =~ /^device-/",
-                    "group": "navigation@2"
+                    "command": "extension.brightscript.devicesView.deviceMenu.clearActiveDevice",
+                    "when": "view == devicesView && viewItem =~ /-isActive\\b/",
+                    "group": "1_primary@1"
                 },
                 {
-                    "command": "extension.brightscript.addDeviceToUserSettings",
-                    "when": "view == devicesView && (viewItem == 'device' || viewItem == 'device-workspace')",
-                    "group": "settings@1"
+                    "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
+                    "when": "view == devicesView && viewItem =~ /^device\\b/",
+                    "group": "1_primary@2"
                 },
                 {
-                    "command": "extension.brightscript.editDeviceInUserSettings",
-                    "when": "view == devicesView && (viewItem == 'device-user' || viewItem == 'device-user-workspace')",
-                    "group": "settings@1"
+                    "command": "extension.brightscript.devicesView.deviceMenu.switchTvInput",
+                    "when": "view == devicesView && viewItem =~ /-isTv\\b/",
+                    "group": "1_primary@3"
                 },
                 {
-                    "command": "extension.brightscript.addDeviceToWorkspaceSettings",
-                    "when": "view == devicesView && (viewItem == 'device' || viewItem == 'device-user')",
-                    "group": "settings@2"
+                    "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
+                    "when": "view == devicesView && viewItem =~ /^device\\b/",
+                    "group": "2_device@1"
                 },
                 {
-                    "command": "extension.brightscript.editDeviceInWorkspaceSettings",
-                    "when": "view == devicesView && (viewItem == 'device-workspace' || viewItem == 'device-user-workspace')",
-                    "group": "settings@2"
+                    "command": "extension.brightscript.devicesView.deviceMenu.restartDevice",
+                    "when": "view == devicesView && viewItem =~ /-canRestart\\b/",
+                    "group": "2_device@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.checkAndInstallUpdates",
+                    "when": "view == devicesView && viewItem =~ /-canRestart\\b/",
+                    "group": "2_device@3"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.openWebPortal",
+                    "when": "view == devicesView && viewItem =~ /^device\\b/",
+                    "group": "3_web@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.viewRegistry",
+                    "when": "view == devicesView && viewItem =~ /-canViewRegistry\\b/",
+                    "group": "3_web@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.setDevicePassword",
+                    "when": "view == devicesView && viewItem =~ /-noPassword\\b/",
+                    "group": "4_password@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.changeDevicePassword",
+                    "when": "view == devicesView && viewItem =~ /-hasPassword\\b/",
+                    "group": "4_password@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.clearDevicePassword",
+                    "when": "view == devicesView && viewItem =~ /-hasPassword\\b/",
+                    "group": "4_password@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.addToUserSettings",
+                    "when": "view == devicesView && viewItem =~ /-notInUser\\b/",
+                    "group": "5_settings@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.editInUserSettings",
+                    "when": "view == devicesView && viewItem =~ /-inUser\\b/",
+                    "group": "5_settings@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.addToWorkspaceSettings",
+                    "when": "view == devicesView && viewItem =~ /-notInWorkspace\\b/",
+                    "group": "5_settings@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.editInWorkspaceSettings",
+                    "when": "view == devicesView && viewItem =~ /-inWorkspace\\b/",
+                    "group": "5_settings@2"
                 }
             ],
             "explorer/context": [
@@ -515,7 +584,240 @@
                     "when": "webviewId == rokuDeviceView"
                 }
             ],
-            "commandPalette": []
+            "brightscript.devicesView.filters": [
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.devModeEnabled",
+                    "when": "!brightscript.devicesView.filter.devModeEnabled",
+                    "group": "1_devMode@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.devModeEnabled.active",
+                    "when": "brightscript.devicesView.filter.devModeEnabled",
+                    "group": "1_devMode@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.devModeDisabled",
+                    "when": "!brightscript.devicesView.filter.devModeDisabled",
+                    "group": "1_devMode@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.devModeDisabled.active",
+                    "when": "brightscript.devicesView.filter.devModeDisabled",
+                    "group": "1_devMode@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.tv",
+                    "when": "!brightscript.devicesView.filter.tv",
+                    "group": "2_formFactor@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.tv.active",
+                    "when": "brightscript.devicesView.filter.tv",
+                    "group": "2_formFactor@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.setTopBox",
+                    "when": "!brightscript.devicesView.filter.setTopBox",
+                    "group": "2_formFactor@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.setTopBox.active",
+                    "when": "brightscript.devicesView.filter.setTopBox",
+                    "group": "2_formFactor@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.stick",
+                    "when": "!brightscript.devicesView.filter.stick",
+                    "group": "2_formFactor@3"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.stick.active",
+                    "when": "brightscript.devicesView.filter.stick",
+                    "group": "2_formFactor@3"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.online",
+                    "when": "!brightscript.devicesView.filter.online",
+                    "group": "3_connectivity@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.online.active",
+                    "when": "brightscript.devicesView.filter.online",
+                    "group": "3_connectivity@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.offline",
+                    "when": "!brightscript.devicesView.filter.offline",
+                    "group": "3_connectivity@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.offline.active",
+                    "when": "brightscript.devicesView.filter.offline",
+                    "group": "3_connectivity@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.userDefined",
+                    "when": "!brightscript.devicesView.filter.userDefined",
+                    "group": "4_source@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.userDefined.active",
+                    "when": "brightscript.devicesView.filter.userDefined",
+                    "group": "4_source@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.autoDetected",
+                    "when": "!brightscript.devicesView.filter.autoDetected",
+                    "group": "4_source@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.autoDetected.active",
+                    "when": "brightscript.devicesView.filter.autoDetected",
+                    "group": "4_source@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.resetFilters",
+                    "group": "9_reset@1"
+                }
+            ],
+            "commandPalette": [
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.devModeEnabled",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.devModeEnabled.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.devModeDisabled",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.devModeDisabled.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.tv",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.tv.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.setTopBox",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.setTopBox.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.stick",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.stick.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.online",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.online.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.offline",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.offline.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.userDefined",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.userDefined.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.autoDetected",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.autoDetected.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.setActiveDevice",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.clearActiveDevice",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.switchTvInput",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.restartDevice",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.checkAndInstallUpdates",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.openWebPortal",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.viewRegistry",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.setDevicePassword",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.changeDevicePassword",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.clearDevicePassword",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.addToUserSettings",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.editInUserSettings",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.addToWorkspaceSettings",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.editInWorkspaceSettings",
+                    "when": "false"
+                }
+            ]
         },
         "viewsWelcome": [
             {
@@ -665,6 +967,11 @@
                                             "type": "boolean",
                                             "description": "Should this component library be installed onto the Roku device during the sideloading process? Component libraries are installed in the order they're found in this array, so it is recommended to keep all `install: true` component libraries at the top of the array. \n\nTo utilize this component library in your application, set `dcl_channel_ids=DCLHelloLib:devlib_dcl_1` (where 1 is the 1-based position in this array)",
                                             "default": false
+                                        },
+                                        "enablePostfix": {
+                                            "type": "boolean",
+                                            "description": "Should this component library's files be renamed with a `__lib<index>` postfix during staging? Postfixing renames the library's files and rewrites the references between them so the debugger can map device-reported file paths back to the component library they came from. This covers BrightScript and XML files as well as any file imported via `<script>` tags (which can have any extension). Set to `false` to leave file names untouched (for example, when the library loads files by a fixed name at runtime); source mapping for this library's files will be degraded while debugging.",
+                                            "default": true
                                         },
                                         "outFile": {
                                             "type": "string",
@@ -2233,12 +2540,6 @@
                         "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.",
                         "scope": "resource"
                     },
-                    "brightscript.deviceDiscovery.includeNonDeveloperDevices": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "If set to true, the extension will also include devices that do not have their developer mode enabled that are found on the network.",
-                        "scope": "resource"
-                    },
                     "brightscript.deviceDiscovery.heartbeatLogging": {
                         "type": "boolean",
                         "default": false,
@@ -2285,6 +2586,126 @@
                         "type": "string",
                         "default": "",
                         "description": "Default developer password applied to any device that does not have its own password configured. Leave empty to disable.",
+                        "scope": "application"
+                    }
+                }
+            },
+            {
+                "id": "devicesView",
+                "title": "Devices View",
+                "properties": {
+                    "brightscript.devicesView.filters.devModeEnabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show devices with developer mode enabled in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.devModeDisabled": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Show devices with developer mode disabled in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.tv": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show TV devices in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.setTopBox": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show set-top boxes in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.stick": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show streaming sticks in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.online": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show online devices in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.offline": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Show offline devices in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.userDefined": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show user-defined devices (devices listed in your settings) in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.autoDetected": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show auto-detected devices (discovered on the network) in the Devices view.",
+                        "scope": "application"
+                    }
+                }
+            },
+            {
+                "id": "deviceQuickPick",
+                "title": "Device Quick Pick",
+                "properties": {
+                    "brightscript.deviceQuickPick.filters.devModeEnabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show devices with developer mode enabled in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.devModeDisabled": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Show devices with developer mode disabled in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.tv": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show TV devices in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.setTopBox": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show set-top boxes in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.stick": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show streaming sticks in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.online": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show online devices in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.offline": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Show offline devices in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.userDefined": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show user-defined devices (devices listed in your settings) in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.autoDetected": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show auto-detected devices (discovered on the network) in the device quick pick.",
                         "scope": "application"
                     }
                 }
@@ -3448,6 +3869,101 @@
                 }
             },
             {
+                "command": "extension.brightscript.devicesView.toggleFilter.devModeEnabled",
+                "title": "☐ Dev Mode Enabled",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.devModeEnabled.active",
+                "title": "☑ Dev Mode Enabled",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.devModeDisabled",
+                "title": "☐ Dev Mode Disabled",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.devModeDisabled.active",
+                "title": "☑ Dev Mode Disabled",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.tv",
+                "title": "☐ TV",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.tv.active",
+                "title": "☑ TV",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.setTopBox",
+                "title": "☐ Set Top Box",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.setTopBox.active",
+                "title": "☑ Set Top Box",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.stick",
+                "title": "☐ Streaming Stick",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.stick.active",
+                "title": "☑ Streaming Stick",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.online",
+                "title": "☐ Online",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.online.active",
+                "title": "☑ Online",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.offline",
+                "title": "☐ Offline",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.offline.active",
+                "title": "☑ Offline",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.userDefined",
+                "title": "☐ User Defined",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.userDefined.active",
+                "title": "☑ User Defined",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.autoDetected",
+                "title": "☐ Auto Detected",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.autoDetected.active",
+                "title": "☑ Auto Detected",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.resetFilters",
+                "title": "Reset Filters",
+                "category": "BrightScript"
+            },
+            {
                 "command": "extension.brightscript.clearCurrentDeviceList",
                 "title": "Clear Device List",
                 "category": "BrightScript",
@@ -3499,6 +4015,98 @@
                 "title": "Refresh Device",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.devicesView.restartDevice",
+                "title": "Restart Device",
+                "category": "BrightScript",
+                "icon": "$(debug-restart)"
+            },
+            {
+                "command": "extension.brightscript.devicesView.checkAndInstallUpdates",
+                "title": "Check for Software Updates",
+                "category": "BrightScript",
+                "icon": "$(cloud-download)"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.setActiveDevice",
+                "title": "⭐ Set as Active Device",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.clearActiveDevice",
+                "title": "⭐ Clear Active Device",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
+                "title": "📷 Capture Screenshot",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.switchTvInput",
+                "title": "📺 Switch TV Input",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
+                "title": "🔃 Refresh Device",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.restartDevice",
+                "title": "🔁 Restart Device",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.checkAndInstallUpdates",
+                "title": "🔄 Check for Software Updates",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.openWebPortal",
+                "title": "🔗 Open Device Web Portal",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.viewRegistry",
+                "title": "📋 View Registry",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.setDevicePassword",
+                "title": "🔑 Set Device Password",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.changeDevicePassword",
+                "title": "🔑 Change Device Password",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.clearDevicePassword",
+                "title": "🗑️ Clear Device Password",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.addToUserSettings",
+                "title": "👤 Add to User Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.editInUserSettings",
+                "title": "👤 Edit in User Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.addToWorkspaceSettings",
+                "title": "📁 Add to Workspace Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.editInWorkspaceSettings",
+                "title": "📁 Edit in Workspace Settings",
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.addDeviceToUserSettings",

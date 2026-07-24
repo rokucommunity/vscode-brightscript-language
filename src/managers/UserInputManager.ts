@@ -1,13 +1,26 @@
 import { Deferred } from 'brighterscript';
+import type { DeviceInfoRaw } from 'roku-deploy';
 import type {
     Disposable,
     QuickPickItem
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
+import type { ConfiguredDevice, DeviceManager, HostWithDeviceInfo, RokuDevice } from '../deviceDiscovery/DeviceManager';
+import type { CredentialStore } from './CredentialStore';
 import { icons } from '../icons';
 import { vscodeContextManager } from './VscodeContextManager';
 import { util } from '../util';
+import {
+    DEFAULT_DEVICE_FILTERS,
+    DEVICE_FILTER_GROUPS,
+    DEVICE_FILTER_KEYS,
+    DEVICE_FILTER_LABELS,
+    applyDeviceFilters,
+    loadDeviceFilters,
+    type DeviceFilters
+} from '../deviceFilters';
+
+const DEVICE_QUICK_PICK_FILTERS_SECTION = 'brightscript.deviceQuickPick.filters';
 
 /**
  * An id to represent the "Enter manually" option in the host picker
@@ -20,13 +33,22 @@ const manualLabel = 'Enter manually';
 export const scanForDevicesItemId = `${Number.MAX_SAFE_INTEGER - 1}`;
 const scanForDevicesLabel = 'Scan for devices';
 
+/**
+ * The outcome of resolving a developer password for a device.
+ */
+export type DevicePasswordResolution =
+    | { status: 'ok'; password: string }
+    | { status: 'unreachable' }
+    | { status: 'cancelled' };
+
 export class UserInputManager {
 
     public constructor(
-        private deviceManager: DeviceManager
+        private deviceManager: DeviceManager,
+        private credentialStore: CredentialStore
     ) { }
 
-    public async promptForHostManual(): Promise<string | undefined> {
+    public async promptForHostManual(): Promise<HostWithDeviceInfo | undefined> {
         while (true) {
             const value = await vscode.window.showInputBox({
                 placeHolder: 'Please enter the IP address of your Roku device',
@@ -42,18 +64,150 @@ export class UserInputManager {
                 }
             );
             if (probed) {
-                return probed.ip;
+                //probing gathers the device info the same way as the picker; return it alongside the host
+                return { host: probed.ip, deviceInfo: probed.deviceInfo };
             }
             await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${value}. Check the IP and confirm developer mode is enabled.`);
         }
     }
 
     /**
+     * Resolve a developer password that the device at `host` accepts.
+     *
+     * Every known candidate is tried in order (stored credential, configured
+     * `brightscript.devices[].password`, the default device password, and any caller-provided
+     * `extraCandidates`), each validated against the device. The first accepted candidate wins.
+     * If none are accepted, the user is prompted, re-prompting after each rejection until they
+     * enter a working password or cancel. An accepted password refreshes the credential store
+     * entry when one already exists; callers that keep a global password fallback persist that
+     * themselves.
+     *
+     * @returns `ok` with the accepted password, `unreachable` when the device can't be contacted,
+     *          or `cancelled` when the user dismisses the prompt.
+     */
+    public async resolveDevicePassword(options: { host: string; serialNumber: string | undefined; extraCandidates?: Array<string | undefined> }): Promise<DevicePasswordResolution> {
+        const { host, serialNumber } = options;
+        const candidates = await this.collectDevicePasswordCandidates(serialNumber, options.extraCandidates);
+
+        for (const candidate of candidates) {
+            const validation = await this.deviceManager.validateDevicePassword(host, candidate);
+            if (validation === 'ok') {
+                await this.persistDevicePassword(serialNumber, candidate);
+                return { status: 'ok', password: candidate };
+            }
+            if (validation === 'unreachable') {
+                return { status: 'unreachable' };
+            }
+            // 'bad-password' — fall through to the next candidate
+        }
+
+        // No stored / configured candidate was accepted. Prompt, re-prompting after each
+        // bad-password attempt until the user enters a working one or cancels (empty / Esc).
+        let placeholder = candidates.length > 0
+            ? 'The password was rejected by the device. Try again, or press Esc to cancel.'
+            : 'The Roku development webserver password.';
+        while (true) {
+            const value = await this.promptForDevicePassword(placeholder);
+            if (!value) {
+                return { status: 'cancelled' };
+            }
+            const validation = await this.deviceManager.validateDevicePassword(host, value);
+            if (validation === 'ok') {
+                await this.persistDevicePassword(serialNumber, value);
+                return { status: 'ok', password: value };
+            }
+            if (validation === 'unreachable') {
+                return { status: 'unreachable' };
+            }
+            placeholder = 'The password was rejected by the device. Try again, or press Esc to cancel.';
+        }
+    }
+
+    /**
+     * Build the ordered, de-duplicated list of candidate passwords to try when resolving
+     * credentials for a device. Variable placeholders and empty values are filtered out so the
+     * validation loop only sees real passwords. `extraCandidates` are appended after the
+     * standard sources (e.g. launch-config values for a debug session).
+     */
+    private async collectDevicePasswordCandidates(serialNumber: string | undefined, extraCandidates?: Array<string | undefined>): Promise<string[]> {
+        const candidates: string[] = [];
+        const addCandidate = (value: string | undefined | null) => {
+            const trimmed = value?.trim();
+            // eslint-disable-next-line no-template-curly-in-string
+            if (!trimmed || trimmed === '${promptForPassword}' || trimmed === '${activeHostPassword}') {
+                return;
+            }
+            candidates.push(trimmed);
+        };
+
+        if (serialNumber) {
+            addCandidate(await this.credentialStore.getPassword(serialNumber));
+
+            const scanScope = (devices: ConfiguredDevice[] | undefined) => {
+                for (const entry of devices ?? []) {
+                    if (entry.serialNumber === serialNumber) {
+                        addCandidate(entry.password);
+                    }
+                }
+            };
+            const rootInspection = vscode.workspace.getConfiguration('brightscript').inspect<ConfiguredDevice[]>('devices');
+            scanScope(rootInspection?.globalValue);
+            scanScope(rootInspection?.workspaceValue);
+            for (const folder of vscode.workspace.workspaceFolders ?? []) {
+                const folderInspection = vscode.workspace.getConfiguration('brightscript', folder.uri).inspect<ConfiguredDevice[]>('devices');
+                scanScope(folderInspection?.workspaceFolderValue);
+            }
+        }
+
+        addCandidate(this.deviceManager.getDefaultPassword());
+        for (const extra of extraCandidates ?? []) {
+            addCandidate(extra);
+        }
+
+        // Dedupe while preserving insertion order so a password referenced by multiple
+        // sources is only validated once.
+        return Array.from(new Set(candidates));
+    }
+
+    /**
+     * Persist an accepted password by refreshing the credential store, but only when an entry
+     * already exists for this serial (storing a brand-new entry is an explicit opt-in elsewhere).
+     */
+    private async persistDevicePassword(serialNumber: string | undefined, password: string): Promise<void> {
+        if (serialNumber && (await this.credentialStore.getPassword(serialNumber)) !== undefined) {
+            await this.credentialStore.setPassword(serialNumber, password);
+        }
+    }
+
+    /**
+     * Password input dialog. Returns the typed value, or undefined on Esc / hide.
+     */
+    private async promptForDevicePassword(placeholder: string): Promise<string | undefined> {
+        const input = vscode.window.createInputBox();
+        input.placeholder = placeholder;
+        input.password = true;
+        try {
+            return await new Promise<string | undefined>(resolve => {
+                input.onDidAccept(() => {
+                    resolve(input.value);
+                    input.hide();
+                });
+                input.onDidHide(() => {
+                    resolve(undefined);
+                });
+                input.show();
+            });
+        } finally {
+            input.dispose();
+        }
+    }
+
+    /**
      * Prompt the user to pick a host from a list of devices
      */
-    public async promptForHost(options?: { defaultValue?: string }) {
+    public async promptForHost(options?: { defaultValue?: string }): Promise<HostWithDeviceInfo | undefined> {
 
-        const deferred = new Deferred<{ ip: string; manual?: boolean } | { ip?: string; manual: true }>();
+        const deferred = new Deferred<{ ip: string; deviceInfo: DeviceInfoRaw; manual?: false } | { manual: true }>();
         const disposables: Array<Disposable> = [];
 
         //create the quickpick item
@@ -124,7 +278,7 @@ export class UserInputManager {
                             return;
                         }
                         this.deviceManager.setLastUsedDeviceIp(device.ip);
-                        deferred.resolve(device);
+                        deferred.resolve({ ip: device.ip, deviceInfo: device.deviceInfo });
                     }
                     quickPick.dispose();
                 }
@@ -141,7 +295,7 @@ export class UserInputManager {
                     return;
                 }
                 this.deviceManager.setLastUsedDeviceIp(probed.ip);
-                deferred.resolve({ ip: probed.ip });
+                deferred.resolve({ ip: probed.ip, deviceInfo: probed.deviceInfo });
                 quickPick.dispose();
             }
         });
@@ -179,17 +333,23 @@ export class UserInputManager {
         const CLEAR_DEVICE_LIST = 'Clear Device List';
         const ENABLE_DEVICE_DISCOVERY = 'Enable Device Discovery';
         const DISABLE_DEVICE_DISCOVERY = 'Disable Device Discovery';
+        const FILTER_DEVICES = 'Filter Devices';
 
         const refreshList = () => {
+            const filters = loadDeviceFilters(DEVICE_QUICK_PICK_FILTERS_SECTION);
             const items = this.createHostQuickPickList(
-                this.deviceManager.getDevicesForUI(),
+                applyDeviceFilters(this.deviceManager.getAllDevices(), filters),
                 this.deviceManager.getLastUsedDeviceIp(),
                 itemCache
             );
             quickPick.items = items;
             const discoveryEnabled = vscodeContextManager.get('brightscript.deviceDiscovery.enabled') === true;
-            // Buttons render left-to-right; order is [toggleScanning, clearList, refresh] so right-to-left reads: refresh, clear list, toggle scanning
+            // Buttons render left-to-right; the rightmost button is the most prominent.
             quickPick.buttons = [
+                {
+                    iconPath: new vscode.ThemeIcon('filter'),
+                    tooltip: FILTER_DEVICES
+                },
                 {
                     iconPath: discoveryEnabled ? icons.radioTower : icons.radioTowerOff,
                     tooltip: discoveryEnabled ? DISABLE_DEVICE_DISCOVERY : ENABLE_DEVICE_DISCOVERY
@@ -219,19 +379,39 @@ export class UserInputManager {
         //anytime the device list changes, update the list
         this.deviceManager.on('devices-changed', refreshList, disposables);
 
-        //anytime the deviceDiscovery.enabled setting changes, refresh the buttons so the toggle icon updates
+        //refresh the list when the toggle icon's source setting changes, or when any of the
+        //device-quick-pick filter facets change (so other windows toggling a filter affect this picker)
         disposables.push(
             vscode.workspace.onDidChangeConfiguration(e => {
-                if (e.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
+                if (
+                    e.affectsConfiguration('brightscript.deviceDiscovery.enabled') ||
+                    e.affectsConfiguration(DEVICE_QUICK_PICK_FILTERS_SECTION)
+                ) {
                     refreshList();
                 }
             })
         );
 
+        //while the filter submenu is showing, the parent picker briefly hides — don't treat that as a dismissal
+        let filterSubmenuOpen = false;
         quickPick.onDidHide(() => {
+            if (filterSubmenuOpen) {
+                return;
+            }
             dispose();
             deferred.reject(new Error('No host was selected'));
         });
+
+        const openFilterSubmenu = () => {
+            filterSubmenuOpen = true;
+            this.showFilterSubmenu().finally(() => {
+                filterSubmenuOpen = false;
+                // Re-render items before re-showing — without this the parent picker
+                // appears empty after a hide/show cycle when no settings changed during the submenu.
+                refreshList();
+                quickPick.show();
+            });
+        };
 
         quickPick.onDidTriggerButton(button => {
             if (button.tooltip === SCAN_FOR_DEVICES) {
@@ -243,6 +423,8 @@ export class UserInputManager {
                 void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
             } else if (button.tooltip === DISABLE_DEVICE_DISCOVERY) {
                 void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', false);
+            } else if (button.tooltip === FILTER_DEVICES) {
+                openFilterSubmenu();
             }
         });
 
@@ -250,10 +432,10 @@ export class UserInputManager {
         refreshList();
         const result = await deferred.promise;
         dispose();
-        if (result?.manual === true) {
+        if (result.manual === true) {
             return this.promptForHostManual();
         } else {
-            return result?.ip;
+            return { host: result.ip, deviceInfo: result.deviceInfo };
         }
     }
 
@@ -340,6 +522,97 @@ export class UserInputManager {
 
         return items;
     }
+
+    /**
+     * Open a checkbox-style quick pick (canSelectMany) listing each filter facet.
+     * Follows VS Code's standard multi-select pattern: Space toggles checkboxes,
+     * Enter commits the current selection to user settings, Escape cancels. A title-bar
+     * Reset button resets the picker's selection to defaults (still committed on Enter).
+     */
+    private showFilterSubmenu(): Promise<void> {
+        return new Promise<void>((resolve) => {
+            const RESET_FILTERS = 'Reset Filters';
+            const filterPick = vscode.window.createQuickPick<QuickPickFilterItem>();
+            filterPick.title = 'Filter Devices';
+            filterPick.placeholder = 'Space to toggle, Enter to apply, Escape to cancel';
+            filterPick.canSelectMany = true;
+            filterPick.buttons = [{
+                iconPath: new vscode.ThemeIcon('discard'),
+                tooltip: RESET_FILTERS
+            }];
+
+            const buildItems = (filters: DeviceFilters): QuickPickFilterItem[] => {
+                const result: QuickPickFilterItem[] = [];
+                for (let groupIndex = 0; groupIndex < DEVICE_FILTER_GROUPS.length; groupIndex++) {
+                    if (groupIndex > 0) {
+                        result.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
+                    }
+                    for (const facetKey of DEVICE_FILTER_GROUPS[groupIndex]) {
+                        result.push({
+                            label: DEVICE_FILTER_LABELS[facetKey],
+                            picked: filters[facetKey],
+                            facetKey: facetKey
+                        });
+                    }
+                }
+                return result;
+            };
+
+            // Initial load — render items from current settings and pre-select the picked ones
+            const initialFilters = loadDeviceFilters(DEVICE_QUICK_PICK_FILTERS_SECTION);
+            const items = buildItems(initialFilters);
+            filterPick.items = items;
+            filterPick.selectedItems = items.filter(i => i.picked);
+
+            filterPick.onDidTriggerButton((button) => {
+                if (button.tooltip !== RESET_FILTERS) {
+                    return;
+                }
+                // Reset the picker's selection to the in-code defaults — user still has to
+                // press Enter to commit or Escape to discard, matching the rest of the flow.
+                filterPick.selectedItems = items.filter(item => {
+                    return item.facetKey ? DEFAULT_DEVICE_FILTERS[item.facetKey] : false;
+                });
+            });
+
+            filterPick.onDidAccept(async () => {
+                const selectedFacets = new Set<keyof DeviceFilters>();
+                for (const item of filterPick.selectedItems) {
+                    if (item.facetKey) {
+                        selectedFacets.add(item.facetKey);
+                    }
+                }
+                const currentFilters = loadDeviceFilters(DEVICE_QUICK_PICK_FILTERS_SECTION);
+                const config = vscode.workspace.getConfiguration(DEVICE_QUICK_PICK_FILTERS_SECTION);
+                const writes: Thenable<unknown>[] = [];
+                for (const facetKey of DEVICE_FILTER_KEYS) {
+                    const nextValue = selectedFacets.has(facetKey);
+                    if (nextValue === currentFilters[facetKey]) {
+                        continue;
+                    }
+                    const valueToWrite = nextValue === DEFAULT_DEVICE_FILTERS[facetKey] ? undefined : nextValue;
+                    writes.push(config.update(facetKey, valueToWrite, vscode.ConfigurationTarget.Global));
+                }
+                if (writes.length > 0) {
+                    try {
+                        await Promise.all(writes);
+                    } catch {
+                        // best-effort persistence
+                    }
+                }
+                filterPick.hide();
+            });
+
+            filterPick.onDidHide(() => {
+                filterPick.dispose();
+                resolve();
+            });
+
+            filterPick.show();
+        });
+    }
 }
+
+type QuickPickFilterItem = QuickPickItem & { facetKey?: keyof DeviceFilters };
 
 type QuickPickHostItem = QuickPickItem & { device?: RokuDevice; iconPath?: vscode.ThemeIcon | { light: vscode.Uri; dark: vscode.Uri } };

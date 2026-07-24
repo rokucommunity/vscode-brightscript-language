@@ -6,6 +6,155 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.67.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.2...v2.67.3) - 2026-07-13
+### Added
+ - Indicator for the active device in the Devices panel ([#856](https://github.com/rokucommunity/vscode-brightscript-language/pull/856))
+### Changed
+ - Add device commands to Devices panel right-click context menu and nested device info ([#853](https://github.com/rokucommunity/vscode-brightscript-language/pull/853))
+ - Persist active device by serial number and re-resolve its IP across reloads ([#854](https://github.com/rokucommunity/vscode-brightscript-language/pull/854))
+### Fixed
+ - upgrade to [@rokucommunity/logger@0.4.1](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#041---2026-07-10). Notable changes since 0.4.0:
+     - Serialize Error.cause (recursively) when logging ([#33](https://github.com/rokucommunity/logger/pull/33))
+ - Nested namespace display and nesting in outline ([#848](https://github.com/rokucommunity/vscode-brightscript-language/pull/848))
+
+
+
+## [2.67.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.1...v2.67.2) - 2026-07-07
+### Changed
+ - upgrade to [roku-debug@0.23.16](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02316---2026-07-07). Notable changes since 0.23.15:
+     - Improve ECP access mode error messages with step-by-step navigation ([#386](https://github.com/rokucommunity/roku-debug/pull/386))
+### Fixed
+ - Crash related to move dayjs missing as prod dependency ([#850](https://github.com/rokucommunity/vscode-brightscript-language/pull/850))
+
+
+
+## [2.67.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.0...v2.67.1) - 2026-07-06
+### Changed
+ - Reuse probed device-info for launch and host selection ([#839](https://github.com/rokucommunity/vscode-brightscript-language/pull/839))
+ - Make .env file optional and support loading system env vars ([#842](https://github.com/rokucommunity/vscode-brightscript-language/pull/842))
+ - upgrade to [brighterscript-formatter@1.8.1](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#181---2026-06-30). Notable changes since 1.8.0:
+     - Fix de-indent of multi-line call continuation lines ending with a closing paren ([#147](https://github.com/rokucommunity/brighterscript-formatter/pull/147))
+ - upgrade to [roku-debug@0.23.15](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02315---2026-07-06). Notable changes since 0.23.14:
+     - Accept device-info in the launch config to skip the device-info request ([#381](https://github.com/rokucommunity/roku-debug/pull/381))
+     - Prevent orphaned debug adapter after client disconnect ([#383](https://github.com/rokucommunity/roku-debug/pull/383))
+ - upgrade to [roku-deploy@3.17.7](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3177---2026-07-06). Notable changes since 3.17.6:
+     - Fix: potential crash in normalizeDeviceInfoFieldValue when supplied non-string values ([#301](https://github.com/rokucommunity/roku-deploy/pull/301))
+
+
+## [2.67.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.4...v2.67.0) - 2026-06-29
+### Added
+ - `enablePostfix` option to component library launch schema ([#832](https://github.com/rokucommunity/vscode-brightscript-language/pull/832))
+ - `restart device` and `software update` commands ([#829](https://github.com/rokucommunity/vscode-brightscript-language/pull/829))
+### Changed
+ - Reduced unnecessary production dependencies
+ - Advertise processStagingDir capability and handle the reverse request ([#826](https://github.com/rokucommunity/vscode-brightscript-language/pull/826))
+### Fixed
+ - Show an empty-state for empty Perfetto trace files ([#831](https://github.com/rokucommunity/vscode-brightscript-language/pull/831))
+ - upgrade to [@rokucommunity/logger@0.4.0](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#040---2026-06-29).
+ - upgrade to [brighterscript@0.73.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0730---2026-06-29). Notable changes since 0.72.5:
+     - Validate eval/rsg_version against firmware lifecycle ([#1698](https://github.com/rokucommunity/brighterscript/pull/1698))
+     - Reduced unessisary unnecessary production dependencies ([#1735](https://github.com/rokucommunity/brighterscript/pull/1735)) ([#1736](https://github.com/rokucommunity/brighterscript/pull/1736)) ([#1737](https://github.com/rokucommunity/brighterscript/pull/1737))
+ - upgrade to [brighterscript-formatter@1.8.0](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#180---2026-06-29). Notable changes since 1.7.27:
+     - Add forLoopTerminator option and fix bogus next handling ([#130](https://github.com/rokucommunity/brighterscript-formatter/pull/130))
+     - Fix multi-line indentation regression from 1.7.28 (#143) ([#145](https://github.com/rokucommunity/brighterscript-formatter/pull/145))
+     - Multi-line Function parameters ([#140](https://github.com/rokucommunity/brighterscript-formatter/pull/140))
+ - upgrade to [roku-debug@0.23.14](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02314---2026-06-29). Notable changes since 0.23.12:
+     - Improve debug console completions ([#376](https://github.com/rokucommunity/roku-debug/pull/376))
+     - Per-component-library option to disable file postfixing ([#378](https://github.com/rokucommunity/roku-debug/pull/378))
+     - Report empty Perfetto trace files on stop ([#377](https://github.com/rokucommunity/roku-debug/pull/377))
+     - Fix telnet rendezvous status detection for fallback activation ([#371](https://github.com/rokucommunity/roku-debug/pull/371))
+     - Reduced ~30s delay when stopping a Perfetto recording and it being opened ([#373](https://github.com/rokucommunity/roku-debug/pull/373))
+     - Add processStagingDir reverse request support ([#366](https://github.com/rokucommunity/roku-debug/pull/366))
+ - upgrade to [roku-test-automation@2.2.2](https://github.com/rokucommunity/roku-test-automation/blob/master/CHANGELOG.md#222---2026-03-26). Notable changes since 2.2.1:
+     - AA stack overflow fix ([89c59e1](https://github.com/rokucommunity/roku-test-automation/commit/89c59e1))
+### Fixed
+ - Fix boolean field toggles in SceneGraph Inspector node detail page ([#835](https://github.com/rokucommunity/vscode-brightscript-language/pull/835))
+
+
+
+## [2.66.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.3...v2.66.4) - 2026-06-10
+### Changed
+ - upgrade to [@rokucommunity/logger@0.3.13](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#0313---2026-06-08). Notable changes since 0.3.12:
+     - Security enhancments
+ - upgrade to [brighterscript@0.72.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0725---2026-06-10). Notable changes since 0.72.3:
+     - Security enhancments
+ - upgrade to [brighterscript-formatter@1.7.27](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1727---2026-06-10). Notable changes since 1.7.26:
+     - Security enhancments
+ - upgrade to [roku-debug@0.23.12](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02312---2026-06-10). Notable changes since 0.23.10:
+     - Enhanced thread names ([#303](https://github.com/rokucommunity/roku-debug/pull/303))
+     - Log Perfetto availability and notify user when device firmware is below the minimum requirement ([#354](https://github.com/rokucommunity/roku-debug/pull/354))
+     - Validate breakpoint valid file types ([#317](https://github.com/rokucommunity/roku-debug/pull/317))
+ - upgrade to [roku-deploy@3.17.6](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3176---2026-06-04). Notable changes since 3.17.4:
+     - Fix case-insensitive matching for absolute `files.src` glob patterns on case-insensitive file systems ([#279](https://github.com/rokucommunity/roku-deploy/pull/279))
+     - Preserve `!` glob-negation prefix in standardizePath ([#277](https://github.com/rokucommunity/roku-deploy/pull/277))
+     - Security enhancments
+### Fixed
+ - Skip link-local addresses in network change detection logic ([#821](https://github.com/rokucommunity/vscode-brightscript-language/pull/821))
+ - Fix string interpolation in error message when unable to run a task ([#822](https://github.com/rokucommunity/vscode-brightscript-language/pull/822))
+
+
+
+## [2.66.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.2...v2.66.3) - 2026-05-28
+### Fixed
+ - profilling buttons not displaying
+ - upgrade to [roku-debug@0.23.10](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02310---2026-05-28). Notable changes since 0.23.9:
+     - perfetto and heap snapshots avalability events not firing ([#362](https://github.com/rokucommunity/roku-debug/pull/362))
+
+
+
+## [2.66.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.1...v2.66.2) - 2026-05-27
+### Changed
+ - Security enhancements ([#813](https://github.com/rokucommunity/vscode-brightscript-language/pull/813))
+ - upgrade to [brighterscript@0.72.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0723---2026-05-27). Notable changes since 0.72.2:
+     - Added parameter name inlay hints ([#1703](https://github.com/rokucommunity/brighterscript/pull/1703))
+ - upgrade to [roku-debug@0.23.9](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0239---2026-05-27). Notable changes since 0.23.8:
+     - stale suspend/runtime-error events when debugger is no longer paused ([#356](https://github.com/rokucommunity/roku-debug/pull/356))
+     - pressHomeButton crash in disconnectRequest ([#358](https://github.com/rokucommunity/roku-debug/pull/358))
+     - crash related to  missing client when syncing breakpoints with device ([#357](https://github.com/rokucommunity/roku-debug/pull/357))
+
+
+
+## [2.66.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.0...v2.66.1) - 2026-05-26
+### Fixed
+ - Webview panels such as the SceneGraph Inspector not rendering ([#808](https://github.com/rokucommunity/vscode-brightscript-language/pull/808))
+
+
+
+## [2.66.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.65.0...v2.66.0) - 2026-05-22
+### Added
+ - Add filter dropdown to the Devices view ([#790](https://github.com/rokucommunity/vscode-brightscript-language/pull/790))
+ - Support bsconfig*.json suffixes for JSON schema validation ([#792](https://github.com/rokucommunity/vscode-brightscript-language/pull/792))
+### Changed
+ - Rewrite Registry View ([#784](https://github.com/rokucommunity/vscode-brightscript-language/pull/784))
+ - Display device state icons in device tree ([#799](https://github.com/rokucommunity/vscode-brightscript-language/pull/799))
+ - Get device-info when cached device IP doesn't match requested device ([#783](https://github.com/rokucommunity/vscode-brightscript-language/pull/783))
+ - Force-terminate dev channel on restartDevApplication ([#788](https://github.com/rokucommunity/vscode-brightscript-language/pull/788))
+ - Update device display name logic ([#796](https://github.com/rokucommunity/vscode-brightscript-language/pull/796))
+ - chore: Add `security-audit-required` gated job to security audit workflow ([#800](https://github.com/rokucommunity/vscode-brightscript-language/pull/800))
+ - Security enhancements ([#794](https://github.com/rokucommunity/vscode-brightscript-language/pull/794), [#804](https://github.com/rokucommunity/vscode-brightscript-language/pull/804)) 
+ - upgrade to [@rokucommunity/logger@0.3.12](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#0312---2026-05-19). Notable changes since 0.3.11:
+     - Security enhancements ([#17](https://github.com/rokucommunity/logger/pull/17))
+ - upgrade to [brighterscript@0.72.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0722---2026-05-19). Notable changes since 0.72.1:
+     - Security enhancements ([#1714](https://github.com/rokucommunity/brighterscript/pull/1714))
+ - upgrade to [brighterscript-formatter@1.7.26](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1726---2026-05-19). Notable changes since 1.7.25:
+     - Security enhancements ([#133](https://github.com/rokucommunity/brighterscript-formatter/pull/133))
+ - upgrade to [roku-debug@0.23.8](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0238---2026-05-19). Notable changes since 0.23.7:
+     - Security enhancements ([#350](https://github.com/rokucommunity/roku-debug/pull/350))
+     - Fix TelnetAdapter crash when methods are called after destroy ([#349](https://github.com/rokucommunity/roku-debug/pull/349))
+     - Fix deferred capability handling for exception breakpoints ([#342](https://github.com/rokucommunity/roku-debug/pull/342))
+     - Fixes bug on windows with rdb file copying ([#343](https://github.com/rokucommunity/roku-debug/pull/343))
+     - Inject breakpoint STOPs after InitializedEvent ([#340](https://github.com/rokucommunity/roku-debug/pull/340))
+     - Fix sourcemap race in preprocessStagingFiles ([#339](https://github.com/rokucommunity/roku-debug/pull/339))
+     - Defer DAP capabilities and InitializedEvent until after adapter connects ([#328](https://github.com/rokucommunity/roku-debug/pull/328))
+ - upgrade to [roku-deploy@3.17.4](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3174---2026-05-19). Notable changes since 3.17.2:
+     - npm audit fixes ([#263](https://github.com/rokucommunity/roku-deploy/pull/263))
+     - Add `autoLaunch` option to control `dev_autolaunch` on sideload ([#261](https://github.com/rokucommunity/roku-deploy/pull/261))
+### Fixed
+ - Resolve SSDP devices that have no cache entry when focused ([#797](https://github.com/rokucommunity/vscode-brightscript-language/pull/797))
+ - Device Picker shows device icons instead of pending ([#791](https://github.com/rokucommunity/vscode-brightscript-language/pull/791))
+ 
+
+
 ## [2.65.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.64.0...v2.65.0) - 2026-05-12
 ### Added
  - Add ManifestProjectProvider for Roku channel detection ([#780](https://github.com/rokucommunity/vscode-brightscript-language/pull/780))

@@ -146,20 +146,38 @@ export let vscode = {
             };
         },
         _configuration: {} as any,
+        _onDidChangeConfigurationEmitter: new EventEmitter(),
         getConfiguration: function(configurationName: string, scope?: ConfigurationScope | null) {
+            const store = this._configuration;
+            const emitter = this._onDidChangeConfigurationEmitter;
             return {
                 get: (name: string) => {
-                    return this._configuration?.[`${configurationName}.${name}`];
+                    return store?.[`${configurationName}.${name}`];
                 },
                 inspect: (name: string) => {
                     return {
                         key: name,
-                        globalValue: this._configuration?.[`${configurationName}.${name}`]
+                        globalValue: store?.[`${configurationName}.${name}`]
                     } as ReturnType<WorkspaceConfiguration['inspect']>;
+                },
+                update: (name: string, value: any) => {
+                    const fullKey = `${configurationName}.${name}`;
+                    if (value === undefined) {
+                        delete store[fullKey];
+                    } else {
+                        store[fullKey] = value;
+                    }
+                    emitter.emit('event', {
+                        affectsConfiguration: (section: string) => fullKey === section || fullKey.startsWith(`${section}.`)
+                    });
+                    return Promise.resolve();
                 }
             };
         },
-        onDidChangeConfiguration: () => { },
+        onDidChangeConfiguration: function(cb) {
+            this._onDidChangeConfigurationEmitter.on('event', cb);
+            return { dispose: () => this._onDidChangeConfigurationEmitter.off('event', cb) };
+        },
         onDidChangeWorkspaceFolders: () => { },
         getWorkspaceFolder: (uri: Uri) => {
             return undefined;
@@ -206,12 +224,16 @@ export let vscode = {
         }),
         createQuickPick: () => {
             class QuickPick {
-                private emitter = new EventEmitter();
+                public emitter = new EventEmitter();
 
                 public placeholder = '';
 
                 public items: QuickPickItem[];
                 public keepScrollPosition = false;
+                public value = '';
+                public busy = false;
+                public buttons: any[] = [];
+                public activeItems: QuickPickItem[] = [];
 
                 public show() { }
 
@@ -229,6 +251,14 @@ export let vscode = {
 
                 public onDidChangeSelection(cb) {
                     this.emitter.on('didChangeSelection', cb);
+                }
+
+                public onDidChangeActive(cb) {
+                    this.emitter.on('didChangeActive', cb);
+                }
+
+                public onDidTriggerButton(cb) {
+                    this.emitter.on('didTriggerButton', cb);
                 }
 
                 public dispose() {
@@ -375,17 +405,26 @@ export let vscode = {
         public label: string;
         public documentation: any;
     },
-    Range: class {
+    Range: class Range {
         constructor(startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
             this.startLine = startLine;
             this.startCharacter = startCharacter;
             this.endLine = endLine;
             this.endCharacter = endCharacter;
+            this.start = { line: startLine, character: startCharacter };
+            this.end = { line: endLine, character: endCharacter };
         }
         public startLine: number;
         public startCharacter: number;
         public endLine: number;
         public endCharacter: number;
+        public start: { line: number; character: number };
+        public end: { line: number; character: number };
+        public with(change: { start?: { line: number; character: number }; end?: { line: number; character: number } }) {
+            const start = change.start ?? this.start;
+            const end = change.end ?? this.end;
+            return new Range(start.line, start.character, end.line, end.character);
+        }
     },
     SymbolKind: {
         File: 0,
@@ -464,7 +503,9 @@ export let vscode = {
         }
         public value: string;
     },
-    ThemeColor: class { },
+    ThemeColor: class {
+        constructor(public readonly id: string) { }
+    },
     ThemeIcon: class {
         constructor(public id: string, public color?: any) { }
     },

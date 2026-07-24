@@ -1,21 +1,146 @@
 name: create-vsix
 on:
+  pull_request:
+    types: [labeled, unlabeled, synchronize]
   workflow_dispatch:
     inputs:
       branch:
-        description: "The branch name which should be used to build the vsix"
-        required: true
+        description: "The branch name which should be used to build the vsix. Optional when pr is provided (defaults to the PR's branch)"
+        required: false
+      pr:
+        description: "Optional PR that requested this build (PR number or full PR URL). When provided, a comment with the .vsix download links will be posted on that PR"
+        required: false
+      repo:
+        description: "Optional owner/repo that the PR number belongs to (defaults to this repo). Ignored when pr is a full URL"
+        required: false
 jobs:
   create-vsix:
     runs-on: ubuntu-latest
+    # for the pull_request trigger, only run when this repo's own PRs are labeled create-vsix. workflow_dispatch (from this
+    # repo or any other rokucommunity project) is always allowed
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'create-vsix')
     steps:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "18.20.4"
-      - run: npm ci
-      - run: npx ts-node scripts/create-vsix.ts ${{ github.event.inputs.branch }}
-      - uses: actions/upload-artifact@v4
+          node-version: "20.19.4"
+      # Resolve the branch to build and (optionally) the PR to comment on
+      - name: Resolve build info
+        uses: actions/github-script@v7
+        id: info
         with:
-          name: vscode-brightscript-language.vsix
+          script: |
+            let branch, prInput, repoInput;
+            if (context.eventName === 'pull_request') {
+              branch = context.payload.pull_request.head.ref;
+              prInput = context.payload.pull_request.html_url;
+              repoInput = `${context.repo.owner}/${context.repo.repo}`;
+            } else {
+              branch = `${{ github.event.inputs.branch }}`.trim();
+              prInput = `${{ github.event.inputs.pr }}`.trim();
+              repoInput = `${{ github.event.inputs.repo }}`.trim();
+            }
+            if (prInput) {
+              //`pr` can be a full PR URL or a plain PR number (paired with the `repo` input)
+              let prOwner, prRepo, prNumber;
+              const urlMatch = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(prInput);
+              if (urlMatch) {
+                [, prOwner, prRepo, prNumber] = urlMatch;
+              } else if (/^\d+$/.test(prInput)) {
+                [prOwner, prRepo] = (repoInput || `${context.repo.owner}/${context.repo.repo}`).split('/');
+                prNumber = prInput;
+              } else {
+                core.setFailed(`Could not parse a PR number or URL from "${prInput}"`);
+                return;
+              }
+              const { data: pr } = await github.rest.pulls.get({
+                owner: prOwner,
+                repo: prRepo,
+                pull_number: Number(prNumber)
+              });
+              core.setOutput('prOwner', prOwner);
+              core.setOutput('prRepo', prRepo);
+              core.setOutput('prNumber', prNumber);
+              core.setOutput('prSha', pr.head.sha);
+              branch = branch || pr.head.ref;
+              console.log(`PR: ${prOwner}/${prRepo}#${prNumber} @ ${pr.head.sha}`);
+            }
+            if (!branch) {
+              core.setFailed('You must provide either a branch or a pr');
+              return;
+            }
+            core.setOutput('branch', branch);
+            console.log(`branch: "${branch}"`);
+      - run: npm ci
+      - run: npx ts-node scripts/create-vsix.ts ${{ steps.info.outputs.branch }}
+      # upload the production .vsix (archive: false only supports a single file, so
+      # upload each .vsix as its own artifact: upload, delete, repackage, upload again)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: brightscript.vsix
           path: .vsix-building/vscode-brightscript-language/*.vsix
+          archive: false
+      - run: rm .vsix-building/vscode-brightscript-language/*.vsix
+      # repackage the extension as the side-by-side "temporary" variant and upload it
+      - run: npx ts-node scripts/create-temp-vsix.ts
+      - uses: actions/upload-artifact@v7
+        with:
+          name: brightscript-temp.vsix
+          path: .vsix-building/vscode-brightscript-language/*.vsix
+          archive: false
+      # Look up this run's artifacts and print their download URLs
+      - name: Get artifact download URLs
+        uses: actions/github-script@v7
+        id: artifacts
+        with:
+          script: |
+            const response = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            });
+            const artifacts = response.data.artifacts.map(a => ({
+              name: a.name,
+              id: a.id,
+              url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${a.id}`
+            }));
+            console.log(`Found ${artifacts.length} artifact(s) for run ${context.runId}`);
+            for (const artifact of artifacts) {
+              console.log(`${artifact.name}: ${artifact.url}`);
+            }
+            console.log('\nFull artifact JSON:');
+            console.log(JSON.stringify(response.data.artifacts, null, 2));
+            core.setOutput('artifacts', JSON.stringify(artifacts));
+      # When building for a PR, get a bot token so the bot's name shows up on the comment
+      - name: Get Token From roku-ci-token Application
+        if: steps.info.outputs.prNumber
+        uses: tibdex/github-app-token@v1.5.1
+        id: generate-token
+        with:
+          app_id: ${{ secrets.BOT_APP_ID }}
+          private_key: ${{ secrets.BOT_PRIVATE_KEY }}
+      - name: Post download links on the PR
+        if: steps.info.outputs.prNumber
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const artifacts = ${{ steps.artifacts.outputs.artifacts }};
+            const sha = '${{ steps.info.outputs.prSha }}';
+
+            //upload-artifact names the artifact after the matched file (which includes the version/timestamp), so match by prefix
+            const temp = artifacts.find(a => a.name.startsWith('brightscript-temp'));
+            const prod = artifacts.find(a => a.name.startsWith('brightscript-') && a !== temp);
+
+            let body = 'Hey there! I just built a new version of the vscode extension based on [' + sha.substring(0, 7) + '](https://github.com/' + '${{ steps.info.outputs.prOwner }}' + '/' + '${{ steps.info.outputs.prRepo }}' + '/commit/' + sha + ').\n\n';
+            body += 'Download:\n';
+            body += '- [brightscript (replaces store version)](' + prod.url + ')\n';
+            body += '- [brightscript-temp (side-by-side install)](' + temp.url + ')\n';
+            body += '\n[Install instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html).';
+
+            await github.rest.issues.createComment({
+              owner: '${{ steps.info.outputs.prOwner }}',
+              repo: '${{ steps.info.outputs.prRepo }}',
+              issue_number: ${{ steps.info.outputs.prNumber }},
+              body: body
+            });
