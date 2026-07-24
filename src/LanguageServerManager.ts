@@ -7,8 +7,6 @@ import { window, workspace } from 'vscode';
 import { BusyStatus, NotificationName, standardizePath as s } from 'brighterscript';
 import { CustomCommands, Deferred } from 'brighterscript';
 import { createLogger } from './logging';
-
-const logger = createLogger('LanguageServerManager');
 import type { CodeWithSourceMap } from 'source-map';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptWorkspaceSymbolProvider, SymbolInformationRepository } from './SymbolInformationRepository';
@@ -23,6 +21,8 @@ import { EventEmitter } from 'eventemitter3';
 import * as dayjs from 'dayjs';
 import type { LocalPackageManager, ParsedVersionInfo } from './managers/LocalPackageManager';
 import { firstBy } from 'thenby';
+
+const logger = createLogger('LanguageServerManager');
 
 /**
  * Tracks the running/stopped state of the language server. When the lsp crashes, vscode will restart it. After the 5th crash, they'll leave it permanently crashed.
@@ -281,7 +281,7 @@ export class LanguageServerManager {
             this.client = this.constructLanguageClient();
 
             this.client.onDidChangeState((event: StateChangeEvent) => {
-                logger.info('onDidChangeState', State[event.newState]);
+                logger.log('onDidChangeState', State[event.newState]);
                 this.lspRunTracker.setState(event.newState);
             });
 
