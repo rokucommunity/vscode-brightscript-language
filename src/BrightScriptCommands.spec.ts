@@ -192,6 +192,94 @@ describe('BrightScriptFileUtils ', () => {
         });
     });
 
+    describe('setActiveDevice / clearActiveDevice', () => {
+        let localCommands: BrightScriptCommands;
+        let capturedCommands: Record<string, (...args: any[]) => any>;
+        let deviceManager: any;
+        let userInputManager: any;
+        let showTimedNotificationStub: sinon.SinonStub;
+        let vscodeContextSetStub: sinon.SinonStub;
+
+        beforeEach(() => {
+            deviceManager = {
+                getDevice: sinon.stub(),
+                getDeviceByDeviceConfig: sinon.stub(),
+                getDeviceDisplayName: sinon.stub().callsFake((device: any) => device?.ip ?? device?.rce?.id ?? 'device')
+            };
+            userInputManager = {
+                promptForHost: sinon.stub()
+            };
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, userInputManager, {} as any, {} as any);
+            capturedCommands = {};
+            sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
+                capturedCommands[name] = cb;
+            });
+            showTimedNotificationStub = sinon.stub(Object.getPrototypeOf(util), 'showTimedNotification').resolves();
+            vscodeContextSetStub = sinon.stub(vscodeContextManager, 'set').resolves();
+            localCommands.registerCommands();
+        });
+
+        afterEach(() => {
+            (vscode.commands.registerCommand as any).restore();
+            showTimedNotificationStub.restore();
+            vscodeContextSetStub.restore();
+        });
+
+        it('sets remoteHost/activeHost/activeDeviceKey for a LAN device selected by key', async () => {
+            deviceManager.getDevice.withArgs('s:abc123').returns({ ip: '1.2.3.4', key: 's:abc123' });
+
+            await capturedCommands['extension.brightscript.setActiveDevice']({ key: 's:abc123' });
+
+            assert.equal(vscode.context.workspaceState.get('remoteHost'), '1.2.3.4');
+            assert.equal(vscode.context.workspaceState.get('activeDeviceKey'), 's:abc123');
+            assert.isTrue(vscodeContextSetStub.calledWith('activeHost', '1.2.3.4'));
+        });
+
+        it('sets activeDeviceKey and clears remoteHost/activeHost for a cloud device selected by key', async () => {
+            deviceManager.getDevice.withArgs('rce:83').returns({ ip: undefined, key: 'rce:83', rce: { id: '83', status: 'running' } });
+
+            await capturedCommands['extension.brightscript.setActiveDevice']({ key: 'rce:83' });
+
+            assert.equal(vscode.context.workspaceState.get('remoteHost'), '');
+            assert.equal(vscode.context.workspaceState.get('activeDeviceKey'), 'rce:83');
+            assert.isTrue(vscodeContextSetStub.calledWith('activeHost', ''));
+        });
+
+        it('resolves a cloud device picked from the fallback picker', async () => {
+            const cloudDeviceOption = { id: '83', rceToken: 'secret' };
+            userInputManager.promptForHost.resolves({ host: undefined, deviceInfo: undefined, device: cloudDeviceOption, rce: { status: 'running' } });
+            deviceManager.getDeviceByDeviceConfig.withArgs(cloudDeviceOption).returns({ ip: undefined, key: 'rce:83', rce: { id: '83', status: 'running' } });
+
+            await capturedCommands['extension.brightscript.setActiveDevice']();
+
+            assert.equal(vscode.context.workspaceState.get('activeDeviceKey'), 'rce:83');
+            assert.equal(vscode.context.workspaceState.get('remoteHost'), '');
+        });
+
+        it('throws when nothing can be resolved', async () => {
+            userInputManager.promptForHost.resolves(undefined);
+
+            let threw = false;
+            try {
+                await capturedCommands['extension.brightscript.setActiveDevice']();
+            } catch {
+                threw = true;
+            }
+            assert.isTrue(threw);
+        });
+
+        it('clearActiveDevice clears remoteHost, activeHost, and activeDeviceKey', async () => {
+            await vscode.context.workspaceState.update('remoteHost', '1.2.3.4');
+            await vscode.context.workspaceState.update('activeDeviceKey', 's:abc123');
+
+            await capturedCommands['extension.brightscript.clearActiveDevice']();
+
+            assert.equal(vscode.context.workspaceState.get('remoteHost'), '');
+            assert.equal(vscode.context.workspaceState.get('activeDeviceKey'), '');
+            assert.isTrue(vscodeContextSetStub.calledWith('activeHost', ''));
+        });
+    });
+
     describe('restartDevApplication', () => {
         let utilProto: any;
         let httpGetStub: sinon.SinonStub;
@@ -453,37 +541,147 @@ describe('BrightScriptFileUtils ', () => {
             sandbox = sinon.createSandbox();
             deviceManager = {
                 healthCheckDevice: sandbox.stub().resolves(true),
-                getDevice: sandbox.stub().returns({ ip: '1.2.3.4', deviceInfo: { 'serial-number': 'SN123' } })
+                getDevice: sandbox.stub().returns({ ip: '1.2.3.4', key: 'i:1.2.3.4', deviceInfo: { 'serial-number': 'SN123' }, device: { host: '1.2.3.4' } })
             };
             localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
-            sandbox.stub(vscodeContextManager, 'get').returns('1.2.3.4');
+            //no legacy activeHost context by default; individual tests opt into it
+            sandbox.stub(vscodeContextManager, 'get').returns(undefined);
         });
 
         afterEach(() => {
             sandbox.restore();
         });
 
-        it('returns the host with its device info when the active host is healthy', async () => {
+        it('resolves the active device via activeDeviceKey and returns its host/deviceInfo/device when healthy', async () => {
+            await vscode.context.workspaceState.update('activeDeviceKey', 'i:1.2.3.4');
+
             const result = await localCommands.getHealthyActiveHost();
-            assert.deepEqual(result, { host: '1.2.3.4', deviceInfo: { 'serial-number': 'SN123' } });
+
+            assert.deepEqual(result, { host: '1.2.3.4', deviceInfo: { 'serial-number': 'SN123' }, device: { host: '1.2.3.4' } });
+            assert.isTrue(deviceManager.getDevice.calledWith('i:1.2.3.4'));
         });
 
-        it('returns undefined when no active host is set', async () => {
-            (vscodeContextManager.get as sinon.SinonStub).returns(undefined);
+        it('falls back to the legacy activeHost ip when no activeDeviceKey is stored', async () => {
+            (vscodeContextManager.get as sinon.SinonStub).returns('1.2.3.4');
+
+            const result = await localCommands.getHealthyActiveHost();
+
+            assert.deepEqual(result, { host: '1.2.3.4', deviceInfo: { 'serial-number': 'SN123' }, device: { host: '1.2.3.4' } });
+            assert.isTrue(deviceManager.getDevice.calledWith({ ip: '1.2.3.4' }));
+        });
+
+        it('returns undefined when neither activeDeviceKey nor the legacy activeHost is set', async () => {
             const result = await localCommands.getHealthyActiveHost();
             assert.isUndefined(result);
         });
 
         it('returns undefined when the active host fails the health check', async () => {
+            await vscode.context.workspaceState.update('activeDeviceKey', 'i:1.2.3.4');
             deviceManager.healthCheckDevice.resolves(false);
+
             const result = await localCommands.getHealthyActiveHost();
             assert.isUndefined(result);
         });
 
         it('returns undefined when no device info could be read back', async () => {
-            deviceManager.getDevice.returns(undefined);
+            await vscode.context.workspaceState.update('activeDeviceKey', 'i:1.2.3.4');
+            deviceManager.getDevice.returns({ ip: '1.2.3.4', key: 'i:1.2.3.4', deviceInfo: undefined });
+
             const result = await localCommands.getHealthyActiveHost();
             assert.isUndefined(result);
+        });
+
+        it('returns the cloud device with a running status and an undefined host', async () => {
+            const cloudDevice = {
+                ip: undefined,
+                key: 'rce:83',
+                deviceInfo: { 'default-device-name': 'Cloud Device' },
+                device: { id: '83', rceToken: 'secret' },
+                rce: { id: '83', status: 'running' }
+            };
+            deviceManager.getDevice.returns(cloudDevice);
+            await vscode.context.workspaceState.update('activeDeviceKey', 'rce:83');
+
+            const result = await localCommands.getHealthyActiveHost();
+
+            assert.deepEqual(result, {
+                host: undefined,
+                deviceInfo: cloudDevice.deviceInfo,
+                device: cloudDevice.device,
+                rce: { status: 'running' }
+            });
+        });
+
+        it('reports a non-running cloud active device as unhealthy', async () => {
+            const cloudDevice = {
+                ip: undefined,
+                key: 'rce:83',
+                deviceInfo: { 'default-device-name': 'Cloud Device' },
+                device: { id: '83', rceToken: 'secret' },
+                rce: { id: '83', status: 'shutdown' }
+            };
+            deviceManager.getDevice.returns(cloudDevice);
+            deviceManager.healthCheckDevice.resolves(false);
+            await vscode.context.workspaceState.update('activeDeviceKey', 'rce:83');
+
+            const result = await localCommands.getHealthyActiveHost();
+            assert.isUndefined(result);
+        });
+    });
+
+    describe('getRemoteHost', () => {
+        let localCommands: BrightScriptCommands;
+        let deviceManager: any;
+        let userInputManager: any;
+
+        beforeEach(() => {
+            deviceManager = {
+                getDevice: sinon.stub()
+            };
+            userInputManager = {
+                promptForHost: sinon.stub().resolves(undefined)
+            };
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, userInputManager, {} as any, {} as any);
+            sinon.stub(util, 'getConfiguration').returns({ get: () => undefined } as any);
+        });
+
+        afterEach(() => {
+            sinon.restore();
+        });
+
+        it('does not resolve to a stale LAN ip when the active device is a cloud device', async () => {
+            await vscode.context.workspaceState.update('remoteHost', '10.0.0.5');
+            await vscode.context.workspaceState.update('activeDeviceKey', 'rce:83');
+            deviceManager.getDevice.withArgs('rce:83').returns({ ip: undefined, key: 'rce:83', rce: { id: '83', status: 'running' } });
+
+            let threw: Error | undefined;
+            try {
+                await localCommands.getRemoteHost(false);
+            } catch (e) {
+                threw = e as Error;
+            }
+
+            assert.include(threw?.message, 'host is required');
+            //never fell back to the picker either, since showPrompt is false here
+            assert.isFalse(userInputManager.promptForHost.called);
+        });
+
+        it('uses the stored remoteHost when the active device is a LAN device', async () => {
+            await vscode.context.workspaceState.update('remoteHost', '10.0.0.5');
+            await vscode.context.workspaceState.update('activeDeviceKey', 's:abc123');
+            deviceManager.getDevice.withArgs('s:abc123').returns({ ip: '10.0.0.5', key: 's:abc123' });
+
+            const host = await localCommands.getRemoteHost(false);
+
+            assert.equal(host, '10.0.0.5');
+        });
+
+        it('uses the stored remoteHost when no activeDeviceKey is set (legacy/pre-migration state)', async () => {
+            await vscode.context.workspaceState.update('remoteHost', '10.0.0.5');
+
+            const host = await localCommands.getRemoteHost(false);
+
+            assert.equal(host, '10.0.0.5');
         });
     });
 

@@ -26,7 +26,12 @@ export class RtaManager {
     private webviewViewProviderManager?: WebviewViewProviderManager;
     private lastAppUIResponse: rta.AppUIResponse | undefined;
 
-    public setupRtaWithConfig(config: { host: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
+    public setupRtaWithConfig(config: { host?: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
+        //roku-test-automation talks to the device by host over the local network, so a device without
+        //a host (like a Roku Cloud Emulator device) cannot back the RDB views yet
+        if (!config.host) {
+            return;
+        }
         const enableDebugging = ['info', 'debug', 'trace'].includes(config.logLevel);
         const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {

@@ -1,5 +1,5 @@
 import { Deferred } from 'brighterscript';
-import type { DeviceInfoRaw } from 'roku-deploy';
+import type { DeviceInfoRaw, DeviceConfig, DeviceStatus } from 'roku-deploy';
 import type {
     Disposable,
     QuickPickItem
@@ -65,7 +65,7 @@ export class UserInputManager {
             );
             if (probed) {
                 //probing gathers the device info the same way as the picker; return it alongside the host
-                return { host: probed.ip, deviceInfo: probed.deviceInfo };
+                return { host: probed.ip, deviceInfo: probed.deviceInfo, device: probed.device };
             }
             await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${value}. Check the IP and confirm developer mode is enabled.`);
         }
@@ -207,7 +207,7 @@ export class UserInputManager {
      */
     public async promptForHost(options?: { defaultValue?: string }): Promise<HostWithDeviceInfo | undefined> {
 
-        const deferred = new Deferred<{ ip: string; deviceInfo: DeviceInfoRaw; manual?: false } | { manual: true }>();
+        const deferred = new Deferred<{ ip: string; deviceInfo: DeviceInfoRaw; device: DeviceConfig; rce?: { status: DeviceStatus }; manual?: false } | { manual: true }>();
         const disposables: Array<Disposable> = [];
 
         //create the quickpick item
@@ -269,16 +269,29 @@ export class UserInputManager {
                         return;
                     } else {
                         const device = (selectedDevice as any).device as RokuDevice;
-                        // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
-                        setBusy(true);
-                        const isHealthy = await this.deviceManager.healthCheckDevice(device, true, false);
-                        setBusy(false);
-                        if (!isHealthy) {
-                            await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
-                            return;
+                        if (device.rce) {
+                            //cloud emulator devices skip the LAN health-check gate below; a pick that
+                            //isn't running yet is allowed through so the caller (DebugConfigurationProvider)
+                            //can show a more specific "start it from the Cloud Emulator panel" message
+                            //instead of the generic "not responding" one
+                            deferred.resolve({
+                                ip: device.ip,
+                                deviceInfo: device.deviceInfo,
+                                device: device.device,
+                                rce: { status: device.rce.status }
+                            });
+                        } else {
+                            // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
+                            setBusy(true);
+                            const isHealthy = await this.deviceManager.healthCheckDevice(device, true, false);
+                            setBusy(false);
+                            if (!isHealthy) {
+                                await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
+                                return;
+                            }
+                            this.deviceManager.setLastUsedDeviceIp(device.ip);
+                            deferred.resolve({ ip: device.ip, deviceInfo: device.deviceInfo, device: device.device });
                         }
-                        this.deviceManager.setLastUsedDeviceIp(device.ip);
-                        deferred.resolve({ ip: device.ip, deviceInfo: device.deviceInfo });
                     }
                     quickPick.dispose();
                 }
@@ -295,7 +308,7 @@ export class UserInputManager {
                     return;
                 }
                 this.deviceManager.setLastUsedDeviceIp(probed.ip);
-                deferred.resolve({ ip: probed.ip, deviceInfo: probed.deviceInfo });
+                deferred.resolve({ ip: probed.ip, deviceInfo: probed.deviceInfo, device: probed.device });
                 quickPick.dispose();
             }
         });
@@ -435,7 +448,14 @@ export class UserInputManager {
         if (result.manual === true) {
             return this.promptForHostManual();
         } else {
-            return { host: result.ip, deviceInfo: result.deviceInfo };
+            return {
+                host: result.ip,
+                deviceInfo: result.deviceInfo,
+                device: result.device,
+                //omitted entirely (rather than included as undefined) for a LAN pick, so existing
+                //callers that only look at host/deviceInfo/device see the same shape as before
+                ...(result.rce ? { rce: result.rce } : {})
+            };
         }
     }
 

@@ -1537,6 +1537,62 @@ describe('DeviceManager', () => {
                 rceToken: 'secret'
             });
         });
+
+        describe('getDeviceByDeviceConfig', () => {
+            function createFakeFinderManager(): DeviceManager {
+                const fakeFinder = new EventEmitter() as any;
+                fakeFinder.start = () => { };
+                fakeFinder.stop = () => { };
+                fakeFinder.dispose = () => { };
+                fakeFinder.getCachedToken = () => 'secret';
+                const testManager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+                testManager['onRceDevices']([
+                    rceDevice(),
+                    rceDevice({ id: 84, serial_number: 'ESN84', status: 'shutdown', running_device: null })
+                ] as any);
+                return testManager;
+            }
+
+            it('resolves a Roku Cloud Emulator device by esn', () => {
+                manager = createFakeFinderManager();
+
+                const device = manager.getDeviceByDeviceConfig({ esn: 'ESN84', rceToken: 'secret' });
+
+                expect(device?.rce?.id).to.equal('84');
+            });
+
+            it('resolves a Roku Cloud Emulator device by management-api id', () => {
+                manager = createFakeFinderManager();
+
+                const device = manager.getDeviceByDeviceConfig({ id: '84', rceToken: 'secret' });
+
+                expect(device?.rce?.id).to.equal('84');
+            });
+
+            it('resolves a Roku Cloud Emulator device by instanceUrl', () => {
+                manager = createFakeFinderManager();
+
+                const device = manager.getDeviceByDeviceConfig({ instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'secret' });
+
+                expect(device?.rce?.id).to.equal('83');
+            });
+
+            it('resolves a local device by host', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                addDiscoveredDevice(createMockDevice({ serialNumber: 'lan-device', ip: '192.168.1.55' }));
+
+                const device = manager.getDeviceByDeviceConfig({ host: '192.168.1.55' });
+
+                expect(device?.serialNumber).to.equal('lan-device');
+            });
+
+            it('returns undefined when nothing matches', () => {
+                manager = createFakeFinderManager();
+
+                expect(manager.getDeviceByDeviceConfig({ id: 'unknown-id' })).to.be.undefined;
+                expect(manager.getDeviceByDeviceConfig({ host: '10.0.0.1' })).to.be.undefined;
+            });
+        });
     });
     /* eslint-enable camelcase */
 

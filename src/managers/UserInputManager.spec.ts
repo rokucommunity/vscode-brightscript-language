@@ -263,7 +263,7 @@ describe('UserInputManager', () => {
                 'serial-number': 'abc123',
                 'software-version': '11.5.0'
             };
-            sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '1.2.3.4', deviceInfo: deviceInfo } as any);
+            sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '1.2.3.4', deviceInfo: deviceInfo, device: { host: '1.2.3.4' } } as any);
 
             const promptPromise = userInputManager.promptForHost();
 
@@ -277,7 +277,48 @@ describe('UserInputManager', () => {
             quickPick.emitter.emit('didAccept');
 
             const result = await promptPromise;
-            expect(result).to.eql({ host: '1.2.3.4', deviceInfo: deviceInfo });
+            expect(result).to.eql({ host: '1.2.3.4', deviceInfo: deviceInfo, device: { host: '1.2.3.4' } });
+        });
+
+        it('resolves with the precomputed device option and rce status for a cloud emulator pick, skipping the LAN health check', async () => {
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+            const healthCheckSpy = sinon.spy(deviceManager, 'healthCheckDevice');
+            const rceDevice = {
+                ip: undefined,
+                key: 'rce:83',
+                deviceState: 'online',
+                lastDeviceState: 'online',
+                deviceInfo: { 'default-device-name': 'Cloud Device' },
+                isDiscovered: true,
+                isConfigured: false,
+                rce: { id: '83', status: 'shutdown' },
+                device: { id: '83', rceToken: 'secret' }
+            } as unknown as RokuDevice;
+
+            const promptPromise = userInputManager.promptForHost();
+
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            //simulate the user selecting the cloud device item
+            quickPick.emitter.emit('didChangeSelection', [{ label: 'Cloud Device', device: rceDevice }]);
+            quickPick.emitter.emit('didAccept');
+
+            const result = await promptPromise;
+
+            expect(healthCheckSpy.called).to.be.false;
+            expect(result).to.eql({
+                host: undefined,
+                deviceInfo: rceDevice.deviceInfo,
+                device: rceDevice.device,
+                rce: { status: 'shutdown' }
+            });
         });
 
         it('returns the manually-entered host along with the probed device info', async () => {
@@ -292,7 +333,7 @@ describe('UserInputManager', () => {
                 'software-version': '11.5.0'
             };
             //manual entry probes the device the same way, so the gathered device info comes back too
-            sinon.stub(userInputManager, 'promptForHostManual').resolves({ host: '9.8.7.6', deviceInfo: deviceInfo });
+            sinon.stub(userInputManager, 'promptForHostManual').resolves({ host: '9.8.7.6', deviceInfo: deviceInfo, device: { host: '9.8.7.6' } });
 
             const promptPromise = userInputManager.promptForHost();
 
@@ -305,7 +346,7 @@ describe('UserInputManager', () => {
             quickPick.emitter.emit('didAccept');
 
             const result = await promptPromise;
-            expect(result).to.eql({ host: '9.8.7.6', deviceInfo: deviceInfo });
+            expect(result).to.eql({ host: '9.8.7.6', deviceInfo: deviceInfo, device: { host: '9.8.7.6' } });
         });
     });
 
@@ -316,12 +357,12 @@ describe('UserInputManager', () => {
                 'serial-number': 'manual123',
                 'software-version': '11.5.0'
             };
-            const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '4.3.2.1', deviceInfo: deviceInfo } as any);
+            const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '4.3.2.1', deviceInfo: deviceInfo, device: { host: '4.3.2.1' } } as any);
 
             const result = await userInputManager.promptForHostManual();
 
             expect(validateStub.calledWith('4.3.2.1')).to.be.true;
-            expect(result).to.eql({ host: '4.3.2.1', deviceInfo: deviceInfo });
+            expect(result).to.eql({ host: '4.3.2.1', deviceInfo: deviceInfo, device: { host: '4.3.2.1' } });
         });
 
         it('returns undefined when the user cancels the input box', async () => {

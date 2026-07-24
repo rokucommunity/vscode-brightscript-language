@@ -432,22 +432,43 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('setActiveDevice', async (deviceOrItem: string | { key: string }) => {
+            let device: RokuDevice | undefined;
             let ip: string;
             if (typeof deviceOrItem === 'object' && deviceOrItem?.key) {
-                ip = this.deviceManager.getDevice(deviceOrItem.key)?.ip;
+                device = this.deviceManager.getDevice(deviceOrItem.key);
+                ip = device?.ip;
             } else if (typeof deviceOrItem === 'string') {
                 ip = deviceOrItem;
             }
-            if (!ip) {
-                ip = (await this.userInputManager.promptForHost())?.host;
+            if (!device && !ip) {
+                //the picker can resolve either a LAN device (an ip) or a Roku Cloud Emulator device
+                //(a precomputed device option, no ip); resolve the latter back to a RokuDevice so we
+                //can key on it the same way as the other resolution paths above
+                const picked = await this.userInputManager.promptForHost();
+                ip = picked?.host;
+                device = picked?.device ? this.deviceManager.getDeviceByDeviceConfig(picked.device) : undefined;
             }
-            if (!ip) {
+            if (!device && !ip) {
                 throw new Error('Tried to set active device but failed.');
+            }
+
+            //track the active device by its DeviceManager key, falling back to a synthesized
+            //ip-based key when the device manager doesn't know about this ip yet (a brand-new
+            //manual/typed entry)
+            const activeDeviceKey = device?.key ?? `i:${ip}`;
+            await this.context.workspaceState.update('activeDeviceKey', activeDeviceKey);
+
+            if (device?.rce) {
+                //a cloud device has no ip; never leave a stale LAN ip active underneath it
+                await this.context.workspaceState.update('remoteHost', '');
+                await vscodeContextManager.set('activeHost', '');
             } else {
                 await this.context.workspaceState.update('remoteHost', ip);
                 await vscodeContextManager.set('activeHost', ip);
-                await util.showTimedNotification(`'${ip}' set as active device`);
             }
+
+            const label = device ? this.deviceManager.getDeviceDisplayName(device, true) : ip;
+            await util.showTimedNotification(`'${label}' set as active device`);
         });
 
         this.registerCommand('editDeviceInUserSettings', async (deviceOrItem: { key: string }) => {
@@ -590,6 +611,7 @@ export class BrightScriptCommands {
         this.registerCommand('clearActiveDevice', async () => {
             await this.context.workspaceState.update('remoteHost', '');
             await vscodeContextManager.set('activeHost', '');
+            await this.context.workspaceState.update('activeDeviceKey', '');
             await util.showTimedNotification('Active device cleared');
         });
 
@@ -923,7 +945,16 @@ export class BrightScriptCommands {
     }
 
     public async getRemoteHost(showPrompt = true) {
-        this.host = await this.context.workspaceState.get('remoteHost');
+        //if the active device is a Roku Cloud Emulator device, `remoteHost` (if anything is even
+        //stored there) is a stale LAN ip left over from a previous session - treat this exactly like
+        //no host being set, so the existing fallback (workspace setting, then the picker) resolves a
+        //real target instead of silently misfiring against the wrong device. These hand-rolled ECP
+        //commands don't support cloud devices yet; Phase B routes them through roku-deploy's `device`
+        //option instead of this ip-only flow.
+        const activeDeviceKey = this.context.workspaceState.get<string>('activeDeviceKey');
+        const activeDeviceIsCloud = !!(activeDeviceKey && this.deviceManager.getDevice(activeDeviceKey)?.rce);
+
+        this.host = activeDeviceIsCloud ? undefined : await this.context.workspaceState.get('remoteHost');
         if (!this.host) {
             let config = util.getConfiguration('brightscript.remoteControl');
             this.host = config.get('host');
@@ -1086,25 +1117,54 @@ export class BrightScriptCommands {
     }
 
     /**
-     * Return the active host (paired with its raw device-info) if one is set and passes a health
+     * Return the active device (paired with its raw device-info) if one is set and passes a health
      * check; otherwise undefined. The health check refreshes the device in the device manager, so
      * the device-info is read back from there without an extra request.
+     *
+     * Resolves the active device by its DeviceManager key (`activeDeviceKey`), so this works for
+     * both LAN and Roku Cloud Emulator devices. Falls back to the legacy ip-only `activeHost` vscode
+     * context when no key is stored yet (pre-migration workspace state) - that fallback only ever
+     * applies to a LAN device, since `activeHost` was never set for anything else.
+     *
+     * For a cloud device, "healthy" means the management-api reports it running; `healthCheckDevice`
+     * already routes cloud devices through an RceFinder scan for that, so it's reused as-is. The
+     * returned `host` is always undefined for a cloud device, matching the device-picker's payload
+     * shape (see `HostWithDeviceInfo`/`UserInputManager.promptForHost`).
      */
     public async getHealthyActiveHost(): Promise<HostWithDeviceInfo | undefined> {
-        const activeHost = vscodeContextManager.get<string>('activeHost');
-        if (!activeHost) {
+        const activeDeviceKey = this.context.workspaceState.get<string>('activeDeviceKey');
+        let device: RokuDevice | undefined;
+        if (activeDeviceKey) {
+            device = this.deviceManager.getDevice(activeDeviceKey);
+        } else {
+            const legacyActiveHost = vscodeContextManager.get<string>('activeHost');
+            if (!legacyActiveHost) {
+                return undefined;
+            }
+            device = this.deviceManager.getDevice({ ip: legacyActiveHost });
+        }
+        if (!device) {
             return undefined;
         }
-        const isHealthy = await this.deviceManager.healthCheckDevice({ ip: activeHost }, true, false);
+
+        const isHealthy = await this.deviceManager.healthCheckDevice(device, true, false);
         if (!isHealthy) {
             return undefined;
         }
-        const deviceInfo = this.deviceManager.getDevice({ ip: activeHost })?.deviceInfo;
+
+        //the health check may have refreshed the device's state (an RceFinder scan for a cloud
+        //device, a LAN probe otherwise); re-read it so deviceInfo/rce reflect the latest data
+        const refreshed = this.deviceManager.getDevice(device.key) ?? device;
         //deviceInfo is required on HostWithDeviceInfo, so if we couldn't read it back, report no healthy active host
-        if (!deviceInfo) {
+        if (!refreshed.deviceInfo) {
             return undefined;
         }
-        return { host: activeHost, deviceInfo: deviceInfo };
+        return {
+            host: refreshed.ip,
+            deviceInfo: refreshed.deviceInfo,
+            device: refreshed.device,
+            ...(refreshed.rce ? { rce: { status: refreshed.rce.status } } : {})
+        };
     }
 
     /**

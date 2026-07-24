@@ -2,7 +2,7 @@ import { EventEmitter } from 'eventemitter3';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
-import { rokuDeploy, DeviceUnreachableError, type DeviceInfoRaw, type DeviceOut, type DeviceStatus, type DeviceConfig, type RceDeviceConfig } from 'roku-deploy';
+import { rokuDeploy, DeviceUnreachableError, isLocalDeviceConfig, isRceByEsn, isRceById, isRceByUrl, type DeviceInfoRaw, type DeviceOut, type DeviceStatus, type DeviceConfig, type RceDeviceConfig } from 'roku-deploy';
 import type { RceFinder } from './RceFinder';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
@@ -307,6 +307,30 @@ export class DeviceManager {
         }
 
         return device;
+    }
+
+    /**
+     * Find the RokuDevice matching a roku-deploy device option, for resolving a launch config's
+     * `device` back to a UI-facing RokuDevice (for example to look up its DeviceManager key when
+     * marking it as the active device). A local device is matched by host/ip; a Roku Cloud Emulator
+     * device is matched by whichever of esn/id/instanceUrl the given config carries, among the
+     * currently known cloud emulator devices. Returns undefined for a device-registry name (a plain
+     * string), since that doesn't correspond to anything this class tracks.
+     */
+    public getDeviceByDeviceConfig(config: DeviceConfig): RokuDevice | undefined {
+        if (isLocalDeviceConfig(config)) {
+            return this.getDevice({ ip: config.host });
+        }
+
+        let matchingEntry: RceDeviceEntry | undefined;
+        if (isRceByEsn(config)) {
+            matchingEntry = this.rceDevices.find(entry => entry.esn === config.esn);
+        } else if (isRceById(config)) {
+            matchingEntry = this.rceDevices.find(entry => entry.id === config.id);
+        } else if (isRceByUrl(config)) {
+            matchingEntry = this.rceDevices.find(entry => entry.instanceUrl === config.instanceUrl);
+        }
+        return matchingEntry ? this.buildRceDevice(matchingEntry) : undefined;
     }
 
     /**
@@ -1615,6 +1639,21 @@ export type ConfigurationScope = 'user' | 'workspace';
 export interface HostWithDeviceInfo {
     host: string;
     deviceInfo: DeviceInfoRaw;
+    /**
+     * The resolved device's precomputed roku-deploy-compatible connection option, so callers (for
+     * example DebugConfigurationProvider) can run roku-deploy commands, or hand it straight to
+     * roku-debug's launch config, without re-deriving it. `{host}` for every LAN resolution path;
+     * the Roku Cloud Emulator connection option (instanceUrl/id + rceToken) for a cloud device pick.
+     */
+    device: DeviceConfig;
+    /**
+     * Present only when the resolved device is a Roku Cloud Emulator device, carrying just enough
+     * info for a caller to guard against launching against one that isn't running yet. Undefined
+     * for every LAN resolution path.
+     */
+    rce?: {
+        status: DeviceStatus;
+    };
 }
 
 /**
