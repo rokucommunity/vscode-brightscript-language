@@ -23,6 +23,9 @@ import type { BrightScriptCommands } from './BrightScriptCommands';
 import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
 import type { DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
 import type { CredentialStore } from './managers/CredentialStore';
+import { createLogger } from './logging';
+
+const logger = createLogger('DebugConfigurationProvider');
 
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
@@ -370,7 +373,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
 
         if (!config.rootDir) {
-            console.log('No rootDir specified: defaulting to ${workspaceFolder}');
+            logger.log('No rootDir specified: defaulting to ${workspaceFolder}');
             //use the current workspace folder
             config.rootDir = folderUri.fsPath;
         }
@@ -434,7 +437,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
             if (await this.util.fileExists(envFilePath) === false) {
                 //the .env file is optional, so just warn instead of failing the debug session
-                console.warn(`Cannot find .env file at "${envFilePath}". Falling back to the process environment for '\${env:*}' values.`);
+                logger.warn(`Cannot find .env file at "${envFilePath}". Falling back to the process environment for '\${env:*}' values.`);
             } else {
                 //parse the .env file, letting its values override the process environment
                 environmentValues = {
@@ -476,7 +479,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             while ((match = regexp.exec(configValue))) {
                 let environmentVariableName = match[1];
                 configValue = configDefaults[key];
-                console.log(`The configuration value for ${key} was not found in the environment variables${loadedEnvFile ? ' or env file' : ''} under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
+                logger.log(`The configuration value for ${key} was not found in the environment variables${loadedEnvFile ? ' or env file' : ''} under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
             }
             config[key] = configValue;
         }
@@ -696,7 +699,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         } catch (e) {
             //only log the error if the user explicitly defined a config path
             if (!isDefaultPath) {
-                console.error(`Could not load bsconfig file at "${configFilePath}`);
+                logger.error(`Could not load bsconfig file at "${configFilePath}`);
             }
             return undefined;
         }

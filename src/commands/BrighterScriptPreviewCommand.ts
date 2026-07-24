@@ -5,6 +5,9 @@ import * as path from 'path';
 import * as querystring from 'querystring';
 import { SourceMapConsumer } from 'source-map';
 import { languageServerManager } from '../LanguageServerManager';
+import { createLogger } from '../logging';
+
+const logger = createLogger('BrighterScriptPreviewCommand');
 
 export const FILE_SCHEME = 'bs-preview';
 
@@ -120,7 +123,7 @@ export class BrighterScriptPreviewCommand {
                 activePreview.previewEditor.revealRange(mappedRange, vscode.TextEditorRevealType.InCenter);
                 activePreview.previewEditor.selection = new vscode.Selection(mappedRange.start, mappedRange.end);
             } catch (e) {
-                console.error(e);
+                logger.error(e);
             }
         }
     }
@@ -172,7 +175,7 @@ export class BrighterScriptPreviewCommand {
                 activePreview.sourceEditor.revealRange(mappedRange, vscode.TextEditorRevealType.InCenter);
                 activePreview.sourceEditor.selection = new vscode.Selection(mappedRange.start, mappedRange.end);
             } catch (e) {
-                console.error(e);
+                logger.error(e);
             }
         }
     }
