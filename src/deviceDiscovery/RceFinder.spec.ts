@@ -6,12 +6,14 @@ import { RceFinder } from './RceFinder';
 describe('RceFinder', () => {
     let finder: RceFinder;
     let client: { listDevices: () => Promise<DeviceOut[]> } | undefined;
+    let token: string | undefined;
     let tokenChangedHandlers: Array<() => void>;
 
     function makeRceManagerFake(): RceManager {
         tokenChangedHandlers = [];
         return {
             getClient: () => Promise.resolve(client as unknown as RceManagementClient),
+            getToken: () => Promise.resolve(token),
             onTokenChanged: (handler: () => void) => {
                 tokenChangedHandlers.push(handler);
                 return () => { };
@@ -21,6 +23,7 @@ describe('RceFinder', () => {
 
     beforeEach(() => {
         client = undefined;
+        token = undefined;
         finder = new RceFinder(makeRceManagerFake());
     });
 
@@ -84,5 +87,33 @@ describe('RceFinder', () => {
         await new Promise(setImmediate);
 
         expect(events).to.eql([[]]);
+    });
+
+    describe('getCachedToken', () => {
+        it('returns undefined before any scan', () => {
+            expect(finder.getCachedToken()).to.be.undefined;
+        });
+
+        it('returns the token used for the most recent scan', async () => {
+            token = 'secret-token';
+            client = { listDevices: () => Promise.resolve([]) };
+
+            await finder.scan();
+
+            expect(finder.getCachedToken()).to.equal('secret-token');
+        });
+
+        it('returns undefined after a scan with no token configured', async () => {
+            token = 'secret-token';
+            client = { listDevices: () => Promise.resolve([]) };
+            await finder.scan();
+            expect(finder.getCachedToken()).to.equal('secret-token');
+
+            token = undefined;
+            client = undefined;
+            await finder.scan();
+
+            expect(finder.getCachedToken()).to.be.undefined;
+        });
     });
 });

@@ -2,7 +2,7 @@ import { EventEmitter } from 'eventemitter3';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
-import { rokuDeploy, DeviceUnreachableError, type DeviceInfoRaw, type DeviceOut, type DeviceStatus } from 'roku-deploy';
+import { rokuDeploy, DeviceUnreachableError, type DeviceInfoRaw, type DeviceOut, type DeviceStatus, type DeviceConfig, type RceDeviceConfig } from 'roku-deploy';
 import type { RceFinder } from './RceFinder';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
@@ -47,15 +47,28 @@ export class DeviceManager {
      * Replace the cloud emulator device list with the latest management-api poll results
      */
     private onRceDevices(devices: DeviceOut[]) {
-        this.rceDevices = devices.map(device => ({
-            id: String(device.id),
-            name: device.name,
-            esn: device.serial_number ?? undefined,
-            status: device.status ?? 'shutdown',
-            instanceUrl: device.running_device?.instance_api_url ?? undefined,
-            deviceType: device.device_type,
-            firmwareVersion: device.running_device?.firmware_version_id ?? device.firmware_version_id ?? undefined
-        }));
+        //entries only ever get built from a non-empty devices list, which only happens when the finder
+        //resolved a token for this scan (a token-less scan emits an empty list - see RceFinder.scan()),
+        //so the cached token is expected to be set here
+        const rceToken = this.rceFinder?.getCachedToken();
+        this.rceDevices = devices.map(device => {
+            const instanceUrl = device.running_device?.instance_api_url ?? undefined;
+            //same preference order as RceFinder.getDeviceOption: a live instance url first, then the
+            //management-api device id
+            const deviceOption: RceDeviceConfig = instanceUrl
+                ? { instanceUrl: instanceUrl, rceToken: rceToken }
+                : { id: String(device.id), rceToken: rceToken };
+            return {
+                id: String(device.id),
+                name: device.name,
+                esn: device.serial_number ?? undefined,
+                status: device.status ?? 'shutdown',
+                instanceUrl: instanceUrl,
+                deviceType: device.device_type,
+                firmwareVersion: device.running_device?.firmware_version_id ?? device.firmware_version_id ?? undefined,
+                device: deviceOption
+            };
+        });
         this.emitDevicesChanged();
         void this.resolveRceDevices();
     }
@@ -80,12 +93,8 @@ export class DeviceManager {
         let anyUpdated = false;
         await Promise.all(candidates.map(async (entry) => {
             try {
-                const device = await this.rceFinder?.getDeviceOption(entry);
-                if (!device) {
-                    return;
-                }
                 const deviceInfo = await rokuDeploy.getDeviceInfo({
-                    device: device,
+                    device: entry.device,
                     timeout: DeviceManager.RCE_DEVICE_INFO_TIMEOUT_MS
                 });
                 this.globalStateManager.setCachedDevice(entry.esn, {
@@ -1360,7 +1369,8 @@ export class DeviceManager {
                 id: entry.id,
                 status: entry.status,
                 instanceUrl: entry.instanceUrl
-            }
+            },
+            device: entry.device
         };
     }
 
@@ -1415,7 +1425,9 @@ export class DeviceManager {
             isConfigured: !!configuredEntry,
             configuredIn: configuredEntry?.configuredIn,
             configuredName: configuredEntry?.name,
-            configuredPassword: configuredEntry?.password ?? this.getDefaultPassword()
+            //LocalDeviceConfig has no password field; passwords stay on configuredPassword above
+            configuredPassword: configuredEntry?.password ?? this.getDefaultPassword(),
+            device: { host: ip }
         };
     }
 
@@ -1659,6 +1671,13 @@ interface RceDeviceEntry {
     instanceUrl?: string;
     deviceType?: string;
     firmwareVersion?: string;
+    /**
+     * A pre-computed roku-deploy-compatible connection option for this device (instanceUrl when the
+     * device has a live instance, otherwise its management-api id), built at scan time using the
+     * token cached by RceFinder for that scan. Only ever built for entries in a non-empty devices
+     * list, which only happens when a token was available, so this is never optional here.
+     */
+    device: RceDeviceConfig;
 }
 
 interface DiscoveredDeviceEntry {
@@ -1760,6 +1779,13 @@ export interface RokuDevice {
      * User-provided password from config
      */
     configuredPassword?: string;
+    /**
+     * A roku-deploy-compatible connection option for this device, pre-computed so consumers can run
+     * roku-deploy commands (getDeviceInfo, ecp, and so on) without re-deriving it themselves. A
+     * `{ host }` for LAN devices, or the RCE variant (instanceUrl/id, with rceToken) for cloud
+     * emulator devices - the same field name as the launch-config `device` option.
+     */
+    device: DeviceConfig;
 }
 
 function throttleBounce<T extends (...args: any[]) => void>(

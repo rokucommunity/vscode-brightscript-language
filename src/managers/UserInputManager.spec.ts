@@ -62,6 +62,7 @@ describe('UserInputManager', () => {
             lastDeviceState: 'unknown',
             isDiscovered: true,
             isConfigured: false,
+            device: { host: '1.1.1.1' },
             deviceInfo: {
                 'user-device-name': 'roku1',
                 'serial-number': 'alpha',
@@ -76,6 +77,7 @@ describe('UserInputManager', () => {
             lastDeviceState: 'unknown',
             isDiscovered: true,
             isConfigured: false,
+            device: { host: '1.1.1.2' },
             deviceInfo: {
                 'user-device-name': 'roku2',
                 'serial-number': 'beta',
@@ -90,6 +92,7 @@ describe('UserInputManager', () => {
             lastDeviceState: 'unknown',
             isDiscovered: true,
             isConfigured: false,
+            device: { host: '1.1.1.3' },
             deviceInfo: {
                 'user-device-name': 'roku3',
                 'serial-number': 'charlie',

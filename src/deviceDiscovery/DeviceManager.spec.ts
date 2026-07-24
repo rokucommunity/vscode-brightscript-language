@@ -1397,6 +1397,7 @@ describe('DeviceManager', () => {
             fakeFinder.start = () => { };
             fakeFinder.stop = () => { };
             fakeFinder.dispose = () => { };
+            fakeFinder.getCachedToken = () => 'secret';
             manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
 
             fakeFinder.emit('devices', [rceDevice()]);
@@ -1412,7 +1413,7 @@ describe('DeviceManager', () => {
             fakeFinder.start = () => { };
             fakeFinder.stop = () => { };
             fakeFinder.dispose = () => { };
-            fakeFinder.getDeviceOption = () => Promise.resolve({ instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'secret' });
+            fakeFinder.getCachedToken = () => 'secret';
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
                 'serial-number': 'XY020078HH5S',
                 'friendly-model-name': 'Roku 4K TV',
@@ -1449,7 +1450,7 @@ describe('DeviceManager', () => {
                 scanCount++;
                 return Promise.resolve();
             };
-            fakeFinder.getDeviceOption = () => Promise.resolve(undefined);
+            fakeFinder.getCachedToken = () => 'secret';
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
             manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
             manager['onRceDevices']([rceDevice()] as any);
@@ -1458,8 +1459,9 @@ describe('DeviceManager', () => {
 
             expect(scanCount).to.equal(1);
             expect(healthy).to.be.true;
-            //no LAN probe was attempted (there is no ip to probe)
-            expect(getDeviceInfoStub.called).to.be.false;
+            //no LAN probe was attempted (there is no ip to probe); resolveRceDevices may still probe
+            //the device through its precomputed RCE device option in the background
+            expect(getDeviceInfoStub.getCalls().some(call => 'host' in (call.args[0].device as any))).to.be.false;
         });
 
         it('resolveDevice never probes rce devices and reports their management-api state', async () => {
@@ -1469,7 +1471,9 @@ describe('DeviceManager', () => {
             const device = manager.getDevice('s:XY020078HH5S');
 
             expect(await manager['resolveDevice'](device)).to.be.true;
-            expect(getDeviceInfoStub.called).to.be.false;
+            //no LAN probe was attempted (there is no ip to probe); resolveRceDevices may still probe
+            //the device through its precomputed RCE device option in the background
+            expect(getDeviceInfoStub.getCalls().some(call => 'host' in (call.args[0].device as any))).to.be.false;
         });
 
         it('skips the device-info fetch for devices that are not running or have no esn', async () => {
@@ -1483,6 +1487,55 @@ describe('DeviceManager', () => {
             await manager['resolveRceDevices']();
 
             expect(getDeviceInfoStub.called).to.be.false;
+        });
+
+        it('builds a running device\'s device connection option as {instanceUrl, rceToken}', () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            fakeFinder.getCachedToken = () => 'secret';
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            manager['onRceDevices']([rceDevice()] as any);
+
+            const device = manager.getAllDevices().find(x => x.rce);
+            expect(device.device).to.eql({ instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'secret' });
+        });
+
+        it('builds a stopped device\'s device connection option as {id, rceToken}', () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            fakeFinder.getCachedToken = () => 'secret';
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            manager['onRceDevices']([rceDevice({ id: 84, status: 'shutdown', running_device: null })] as any);
+
+            const device = manager.getAllDevices().find(x => x.rce);
+            expect(device.device).to.eql({ id: '84', rceToken: 'secret' });
+        });
+
+        it('resolveRceDevices probes through the precomputed device option without calling getDeviceOption', async () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            fakeFinder.getCachedToken = () => 'secret';
+            const getDeviceOptionSpy = sinon.stub().resolves(undefined);
+            fakeFinder.getDeviceOption = getDeviceOptionSpy;
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            manager['onRceDevices']([rceDevice()] as any);
+            await manager['resolveRceDevices']();
+
+            expect(getDeviceOptionSpy.called).to.be.false;
+            expect(getDeviceInfoStub.getCall(0).args[0].device).to.eql({
+                instanceUrl: 'https://device.rce.roku.com/instance/abc',
+                rceToken: 'secret'
+            });
         });
     });
     /* eslint-enable camelcase */
@@ -2301,6 +2354,19 @@ describe('DeviceManager', () => {
                 const device = manager.getAllDevices()[0];
                 expect(device.deviceInfo['user-device-name']).to.equal('Discovered Name');
                 expect(device.configuredName).to.equal('My Custom Name');
+            });
+
+            it('builds a roku-deploy-compatible {host} device connection option', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                addDiscoveredDevice(createMockDevice({
+                    serialNumber: 'device-456',
+                    ip: '192.168.1.77',
+                    deviceState: 'online'
+                }));
+
+                const device = manager.getAllDevices()[0];
+                expect(device.device).to.eql({ host: '192.168.1.77' });
             });
         });
 

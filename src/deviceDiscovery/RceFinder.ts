@@ -25,6 +25,11 @@ export class RceFinder extends EventEmitter {
 
     private isScanning = false;
 
+    //the token used for the most recent scan, set right where scan() resolves the client. Since a
+    //token change re-triggers a scan (see the constructor), this stays in sync with whichever token
+    //is actually in effect rather than going stale between scans.
+    private cachedToken: string | undefined;
+
     public static readonly POLL_INTERVAL_MS = 15_000;
 
     public get running(): boolean {
@@ -63,6 +68,7 @@ export class RceFinder extends EventEmitter {
         }
         this.isScanning = true;
         try {
+            this.cachedToken = await this.rceManager.getToken();
             const client = await this.rceManager.getClient();
             if (!client) {
                 //no token means no cloud devices; tell consumers the list is empty so removed tokens clear the view
@@ -77,6 +83,16 @@ export class RceFinder extends EventEmitter {
         } finally {
             this.isScanning = false;
         }
+    }
+
+    /**
+     * The token used for the most recent scan. Undefined before any scan has run, or when the most
+     * recent scan found no account token configured. Synchronous so a caller building a
+     * roku-deploy-compatible device option for an RCE device (see DeviceManager.onRceDevices) doesn't
+     * need to await another token lookup.
+     */
+    public getCachedToken(): string | undefined {
+        return this.cachedToken;
     }
 
     /**
