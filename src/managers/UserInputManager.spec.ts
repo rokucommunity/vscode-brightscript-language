@@ -219,9 +219,9 @@ describe('UserInputManager', () => {
     });
 
     describe('promptForHost', () => {
-        it('calls scan() instead of refresh() when picker opens', async () => {
-            const scanSpy = sinon.spy(deviceManager, 'scan');
-            const refreshSpy = sinon.spy(deviceManager, 'refresh');
+        it('broadcasts (scan-only) without reconciling when picker opens', async () => {
+            const scanSpy = sinon.spy(deviceManager, 'broadcast');
+            const refreshSpy = sinon.spy(deviceManager, 'reconcile');
 
             // Capture the quickPick instance when created
             let quickPick: any;
@@ -239,11 +239,87 @@ describe('UserInputManager', () => {
                 setTimeout(resolve, 10);
             });
 
-            // Verify scan was called, not refresh
+            // Verify broadcast (scan-only) was called, and reconcile (health-check-all) was not
             expect(scanSpy.called).to.be.true;
             expect(refreshSpy.called).to.be.false;
 
             // Clean up by hiding the quickpick (triggers rejection)
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('fulfills a queued non-stale reconcile order when the picker opens', async () => {
+            const reconcileSpy = sinon.spy(deviceManager, 'reconcile');
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            //queue a reconcile order as if the network changed while no view was visible
+            deviceManager['orderManager'].submitReconcile('network');
+
+            const promptPromise = userInputManager.promptForHost();
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            expect(reconcileSpy.calledOnce).to.be.true;
+            expect(reconcileSpy.firstCall.args[0]).to.be.false; //non-refresh-clicked → not forced
+            expect(deviceManager.getPendingReconcile()).to.be.null;
+
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('leaves a queued stale reconcile order untouched when the picker opens', async () => {
+            const reconcileSpy = sinon.spy(deviceManager, 'reconcile');
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            deviceManager['orderManager'].submitReconcile('stale');
+
+            const promptPromise = userInputManager.promptForHost();
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            expect(reconcileSpy.called).to.be.false;
+            expect(deviceManager.getPendingReconcile()).to.include({ reason: 'stale' });
+
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('fulfills a live non-stale reconcile order while the picker is open', async () => {
+            const reconcileSpy = sinon.spy(deviceManager, 'reconcile');
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            const promptPromise = userInputManager.promptForHost();
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+            expect(reconcileSpy.called).to.be.false;
+
+            //a trigger fires while the picker is open
+            deviceManager['orderManager'].submitReconcile('sleep');
+
+            expect(reconcileSpy.calledOnce).to.be.true;
+            expect(deviceManager.getPendingReconcile()).to.be.null;
+
             quickPick?.hide();
             await promptPromise.catch(() => { });
         });

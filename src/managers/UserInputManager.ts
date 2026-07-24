@@ -224,7 +224,7 @@ export class UserInputManager {
             quickPick.busy = busyCount > 0;
         };
 
-        // Subscribe to scan events before triggering refresh so we catch the scan-started event
+        // Subscribe to scan events before triggering a broadcast so we catch the scan-started event
         this.deviceManager.on('scan-started', () => {
             setBusy(true);
         }, disposables);
@@ -235,20 +235,59 @@ export class UserInputManager {
 
         const scanTimeoutMs = 7_000;
         let scanTimeoutId: NodeJS.Timeout | null = null;
-        let hasScanned = this.deviceManager.scan();
-        this.deviceManager.on('scanNeeded-changed', () => {
+
+        // On open, fulfill a queued broadcast order (skip timer-driven `stale`); otherwise do a
+        // normal staleness-gated broadcast. The picker never SUBMITS reconcile orders of its own,
+        // but it does FULFILL queued/live ones (below) so work ordered while no view was visible
+        // isn't left waiting.
+        const pendingBroadcast = this.deviceManager.getPendingBroadcast();
+        let hasScanned: boolean;
+        if (pendingBroadcast && pendingBroadcast.reason !== 'stale') {
+            this.deviceManager.takePendingBroadcast();
+            hasScanned = this.deviceManager.broadcast(true);
+        } else {
+            hasScanned = this.deviceManager.broadcast();
+        }
+
+        // On open, also fulfill a queued reconcile order (skip timer-driven `stale`)
+        const pendingReconcile = this.deviceManager.getPendingReconcile();
+        if (pendingReconcile && pendingReconcile.reason !== 'stale') {
+            this.deviceManager.takePendingReconcile();
+            this.deviceManager.reconcile(pendingReconcile.reason === 'refresh-clicked');
+        }
+
+        this.deviceManager.on('broadcast-ordered', (order) => {
+            if (order.reason === 'stale') {
+                return;
+            }
+            // Suppress the 7s fallback even if another visible consumer takes this order —
+            // a scan is happening either way
             hasScanned = true;
             if (scanTimeoutId) {
                 clearTimeout(scanTimeoutId);
                 scanTimeoutId = null;
             }
-            this.deviceManager.scan();
+            if (!this.deviceManager.takePendingBroadcast()) {
+                return;
+            }
+            this.deviceManager.broadcast(true);
         }, disposables);
+
+        this.deviceManager.on('reconcile-ordered', (order) => {
+            if (order.reason === 'stale') {
+                return;
+            }
+            if (!this.deviceManager.takePendingReconcile()) {
+                return;
+            }
+            this.deviceManager.reconcile(order.reason === 'refresh-clicked');
+        }, disposables);
+
         scanTimeoutId = setTimeout(() => {
             if (hasScanned) {
                 return;
             }
-            this.deviceManager.scan();
+            this.deviceManager.broadcast();
         }, scanTimeoutMs);
 
         function dispose() {
@@ -265,7 +304,10 @@ export class UserInputManager {
                     if (selectedDevice.label === manualLabel) {
                         deferred.resolve({ manual: true });
                     } else if (selectedDevice.label === scanForDevicesLabel) {
-                        this.deviceManager.refresh(true);
+                        //an explicit "scan" click is the refresh-clicked trigger — submit orders;
+                        //this picker (or another visible view) fulfills them immediately
+                        this.deviceManager.submitBroadcast('refresh-clicked');
+                        this.deviceManager.submitReconcile('refresh-clicked');
                         return;
                     } else {
                         const device = (selectedDevice as any).device as RokuDevice;
@@ -415,9 +457,12 @@ export class UserInputManager {
 
         quickPick.onDidTriggerButton(button => {
             if (button.tooltip === SCAN_FOR_DEVICES) {
-                this.deviceManager.refresh(true);
+                //an explicit "scan" click is the refresh-clicked trigger — submit orders;
+                //this picker (or another visible view) fulfills them immediately
+                this.deviceManager.submitBroadcast('refresh-clicked');
+                this.deviceManager.submitReconcile('refresh-clicked');
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
-                this.deviceManager.clearCurrentDeviceList().catch(() => { });
+                this.deviceManager.clearCurrentDeviceList();
                 void util.showTimedNotification('Clearing device list');
             } else if (button.tooltip === ENABLE_DEVICE_DISCOVERY) {
                 void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);

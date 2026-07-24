@@ -63,9 +63,10 @@ Submitted when:
 - network changed (`reason: 'network'`)
 - wake from sleep (`reason: 'sleep'`)
 - user clicks refresh in the UI (`reason: 'refresh-clicked'`)
-- a discovered device fails a health check, outside the current broadcast flow (`reason: 'unhealthy-device'`)
-- quick pick has been open 7s without a broadcast happening (`reason: 'stale'`)
-- "it's been a while" timer fires (`reason: 'stale'`)
+- a discovered device fails a health check, outside the current broadcast flow (`reason: 'unhealthy-device'`). Rate-limited: suppressed when discovery is disabled or when a scan already ran within the last minute — this caps the scan → health-check → fail → scan feedback loop.
+- "it's been a while" timer fires — every 30 minutes while discovery is enabled (`reason: 'stale'`)
+
+(The quick pick's 7-second fallback is *not* an order: if the picker has been open 7s with no broadcast happening, it directly performs a staleness-gated broadcast itself. A `stale` order would be pointless there — visible views deliberately ignore `stale` orders, so nobody would fulfill it.)
 
 Emit shape:
 ```ts
@@ -87,7 +88,7 @@ Submitted when:
 - wake from sleep (`reason: 'sleep'`)
 - user clicks refresh in the UI (`reason: 'refresh-clicked'`)
 - configured device changed (`reason: 'config-changed'`)
-- 5-minute timer fires (`reason: 'stale'`)
+- 5-minute timer fires, while discovery is enabled (`reason: 'stale'`)
 
 Emit shape:
 ```ts
@@ -116,7 +117,7 @@ Clicking **refresh** in a view is an explicit "I want fresh data now" signal. It
 
 This is the catch-all that handles `ssdp:alive` (and any other case where a device ends up in the list without fresh `deviceInfo`).
 
-When a view calls `.getAllDevices()` (or asks for a single device):
+When a view calls `.getAllDevices()` (or asks for a single device via `.getDevice()`):
 
 1. We return immediately with whatever we have. Devices without cached `deviceInfo` come back as the bare entry — `{ip, serial}` only, state `unknown`.
 2. In the background, we queue a device-info call for any device matching either condition:
@@ -129,6 +130,11 @@ When a view calls `.getAllDevices()` (or asks for a single device):
 
 The view never blocks on a network call. Devices appear instantly (even if minimal or stale), and fill in as data arrives.
 
+Because views re-read the list on every `devices-changed`, hydration is built to converge rather than loop:
+- a device shows `pending` while its check is in flight, and in-flight IPs are never re-queued
+- concurrent checks of the same device share one HTTP request (see [De-dupe rule](#de-dupe-rule))
+- each IP gets at most one hydration attempt per 5 minutes, so a device that keeps failing doesn't get hammered
+
 This is what makes `ssdp:alive` "just work" — when an announcement arrives, the device is added in state `unknown`. Nothing happens to it until a view actually reads the list. If a view *is* open, that read triggers the lazy hydration and the device fills in. If no view is open, the device sits in the list cheaply until something asks for it.
 
 ---
@@ -140,12 +146,12 @@ Independent of broadcast orders, the extension always listens for unsolicited SS
 
 - **`ssdp:alive`** — a Roku is announcing itself.
   - Add it to the list as `{ip, serial}` in state `unknown`
-  - Emit `device-list-changed`
+  - Emit `devices-changed`
   - We do *not* device-info it eagerly. If a view is open and reads the list, [lazy hydration](#lazy-hydration-on-read) fills it in. If no view is open, it sits in the list cheaply until something asks for it.
 - **`ssdp:byebye`** — a Roku is going offline.
   - Discovered devices are removed immediately (no health check needed — the device just said so itself)
   - Configured devices are marked `offline` but stay in the list
-  - Emit `device-list-changed`
+  - Emit `devices-changed`
 
 This is how devices that power on or off *while a view is already open* show up or disappear without waiting for the next broadcast.
 
@@ -177,6 +183,8 @@ We detect network changes by periodically checking the machine's network interfa
 
 Within a single refresh flow, a device only gets device-info'd once — first one in wins. (Prevents the broadcast response and the reconcile from racing each other on the same device.)
 
+Mechanically: concurrent device-info requests for the same `ip:port` share one in-flight HTTP request (first caller starts it, everyone else joins). A per-device sequence counter is the complementary guard on the *result* side — when overlapping checks finish out of order, only the newest one applies its state.
+
 ---
 
 ## Views
@@ -185,18 +193,21 @@ Views are the gate that lets orders run. They also submit their own orders based
 
 Each view declares which reasons it cares about — separately for orders queued while the view was closed (consumed on open) and live events fired while the view is visible. The general rule of thumb: `stale` is treated cautiously — a clock-driven "things might be old" signal shouldn't make a view that's been quietly sitting there suddenly hammer the network.
 
+Because more than one view can be visible at once, order consumption is atomic: fulfilling a live or pending order means *taking* it (get + clear in one step). The first consumer gets the order and does the work; anyone else finds the slot empty and skips. One order, one fulfillment.
+
 ### Quick pick
 - On open: fulfills pending `broadcast` orders and pending `reconcile` orders for **any reason except `stale`**
 - While visible: fulfills `broadcast` and `reconcile` events for **any reason except `stale`**
-- If open >7s without a broadcast: submits one
+- If open >7s without a broadcast: performs a staleness-gated broadcast directly (not via an order — see [broadcast orders](#broadcast-orders))
+- The picker never *submits* reconcile orders of its own — only the explicit "Scan for Devices" click does (that's the [user-clicks-refresh trigger](#user-clicks-refresh), which submits both order types)
 - Clicking an item: health-checks that one device
-- Calls `.getDevices()`; re-calls on `device-list-changed`
+- Calls `.getAllDevices()`; re-calls on `devices-changed`
 
 ### Tree view
 - On open: fulfills pending `broadcast` AND `reconcile` orders for **any reason**
 - While visible: fulfills `broadcast` and `reconcile` events for **any reason except `stale`**
 - Expanding an item: health-checks that device
-- Calls `.getDeviceList()`; re-calls on `device-list-changed`
+- Calls `.getAllDevices()`; re-calls on `devices-changed`
 
 ---
 
@@ -243,8 +254,10 @@ Users can turn the whole automatic-discovery system off in settings. When discov
 
 - No SSDP broadcasts are sent.
 - The passive listener for `ssdp:alive` / `ssdp:byebye` stops.
-- Network-change and sleep-wake monitoring stop.
+- Network-change and sleep-wake monitoring stop, and the "it's been a while" stale timers stop.
 - The "device online" popup no longer appears
 - Only **configured devices** appear in the UI.
+
+Note that plain device-info HTTP calls to devices already in the list — reconcile health checks and [lazy hydration](#lazy-hydration-on-read) — still happen. Disabling discovery stops the extension from *searching the network*; it doesn't stop it from talking to devices the user has told it about.
 
 This is the escape hatch for users on locked-down networks, users who only use a single fixed IP, or anyone who doesn't want the extension making *any* network calls it doesn't have to.

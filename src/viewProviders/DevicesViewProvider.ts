@@ -55,9 +55,10 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.decorationProvider = new DeviceDecorationProvider();
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
-        // Pre-populate devices and decorations so they're ready before first render
-        this.devices = this.deviceManager.getAllDevices();
-        this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
+        // Deliberately NOT pre-populated here: getAllDevices() triggers lazy hydration (real
+        // network calls), and the extension activates whether or not this panel is ever opened.
+        // getChildren() populates on first render — the "no view visible → no network" rule.
+        this.devices = [];
 
         this.deviceManager.on('devices-changed', () => {
             this.handleDevicesChanged();
@@ -71,11 +72,27 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         });
         this.context.subscriptions.push({ dispose: unsubscribeContextChange });
 
-        this.deviceManager.on('scanNeeded-changed', () => {
-            if (!this.visible) {
+        // While the panel is visible, fulfill live broadcast/reconcile orders as they arrive,
+        // except timer-driven `stale` ones (avoid surprise scans while the user is looking).
+        // takePending* is the atomic claim: if another visible consumer (e.g. the device picker)
+        // already took this order, we get null and skip — one order, one fulfillment.
+        this.deviceManager.on('broadcast-ordered', (order) => {
+            if (!this.visible || order.reason === 'stale') {
                 return;
             }
-            this.deviceManager.refresh();
+            if (!this.deviceManager.takePendingBroadcast()) {
+                return;
+            }
+            this.deviceManager.broadcast(true);
+        });
+        this.deviceManager.on('reconcile-ordered', (order) => {
+            if (!this.visible || order.reason === 'stale') {
+                return;
+            }
+            if (!this.deviceManager.takePendingReconcile()) {
+                return;
+            }
+            this.deviceManager.reconcile(order.reason === 'refresh-clicked');
         });
 
         // Re-render when a device's stored password changes so the Clear item appears/disappears
@@ -90,6 +107,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     private visible = false;
+    private refreshPendingWhileHidden = false;
     private scanProgressResolver: (() => void) | null = null;
 
     public setTreeView(treeView: vscode.TreeView<vscode.TreeItem>) {
@@ -98,8 +116,19 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (!this.visible) {
                 return;
             }
-            this.deviceManager.refresh();
+            if (this.refreshPendingWhileHidden) {
+                this.refreshPendingWhileHidden = false;
+                this.handleDevicesChanged();
+            }
+            this.fulfillPendingOrders();
         });
+
+        // onDidChangeVisibility only fires on *changes* — if the panel is already open when the
+        // extension activates, sync the flag now and consume any queued orders
+        this.visible = treeView.visible;
+        if (this.visible) {
+            this.fulfillPendingOrders();
+        }
 
         // Health check device when expanded (not on every getChildren/devices-changed)
         treeView.onDidExpandElement(e => {
@@ -119,6 +148,22 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.deviceManager.on('scan-ended', () => {
             this.endScanProgress();
         });
+    }
+
+    /**
+     * When the panel becomes visible, fulfill any broadcast/reconcile orders that were queued
+     * while it was hidden. On-open fulfills every reason (timer-driven `stale` orders are still
+     * staleness-gated by passing force=false).
+     */
+    private fulfillPendingOrders() {
+        const broadcast = this.deviceManager.takePendingBroadcast();
+        if (broadcast) {
+            this.deviceManager.broadcast(broadcast.reason !== 'stale');
+        }
+        const reconcile = this.deviceManager.takePendingReconcile();
+        if (reconcile) {
+            this.deviceManager.reconcile(reconcile.reason === 'refresh-clicked');
+        }
     }
 
     private showScanProgress() {
@@ -147,6 +192,13 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     private handleDevicesChanged(): void {
+        // Reading the device list triggers lazy hydration (network calls), so don't do it while
+        // hidden — a passive ssdp:alive arriving with the panel closed should sit in the list
+        // cheaply. Mark dirty instead; the visibility handler refreshes on open.
+        if (!this.visible) {
+            this.refreshPendingWhileHidden = true;
+            return;
+        }
         this.devices = this.deviceManager.getAllDevices();
         this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
         this._onDidChangeTreeData.fire(null);
