@@ -699,19 +699,43 @@ export class DeviceManager {
     }
 
     /**
-     * Atomically consume the pending broadcast order (get + clear). The first consumer gets the
-     * order; concurrent consumers get null and should skip fulfillment.
+     * Atomically consume AND execute the pending broadcast order, if any. This is the one-call
+     * fulfillment API for views: take + broadcast in a single step, with the force policy owned
+     * here (forced for every reason except `stale`, which stays staleness-gated).
+     *
+     * Consumption is atomic — when two views react to the same order event, the first caller
+     * fulfills it and later callers find the slot empty and do nothing (one order, one
+     * fulfillment).
+     *
+     * @param options.except - reasons to leave QUEUED (not consumed) for another view to fulfill,
+     *   e.g. `{ except: ['stale'] }`. A blacklist on purpose: new reasons are acted on by default.
+     * @returns true if an order was consumed and a scan actually started
      */
-    public takePendingBroadcast(): BroadcastOrder | null {
-        return this.orderManager.takePendingBroadcast();
+    public fulfillPendingBroadcast(options?: { except?: BroadcastReason[] }): boolean {
+        const pending = this.orderManager.getPendingBroadcast();
+        if (!pending || options?.except?.includes(pending.reason)) {
+            return false;
+        }
+        this.orderManager.takePendingBroadcast();
+        return this.broadcast(pending.reason !== 'stale');
     }
 
     /**
-     * Atomically consume the pending reconcile order (get + clear). The first consumer gets the
-     * order; concurrent consumers get null and should skip fulfillment.
+     * Atomically consume AND execute the pending reconcile order, if any. One-call twin of
+     * {@link fulfillPendingBroadcast}; the force policy owned here is: forced only for
+     * `refresh-clicked` (an explicit "I want fresh data now" from the user).
+     *
+     * @param options.except - reasons to leave QUEUED (not consumed) for another view to fulfill
+     * @returns true if an order was consumed
      */
-    public takePendingReconcile(): ReconcileOrder | null {
-        return this.orderManager.takePendingReconcile();
+    public fulfillPendingReconcile(options?: { except?: ReconcileReason[] }): boolean {
+        const pending = this.orderManager.getPendingReconcile();
+        if (!pending || options?.except?.includes(pending.reason)) {
+            return false;
+        }
+        this.orderManager.takePendingReconcile();
+        this.reconcile(pending.reason === 'refresh-clicked');
+        return true;
     }
     // #endregion
 

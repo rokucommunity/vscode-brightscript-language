@@ -107,8 +107,25 @@ describe('DevicesViewProvider', () => {
             reconcile: sinon.stub(),
             getPendingBroadcast: () => orderManager.getPendingBroadcast(),
             getPendingReconcile: () => orderManager.getPendingReconcile(),
-            takePendingBroadcast: () => orderManager.takePendingBroadcast(),
-            takePendingReconcile: () => orderManager.takePendingReconcile(),
+            //mirror DeviceManager.fulfillPending* (atomic take + execute with the real force
+            //policy), but route execution to this fake's broadcast/reconcile stubs
+            fulfillPendingBroadcast: (options?: { except?: string[] }) => {
+                const pending = orderManager.getPendingBroadcast();
+                if (!pending || options?.except?.includes(pending.reason)) {
+                    return false;
+                }
+                orderManager.takePendingBroadcast();
+                return deviceManager.broadcast(pending.reason !== 'stale');
+            },
+            fulfillPendingReconcile: (options?: { except?: string[] }) => {
+                const pending = orderManager.getPendingReconcile();
+                if (!pending || options?.except?.includes(pending.reason)) {
+                    return false;
+                }
+                orderManager.takePendingReconcile();
+                deviceManager.reconcile(pending.reason === 'refresh-clicked');
+                return true;
+            },
             healthCheckDevice: () => Promise.resolve()
         };
         const credentialStore: any = {

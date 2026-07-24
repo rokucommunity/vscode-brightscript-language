@@ -236,51 +236,35 @@ export class UserInputManager {
         const scanTimeoutMs = 7_000;
         let scanTimeoutId: NodeJS.Timeout | null = null;
 
-        // On open, fulfill a queued broadcast order (skip timer-driven `stale`); otherwise do a
-        // normal staleness-gated broadcast. The picker never SUBMITS reconcile orders of its own,
-        // but it does FULFILL queued/live ones (below) so work ordered while no view was visible
-        // isn't left waiting.
-        const pendingBroadcast = this.deviceManager.getPendingBroadcast();
-        let hasScanned: boolean;
-        if (pendingBroadcast && pendingBroadcast.reason !== 'stale') {
-            this.deviceManager.takePendingBroadcast();
-            hasScanned = this.deviceManager.broadcast(true);
-        } else {
+        // On open, fulfill a queued broadcast order (a `stale` order is left queued for the tree
+        // view); when there's nothing to fulfill, do a normal staleness-gated broadcast so a
+        // picker opened on a long-quiet session still gets fresh data. The picker never SUBMITS
+        // reconcile orders of its own, but it does FULFILL queued/live ones (below) so work
+        // ordered while no view was visible isn't left waiting.
+        let hasScanned = this.deviceManager.fulfillPendingBroadcast({ except: ['stale'] });
+        if (!hasScanned) {
             hasScanned = this.deviceManager.broadcast();
         }
 
-        // On open, also fulfill a queued reconcile order (skip timer-driven `stale`)
-        const pendingReconcile = this.deviceManager.getPendingReconcile();
-        if (pendingReconcile && pendingReconcile.reason !== 'stale') {
-            this.deviceManager.takePendingReconcile();
-            this.deviceManager.reconcile(pendingReconcile.reason === 'refresh-clicked');
-        }
+        // On open, also fulfill a queued reconcile order (`stale` stays queued)
+        this.deviceManager.fulfillPendingReconcile({ except: ['stale'] });
 
         this.deviceManager.on('broadcast-ordered', (order) => {
             if (order.reason === 'stale') {
                 return;
             }
-            // Suppress the 7s fallback even if another visible consumer takes this order —
+            // Suppress the 7s fallback even if another visible consumer fulfills this order —
             // a scan is happening either way
             hasScanned = true;
             if (scanTimeoutId) {
                 clearTimeout(scanTimeoutId);
                 scanTimeoutId = null;
             }
-            if (!this.deviceManager.takePendingBroadcast()) {
-                return;
-            }
-            this.deviceManager.broadcast(true);
+            this.deviceManager.fulfillPendingBroadcast({ except: ['stale'] });
         }, disposables);
 
-        this.deviceManager.on('reconcile-ordered', (order) => {
-            if (order.reason === 'stale') {
-                return;
-            }
-            if (!this.deviceManager.takePendingReconcile()) {
-                return;
-            }
-            this.deviceManager.reconcile(order.reason === 'refresh-clicked');
+        this.deviceManager.on('reconcile-ordered', () => {
+            this.deviceManager.fulfillPendingReconcile({ except: ['stale'] });
         }, disposables);
 
         scanTimeoutId = setTimeout(() => {

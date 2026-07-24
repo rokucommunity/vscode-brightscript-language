@@ -74,25 +74,20 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
         // While the panel is visible, fulfill live broadcast/reconcile orders as they arrive,
         // except timer-driven `stale` ones (avoid surprise scans while the user is looking).
-        // takePending* is the atomic claim: if another visible consumer (e.g. the device picker)
-        // already took this order, we get null and skip — one order, one fulfillment.
-        this.deviceManager.on('broadcast-ordered', (order) => {
-            if (!this.visible || order.reason === 'stale') {
+        // fulfillPending* is atomic: if another visible consumer (e.g. the device picker)
+        // already fulfilled this order, the slot is empty and the call is a no-op — one order,
+        // one fulfillment. Force policy lives in the DeviceManager.
+        this.deviceManager.on('broadcast-ordered', () => {
+            if (!this.visible) {
                 return;
             }
-            if (!this.deviceManager.takePendingBroadcast()) {
-                return;
-            }
-            this.deviceManager.broadcast(true);
+            this.deviceManager.fulfillPendingBroadcast({ except: ['stale'] });
         });
-        this.deviceManager.on('reconcile-ordered', (order) => {
-            if (!this.visible || order.reason === 'stale') {
+        this.deviceManager.on('reconcile-ordered', () => {
+            if (!this.visible) {
                 return;
             }
-            if (!this.deviceManager.takePendingReconcile()) {
-                return;
-            }
-            this.deviceManager.reconcile(order.reason === 'refresh-clicked');
+            this.deviceManager.fulfillPendingReconcile({ except: ['stale'] });
         });
 
         // Re-render when a device's stored password changes so the Clear item appears/disappears
@@ -152,18 +147,12 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     /**
      * When the panel becomes visible, fulfill any broadcast/reconcile orders that were queued
-     * while it was hidden. On-open fulfills every reason (timer-driven `stale` orders are still
-     * staleness-gated by passing force=false).
+     * while it was hidden. On-open fulfills every reason (a `stale` broadcast is still
+     * staleness-gated inside the DeviceManager).
      */
     private fulfillPendingOrders() {
-        const broadcast = this.deviceManager.takePendingBroadcast();
-        if (broadcast) {
-            this.deviceManager.broadcast(broadcast.reason !== 'stale');
-        }
-        const reconcile = this.deviceManager.takePendingReconcile();
-        if (reconcile) {
-            this.deviceManager.reconcile(reconcile.reason === 'refresh-clicked');
-        }
+        this.deviceManager.fulfillPendingBroadcast();
+        this.deviceManager.fulfillPendingReconcile();
     }
 
     private showScanProgress() {

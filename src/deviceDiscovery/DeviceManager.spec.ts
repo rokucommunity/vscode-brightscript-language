@@ -485,6 +485,81 @@ describe('DeviceManager', () => {
         });
     });
 
+    describe('fulfillPendingBroadcast / fulfillPendingReconcile', () => {
+        beforeEach(() => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+        });
+
+        it('consumes and executes a pending broadcast, forced for non-stale reasons', () => {
+            const broadcastStub = sinon.stub(manager, 'broadcast').returns(true);
+            manager.submitBroadcast('network');
+
+            const result = manager.fulfillPendingBroadcast();
+
+            expect(result).to.be.true;
+            expect(broadcastStub.calledOnceWith(true)).to.be.true;
+            expect(manager.getPendingBroadcast()).to.be.null;
+        });
+
+        it('executes a stale broadcast without forcing (staleness-gated)', () => {
+            const broadcastStub = sinon.stub(manager, 'broadcast').returns(false);
+            manager.submitBroadcast('stale');
+
+            manager.fulfillPendingBroadcast();
+
+            expect(broadcastStub.calledOnceWith(false)).to.be.true;
+        });
+
+        it('leaves except-listed reasons QUEUED instead of consuming them', () => {
+            const broadcastStub = sinon.stub(manager, 'broadcast').returns(true);
+            manager.submitBroadcast('stale');
+
+            const result = manager.fulfillPendingBroadcast({ except: ['stale'] });
+
+            expect(result).to.be.false;
+            expect(broadcastStub.called).to.be.false;
+            expect(manager.getPendingBroadcast()).to.include({ reason: 'stale' });
+        });
+
+        it('returns false and does nothing when no order is pending', () => {
+            const broadcastStub = sinon.stub(manager, 'broadcast').returns(true);
+
+            expect(manager.fulfillPendingBroadcast()).to.be.false;
+            expect(broadcastStub.called).to.be.false;
+        });
+
+        it('is atomic: a second fulfillment finds the slot empty', () => {
+            const broadcastStub = sinon.stub(manager, 'broadcast').returns(true);
+            manager.submitBroadcast('network');
+
+            expect(manager.fulfillPendingBroadcast()).to.be.true;
+            expect(manager.fulfillPendingBroadcast()).to.be.false;
+            expect(broadcastStub.calledOnce).to.be.true;
+        });
+
+        it('forces a reconcile only for refresh-clicked', () => {
+            const reconcileStub = sinon.stub(manager, 'reconcile');
+
+            manager.submitReconcile('config-changed');
+            expect(manager.fulfillPendingReconcile()).to.be.true;
+            expect(reconcileStub.calledOnceWith(false)).to.be.true;
+
+            reconcileStub.resetHistory();
+            manager.submitReconcile('refresh-clicked');
+            expect(manager.fulfillPendingReconcile()).to.be.true;
+            expect(reconcileStub.calledOnceWith(true)).to.be.true;
+        });
+
+        it('leaves an except-listed reconcile queued', () => {
+            const reconcileStub = sinon.stub(manager, 'reconcile');
+            manager.submitReconcile('stale');
+
+            expect(manager.fulfillPendingReconcile({ except: ['stale'] })).to.be.false;
+            expect(reconcileStub.called).to.be.false;
+            expect(manager.getPendingReconcile()).to.include({ reason: 'stale' });
+        });
+    });
+
     describe('stale timers', () => {
         it('activateMonitoring starts the stale order timers, deactivateMonitoring stops them', async () => {
             const clock = sinon.useFakeTimers();
@@ -503,8 +578,8 @@ describe('DeviceManager', () => {
                 expect(manager.getPendingBroadcast()).to.include({ reason: 'stale' });
 
                 //consume the pending orders, stop monitoring, and verify no new stale orders arrive
-                manager.takePendingBroadcast();
-                manager.takePendingReconcile();
+                manager['orderManager'].takePendingBroadcast();
+                manager['orderManager'].takePendingReconcile();
                 manager['deactivateMonitoring']();
 
                 clock.tick(OrderManager.DEFAULT_BROADCAST_STALE_MS * 2);
