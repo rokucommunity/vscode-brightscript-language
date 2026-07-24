@@ -83,6 +83,7 @@
         "roku-deploy": "^3.17.7",
         "roku-test-automation": "^2.2.2",
         "semver": "^7.1.3",
+        "socket.io-client": "^4.8.3",
         "source-map": "^0.7.3",
         "strip-ansi": "^5.2.0",
         "thenby": "^1.3.4",
@@ -90,6 +91,7 @@
         "uuid": "^9.0.1",
         "vscode-languageclient": "^7.0.0",
         "vscode-uri": "^1.0.6",
+        "ws": "^8.21.0",
         "xml2js": "^0.6.2"
     },
     "devDependencies": {
@@ -111,6 +113,7 @@
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.81.0",
+        "@types/ws": "^8.18.1",
         "@types/xml2js": "^0.4.14",
         "@types/yargs": "^15.0.5",
         "@typescript-eslint/eslint-plugin": "^5.14.0",
@@ -193,10 +196,22 @@
                     "id": "vscode-brightscript-language",
                     "title": "BrightScript Language",
                     "icon": "images/icons/logo.svg"
+                },
+                {
+                    "id": "roku-cloud-emulator",
+                    "title": "Roku Cloud Emulator",
+                    "icon": "images/icons/rce-logo.svg"
                 }
             ]
         },
         "views": {
+            "roku-cloud-emulator": [
+                {
+                    "id": "rceManagementView",
+                    "name": "Device Manager",
+                    "type": "webview"
+                }
+            ],
             "vscode-brightscript-language": [
                 {
                     "id": "rokuProjectsView",
@@ -856,8 +871,73 @@
                         "properties": {
                             "host": {
                                 "type": "string",
-                                "description": "The host or ip address for the target Roku",
+                                "description": "The host or ip address for the target Roku. `device` is the preferred way to address the target device and supersedes this field.",
                                 "default": "${promptForHost}"
+                            },
+                            "device": {
+                                "description": "The canonical way to address the target device; supersedes `host`. Either the name of a device entry in a roku-deploy device registry file (string), a local network device (`{ host }`), or a Roku Cloud Emulator device addressed by serial number, management-api device id, or running instance URL. The Cloud Emulator api token always comes from the active Cloud Emulator account (managed from the Cloud Emulator panel, stored in VS Code secret storage) - it cannot be set here.",
+                                "oneOf": [
+                                    {
+                                        "type": "string",
+                                        "description": "The name of a device entry in a roku-deploy device registry file."
+                                    },
+                                    {
+                                        "type": "object",
+                                        "description": "A local network device.",
+                                        "required": [
+                                            "host"
+                                        ],
+                                        "properties": {
+                                            "host": {
+                                                "type": "string",
+                                                "description": "IP address or hostname of the device."
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    {
+                                        "type": "object",
+                                        "description": "A Roku Cloud Emulator device addressed by serial number (ESN). Its api token always comes from the active Cloud Emulator account and cannot be set here.",
+                                        "required": [
+                                            "esn"
+                                        ],
+                                        "properties": {
+                                            "esn": {
+                                                "type": "string",
+                                                "description": "The device's serial number (ESN)."
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    {
+                                        "type": "object",
+                                        "description": "A Roku Cloud Emulator device addressed by management-api device id. Its api token always comes from the active Cloud Emulator account and cannot be set here.",
+                                        "required": [
+                                            "id"
+                                        ],
+                                        "properties": {
+                                            "id": {
+                                                "type": "string",
+                                                "description": "The Roku Cloud Emulator management-api device id."
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    {
+                                        "type": "object",
+                                        "description": "A Roku Cloud Emulator device addressed directly by its running instance's api URL. Its api token always comes from the active Cloud Emulator account and cannot be set here.",
+                                        "required": [
+                                            "instanceUrl"
+                                        ],
+                                        "properties": {
+                                            "instanceUrl": {
+                                                "type": "string",
+                                                "description": "The running instance's api URL."
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    }
+                                ]
                             },
                             "deepLinkUrl": {
                                 "type": "string",
@@ -3434,6 +3514,21 @@
                 "command": "extension.brightscript.debugRokuProject",
                 "title": "Debug Roku Project",
                 "icon": "$(debug-start)",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.rce.addAccount",
+                "title": "Add Cloud Emulator Account",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.rce.switchAccount",
+                "title": "Switch Cloud Emulator Account",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.rce.removeAccount",
+                "title": "Remove Cloud Emulator Account",
                 "category": "BrightScript"
             },
             {

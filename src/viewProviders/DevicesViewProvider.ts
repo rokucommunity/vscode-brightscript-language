@@ -170,7 +170,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         device.key,
                         device.deviceInfo
                     );
-                    treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
+                    const addressLabel = device.rce ? 'cloud emulator' : device.ip;
+                    treeItem.tooltip = `${addressLabel} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
 
                     // Set resourceUri to enable FileDecorationProvider for text coloring
                     // Use the device key which is serial-based when available, IP-based as fallback
@@ -195,6 +196,12 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             const device = this.deviceManager.getDevice(element.key);
             if (!device) {
                 return;
+            }
+
+            //cloud emulator devices don't support the ip-based device actions yet, so only show the info group
+            if (device.rce) {
+                result.push(new DeviceInfoGroupTreeItem(element));
+                return result;
             }
 
             result.push(
