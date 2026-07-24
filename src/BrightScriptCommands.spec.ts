@@ -282,80 +282,172 @@ describe('BrightScriptFileUtils ', () => {
 
     describe('restartDevApplication', () => {
         let utilProto: any;
-        let httpGetStub: sinon.SinonStub;
         let sleepStub: sinon.SinonStub;
         let spinAsyncStub: sinon.SinonStub;
         let showTimedNotificationStub: sinon.SinonStub;
-        let ecpPostStub: sinon.SinonStub;
+        let resolveActiveDeviceConfigStub: sinon.SinonStub;
+        let queryAppsStub: sinon.SinonStub;
+        let queryActiveAppStub: sinon.SinonStub;
+        let launchAppStub: sinon.SinonStub;
+        let exitAppStub: sinon.SinonStub;
         let showErrorStub: sinon.SinonStub;
         let showWarningStub: sinon.SinonStub;
 
-        const appsResponseWithDev = { body: '<apps><app id="dev">My App</app></apps>' };
-        const activeAppResponseDev = { body: '<active-app><app id="dev">My App</app></active-app>' };
+        const lanDevice = { host: '1.2.3.4' };
+        const appsWithDev = [{ id: 'dev', title: 'My App' }];
+        const activeAppDev = { id: 'dev', title: 'My App' };
 
         beforeEach(() => {
             utilProto = Object.getPrototypeOf(util);
-            sinon.stub(commands, 'getRemoteHost').callsFake(() => {
-                commands.host = '1.2.3.4';
-                return Promise.resolve(commands.host);
-            });
+            resolveActiveDeviceConfigStub = sinon.stub(commands as any, 'resolveActiveDeviceConfig');
+            resolveActiveDeviceConfigStub.resolves(lanDevice);
             spinAsyncStub = sinon.stub(utilProto, 'spinAsync').callsFake((_message: string, callback: () => Promise<any>) => callback());
-            httpGetStub = sinon.stub(utilProto, 'httpGet');
             sleepStub = sinon.stub(utilProto, 'sleep').resolves();
             showTimedNotificationStub = sinon.stub(utilProto, 'showTimedNotification').resolves();
-            ecpPostStub = sinon.stub(commands as any, 'ecpPost');
-            ecpPostStub.resolves({ statusCode: 200, body: '' });
+            queryAppsStub = sinon.stub(rokuDeploy, 'queryApps').resolves(appsWithDev as any);
+            queryActiveAppStub = sinon.stub(rokuDeploy, 'queryActiveApp').resolves(activeAppDev as any);
+            launchAppStub = sinon.stub(rokuDeploy, 'launchApp').resolves();
+            exitAppStub = sinon.stub(rokuDeploy, 'exitApp').resolves();
             showErrorStub = sinon.stub(vscode.window, 'showErrorMessage').resolves();
             showWarningStub = sinon.stub(vscode.window, 'showWarningMessage').resolves();
         });
 
         afterEach(() => {
-            (commands.getRemoteHost as any).restore();
+            resolveActiveDeviceConfigStub.restore();
             spinAsyncStub.restore();
-            httpGetStub.restore();
             sleepStub.restore();
             showTimedNotificationStub.restore();
-            ecpPostStub.restore();
+            queryAppsStub.restore();
+            queryActiveAppStub.restore();
+            launchAppStub.restore();
+            exitAppStub.restore();
             showErrorStub.restore();
             showWarningStub.restore();
         });
 
-        it('terminates dev with exit-app/dev/true and relaunches', async () => {
-            httpGetStub.onFirstCall().resolves(appsResponseWithDev);
-            httpGetStub.onSecondCall().resolves(activeAppResponseDev);
-
+        it('exits dev with force and relaunches it', async () => {
             await commands.restartDevApplication();
 
-            const exitCalls = ecpPostStub.getCalls().filter(call => call.args[1] === 'exit-app/dev/true');
-            assert.equal(exitCalls.length, 1, 'should call exit-app/dev/true exactly once');
-            assert.equal(exitCalls[0].args[0], '1.2.3.4');
+            assert.isTrue(exitAppStub.calledOnce, 'should call exitApp exactly once');
+            assert.deepEqual(exitAppStub.firstCall.args[0], { device: lanDevice, appId: 'dev', force: true });
 
-            const launchCalls = ecpPostStub.getCalls().filter(call => call.args[1] === 'launch/dev');
-            assert.equal(launchCalls.length, 1, 'should call launch/dev once');
+            assert.isTrue(launchAppStub.calledOnce, 'should call launchApp once');
+            assert.deepEqual(launchAppStub.firstCall.args[0], { device: lanDevice, appId: 'dev' });
 
-            assert.isFalse(ecpPostStub.getCalls().some(call => call.args[1] === 'exit-app/dev'), 'should not call the non-forced exit-app/dev');
             assert.isTrue(showTimedNotificationStub.calledOnce);
             assert.isFalse(showErrorStub.called);
             assert.isFalse(showWarningStub.called);
         });
 
         it('shows an error and skips launch when no dev channel is sideloaded', async () => {
-            httpGetStub.onFirstCall().resolves({ body: '<apps><app id="12345">Netflix</app></apps>' });
+            queryAppsStub.resolves([{ id: '12345', title: 'Netflix' }] as any);
 
             await commands.restartDevApplication();
 
-            assert.isFalse(ecpPostStub.called, 'should not send any ecp calls when dev is missing');
+            assert.isFalse(exitAppStub.called, 'should not exit when dev is missing');
+            assert.isFalse(launchAppStub.called, 'should not launch when dev is missing');
             assert.isTrue(showErrorStub.calledOnce);
         });
 
         it('warns when the dev app is not foregrounded after launch', async () => {
-            httpGetStub.onFirstCall().resolves(appsResponseWithDev);
-            httpGetStub.onSecondCall().resolves({ body: '<active-app><app id="12345">Netflix</app></active-app>' });
+            queryActiveAppStub.resolves({ id: '12345', title: 'Netflix' } as any);
 
             await commands.restartDevApplication();
 
             assert.isTrue(showWarningStub.calledOnce);
             assert.isFalse(showTimedNotificationStub.called);
+        });
+
+        it('shows an error and does not proceed when launchApp throws', async () => {
+            launchAppStub.rejects(new Error('device unreachable'));
+
+            await commands.restartDevApplication();
+
+            assert.isTrue(showErrorStub.calledOnce);
+            assert.include(showErrorStub.firstCall.args[0], 'device unreachable');
+            assert.isFalse(queryActiveAppStub.called, 'should not verify the active app after a failed launch');
+        });
+
+        it('resolves the active device config and forwards a cloud device to rokuDeploy', async () => {
+            const cloudDevice = { instanceUrl: 'https://rce.example.com/instance', rceToken: 'super-secret-token' };
+            resolveActiveDeviceConfigStub.resolves(cloudDevice);
+
+            await commands.restartDevApplication();
+
+            assert.deepEqual(queryAppsStub.firstCall.args[0], { device: cloudDevice });
+            assert.deepEqual(exitAppStub.firstCall.args[0], { device: cloudDevice, appId: 'dev', force: true });
+            assert.deepEqual(launchAppStub.firstCall.args[0], { device: cloudDevice, appId: 'dev' });
+            assert.deepEqual(queryActiveAppStub.firstCall.args[0], { device: cloudDevice });
+        });
+
+        it('does nothing when no device can be resolved', async () => {
+            resolveActiveDeviceConfigStub.resolves(undefined);
+
+            await commands.restartDevApplication();
+
+            assert.isFalse(queryAppsStub.called);
+            assert.isFalse(showErrorStub.called);
+        });
+    });
+
+    describe('sendRemoteCommand', () => {
+        let sandbox: sinon.SinonSandbox;
+        let localCommands: BrightScriptCommands;
+        let deviceManager: any;
+        let keyPressStub: sinon.SinonStub;
+
+        beforeEach(() => {
+            sandbox = sinon.createSandbox();
+            deviceManager = {
+                getDevice: sandbox.stub()
+            };
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
+            keyPressStub = sandbox.stub(rokuDeploy, 'keyPress').resolves({} as any);
+        });
+
+        afterEach(() => {
+            sandbox.restore();
+        });
+
+        it('sends the resolved active device and key to rokuDeploy.keyPress', async () => {
+            const lanDevice = { host: '10.0.0.5' };
+            await vscode.context.workspaceState.update('activeDeviceKey', 's:abc123');
+            deviceManager.getDevice.withArgs('s:abc123').returns({ device: lanDevice });
+
+            await localCommands.sendRemoteCommand('Select');
+
+            assert.isTrue(keyPressStub.calledOnce);
+            assert.deepEqual(keyPressStub.firstCall.args[0], { device: lanDevice, key: 'Select' });
+        });
+
+        it('prefixes literal characters with Lit_ before sending', async () => {
+            const lanDevice = { host: '10.0.0.5' };
+            await vscode.context.workspaceState.update('activeDeviceKey', 's:abc123');
+            deviceManager.getDevice.withArgs('s:abc123').returns({ device: lanDevice });
+
+            await localCommands.sendRemoteCommand('a', undefined, true);
+
+            assert.isTrue(keyPressStub.calledOnce);
+            assert.equal(keyPressStub.firstCall.args[0].key, 'Lit_a');
+        });
+
+        it('forwards a cloud emulator device config to rokuDeploy.keyPress', async () => {
+            const cloudDevice = { instanceUrl: 'https://rce.example.com/instance', rceToken: 'super-secret-token' };
+            await vscode.context.workspaceState.update('activeDeviceKey', 'rce:83');
+            deviceManager.getDevice.withArgs('rce:83').returns({ device: cloudDevice });
+
+            await localCommands.sendRemoteCommand('Home');
+
+            assert.deepEqual(keyPressStub.firstCall.args[0], { device: cloudDevice, key: 'Home' });
+        });
+
+        it('sends the explicit host as a LAN device config, ignoring the active device', async () => {
+            deviceManager.getDevice.withArgs('s:abc123').returns({ device: { host: '10.0.0.5' } });
+            await vscode.context.workspaceState.update('activeDeviceKey', 's:abc123');
+
+            await localCommands.sendRemoteCommand('Select', '192.168.1.50');
+
+            assert.deepEqual(keyPressStub.firstCall.args[0], { device: { host: '192.168.1.50' }, key: 'Select' });
         });
     });
 
