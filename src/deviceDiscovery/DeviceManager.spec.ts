@@ -1351,6 +1351,22 @@ describe('DeviceManager', () => {
             });
         });
 
+        it('synthesizes is-tv and is-stick as raw ECP string values, not booleans', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([
+                rceDevice(),
+                rceDevice({ id: 86, serial_number: 'ESN86', device_type: 'stb', running_device: null })
+            ] as any);
+
+            const tvDevice = manager.getAllDevices().find(x => x.key === 's:XY020078HH5S');
+            expect(tvDevice.deviceInfo['is-tv']).to.equal('true');
+            expect(tvDevice.deviceInfo['is-stick']).to.equal('false');
+
+            const stbDevice = manager.getAllDevices().find(x => x.key === 's:ESN86');
+            expect(stbDevice.deviceInfo['is-tv']).to.equal('false');
+            expect(stbDevice.deviceInfo['is-stick']).to.equal('false');
+        });
+
         it('maps shutdown and pending statuses, and keys by id when the esn is missing', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             manager['onRceDevices']([

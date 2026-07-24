@@ -1348,8 +1348,8 @@ export class DeviceManager {
             deviceInfo: {
                 'serial-number': entry.esn,
                 'default-device-name': entry.name,
-                'is-tv': entry.deviceType === 'tv',
-                'is-stick': false,
+                'is-tv': entry.deviceType === 'tv' ? 'true' : 'false',
+                'is-stick': 'false',
                 ...(softwareVersion ? { 'software-version': softwareVersion } : {}),
                 ...(cached?.deviceInfo ?? {}),
                 'user-device-name': entry.name

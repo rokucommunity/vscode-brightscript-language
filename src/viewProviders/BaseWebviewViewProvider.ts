@@ -12,6 +12,7 @@ import type { VscodeCommand } from '../commands/VscodeCommand';
 import type { RtaManager } from '../managers/RtaManager';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
 import type { RceManager } from '../managers/RceManager';
+import type { RceFinder } from '../deviceDiscovery/RceFinder';
 
 export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(
@@ -20,6 +21,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
             rtaManager: RtaManager;
             brightscriptCommands: BrightScriptCommands;
             rceManager: RceManager;
+            rceFinder: RceFinder;
         }
     ) {
         this.webviewBasePath = path.join(extensionContext.extensionPath, 'dist', 'webviews');

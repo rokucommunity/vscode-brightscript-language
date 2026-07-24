@@ -298,7 +298,7 @@ export let vscode = {
         showInformationMessage: function(message: string) {
 
         },
-        showWarningMessage: function(message: string) {
+        showWarningMessage: function(message: string, ..._rest: any[]): any {
 
         },
         showErrorMessage: function(message: string, ..._rest: any[]): any {

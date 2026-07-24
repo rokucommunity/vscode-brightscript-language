@@ -1,7 +1,9 @@
 export enum ViewProviderCommand {
     createRceDevice = 'createRceDevice',
+    deleteRceSnapshot = 'deleteRceSnapshot',
     deleteRokuFile = 'deleteRokuFile',
     getAppUI = 'getAppUI',
+    getRceDeviceDetails = 'getRceDeviceDetails',
     getRceState = 'getRceState',
     getStoredAppUI = 'getStoredAppUI',
     getScreenshot = 'getScreenshot',
@@ -24,6 +26,7 @@ export enum ViewProviderCommand {
     storeRokuAutomationConfigs = 'storeRokuAutomationConfigs',
     exportRokuAutomationConfigs = 'exportRokuAutomationConfigs',
     loadRokuAutomationConfigs = 'loadRokuAutomationConfigs',
+    updateRceDevice = 'updateRceDevice',
     updateWorkspaceState = 'updateWorkspaceState',
     viewReady = 'viewReady'
 }
