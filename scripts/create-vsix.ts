@@ -7,20 +7,27 @@ const silent = process.argv.includes('--silent');
 const tempDir = s`${__dirname}/../.vsix-building`;
 const baseUrl = 'https://github.com/rokucommunity';
 const projects = [{
+    name: 'logger',
+    packageName: '@rokucommunity/logger',
+    dependencies: []
+}, {
+    name: 'roku-test-automation',
+    dependencies: []
+}, {
     name: 'roku-deploy',
     dependencies: []
 }, {
     name: 'brighterscript',
-    dependencies: ['roku-deploy']
+    dependencies: ['roku-deploy', 'logger']
 }, {
     name: 'roku-debug',
-    dependencies: ['roku-deploy', 'brighterscript']
+    dependencies: ['roku-deploy', 'brighterscript', 'logger']
 }, {
     name: 'brighterscript-formatter',
     dependencies: ['brighterscript']
 }, {
     name: 'vscode-brightscript-language',
-    dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy']
+    dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy', 'logger', 'roku-test-automation']
 }] as Project[];
 
 function main() {
@@ -66,13 +73,22 @@ function processProject(project: Project, branch: string) {
         cwd: project.name
     });
 
-    project.packagePath = `file:/${tempDir}/${project.name}/${project.name}-${buildVersion}.tgz`;
+    //`npm pack` names the tarball after the package.json `name` field (scopes become dashes, e.g. `@rokucommunity/logger` -> `rokucommunity-logger-<version>.tgz`)
+    const tarballName = (project.packageName ?? project.name).replace(/^@/, '').replace('/', '-');
+    project.packagePath = `file:/${tempDir}/${project.name}/${tarballName}-${buildVersion}.tgz`;
     project.processed = true;
     log(`${project.name}: done`);
 }
 
 interface Project {
+    /**
+     * The name of the GitHub repo, e.g. `logger` for https://github.com/rokucommunity/logger
+     */
     name: string;
+    /**
+     * The published npm package name, if different from the repo name, e.g. `@rokucommunity/logger`
+     */
+    packageName?: string;
     dependencies: string[];
     packagePath?: string;
     processed: boolean;
