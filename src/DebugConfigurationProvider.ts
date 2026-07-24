@@ -16,7 +16,7 @@ import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import cloneDeep = require('clone-deep');
-import { rokuDeploy, isLocalDeviceConfig } from 'roku-deploy';
+import { rokuDeploy, isLocalDeviceConfig, isRceDeviceConfig } from 'roku-deploy';
 import type { DeviceInfo, DeviceOption, DeviceStatus } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
 import type { BrightScriptCommands } from './BrightScriptCommands';
@@ -24,6 +24,7 @@ import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManag
 import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import type { RokuDevice } from './deviceDiscovery/DeviceManager';
 import type { CredentialStore } from './managers/CredentialStore';
+import type { RceManager } from './managers/RceManager';
 import { vscodeContextManager } from './managers/VscodeContextManager';
 
 
@@ -60,6 +61,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         private brightScriptCommands: BrightScriptCommands,
         private deviceManager: DeviceManager,
         private credentialStore: CredentialStore,
+        private rceManager: RceManager,
         private rokuProjectDiscovery?: RokuProjectManager
     ) {
         this.context = context;
@@ -532,6 +534,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * roku-deploy's `device` option (so the dev-mode check below and telemetry have something to work
      * with) and, for a device just picked from the picker, guards against picking one that isn't
      * running yet with a friendlier message than a generic connection failure would give.
+     *
+     * For a Roku Cloud Emulator device config specifically, `rceToken` is always overwritten with the
+     * active Cloud Emulator account's token from SecretStorage - a launch config can never supply its
+     * own; a config-supplied one that differs surfaces a one-time warning explaining why it was
+     * replaced. Throws when no Cloud Emulator account is configured at all.
      * @param config  current config object
      */
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
@@ -626,6 +633,21 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             if (activeDevice) {
                 await this.context.workspaceState.update('activeDeviceKey', activeDevice.key);
             }
+        }
+
+        //Cloud Emulator api tokens come from SecretStorage (the RceManager active account) only - a
+        //launch config can never supply its own. A device picked from the picker already carries the
+        //active account's token in its precomputed device option, so this overwrites it with the same
+        //value there; that's harmless, so it isn't special-cased.
+        if (typeof config.device === 'object' && isRceDeviceConfig(config.device)) {
+            const accountToken = await this.rceManager.getToken();
+            if (!accountToken) {
+                throw new Error('Debug session terminated: no Cloud Emulator account is configured. Add one from the Cloud Emulator panel (or run the "Add Cloud Emulator Account" command).');
+            }
+            if (config.device.rceToken !== undefined && config.device.rceToken !== accountToken) {
+                void vscode.window.showWarningMessage('rceToken in launch configurations is not supported; the active Cloud Emulator account\'s token was used instead.');
+            }
+            config.device.rceToken = accountToken;
         }
 
         if (pickedRceStatus !== undefined && pickedRceStatus !== 'running') {

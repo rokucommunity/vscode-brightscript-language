@@ -875,7 +875,7 @@
                                 "default": "${promptForHost}"
                             },
                             "device": {
-                                "description": "The canonical way to address the target device; supersedes `host`. Either the name of a device entry in a roku-deploy device registry file (string), a local network device (`{ host }`), or a Roku Cloud Emulator device addressed by serial number, management-api device id, or running instance URL (each with an optional `rceToken`).",
+                                "description": "The canonical way to address the target device; supersedes `host`. Either the name of a device entry in a roku-deploy device registry file (string), a local network device (`{ host }`), or a Roku Cloud Emulator device addressed by serial number, management-api device id, or running instance URL. The Cloud Emulator api token always comes from the active Cloud Emulator account (managed from the Cloud Emulator panel, stored in VS Code secret storage) - it cannot be set here.",
                                 "oneOf": [
                                     {
                                         "type": "string",
@@ -897,7 +897,7 @@
                                     },
                                     {
                                         "type": "object",
-                                        "description": "A Roku Cloud Emulator device addressed by serial number (ESN).",
+                                        "description": "A Roku Cloud Emulator device addressed by serial number (ESN). Its api token always comes from the active Cloud Emulator account and cannot be set here.",
                                         "required": [
                                             "esn"
                                         ],
@@ -905,17 +905,13 @@
                                             "esn": {
                                                 "type": "string",
                                                 "description": "The device's serial number (ESN)."
-                                            },
-                                            "rceToken": {
-                                                "type": "string",
-                                                "description": "Roku Cloud Emulator management api token. Defaults to the active Cloud Emulator account's token when omitted."
                                             }
                                         },
                                         "additionalProperties": false
                                     },
                                     {
                                         "type": "object",
-                                        "description": "A Roku Cloud Emulator device addressed by management-api device id.",
+                                        "description": "A Roku Cloud Emulator device addressed by management-api device id. Its api token always comes from the active Cloud Emulator account and cannot be set here.",
                                         "required": [
                                             "id"
                                         ],
@@ -923,17 +919,13 @@
                                             "id": {
                                                 "type": "string",
                                                 "description": "The Roku Cloud Emulator management-api device id."
-                                            },
-                                            "rceToken": {
-                                                "type": "string",
-                                                "description": "Roku Cloud Emulator management api token. Defaults to the active Cloud Emulator account's token when omitted."
                                             }
                                         },
                                         "additionalProperties": false
                                     },
                                     {
                                         "type": "object",
-                                        "description": "A Roku Cloud Emulator device addressed directly by its running instance's api URL.",
+                                        "description": "A Roku Cloud Emulator device addressed directly by its running instance's api URL. Its api token always comes from the active Cloud Emulator account and cannot be set here.",
                                         "required": [
                                             "instanceUrl"
                                         ],
@@ -941,10 +933,6 @@
                                             "instanceUrl": {
                                                 "type": "string",
                                                 "description": "The running instance's api URL."
-                                            },
-                                            "rceToken": {
-                                                "type": "string",
-                                                "description": "Roku Cloud Emulator management api token. Defaults to the active Cloud Emulator account's token when omitted."
                                             }
                                         },
                                         "additionalProperties": false
