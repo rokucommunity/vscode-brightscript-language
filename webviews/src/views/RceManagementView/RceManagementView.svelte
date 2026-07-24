@@ -38,6 +38,8 @@
 
     let deletingSnapshotId: number | undefined = undefined;
 
+    let enablingDevModeInFlight: Record<number, boolean> = {};
+
     //recomputed on an interval so running-device runtime labels and progress bars stay current
     //without refetching device state
     let nowTimestamp = Date.now();
@@ -216,6 +218,13 @@
     async function toggleDeviceExpanded(device: DeviceOut) {
         if (expandedDeviceId === device.id) {
             expandedDeviceId = undefined;
+            //collapsing dismisses the "developer settings opened" hint so it does not linger forever
+            if (deviceDetailsByDeviceId[device.id]?.devModeEnabledHintVisible) {
+                deviceDetailsByDeviceId = {
+                    ...deviceDetailsByDeviceId,
+                    [device.id]: { ...deviceDetailsByDeviceId[device.id], devModeEnabledHintVisible: false }
+                };
+            }
             return;
         }
         expandedDeviceId = device.id;
@@ -252,10 +261,15 @@
     async function loadDeviceDetails(deviceId: number) {
         const existingSelection = deviceDetailsByDeviceId[deviceId]?.selectedSnapshotId;
         const existingUserPickedSnapshotId = deviceDetailsByDeviceId[deviceId]?.userPickedSnapshotId ?? false;
+        //preserved across the refetch: the onRceStateChanged push that follows a successful
+        //enableRceDevMode call would otherwise refetch details immediately and wipe this out before
+        //the user ever sees it. It is cleared explicitly instead, when the device is collapsed or
+        //stops running (see toggleDeviceExpanded and the {#if device.status === 'running'} guard).
+        const existingDevModeEnabledHintVisible = deviceDetailsByDeviceId[deviceId]?.devModeEnabledHintVisible ?? false;
         deviceDetailsByDeviceId = {
             ...deviceDetailsByDeviceId,
             [deviceId]: {
-                ...(deviceDetailsByDeviceId[deviceId] ?? { snapshots: undefined, runs: undefined, lastUsedSnapshotId: undefined, error: undefined, selectedSnapshotId: undefined, userPickedSnapshotId: false }),
+                ...(deviceDetailsByDeviceId[deviceId] ?? { snapshots: undefined, runs: undefined, lastUsedSnapshotId: undefined, error: undefined, selectedSnapshotId: undefined, userPickedSnapshotId: false, devModeEnabledHintVisible: false }),
                 loading: true
             }
         };
@@ -279,7 +293,8 @@
                 lastUsedSnapshotId: details.lastUsedSnapshotId,
                 error: details.error,
                 selectedSnapshotId: resolvedSnapshotId,
-                userPickedSnapshotId: preservedSelectionSurvived ? existingUserPickedSnapshotId : false
+                userPickedSnapshotId: preservedSelectionSurvived ? existingUserPickedSnapshotId : false,
+                devModeEnabledHintVisible: existingDevModeEnabledHintVisible
             }
         };
     }
@@ -340,6 +355,25 @@
         }
     }
 
+    async function enableDevMode(device: DeviceOut) {
+        deviceActionError = undefined;
+        enablingDevModeInFlight = { ...enablingDevModeInFlight, [device.id]: true };
+        try {
+            await intermediary.sendCommand(ViewProviderCommand.enableRceDevMode, {
+                deviceId: device.id
+            });
+            //surfaced until the details are refetched (loadDeviceDetails always clears it)
+            deviceDetailsByDeviceId = {
+                ...deviceDetailsByDeviceId,
+                [device.id]: { ...deviceDetailsByDeviceId[device.id], devModeEnabledHintVisible: true }
+            };
+        } catch (error) {
+            deviceActionError = error.message;
+        } finally {
+            enablingDevModeInFlight = { ...enablingDevModeInFlight, [device.id]: false };
+        }
+    }
+
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
     loadState();
@@ -353,6 +387,8 @@
         selectedSnapshotId: number | undefined;
         /** Whether selectedSnapshotId reflects a deliberate dropdown pick rather than a resolved default */
         userPickedSnapshotId: boolean;
+        /** Shown after a successful enableRceDevMode call, until the details are next refetched */
+        devModeEnabledHintVisible: boolean;
     }
 </script>
 
@@ -630,6 +666,20 @@
                                         <span>Serial number: {device.serial_number}</span>
                                     {/if}
                                 </div>
+
+                                {#if device.status === 'running'}
+                                    <div class="editRow">
+                                        <vscode-button
+                                            appearance="secondary"
+                                            disabled={enablingDevModeInFlight[device.id]}
+                                            on:click={() => enableDevMode(device)}>
+                                            Enable Dev Mode
+                                        </vscode-button>
+                                    </div>
+                                    {#if detailsState.devModeEnabledHintVisible}
+                                        <span class="mutedNote">Developer settings opened on the device. Complete the setup on screen.</span>
+                                    {/if}
+                                {/if}
 
                                 {#if editingDeviceId === device.id}
                                     <div class="editFields">

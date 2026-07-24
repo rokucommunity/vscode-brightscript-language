@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import type { DeviceOut, DeviceRun, SnapshotOut } from 'roku-deploy';
+import type { DeviceOut, DeviceRun, RceDeviceConfig, SnapshotOut } from 'roku-deploy';
+import { RceDevice } from 'roku-deploy';
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
@@ -222,6 +223,43 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
             await this.pushState();
             return true;
         });
+
+        this.addMessageCommandCallback(ViewProviderCommand.enableRceDevMode, async (message) => {
+            try {
+                const managementClient = await this.rceManager.getClient();
+                if (!managementClient) {
+                    throw new Error('No active Cloud Emulator account is configured');
+                }
+                const deviceId = message.context.deviceId;
+                const devices = await managementClient.listDevices();
+                const device = devices.find((candidateDevice) => candidateDevice.id === deviceId);
+                if (!device) {
+                    throw new Error(`Device ${deviceId} was not found`);
+                }
+
+                const instanceApiUrl = device.running_device?.instance_api_url;
+                if (device.status !== 'running' || !instanceApiUrl) {
+                    throw new Error(`Device '${device.name}' must be running to enable dev mode`);
+                }
+
+                const token = await this.rceManager.getToken();
+                const rceDevice = this.createRceDevice({ instanceUrl: instanceApiUrl, rceToken: token });
+                await rceDevice.sendDeveloperSettingsCombo();
+                this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
+            } catch (error) {
+                this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
+            }
+            await this.pushState();
+            return true;
+        });
+    }
+
+    /**
+     * Builds the RceDevice used to talk to a running instance's api. Split out so tests can
+     * substitute a fake, the same pattern as RceManager's createClient.
+     */
+    protected createRceDevice(config: RceDeviceConfig): RceDevice {
+        return new RceDevice(config);
     }
 
     private rceManager: RceManager;
