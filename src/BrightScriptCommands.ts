@@ -22,6 +22,9 @@ import type { CredentialStore } from './managers/CredentialStore';
 import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { DEVICE_FILTER_KEYS } from './deviceFilters';
 import { rokuDeploy } from 'roku-deploy';
+import { createLogger } from './logging';
+
+const logger = createLogger('BrightScriptCommands');
 
 export class BrightScriptCommands {
 
@@ -82,7 +85,7 @@ export class BrightScriptCommands {
                 placeholder: 'Press enter to send all typed characters to the Roku',
                 items: items
             });
-            console.log('userInput', stuffUserTyped);
+            logger.log('userInput', stuffUserTyped);
 
             if (stuffUserTyped) {
                 new GlobalStateManager(this.context).addTextHistory(stuffUserTyped);
@@ -96,7 +99,7 @@ export class BrightScriptCommands {
                 //         fallbackToHttp = false;
                 //     }
                 // } catch (error) {
-                //     console.error(error);
+                //     logger.error(error);
                 //     // Let this fallback to the old HTTP based logic
                 // }
 
@@ -908,7 +911,7 @@ export class BrightScriptCommands {
 
         if (host) {
             let clickUrl = `http://${host}:8060/keypress/${key}`;
-            console.log(`send ${clickUrl}`);
+            logger.log(`send ${clickUrl}`);
             return new Promise((resolve, reject) => {
                 request.post(clickUrl, (err, response) => {
                     if (err) {
@@ -940,7 +943,7 @@ export class BrightScriptCommands {
             try {
                 this.host = await rokuDebugUtil.dnsLookup(this.host);
             } catch (e) {
-                console.error('Error doing dns lookup for host ', this.host, e);
+                logger.error('Error doing dns lookup for host ', this.host, e);
             }
         }
         return this.host;

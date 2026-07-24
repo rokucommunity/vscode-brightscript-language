@@ -11,6 +11,9 @@ import { ViewProviderCommand } from './ViewProviderCommand';
 import type { VscodeCommand } from '../commands/VscodeCommand';
 import type { RtaManager } from '../managers/RtaManager';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
+import { createLogger } from '../logging';
+
+const logger = createLogger('BaseWebviewViewProvider');
 
 export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(
@@ -96,11 +99,11 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
 
     protected postMessage(message) {
         this.view?.webview.postMessage(message).then(null, (reason) => {
-            console.log('postMessage failed: ', reason);
+            logger.log('postMessage failed: ', reason);
         });
 
         this.panel?.webview.postMessage(message).then(null, (reason) => {
-            console.log('postMessage failed: ', reason);
+            logger.log('postMessage failed: ', reason);
         });
     }
 
@@ -146,7 +149,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 } else {
                     const callback = this.messageCommandCallbacks[command];
                     if (!callback || !await callback(message)) {
-                        console.warn('Did not handle message', message);
+                        logger.warn('Did not handle message', message);
                     }
                 }
             } catch (e) {
@@ -208,7 +211,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 });
             }
         } catch (e) {
-            console.error(e);
+            logger.error(e);
         }
         return this.getIndexHtml();
     }
@@ -229,7 +232,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         try {
             html = fsExtra.readFileSync(this.webviewBasePath + '/index.html').toString();
         } catch (e) {
-            console.error(e);
+            logger.error(e);
             html = '<h1>Error loading webview</h1>';
         }
         //the data that will be replaced in the index.html

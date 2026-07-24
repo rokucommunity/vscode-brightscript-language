@@ -8,6 +8,9 @@ import {
     SymbolKind
 } from 'vscode';
 import * as vscode from 'vscode';
+import { createLogger } from './logging';
+
+const logger = createLogger('BrightScriptDeclaration');
 
 export class BrightScriptDeclaration {
     constructor(
@@ -42,7 +45,7 @@ export class BrightScriptDeclaration {
         } else if (this.container) {
             return this.container.getDocumentUri();
         } else {
-            console.log('getDocumentUri: ERROR could not find container for symbol' + this);
+            logger.log('getDocumentUri: ERROR could not find container for symbol' + this);
         }
     }
 
