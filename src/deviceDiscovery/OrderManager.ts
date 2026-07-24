@@ -110,14 +110,6 @@ export class OrderManager {
         return order;
     }
 
-    public clearPendingBroadcast(): void {
-        this.pendingBroadcast = null;
-    }
-
-    public clearPendingReconcile(): void {
-        this.pendingReconcile = null;
-    }
-
     /**
      * Start the timers that periodically submit `stale` broadcast/reconcile orders.
      * Safe to call repeatedly — existing timers are cleared first.

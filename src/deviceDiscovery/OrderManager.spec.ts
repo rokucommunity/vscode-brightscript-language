@@ -104,18 +104,18 @@ describe('OrderManager', () => {
             expect(manager.getPendingReconcile()).to.include({ reason: 'config-changed' });
         });
 
-        it('clearPendingBroadcast clears only the broadcast slot', () => {
+        it('takePendingBroadcast clears only the broadcast slot', () => {
             manager.submitBroadcast('network');
             manager.submitReconcile('network');
-            manager.clearPendingBroadcast();
+            manager.takePendingBroadcast();
             expect(manager.getPendingBroadcast()).to.be.null;
             expect(manager.getPendingReconcile()).to.not.be.null;
         });
 
-        it('clearPendingReconcile clears only the reconcile slot', () => {
+        it('takePendingReconcile clears only the reconcile slot', () => {
             manager.submitBroadcast('network');
             manager.submitReconcile('network');
-            manager.clearPendingReconcile();
+            manager.takePendingReconcile();
             expect(manager.getPendingReconcile()).to.be.null;
             expect(manager.getPendingBroadcast()).to.not.be.null;
         });

@@ -62,6 +62,25 @@ describe('DiscoveredDeviceManager', () => {
             manager.setDevice('192.168.1.101', 'BBB');
             expect(manager.getAll()).to.have.lengthOf(2);
         });
+
+        it('resets state fields when a DIFFERENT serial takes over an existing IP (serial is primary key)', () => {
+            manager.setDevice('192.168.1.100', 'AAA');
+            const entry = manager.getAll()[0];
+            entry.state = 'online';
+            entry.lastState = 'pending';
+            entry.stateLastUpdated = 12345;
+
+            // A different device (serial BBB) is now at this IP — it must not inherit AAA's state
+            manager.setDevice('192.168.1.100', 'BBB');
+
+            expect(manager.getAll()).to.have.lengthOf(1);
+            expect(manager.getAll()[0].serialNumber).to.equal('BBB');
+            expect(manager.getAll()[0].state).to.be.undefined;
+            expect(manager.getAll()[0].lastState).to.be.undefined;
+            expect(manager.getAll()[0].stateLastUpdated).to.be.undefined;
+            // in-place takeover: same object identity so orchestrator-held references stay valid
+            expect(manager.getAll()[0]).to.equal(entry);
+        });
     });
 
     describe('removeDevice', () => {

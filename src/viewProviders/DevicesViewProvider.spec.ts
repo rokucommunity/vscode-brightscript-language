@@ -307,6 +307,9 @@ describe('DevicesViewProvider', () => {
             ];
             await vscodeContextManager.set('activeHost', '2.2.2.2');
             const { provider } = createProvider(devices);
+            //decorations populate on first render (getChildren) — the provider no longer reads
+            //the device list at construction, to honor "no view visible → no network"
+            await provider.getChildren();
             const decorationProvider = provider['decorationProvider'];
 
             const activeDecoration = decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/stb2' } as any);
@@ -324,6 +327,7 @@ describe('DevicesViewProvider', () => {
             const devices = [makeDevice({ key: 'stb1', ip: '1.1.1.1', deviceState: 'offline' })];
             await vscodeContextManager.set('activeHost', '1.1.1.1');
             const { provider } = createProvider(devices);
+            await provider.getChildren();
 
             const decoration = provider['decorationProvider'].provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any);
             expect(decoration?.badge).to.equal('⭐');
@@ -337,6 +341,9 @@ describe('DevicesViewProvider', () => {
             ];
             await vscodeContextManager.set('activeHost', '1.1.1.1');
             const { provider } = createProvider(devices);
+            //the provider only refreshes on events while visible (hidden views mark dirty instead)
+            provider['visible'] = true;
+            await provider.getChildren();
             const decorationProvider = provider['decorationProvider'];
 
             let treeChanges = 0;

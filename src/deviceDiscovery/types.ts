@@ -54,7 +54,7 @@ export interface ConfiguredDeviceEntry extends ConfiguredDevice {
      */
     state?: DeviceState;
     /**
-     * Previous state, updated by setDeviceState before each transition. Undefined when no
+     * Previous state, updated by DeviceManager.applyEntryState before each transition. Undefined when no
      * state has been recorded yet — readers should treat that as 'unknown'.
      */
     lastState?: DeviceState;
@@ -82,7 +82,7 @@ export interface DiscoveredDeviceEntry {
      */
     state?: DeviceState;
     /**
-     * Previous state, updated by setDeviceState before each transition. Undefined when no
+     * Previous state, updated by DeviceManager.applyEntryState before each transition. Undefined when no
      * state has been recorded yet — readers should treat that as 'unknown'.
      */
     lastState?: DeviceState;
@@ -178,7 +178,8 @@ export type BroadcastReason =
     | 'sleep'
     | 'refresh-clicked'
     | 'stale'
-    | 'unhealthy-device';
+    | 'unhealthy-device'
+    | 'discovery-enabled';
 
 /**
  * Why a reconcile (health-check) was ordered.
@@ -189,7 +190,8 @@ export type ReconcileReason =
     | 'sleep'
     | 'refresh-clicked'
     | 'stale'
-    | 'config-changed';
+    | 'config-changed'
+    | 'discovery-enabled';
 
 export type OrderReason = BroadcastReason | ReconcileReason;
 

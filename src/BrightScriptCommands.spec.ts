@@ -188,6 +188,26 @@ describe('BrightScriptFileUtils ', () => {
             assert.isTrue(deviceManager.broadcast.notCalled);
             assert.isTrue(deviceManager.reconcile.notCalled);
         });
+
+        it('refreshDevice decodes the encoded tree key via getDevice before health checking', async () => {
+            const device = { ip: '192.168.1.100', serialNumber: 'ABC123', key: 's:ABC123' };
+            deviceManager.getDevice = sinon.stub().returns(device);
+            deviceManager.healthCheckDevice = sinon.stub().resolves(true);
+
+            await capturedCommands['extension.brightscript.refreshDevice']({ key: 's:ABC123' });
+
+            assert.isTrue(deviceManager.getDevice.calledOnceWith('s:ABC123'));
+            assert.isTrue(deviceManager.healthCheckDevice.calledOnceWith(device, true));
+        });
+
+        it('refreshDevice does nothing when the key does not resolve to a device', async () => {
+            deviceManager.getDevice = sinon.stub().returns(undefined);
+            deviceManager.healthCheckDevice = sinon.stub().resolves(true);
+
+            await capturedCommands['extension.brightscript.refreshDevice']({ key: 's:GONE' });
+
+            assert.isTrue(deviceManager.healthCheckDevice.notCalled);
+        });
     });
 
     describe('clearDefaultDevicePassword', () => {

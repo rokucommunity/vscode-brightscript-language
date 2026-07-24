@@ -55,9 +55,10 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.decorationProvider = new DeviceDecorationProvider();
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
-        // Pre-populate devices and decorations so they're ready before first render
-        this.devices = this.deviceManager.getAllDevices();
-        this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
+        // Deliberately NOT pre-populated here: getAllDevices() triggers lazy hydration (real
+        // network calls), and the extension activates whether or not this panel is ever opened.
+        // getChildren() populates on first render — the "no view visible → no network" rule.
+        this.devices = [];
 
         this.deviceManager.on('devices-changed', () => {
             this.handleDevicesChanged();
@@ -106,6 +107,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     private visible = false;
+    private refreshPendingWhileHidden = false;
     private scanProgressResolver: (() => void) | null = null;
 
     public setTreeView(treeView: vscode.TreeView<vscode.TreeItem>) {
@@ -114,8 +116,19 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (!this.visible) {
                 return;
             }
+            if (this.refreshPendingWhileHidden) {
+                this.refreshPendingWhileHidden = false;
+                this.handleDevicesChanged();
+            }
             this.fulfillPendingOrders();
         });
+
+        // onDidChangeVisibility only fires on *changes* — if the panel is already open when the
+        // extension activates, sync the flag now and consume any queued orders
+        this.visible = treeView.visible;
+        if (this.visible) {
+            this.fulfillPendingOrders();
+        }
 
         // Health check device when expanded (not on every getChildren/devices-changed)
         treeView.onDidExpandElement(e => {
@@ -179,6 +192,13 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     private handleDevicesChanged(): void {
+        // Reading the device list triggers lazy hydration (network calls), so don't do it while
+        // hidden — a passive ssdp:alive arriving with the panel closed should sit in the list
+        // cheaply. Mark dirty instead; the visibility handler refreshes on open.
+        if (!this.visible) {
+            this.refreshPendingWhileHidden = true;
+            return;
+        }
         this.devices = this.deviceManager.getAllDevices();
         this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
         this._onDidChangeTreeData.fire(null);

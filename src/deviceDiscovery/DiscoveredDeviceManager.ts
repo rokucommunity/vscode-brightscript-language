@@ -67,16 +67,24 @@ export class DiscoveredDeviceManager {
         }
 
         // IP dedupe: find existing entry at same IP
-        const existingIdx = this.devices.findIndex(d => d.ip === ip);
-        const existing = existingIdx >= 0 ? this.devices[existingIdx] : undefined;
+        const existing = this.devices.find(d => d.ip === ip);
 
         if (existing) {
-            // Update existing entry (preserve state fields so the orchestrator sees the prior state)
-            this.devices[existingIdx] = {
-                ...existing,
-                ip: ip,
-                serialNumber: serialNumber ?? existing.serialNumber
-            };
+            // Update the existing entry IN PLACE (never replace the object) — the orchestrator
+            // holds references to entries and mutates their state fields directly, so swapping
+            // in a new object would silently orphan those references
+            if (serialNumber && existing.serialNumber && existing.serialNumber !== serialNumber) {
+                // A DIFFERENT device is now at this IP (serial is primary key). Take over the
+                // entry for the new device and reset its state fields — inheriting the previous
+                // device's state (e.g. `online`) would both lie about the new device and block
+                // lazy hydration from ever device-info'ing it.
+                existing.serialNumber = serialNumber;
+                existing.state = undefined;
+                existing.lastState = undefined;
+                existing.stateLastUpdated = undefined;
+            } else {
+                existing.serialNumber = serialNumber ?? existing.serialNumber;
+            }
         } else {
             // Add new entry
             this.devices.push({
@@ -109,6 +117,35 @@ export class DiscoveredDeviceManager {
         }
 
         return device;
+    }
+
+    /**
+     * Read the persisted last-seen hints for the current network — the (ip, serial) pairs of
+     * devices we successfully resolved in a previous session. Stale hints (no cached device info
+     * or no IP mapping anymore) are pruned from storage as a side effect.
+     *
+     * Returns the hints instead of applying them: adding a device involves cross-cutting
+     * concerns (state defaults, active-device re-pointing) owned by the orchestrator, which
+     * feeds each hint through its own setDiscoveredDevice wrapper.
+     */
+    public loadLastSeen(networkId: string): Array<{ ip: string; serialNumber: string }> {
+        const hints: Array<{ ip: string; serialNumber: string }> = [];
+        for (const serialNumber of this.globalStateManager.getLastSeenDevices(networkId)) {
+            const cached = this.globalStateManager.getCachedDevice(serialNumber);
+            if (cached && typeof cached === 'object' && !Array.isArray(cached)) {
+                const ip = this.globalStateManager.getIpForSerial(serialNumber, networkId);
+                if (!ip) {
+                    // No IP mapping found - remove stale entry
+                    this.globalStateManager.removeLastSeenDevice(networkId, serialNumber);
+                    continue;
+                }
+                hints.push({ ip: ip, serialNumber: serialNumber });
+            } else {
+                // No cached info - remove stale entry
+                this.globalStateManager.removeLastSeenDevice(networkId, serialNumber);
+            }
+        }
+        return hints;
     }
 
     /**
