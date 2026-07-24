@@ -39,6 +39,7 @@
     let deletingSnapshotId: number | undefined = undefined;
 
     let enablingDevModeInFlight: Record<number, boolean> = {};
+    let watchingDeviceInFlight: Record<number, boolean> = {};
 
     //recomputed on an interval so running-device runtime labels and progress bars stay current
     //without refetching device state
@@ -374,6 +375,20 @@
         }
     }
 
+    async function watchDevice(device: DeviceOut) {
+        deviceActionError = undefined;
+        watchingDeviceInFlight = { ...watchingDeviceInFlight, [device.id]: true };
+        try {
+            await intermediary.sendCommand(ViewProviderCommand.watchRceDevice, {
+                deviceId: device.id
+            });
+        } catch (error) {
+            deviceActionError = error.message;
+        } finally {
+            watchingDeviceInFlight = { ...watchingDeviceInFlight, [device.id]: false };
+        }
+    }
+
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
     loadState();
@@ -669,6 +684,12 @@
 
                                 {#if device.status === 'running'}
                                     <div class="editRow">
+                                        <vscode-button
+                                            appearance="secondary"
+                                            disabled={watchingDeviceInFlight[device.id]}
+                                            on:click={() => watchDevice(device)}>
+                                            Watch
+                                        </vscode-button>
                                         <vscode-button
                                             appearance="secondary"
                                             disabled={enablingDevModeInFlight[device.id]}

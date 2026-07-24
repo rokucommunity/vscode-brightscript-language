@@ -17,11 +17,14 @@ export enum ViewProviderCommand {
     runRokuAutomationConfig = 'runRokuAutomationConfig',
     sendMessageToWebviews = 'sendMessageToWebviews',
     sendReplRequest = 'sendReplRequest',
+    sendRceStreamAnswer = 'sendRceStreamAnswer',
+    sendRceStreamIceCandidate = 'sendRceStreamIceCandidate',
     setManualIpAddress = 'setManualIpAddress',
     setRceActiveAccount = 'setRceActiveAccount',
     setVscodeContext = 'setVscodeContext',
     startRceDevice = 'startRceDevice',
     stopRceDevice = 'stopRceDevice',
+    stopRceStream = 'stopRceStream',
     stopRokuAutomationConfig = 'stopRokuAutomationConfig',
     storeRokuAppOverlays = 'storeRokuAppOverlays',
     storeRokuAutomationConfigs = 'storeRokuAutomationConfigs',
@@ -29,5 +32,6 @@ export enum ViewProviderCommand {
     loadRokuAutomationConfigs = 'loadRokuAutomationConfigs',
     updateRceDevice = 'updateRceDevice',
     updateWorkspaceState = 'updateWorkspaceState',
-    viewReady = 'viewReady'
+    viewReady = 'viewReady',
+    watchRceDevice = 'watchRceDevice'
 }

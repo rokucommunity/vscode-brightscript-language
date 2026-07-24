@@ -6,8 +6,10 @@ import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { WorkspaceStateKey } from './WorkspaceStateKey';
+import { VscodeCommand } from '../commands/VscodeCommand';
 import type { RceManager } from '../managers/RceManager';
 import type { RceFinder } from '../deviceDiscovery/RceFinder';
+import type { RceStreamRequestConfig } from './RokuDeviceViewViewProvider';
 
 export class RceManagementViewProvider extends BaseWebviewViewProvider {
     public readonly id = ViewProviderId.rceManagementView;
@@ -252,6 +254,63 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
             await this.pushState();
             return true;
         });
+
+        this.addMessageCommandCallback(ViewProviderCommand.watchRceDevice, async (message) => {
+            try {
+                await this.resolveAndShowRceStream(message.context.deviceId);
+                this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
+            } catch (error) {
+                this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
+            }
+            //nothing about device state changes from watching it, so there is no pushState here
+            return true;
+        });
+
+        //internal command (no package.json contribution): RokuDeviceViewViewProvider's Retry action
+        //re-resolves a device's current stream details this same way, since its own webview cannot
+        //reach this provider directly (each webview only talks to the provider that owns it)
+        this.registerCommand(VscodeCommand.rceWatchDeviceById, async (deviceId: number) => {
+            await this.resolveAndShowRceStream(deviceId);
+        });
+    }
+
+    /**
+     * Resolve a device's current Janus stream details and hand them off to RokuDeviceViewViewProvider
+     * via the rokuDeviceViewShowRceStream command. Throws (rather than reporting an error itself) so
+     * both callers - the watchRceDevice message handler and the rceWatchDeviceById command used for
+     * retrying - can report the failure their own way.
+     */
+    private async resolveAndShowRceStream(deviceId: number): Promise<void> {
+        const managementClient = await this.rceManager.getClient();
+        if (!managementClient) {
+            throw new Error('No active Cloud Emulator account is configured');
+        }
+        const devices = await managementClient.listDevices();
+        const device = devices.find((candidateDevice) => candidateDevice.id === deviceId);
+        if (!device) {
+            throw new Error(`Device ${deviceId} was not found`);
+        }
+
+        const runningDevice = device.running_device;
+        //janus_id can legitimately be 0 (a valid stream id), so its presence must be checked
+        //with a nullish check rather than a truthiness check
+        if (device.status !== 'running' || !runningDevice?.janus_websocket_url || runningDevice?.janus_id === undefined || runningDevice?.janus_id === null) {
+            throw new Error(`Device '${device.name}' must be running and expose a video stream to watch it`);
+        }
+
+        /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+        const streamRequest: RceStreamRequestConfig = {
+            deviceId: device.id,
+            deviceName: device.name,
+            websocketUrl: runningDevice.janus_websocket_url,
+            streamId: runningDevice.janus_id,
+            pin: runningDevice.janus_pin ?? undefined,
+            janusToken: runningDevice.janus_token ?? undefined,
+            iceServers: runningDevice.janus_ice_servers ?? []
+        };
+        /* eslint-enable camelcase */
+
+        await vscode.commands.executeCommand(VscodeCommand.rokuDeviceViewShowRceStream, streamRequest);
     }
 
     /**

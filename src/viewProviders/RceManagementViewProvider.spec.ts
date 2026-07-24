@@ -8,6 +8,7 @@ import { RceManagementViewProvider } from './RceManagementViewProvider';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { WorkspaceStateKey } from './WorkspaceStateKey';
+import { VscodeCommand } from '../commands/VscodeCommand';
 
 let Module = require('module');
 const { require: oldRequire } = Module.prototype;
@@ -499,6 +500,212 @@ describe('RceManagementViewProvider', () => {
             });
             const responseMessage = findResponseMessage(ViewProviderCommand.enableRceDevMode);
             expect(responseMessage.response.success).to.be.true;
+        });
+    });
+
+    describe('watchRceDevice', () => {
+        it('responds with an error and never invokes the rokuDeviceView command when the device is not running', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', device_type: 'tv', status: 'shutdown' }
+            ]);
+            /* eslint-enable camelcase */
+            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.watchRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.watchRceDevice](message);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.watchRceDevice);
+            expect(responseMessage.error.message).to.contain('must be running');
+            expect(executeCommand.called).to.be.false;
+        });
+
+        it('responds with an error and never invokes the rokuDeviceView command when a running device has no janus_websocket_url', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', device_type: 'tv', status: 'running', running_device: {} }
+            ]);
+            /* eslint-enable camelcase */
+            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.watchRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.watchRceDevice](message);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.watchRceDevice);
+            expect(responseMessage.error.message).to.contain('must be running');
+            expect(executeCommand.called).to.be.false;
+        });
+
+        it('responds with an error and never invokes the rokuDeviceView command when a running device has no janus_id', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                {
+                    id: 5,
+                    name: 'my-device',
+                    device_type: 'tv',
+                    status: 'running',
+                    running_device: { janus_websocket_url: 'wss://device.rce.roku.com/instance/abc/janus', janus_id: null }
+                }
+            ]);
+            /* eslint-enable camelcase */
+            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.watchRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.watchRceDevice](message);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.watchRceDevice);
+            expect(responseMessage.error.message).to.contain('must be running');
+            expect(executeCommand.called).to.be.false;
+        });
+
+        it('executes the rokuDeviceView command with the janus stream config for a running device', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                {
+                    id: 5,
+                    name: 'my-device',
+                    device_type: 'tv',
+                    status: 'running',
+                    running_device: {
+                        janus_websocket_url: 'wss://device.rce.roku.com/instance/abc/janus',
+                        janus_id: 7,
+                        janus_pin: '1234',
+                        janus_token: 'janus-secret',
+                        janus_ice_servers: [{ urls: ['stun:stun.example.com'] }]
+                    }
+                }
+            ]);
+            /* eslint-enable camelcase */
+            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.watchRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.watchRceDevice](message);
+
+            expect(executeCommand.calledOnce).to.be.true;
+            const executeCommandArgs = executeCommand.getCall(0).args as any[];
+            expect(executeCommandArgs[0]).to.equal(VscodeCommand.rokuDeviceViewShowRceStream);
+            expect(executeCommandArgs[1]).to.eql({
+                deviceId: 5,
+                deviceName: 'my-device',
+                websocketUrl: 'wss://device.rce.roku.com/instance/abc/janus',
+                streamId: 7,
+                pin: '1234',
+                janusToken: 'janus-secret',
+                iceServers: [{ urls: ['stun:stun.example.com'] }]
+            });
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.watchRceDevice);
+            expect(responseMessage.response.success).to.be.true;
+        });
+
+        it('treats a janus_id of 0 as a valid stream id rather than a missing one', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                {
+                    id: 5,
+                    name: 'my-device',
+                    device_type: 'tv',
+                    status: 'running',
+                    running_device: {
+                        janus_websocket_url: 'wss://device.rce.roku.com/instance/abc/janus',
+                        janus_id: 0,
+                        janus_ice_servers: []
+                    }
+                }
+            ]);
+            /* eslint-enable camelcase */
+            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.watchRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.watchRceDevice](message);
+
+            expect(executeCommand.calledOnce).to.be.true;
+            const executeCommandArgs = executeCommand.getCall(0).args as any[];
+            expect(executeCommandArgs[1].streamId).to.equal(0);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.watchRceDevice);
+            expect(responseMessage.response.success).to.be.true;
+        });
+
+        it('registers rceWatchDeviceById as an internal command that resolves and shows the same stream config', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                {
+                    id: 5,
+                    name: 'my-device',
+                    device_type: 'tv',
+                    status: 'running',
+                    running_device: {
+                        janus_websocket_url: 'wss://device.rce.roku.com/instance/abc/janus',
+                        janus_id: 7,
+                        janus_ice_servers: []
+                    }
+                }
+            ]);
+            /* eslint-enable camelcase */
+            const registeredCommands = new Map<string, (...args: any[]) => any>();
+            (sinon.stub(vscode.commands, 'registerCommand') as sinon.SinonStub).callsFake((commandId: string, callback: any) => {
+                registeredCommands.set(commandId, callback);
+                return { dispose: () => { } };
+            });
+            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            createProvider();
+
+            await registeredCommands.get(VscodeCommand.rceWatchDeviceById)(5);
+
+            expect(executeCommand.calledOnce).to.be.true;
+            const executeCommandArgs = executeCommand.getCall(0).args as any[];
+            expect(executeCommandArgs[0]).to.equal(VscodeCommand.rokuDeviceViewShowRceStream);
+            expect(executeCommandArgs[1].deviceId).to.equal(5);
+        });
+
+        it('rejects from rceWatchDeviceById when the device is not running, without posting a response', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', device_type: 'tv', status: 'shutdown' }
+            ]);
+            /* eslint-enable camelcase */
+            const registeredCommands = new Map<string, (...args: any[]) => any>();
+            (sinon.stub(vscode.commands, 'registerCommand') as sinon.SinonStub).callsFake((commandId: string, callback: any) => {
+                registeredCommands.set(commandId, callback);
+                return { dispose: () => { } };
+            });
+            sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            createProvider();
+
+            let caughtError: Error;
+            try {
+                await registeredCommands.get(VscodeCommand.rceWatchDeviceById)(5);
+            } catch (error) {
+                caughtError = error as Error;
+            }
+            expect(caughtError?.message).to.contain('must be running');
         });
     });
 
