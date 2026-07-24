@@ -38,7 +38,7 @@ import { standardizePath as s } from 'brighterscript';
 import { PerfettoEditorProvider } from './editors/PerfettoEditor';
 import { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
 import { RokuProjectsViewProvider } from './viewProviders/RokuProjectsViewProvider';
-import { attachExtensionOutputChannel } from './extensionLogger';
+import { attachExtensionOutputChannel } from './logging';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;

@@ -48,6 +48,8 @@ export const logger = new Logger({
     ]
 });
 
+export const createLogger = logger.createLogger.bind(logger) as typeof Logger.prototype.createLogger;
+
 /**
  * Attach the extension output channel to the shared logger. Should be called
  * once during extension activation, right after the channel is created.

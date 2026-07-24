@@ -6,9 +6,9 @@ import type { Disposable } from 'vscode';
 import { window, workspace } from 'vscode';
 import { BusyStatus, NotificationName, standardizePath as s } from 'brighterscript';
 import { CustomCommands, Deferred } from 'brighterscript';
-import { logger as extensionLogger } from './extensionLogger';
+import { createLogger } from './logging';
 
-const logger = extensionLogger.createLogger('LanguageServerManager');
+const logger = createLogger('LanguageServerManager');
 import type { CodeWithSourceMap } from 'source-map';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptWorkspaceSymbolProvider, SymbolInformationRepository } from './SymbolInformationRepository';
