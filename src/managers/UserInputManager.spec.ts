@@ -219,7 +219,7 @@ describe('UserInputManager', () => {
     });
 
     describe('promptForHost', () => {
-        it('broadcasts (scan-only) without reconciling when picker opens', async () => {
+        it('does not scan or reconcile on open when no orders are pending', async () => {
             const scanSpy = sinon.spy(deviceManager, 'broadcast');
             const refreshSpy = sinon.spy(deviceManager, 'reconcile');
 
@@ -239,11 +239,98 @@ describe('UserInputManager', () => {
                 setTimeout(resolve, 10);
             });
 
-            // Verify broadcast (scan-only) was called, and reconcile (health-check-all) was not
-            expect(scanSpy.called).to.be.true;
+            // Opening the picker is not itself a reason to hit the network
+            expect(scanSpy.called).to.be.false;
             expect(refreshSpy.called).to.be.false;
 
             // Clean up by hiding the quickpick (triggers rejection)
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('fulfills a queued non-stale broadcast order (forced) when the picker opens', async () => {
+            //stub (not spy) so no real RokuFinder scan with real timers starts
+            const broadcastStub = sinon.stub(deviceManager, 'broadcast').returns(true);
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            //queue a broadcast order as if the network changed while no view was visible
+            deviceManager['orderManager'].submitBroadcast('network');
+
+            const promptPromise = userInputManager.promptForHost();
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            expect(broadcastStub.calledOnceWith(true)).to.be.true;
+            expect(deviceManager.getPendingBroadcast()).to.be.null;
+
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('leaves a queued stale broadcast untouched on open, then the 7s fallback fulfills it (staleness-gated)', async () => {
+            //stub (not spy): this test is about order consumption and the force flag, not the
+            //scan machinery — don't start a real RokuFinder scan with real timers
+            const broadcastStub = sinon.stub(deviceManager, 'broadcast').returns(false);
+            //shrink the 7s fallback so the test can wait it out with real timers
+            userInputManager['scanTimeoutMs'] = 20;
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            //the 30-minute timer queued a routine freshness order while no view was visible
+            deviceManager['orderManager'].submitBroadcast('stale');
+
+            const promptPromise = userInputManager.promptForHost();
+
+            //opening the picker does NOT consume the stale order — routine freshness is
+            //the fallback's job, so a fresh open causes no immediate network activity
+            expect(deviceManager.getPendingBroadcast()).to.include({ reason: 'stale' });
+            expect(broadcastStub.called).to.be.false;
+
+            //once the picker has been open past the fallback window with no broadcast, the
+            //fallback fulfills everything pending — the queued stale order runs without force,
+            //so the staleness gate decides whether a scan actually happens
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 50);
+            });
+            expect(deviceManager.getPendingBroadcast()).to.be.null;
+            expect(broadcastStub.calledOnceWith(false)).to.be.true;
+
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('7s fallback does nothing when no orders are pending', async () => {
+            const broadcastStub = sinon.stub(deviceManager, 'broadcast').returns(false);
+            userInputManager['scanTimeoutMs'] = 20;
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            const promptPromise = userInputManager.promptForHost();
+            expect(broadcastStub.called).to.be.false;
+
+            //nothing queued → nothing to fulfill → no network activity
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 50);
+            });
+            expect(broadcastStub.called).to.be.false;
+
             quickPick?.hide();
             await promptPromise.catch(() => { });
         });

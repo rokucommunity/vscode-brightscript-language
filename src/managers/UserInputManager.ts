@@ -48,6 +48,12 @@ export class UserInputManager {
         private credentialStore: CredentialStore
     ) { }
 
+    /**
+     * How long the picker waits after open with no broadcast before fulfilling any pending
+     * order (including `stale`) as a routine freshness fallback. Overridable for tests.
+     */
+    private scanTimeoutMs = 7_000;
+
     public async promptForHostManual(): Promise<HostWithDeviceInfo | undefined> {
         while (true) {
             const value = await vscode.window.showInputBox({
@@ -233,18 +239,14 @@ export class UserInputManager {
             setBusy(false);
         }, disposables);
 
-        const scanTimeoutMs = 7_000;
         let scanTimeoutId: NodeJS.Timeout | null = null;
 
-        // On open, fulfill a queued broadcast order (a `stale` order is left queued for the tree
-        // view); when there's nothing to fulfill, do a normal staleness-gated broadcast so a
-        // picker opened on a long-quiet session still gets fresh data. The picker never SUBMITS
-        // reconcile orders of its own, but it does FULFILL queued/live ones (below) so work
-        // ordered while no view was visible isn't left waiting.
+        // On open: fulfill a queued real order (network/sleep/refresh-clicked/...), forced. A
+        // queued `stale` order is deliberately left alone — routine freshness is the 7s
+        // fallback's job (below), so opening the picker never scans the network by itself.
+        // The picker never submits reconcile orders of its own, but it does fulfill
+        // queued/live ones (below) so work ordered while no view was visible isn't left waiting.
         let hasScanned = this.deviceManager.fulfillPendingBroadcast({ except: ['stale'] });
-        if (!hasScanned) {
-            hasScanned = this.deviceManager.broadcast();
-        }
 
         // On open, also fulfill a queued reconcile order (`stale` stays queued)
         this.deviceManager.fulfillPendingReconcile({ except: ['stale'] });
@@ -271,10 +273,16 @@ export class UserInputManager {
             if (hasScanned) {
                 return;
             }
-            this.deviceManager.broadcast();
-        }, scanTimeoutMs);
+            this.deviceManager.fulfillPendingBroadcast();
+        }, this.scanTimeoutMs);
 
         function dispose() {
+            // The fallback timer must not outlive the picker — a leaked timer would fire a
+            // broadcast on a picker that's already closed
+            if (scanTimeoutId) {
+                clearTimeout(scanTimeoutId);
+                scanTimeoutId = null;
+            }
             for (const disposable of disposables) {
                 disposable.dispose();
             }
