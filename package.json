@@ -512,7 +512,7 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
-                    "when": "view == devicesView && viewItem =~ /-local\\b/",
+                    "when": "view == devicesView && viewItem =~ /^device\\b/",
                     "group": "1_primary@2"
                 },
                 {

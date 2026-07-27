@@ -228,13 +228,13 @@ describe('DevicesViewProvider', () => {
             expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace');
         });
 
-        it('builds a cloud contextValue without the LAN-only capability tokens', async () => {
-            //an rce tv with a serial + modern firmware: settings and tv-input tokens must still be
-            //absent while password + registry + restart capabilities remain
+        it('builds a cloud contextValue without the settings tokens', async () => {
+            //an rce tv with a serial + modern firmware: only the save-to-settings tokens are
+            //absent - password, tv-input, registry, and restart capabilities all apply
             const devices = [makeDevice({ key: 's:ESN1', isRce: true, isTv: true, softwareVersion: '15.2.4', serialNumber: 'ESN1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-cloud-noPassword-canViewRegistry-canRestart');
+            expect(items[0].contextValue).to.equal('device-cloud-noPassword-isTv-canViewRegistry-canRestart');
         });
 
         it('lists the cloud action items for an rce device', async () => {
@@ -250,6 +250,7 @@ describe('DevicesViewProvider', () => {
                 '📋 View Registry',
                 '🔑 Set Device Password',
                 '⭐ Set as Active Device',
+                '📷 Capture Screenshot',
                 'Device Info'
             ]);
 

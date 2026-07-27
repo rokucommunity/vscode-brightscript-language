@@ -16,6 +16,7 @@ Module.prototype.require = function hijacked(file) {
 };
 
 import { BrightScriptCommands } from './BrightScriptCommands';
+import { DeviceTargetManager } from './managers/DeviceTargetManager';
 import { util } from './util';
 import { rokuDeploy } from 'roku-deploy';
 import { vscodeContextManager } from './managers/VscodeContextManager';
@@ -26,7 +27,7 @@ describe('BrightScriptFileUtils ', () => {
     let languagesMock;
 
     beforeEach(() => {
-        commands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+        commands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
         commandsMock = sinon.mock(commands);
         languagesMock = sinon.mock(vscode.languages);
     });
@@ -103,7 +104,7 @@ describe('BrightScriptFileUtils ', () => {
         let showTimedNotificationStub: sinon.SinonStub;
 
         beforeEach(() => {
-            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, {} as any, {} as any, {} as any, {} as any);
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, {} as any, {} as any, {} as any, {} as any, {} as any);
             capturedCommands = {};
             sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
                 capturedCommands[name] = cb;
@@ -157,7 +158,7 @@ describe('BrightScriptFileUtils ', () => {
         let showTimedNotificationStub: sinon.SinonStub;
 
         beforeEach(() => {
-            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, {} as any, {} as any, {} as any, {} as any);
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, {} as any, {} as any, {} as any, {} as any, {} as any);
             capturedCommands = {};
             sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
                 capturedCommands[name] = cb;
@@ -209,7 +210,7 @@ describe('BrightScriptFileUtils ', () => {
             userInputManager = {
                 promptForHost: sinon.stub()
             };
-            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, userInputManager, {} as any, {} as any);
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, userInputManager, {} as any, {} as any, new DeviceTargetManager(vscode.context, deviceManager, userInputManager));
             capturedCommands = {};
             sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
                 capturedCommands[name] = cb;
@@ -401,7 +402,7 @@ describe('BrightScriptFileUtils ', () => {
             deviceManager = {
                 getDevice: sandbox.stub()
             };
-            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any, {} as any);
             keyPressStub = sandbox.stub(rokuDeploy, 'keyPress').resolves({} as any);
         });
 
@@ -429,6 +430,26 @@ describe('BrightScriptFileUtils ', () => {
 
             assert.isTrue(keyPressStub.calledOnce);
             assert.equal(keyPressStub.firstCall.args[0].key, 'Lit_a');
+        });
+
+        it('resolves a tree element target through the device manager, cloud devices included', async () => {
+            const cloudDevice = { instanceUrl: 'https://rce.example.com/instance', rceToken: 'super-secret-token' };
+            deviceManager.getDevice.withArgs('rce:83').returns({ device: cloudDevice });
+
+            await localCommands.sendRemoteCommand('InputHDMI1', { key: 'rce:83' });
+
+            assert.deepEqual(keyPressStub.firstCall.args[0], { device: cloudDevice, key: 'InputHDMI1' });
+        });
+
+        it('falls back to the active device when a tree element key is unknown', async () => {
+            const lanDevice = { host: '10.0.0.5' };
+            await vscode.context.workspaceState.update('activeDeviceKey', 's:abc123');
+            deviceManager.getDevice.withArgs('s:abc123').returns({ device: lanDevice });
+            deviceManager.getDevice.withArgs('stale-key').returns(undefined);
+
+            await localCommands.sendRemoteCommand('Select', { key: 'stale-key' });
+
+            assert.deepEqual(keyPressStub.firstCall.args[0], { device: lanDevice, key: 'Select' });
         });
 
         it('forwards a cloud emulator device config to rokuDeploy.keyPress', async () => {
@@ -477,7 +498,7 @@ describe('BrightScriptFileUtils ', () => {
                 resolveDevicePassword: sandbox.stub().resolves({ status: 'ok', password: 'pw' })
             };
             //ctor: remoteControlManager, whatsNewManager, context, deviceManager, userInputManager, localPackageManager, credentialStore
-            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, userInputManager, {} as any, {} as any);
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, userInputManager, {} as any, {} as any, new DeviceTargetManager(vscode.context, deviceManager, userInputManager));
 
             rebootStub = sandbox.stub(rokuDeploy, 'rebootDevice').resolves({} as any);
             checkForUpdateStub = sandbox.stub(rokuDeploy, 'checkForUpdate').resolves({} as any);
@@ -660,7 +681,7 @@ describe('BrightScriptFileUtils ', () => {
                 healthCheckDevice: sandbox.stub().resolves(true),
                 getDevice: sandbox.stub().returns({ ip: '1.2.3.4', key: 'i:1.2.3.4', deviceInfo: { 'serial-number': 'SN123' }, device: { host: '1.2.3.4' } })
             };
-            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any, new DeviceTargetManager(vscode.context, deviceManager, {} as any));
             //no legacy activeHost context by default; individual tests opt into it
             sandbox.stub(vscodeContextManager, 'get').returns(undefined);
         });
@@ -758,7 +779,7 @@ describe('BrightScriptFileUtils ', () => {
             userInputManager = {
                 promptForHost: sinon.stub().resolves(undefined)
             };
-            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, userInputManager, {} as any, {} as any);
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, userInputManager, {} as any, {} as any, new DeviceTargetManager(vscode.context, deviceManager, userInputManager));
             sinon.stub(util, 'getConfiguration').returns({ get: () => undefined } as any);
         });
 

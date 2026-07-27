@@ -20,7 +20,7 @@ describe('WebviewViewProviderManager', () => {
     let rceManager: RceManager;
     let rceFinder: RceFinder;
     const deviceManager = { getDevice: () => undefined } as any;
-    const brightScriptCommands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const brightScriptCommands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
 
     before(() => {
         context = {

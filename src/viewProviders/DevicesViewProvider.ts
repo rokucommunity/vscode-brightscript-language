@@ -197,10 +197,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 return;
             }
 
-            //both device kinds share one action list; ip-routed actions (screenshot, tv input)
-            //stay local-only until their commands can route through a device config
-            const isLocalDevice = !device.rce;
-
+            //both device kinds share one action list: every action addresses the device by key (or
+            //through DeviceManager helpers), so LAN and cloud emulator devices are interchangeable here
             result.push(
                 this.createDeviceInfoTreeItem({
                     label: '🔗 Open device web portal',
@@ -311,23 +309,21 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 })
             );
 
-            if (isLocalDevice) {
-                result.push(
-                    this.createDeviceInfoTreeItem({
-                        label: '📷 Capture Screenshot',
-                        parent: element,
-                        collapsibleState: vscode.TreeItemCollapsibleState.None,
-                        tooltip: 'Capture a screenshot',
-                        command: {
-                            command: 'extension.brightscript.captureScreenshot',
-                            title: 'Capture Screenshot',
-                            arguments: [device.ip]
-                        }
-                    })
-                );
-            }
+            result.push(
+                this.createDeviceInfoTreeItem({
+                    label: '📷 Capture Screenshot',
+                    parent: element,
+                    collapsibleState: vscode.TreeItemCollapsibleState.None,
+                    tooltip: 'Capture a screenshot',
+                    command: {
+                        command: 'extension.brightscript.captureScreenshot',
+                        title: 'Capture Screenshot',
+                        arguments: [{ key: device.key }]
+                    }
+                })
+            );
 
-            if (isLocalDevice && device.deviceInfo?.['is-tv'] === 'true') {
+            if (device.deviceInfo?.['is-tv'] === 'true') {
                 result.push(
                     this.createDeviceInfoTreeItem({
                         label: '📺 Switch TV Input',
@@ -338,7 +334,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         command: {
                             command: 'extension.brightscript.changeTvInput',
                             title: 'Switch TV Input',
-                            arguments: [device.ip]
+                            arguments: [{ key: device.key }]
                         }
                     })
                 );
@@ -396,7 +392,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         if (device.serialNumber) {
             tokens.push(await this.hasStoredPasswordForSerial(device.serialNumber) ? 'hasPassword' : 'noPassword');
         }
-        if (!device.rce && device.deviceInfo?.['is-tv'] === 'true') {
+        if (device.deviceInfo?.['is-tv'] === 'true') {
             tokens.push('isTv');
         }
         const softwareVersion = device.deviceInfo?.['software-version'];

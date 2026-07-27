@@ -24,6 +24,7 @@ import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
+import { DeviceTargetManager } from './managers/DeviceTargetManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
 import type { CustomRequestEvent, ProcessCrashEventData } from 'roku-debug';
 import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent, isProcessStagingDirCustomRequest } from 'roku-debug';
@@ -95,6 +96,7 @@ export class Extension {
         );
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
+        const deviceTargetManager = new DeviceTargetManager(context, this.deviceManager, userInputManager);
         this.brightScriptCommands = new BrightScriptCommands(
             this.remoteControlManager,
             this.whatsNewManager,
@@ -102,7 +104,8 @@ export class Extension {
             this.deviceManager,
             userInputManager,
             localPackageManager,
-            credentialStore
+            credentialStore,
+            deviceTargetManager
         );
 
         this.rtaManager = new RtaManager(context);
@@ -242,7 +245,7 @@ export class Extension {
 
         //register all commands for this extension
         this.brightScriptCommands.registerCommands();
-        sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel, userInputManager);
+        sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel, deviceTargetManager);
 
         vscode.debug.onDidStartDebugSession((e) => {
             //if this is a brightscript debug session
