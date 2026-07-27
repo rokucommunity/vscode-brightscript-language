@@ -116,7 +116,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     }
 
     private postQueuedMessages() {
-        for (const queuedMessage of this.queuedMessages) {
+        //hand off (and clear) the queue before posting: a message queued while no webview existed
+        //must flush exactly once, to the webview that just reported ready - leaving it queued meant
+        //every later webview instance (a closed-and-reopened view) replayed the entire history,
+        //e.g. re-answering a long-dead video stream offer and hanging on 'connecting'
+        const messages = this.queuedMessages;
+        this.queuedMessages = [];
+        for (const queuedMessage of messages) {
             this.postMessage(queuedMessage);
         }
     }
