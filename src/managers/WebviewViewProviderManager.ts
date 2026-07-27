@@ -4,6 +4,7 @@ import type { RtaManager } from './RtaManager';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
 import type { RceManager } from './RceManager';
 import type { RceFinder } from '../deviceDiscovery/RceFinder';
+import type { DeviceManager } from '../deviceDiscovery/DeviceManager';
 import * as vscode from 'vscode';
 import { RokuCommandsViewProvider } from '../viewProviders/RokuCommandsViewProvider';
 import { RokuDeviceViewViewProvider } from '../viewProviders/RokuDeviceViewViewProvider';
@@ -21,6 +22,7 @@ export class WebviewViewProviderManager {
         private rtaManager: RtaManager,
         rceManager: RceManager,
         rceFinder: RceFinder,
+        deviceManager: DeviceManager,
         brightScriptCommands: BrightScriptCommands
     ) {
         for (const webview of this.webviewViews) {
@@ -29,6 +31,7 @@ export class WebviewViewProviderManager {
                     rtaManager: rtaManager,
                     rceManager: rceManager,
                     rceFinder: rceFinder,
+                    deviceManager: deviceManager,
                     brightScriptCommands: brightScriptCommands
                 });
                 vscode.window.registerWebviewViewProvider(webview.provider.id, webview.provider);

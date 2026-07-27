@@ -152,6 +152,40 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         } else if (this.activeRceStream?.offerPosted) {
             this.activeRceStream.offerDelivered = true;
         }
+
+        //a webview that opens with no stream session underway connects to the active device when
+        //that device is a Cloud Emulator device: its video stream is this view's equivalent of the
+        //LAN screenshot view, so opening the view should reach it without a trip to the RCE panel's
+        //Watch button
+        if (!this.activeRceStream) {
+            void this.watchActiveRceDevice();
+        }
+    }
+
+    /**
+     * Start (or restart) the video stream for the active device when it is a Cloud Emulator device;
+     * a LAN (or missing) active device leaves the existing screenshot flow alone. Stream resolution
+     * failures (device not running, account trouble) surface through the webview's stream error
+     * banner - with its Retry button - rather than being swallowed.
+     */
+    private async watchActiveRceDevice(): Promise<void> {
+        const activeDeviceKey = this.extensionContext.workspaceState.get<string>('activeDeviceKey');
+        const device = activeDeviceKey ? this.dependencies.deviceManager.getDevice(activeDeviceKey) : undefined;
+        if (!device?.rce) {
+            return;
+        }
+        try {
+            //the same resolve-and-hand-off path the RCE panel's Watch button and the webview's
+            //Retry action use (registered by RceManagementViewProvider)
+            await vscode.commands.executeCommand(VscodeCommand.rceWatchDeviceById, Number(device.rce.id));
+        } catch (e) {
+            const deviceName = this.dependencies.deviceManager.getDeviceDisplayName(device);
+            this.postRceStreamError(
+                `Failed to start the video stream for device '${deviceName}': ${(e as Error).message}`,
+                Number(device.rce.id),
+                deviceName
+            );
+        }
     }
 
     /**
