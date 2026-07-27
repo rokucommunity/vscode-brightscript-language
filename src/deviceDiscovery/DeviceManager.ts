@@ -937,12 +937,9 @@ export class DeviceManager {
 
     private async resolveDevice(device: RokuDevice | { ip: string }, doSyntheticDelay = true, force = false): Promise<boolean> {
         //cloud emulator devices are never probed over the LAN: their state comes from the management
-        //api and their device-info from resolveRceDevices. Anything without an ip can't be probed either.
+        //api and their device-info from resolveRceDevices
         if ('rce' in device && device.rce) {
             return device.deviceState === 'online';
-        }
-        if (!device.ip) {
-            return false;
         }
 
         // Extract serial from device if available (for proper state key management)
@@ -1366,7 +1363,7 @@ export class DeviceManager {
      * maps directly onto device states (running=online, pending=pending, shutdown=offline), and a
      * minimal device-info is synthesized from the management-api fields so display names render.
      */
-    private buildRceDevice(entry: RceDeviceEntry): RokuDevice {
+    private buildRceDevice(entry: RceDeviceEntry): RceRokuDevice {
         const stateByStatus: Record<DeviceStatus, DeviceState> = {
             running: 'online',
             pending: 'pending',
@@ -1768,16 +1765,38 @@ interface DeviceStateEntry {
  * Full device details returned by public API
  * Built on-demand by merging configured and discovered device data
  */
-export interface RokuDevice {
+/**
+ * A device entry: a LAN device addressed by ip, or a Roku Cloud Emulator device addressed through
+ * the RCE management api. `device.rce` (or `device.ip`) narrows to the specific variant, and a
+ * future third device kind slots in as another union member.
+ */
+export type RokuDevice = LocalRokuDevice | RceRokuDevice;
+
+/**
+ * A LAN device, always addressed by IP
+ */
+export interface LocalRokuDevice extends BaseRokuDevice {
     /**
      * Computed IP from resolution order: discovered > resolvedIp > host.
-     * Undefined for devices that are not addressed by IP (cloud emulator devices).
      */
-    ip?: string;
+    ip: string;
     /**
-     * Present when this is a Roku Cloud Emulator device (sourced from the RCE management api)
+     * Never present on a LAN device; declared so a truthy `device.rce` check narrows the
+     * RokuDevice union
      */
-    rce?: {
+    rce?: undefined;
+}
+
+/**
+ * A Roku Cloud Emulator device (sourced from the RCE management api), never addressed by IP
+ */
+export interface RceRokuDevice extends BaseRokuDevice {
+    /**
+     * Never present on a cloud emulator device; declared so a truthy `device.ip` check narrows
+     * the RokuDevice union
+     */
+    ip?: undefined;
+    rce: {
         /**
          * The management-api device id
          */
@@ -1791,6 +1810,12 @@ export interface RokuDevice {
          */
         instanceUrl?: string;
     };
+}
+
+/**
+ * The fields every device entry carries regardless of how the device is addressed
+ */
+interface BaseRokuDevice {
     /**
      * Serial number from discovered or configured
      */
