@@ -390,6 +390,15 @@ export class DeviceManager {
     }
 
     /**
+     * Generate a short label describing how the device is addressed (its LAN ip,
+     * or 'cloud emulator' for devices with no ip)
+     * @param device the device containing all the info
+     */
+    public getAddressLabel(device: RokuDevice): string {
+        return device.rce ? 'cloud emulator' : device.ip;
+    }
+
+    /**
      * Generate the label used when showing "host" entries in a quick picker
      * @param device the device containing all the info
      * @returns a properly formatted host string
@@ -1364,6 +1373,10 @@ export class DeviceManager {
             shutdown: 'offline'
         };
         const deviceState = stateByStatus[entry.status] ?? 'unknown';
+        //a pending cloud device is booting at the user's request rather than recovering from an
+        //unknown prior state, so report its last known state as online to keep it visible wherever
+        //pending devices are grouped with online ones (e.g. the device filters)
+        const lastDeviceState = deviceState === 'pending' ? 'online' : deviceState;
         //firmware ids look like `rce-fw:15.2.4-tv_prod`; pull out the version number for display
         const softwareVersion = /(\d+\.\d+\.\d+)/.exec(entry.firmwareVersion ?? '')?.[1];
 
@@ -1377,7 +1390,7 @@ export class DeviceManager {
             serialNumber: entry.esn,
             key: entry.esn ? `s:${entry.esn}` : `rce:${entry.id}`,
             deviceState: deviceState,
-            lastDeviceState: deviceState,
+            lastDeviceState: lastDeviceState,
             deviceInfo: {
                 'serial-number': entry.esn,
                 'default-device-name': entry.name,

@@ -71,17 +71,6 @@ describe('deviceFilters', () => {
             expect(offlineOnly.map(d => d.key)).to.deep.equal(['pending-first-load']);
         });
 
-        it('treats a pending RCE device as effectively online regardless of lastDeviceState', () => {
-            const devices = [
-                makeDevice({ key: 'rce-pending-first-boot', isRce: true, deviceState: 'pending', lastDeviceState: 'unknown' }),
-                makeDevice({ key: 'lan-pending-first-boot', deviceState: 'pending', lastDeviceState: 'unknown' })
-            ];
-            // With offline hidden (default), the RCE device shows even though its lastDeviceState was
-            // never online, while the equivalent LAN device is still hidden
-            const visible = applyDeviceFilters(devices, DEFAULT_DEVICE_FILTERS);
-            expect(visible.map(d => d.key)).to.deep.equal(['rce-pending-first-boot']);
-        });
-
         it('applies the dev-mode facets to RCE devices exactly like LAN devices', () => {
             const devices = [
                 makeDevice({ key: 'rce-dev-disabled', isRce: true, developerEnabled: 'false' }),

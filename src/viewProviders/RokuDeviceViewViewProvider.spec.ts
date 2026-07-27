@@ -128,6 +128,16 @@ describe('RokuDeviceViewViewProvider', () => {
     }
 
     /**
+     * Simulate the webview reporting in as ready, in the same order the base class does it: the
+     * viewReady flag is set first, then onViewReady fires (the queued-message flush that follows in
+     * the base class is not re-created here)
+     */
+    function markViewReady() {
+        provider['viewReady'] = true;
+        provider['onViewReady']();
+    }
+
+    /**
      * Lets the token lookup's microtask (awaited before createSignalingClient runs) settle, so a
      * just-called, not-yet-awaited startRceStreamSession has reached the point of having created its
      * client
@@ -398,7 +408,7 @@ describe('RokuDeviceViewViewProvider', () => {
             //because startRceStreamSession's own focus command is what creates it)
             const client = await startFirstSession();
 
-            provider['onViewReady']();
+            markViewReady();
 
             expect(client.stop.called).to.be.false;
             expect(provider['activeRceStream'].offerDelivered).to.be.true;
@@ -412,13 +422,13 @@ describe('RokuDeviceViewViewProvider', () => {
             createProvider();
             //the webview is already ready (a normal Watch click while the panel is already open), so
             //the offer is delivered directly rather than queued
-            provider['onViewReady']();
+            markViewReady();
             const client = await startFirstSession();
             expect(provider['activeRceStream'].offerDelivered).to.be.true;
 
             //the panel was closed and reopened (or otherwise recreated); the new webview's viewReady
             //arrives, but the old webview's peer connection this session's offer went to is gone
-            provider['onViewReady']();
+            markViewReady();
 
             expect(client.stop.calledOnce).to.be.true;
         });
@@ -430,7 +440,7 @@ describe('RokuDeviceViewViewProvider', () => {
             await flushMicrotasks();
             const client = provider.createdClients[0];
 
-            provider['onViewReady']();
+            markViewReady();
 
             expect(client.stop.called).to.be.false;
             expect(findEventMessages(ViewProviderEvent.onRceStreamOffer)).to.have.length(0);

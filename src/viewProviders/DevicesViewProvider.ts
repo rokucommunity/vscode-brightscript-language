@@ -170,8 +170,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         device.key,
                         device.deviceInfo
                     );
-                    const addressLabel = device.rce ? 'cloud emulator' : device.ip;
-                    treeItem.tooltip = `${addressLabel} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
+                    treeItem.tooltip = `${this.deviceManager.getAddressLabel(device)} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
 
                     // Set resourceUri to enable FileDecorationProvider for text coloring
                     // Use the device key which is serial-based when available, IP-based as fallback

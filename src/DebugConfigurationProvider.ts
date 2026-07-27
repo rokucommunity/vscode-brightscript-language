@@ -524,21 +524,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * ${activeHost} is a deprecated alias for ${promptForHost}.
      * Both use the active device when it's set and passes a health check, otherwise fall back to the device picker.
      *
-     * For a local device, assigns the raw `device-info` gathered while probing the resolved host onto
-     * `config.deviceInfo`, so downstream password resolution and the debug session can reuse it
-     * without re-fetching. Throws if the device couldn't be reached (no device-info came back).
-     *
-     * For a non-local device (a roku-deploy device-registry name, or a Roku Cloud Emulator config -
-     * either provided directly in the config, or picked from the device picker below), host resolution
-     * and the LAN password probe are skipped entirely; instead this fetches device-info through
-     * roku-deploy's `device` option (so the dev-mode check below and telemetry have something to work
-     * with) and, for a device just picked from the picker, guards against picking one that isn't
-     * running yet with a friendlier message than a generic connection failure would give.
-     *
-     * For a Roku Cloud Emulator device config specifically, `rceToken` is always overwritten with the
-     * active Cloud Emulator account's token from SecretStorage - a launch config can never supply its
-     * own; a config-supplied one that differs surfaces a one-time warning explaining why it was
-     * replaced. Throws when no Cloud Emulator account is configured at all.
+     * Devices that are not addressed by host (a roku-deploy device-registry name or a Roku Cloud
+     * Emulator config) skip host resolution entirely; roku-debug reaches them through roku-deploy's
+     * `device` option. Everything else follows the host-based local flow.
      * @param config  current config object
      */
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
@@ -547,81 +535,102 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.host = config.device.host;
         }
 
-        //the management-api status of a cloud emulator device the user just picked from the picker
-        //below, used for the friendly "not running" guard further down. Stays undefined when nothing
-        //was picked (including when config.device was already a non-local device to begin with) - a
-        //config-provided device just fails the device-info fetch below with the generic unreachable
-        //error instead, since there is no live status to check ahead of time
-        let pickedRceStatus: DeviceStatus | undefined;
+        if (this.isNonLocalDevice(config.device)) {
+            return this.processNonLocalDeviceParameter(config);
+        }
+        return this.processLocalHostParameter(config);
+    }
 
-        //devices that are not addressed by host (a roku-deploy device-registry name or a Roku Cloud
-        //Emulator config) skip host resolution; roku-debug reaches them through roku-deploy's `device` option
-        if (!this.isNonLocalDevice(config.device)) {
-            const trimmedHost = config.host.trim();
-            const needsHostPrompt =
-                trimmedHost === '' ||
-                trimmedHost === '${promptForHost}' ||
-                trimmedHost === '${activeHost}' ||
-                config?.deepLinkUrl?.includes('${promptForHost}');
+    /**
+     * The host-based flow for a local (LAN) device: resolves the host (prompting when the config asks
+     * for it), then assigns the raw `device-info` gathered while probing the resolved host onto
+     * `config.deviceInfo`, so downstream password resolution and the debug session can reuse it
+     * without re-fetching. Throws if the device couldn't be reached (no device-info came back).
+     *
+     * When the user picks a Roku Cloud Emulator device from the (shared) device picker, the config
+     * adopts its precomputed device option and the non-local flow takes over.
+     * @param config  current config object
+     */
+    private async processLocalHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+        const trimmedHost = config.host.trim();
+        const needsHostPrompt =
+            trimmedHost === '' ||
+            trimmedHost === '${promptForHost}' ||
+            trimmedHost === '${activeHost}' ||
+            config?.deepLinkUrl?.includes('${promptForHost}');
 
-            let device: RokuDevice | undefined;
+        let device: RokuDevice | undefined;
 
-            if (needsHostPrompt) {
-                // both the active-host lookup and the picker probe + register the device in the device
-                // manager, so reuse it below instead of probing again
-                const resolved = await this.brightScriptCommands.getHealthyActiveHost() ??
-                    await this.userInputManager.promptForHost();
+        if (needsHostPrompt) {
+            // both the active-host lookup and the picker probe + register the device in the device
+            // manager, so reuse it below instead of probing again
+            const resolved = await this.brightScriptCommands.getHealthyActiveHost() ??
+                await this.userInputManager.promptForHost();
 
-                if (resolved && this.isNonLocalDevice(resolved.device)) {
-                    //the user picked a Roku Cloud Emulator device from the (shared) device picker:
-                    //adopt its precomputed device option and fall out of the host-based flow below
-                    config.device = resolved.device;
-                    pickedRceStatus = resolved.rce?.status;
-                } else {
-                    config.host = resolved?.host;
-                    if (resolved?.host) {
-                        device = this.deviceManager.getDevice({ ip: resolved.host });
-                    }
-                }
+            if (resolved && this.isNonLocalDevice(resolved.device)) {
+                //the user picked a Roku Cloud Emulator device from the (shared) device picker:
+                //adopt its precomputed device option and hand off to the non-local flow
+                config.device = resolved.device;
+                return this.processNonLocalDeviceParameter(config, resolved.rce?.status);
             }
-
-            if (!this.isNonLocalDevice(config.device)) {
-                //check the host and throw error if not provided or update the workspace to set last host
-                if (!config.host) {
-                    throw new Error('Debug session terminated: host is required.');
-                } else {
-                    await this.context.workspaceState.update('remoteHost', config.host);
-                    //track the active device by its DeviceManager key too (LAN and cloud sessions share
-                    //this identity), falling back to a synthesized ip-based key for a brand-new host the
-                    //device manager doesn't know about yet
-                    const activeDeviceKey = this.deviceManager.getDevice({ ip: config.host })?.key ?? `i:${config.host}`;
-                    await this.context.workspaceState.update('activeDeviceKey', activeDeviceKey);
-                }
-
-                // If the host didn't come from the picker, probe it so we have fresh SN/deviceInfo.
-                device ??= await this.deviceManager.validateAndAddDevice(config.host);
-
-                // A reachable developer device always returns device-info; its absence means we couldn't reach it.
-                if (!device?.deviceInfo || Object.keys(device.deviceInfo).length === 0) {
-                    throw new Error(`Debug session terminated: unable to reach device at '${config.host}'.`);
-                }
-
-                // Attach the raw device-info so downstream password resolution and the debug session can reuse it
-                // without another request to the device.
-                config.deviceInfo = device.deviceInfo;
-
-                //`device` is the canonical way to address the target device (`host` is its deprecated alias),
-                //so always hand roku-debug a device option built from the resolved host
-                config.device ??= { host: config.host };
-
-                return config;
+            config.host = resolved?.host;
+            if (resolved?.host) {
+                device = this.deviceManager.getDevice({ ip: resolved.host });
             }
         }
 
-        //non-local device (provided directly in the config, or just adopted from a cloud emulator
-        //pick above): a device-registry name or Roku Cloud Emulator config skips host resolution
-        //entirely; roku-debug reaches it through roku-deploy's `device` option instead
+        //check the host and throw error if not provided or update the workspace to set last host
+        if (!config.host) {
+            throw new Error('Debug session terminated: host is required.');
+        } else {
+            await this.context.workspaceState.update('remoteHost', config.host);
+            //track the active device by its DeviceManager key too (LAN and cloud sessions share
+            //this identity), falling back to a synthesized ip-based key for a brand-new host the
+            //device manager doesn't know about yet
+            const activeDeviceKey = this.deviceManager.getDevice({ ip: config.host })?.key ?? `i:${config.host}`;
+            await this.context.workspaceState.update('activeDeviceKey', activeDeviceKey);
+        }
 
+        // If the host didn't come from the picker, probe it so we have fresh SN/deviceInfo.
+        device ??= await this.deviceManager.validateAndAddDevice(config.host);
+
+        // A reachable developer device always returns device-info; its absence means we couldn't reach it.
+        if (!device?.deviceInfo || Object.keys(device.deviceInfo).length === 0) {
+            throw new Error(`Debug session terminated: unable to reach device at '${config.host}'.`);
+        }
+
+        // Attach the raw device-info so downstream password resolution and the debug session can reuse it
+        // without another request to the device.
+        config.deviceInfo = device.deviceInfo;
+
+        //`device` is the canonical way to address the target device (`host` is its deprecated alias),
+        //so always hand roku-debug a device option built from the resolved host
+        config.device ??= { host: config.host };
+
+        return config;
+    }
+
+    /**
+     * The flow for a non-local device (a roku-deploy device-registry name, or a Roku Cloud Emulator
+     * config - either provided directly in the config, or picked from the device picker in the local
+     * flow): host resolution and the LAN password probe are skipped entirely; instead this fetches
+     * device-info through roku-deploy's `device` option (so the dev-mode check below and telemetry
+     * have something to work with).
+     *
+     * For a Roku Cloud Emulator device config specifically, `rceToken` is always overwritten with the
+     * active Cloud Emulator account's token from SecretStorage - a launch config can never supply its
+     * own; a config-supplied one that differs surfaces a one-time warning explaining why it was
+     * replaced. Throws when no Cloud Emulator account is configured at all.
+     * @param config  current config object
+     * @param pickedRceStatus  the management-api status of a cloud emulator device the user just
+     *                         picked from the device picker, used for the friendly "not running"
+     *                         guard below. Stays undefined when nothing was picked (including when
+     *                         config.device was already a non-local device to begin with) - a
+     *                         config-provided device just fails the device-info fetch below with the
+     *                         generic unreachable error instead, since there is no live status to
+     *                         check ahead of time
+     */
+    private async processNonLocalDeviceParameter(config: BrightScriptLaunchConfiguration, pickedRceStatus?: DeviceStatus): Promise<BrightScriptLaunchConfiguration> {
         //a non-local session must never leave a stale LAN ip active underneath it - clear both (the
         //same empty-string convention the clearActiveDevice command uses), and track the device by
         //its DeviceManager key instead, when it resolves to one we already know about (a

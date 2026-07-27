@@ -14,10 +14,6 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
     private temporarilyDisableScreenshotCapture = false;
     private resumeScreenshotCapture?: () => void;
     private activeRceStream: ActiveRceStream | undefined;
-    //mirrors BaseWebviewViewProvider's own (private) viewReady flag: we need to read it from
-    //startRceStreamSession's onRceStreamOffer post to know whether that post is going straight to a
-    //live webview or being queued, and the base class does not expose its own flag for that
-    private webviewReady = false;
 
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
@@ -136,7 +132,6 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
 
     protected onViewReady() {
         super.onViewReady();
-        this.webviewReady = true;
 
         //onViewReady fires both on a cold open (the panel was just created, for example because
         //startRceStreamSession's own executeCommand('rokuDeviceView.focus') just created it) and on a
@@ -150,7 +145,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         //   (BaseWebviewViewProvider's order is: set viewReady, call onViewReady, then flush queued
         //   messages) - mark it delivered rather than stopping a session that is about to be answered.
         // - a session with no offer yet is still negotiating; leave it alone. Once its offer does post,
-        //   webviewReady will already be true here, so startRceStreamSession marks it delivered (and
+        //   the view will already be ready here, so startRceStreamSession marks it delivered (and
         //   posts, rather than queues, the offer) directly instead of ever queuing it.
         if (this.activeRceStream?.offerDelivered) {
             this.stopActiveRceStream();
@@ -228,7 +223,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
             session.offerPosted = true;
             //if the webview was already ready by the time the offer is ready to post, this post goes
             //straight to it rather than being queued, so it is already delivered - see onViewReady
-            if (this.webviewReady) {
+            if (this.isViewReady()) {
                 session.offerDelivered = true;
             }
             this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRceStreamOffer, {
@@ -292,7 +287,7 @@ interface ActiveRceStream {
     offerPosted: boolean;
     /**
      * Whether this session's offer has actually reached a live webview: either it was posted while
-     * webviewReady was already true, or a later onViewReady saw it queued and is about to flush it.
+     * the view was already ready, or a later onViewReady saw it queued and is about to flush it.
      * Only a session with this true has a peer connection on the other end that onViewReady should
      * consider stale (and stop) the next time it fires.
      */

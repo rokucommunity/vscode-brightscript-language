@@ -1377,8 +1377,21 @@ describe('DeviceManager', () => {
             const devices = manager.getAllDevices().filter(x => x.rce);
             const byId = devices.find(x => x.key === 'rce:84');
             expect(byId.deviceState).to.equal('offline');
+            expect(byId.lastDeviceState).to.equal('offline');
             const byEsn = devices.find(x => x.key === 's:ESN85');
             expect(byEsn.deviceState).to.equal('pending');
+            // a booting cloud device reports online as its last known state so the device filters
+            // keep it visible alongside online devices while it starts up
+            expect(byEsn.lastDeviceState).to.equal('online');
+        });
+
+        it('getAddressLabel labels rce devices as cloud emulator and LAN devices by ip', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([rceDevice()] as any);
+
+            const cloudDevice = manager.getAllDevices().find(x => x.rce);
+            expect(manager.getAddressLabel(cloudDevice)).to.equal('cloud emulator');
+            expect(manager.getAddressLabel({ ip: '192.168.1.100' } as any)).to.equal('192.168.1.100');
         });
 
         it('getDevice finds rce devices by key and by serial number', () => {

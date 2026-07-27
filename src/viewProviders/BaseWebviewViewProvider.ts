@@ -90,6 +90,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return message;
     }
 
+    /**
+     * Whether the webview has reported in as ready (messages post directly rather than being queued)
+     */
+    protected isViewReady() {
+        return this.viewReady;
+    }
+
     public postOrQueueMessage(message) {
         if (this.viewReady) {
             this.postMessage(message);

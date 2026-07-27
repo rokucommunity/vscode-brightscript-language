@@ -92,6 +92,7 @@ describe('DevicesViewProvider', () => {
             getAllDevices: () => devices,
             getDevice: (key: string) => devices.find(d => d.key === key),
             getDeviceDisplayName: (device: any) => device.key,
+            getAddressLabel: (device: any) => (device.rce ? 'cloud emulator' : device.ip),
             getIconPath: () => undefined,
             hasDeviceCache: () => false,
             refresh: () => undefined,

@@ -88,10 +88,6 @@ export function loadDeviceFilters(section: string): DeviceFilters {
  * Strict-AND filter: a device must satisfy every enabled facet to be retained.
  * Pending devices stay visible to the online facet only when their last known
  * state was online; otherwise they fall under the offline facet.
- *
- * A Roku Cloud Emulator device (device.rce is set) gets one additional carve-out:
- * a pending RCE device always counts as effectively online, since it is booting
- * at the user's request rather than recovering from an unknown prior state.
  */
 export function applyDeviceFilters(devices: RokuDevice[], filters: DeviceFilters): RokuDevice[] {
     return devices.filter(device => {
@@ -109,10 +105,8 @@ export function applyDeviceFilters(devices: RokuDevice[], filters: DeviceFilters
             return false;
         }
 
-        const isRceDevice = !!device.rce;
         const isEffectivelyOnline = device.deviceState === 'online' ||
-            (device.deviceState === 'pending' && device.lastDeviceState === 'online') ||
-            (device.deviceState === 'pending' && isRceDevice);
+            (device.deviceState === 'pending' && device.lastDeviceState === 'online');
         if (!isEffectivelyOnline && !filters.offline) {
             return false;
         }
