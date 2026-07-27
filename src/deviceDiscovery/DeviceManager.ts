@@ -399,6 +399,18 @@ export class DeviceManager {
     }
 
     /**
+     * The browser url for a device's web portal: the LAN dev web server for a local device, or the
+     * developer.roku.com dev-installer page for a cloud emulator device (the browser carries the
+     * developer.roku.com session that page requires)
+     * @param device the device containing all the info
+     */
+    public getWebPortalUrl(device: RokuDevice): string {
+        return device.rce
+            ? `https://developer.roku.com/cloud-emulator-bff/devices/${device.rce.id}/sideload/`
+            : `http://${device.ip}`;
+    }
+
+    /**
      * Generate the label used when showing "host" entries in a quick picker
      * @param device the device containing all the info
      * @returns a properly formatted host string
@@ -741,16 +753,17 @@ export class DeviceManager {
     }
 
     /**
-     * Validate a developer password against the device at `host`.
+     * Validate a developer password against a device (any roku-deploy device config, including a
+     * Roku Cloud Emulator config).
      *
      * Returns:
      * - `'ok'` — credentials accepted
      * - `'bad-password'` — device reachable, credentials rejected
      * - `'unreachable'` — device could not be contacted (transient; don't treat as wrong password)
      */
-    public async validateDevicePassword(host: string, password: string): Promise<PasswordValidationResult> {
+    public async validateDevicePassword(device: DeviceConfig, password: string): Promise<PasswordValidationResult> {
         try {
-            const accepted = await rokuDeploy.validateDeveloperPassword({ device: { host: host }, password: password });
+            const accepted = await rokuDeploy.validateDeveloperPassword({ device: device, password: password });
             return accepted ? 'ok' : 'bad-password';
         } catch (e) {
             if (e instanceof DeviceUnreachableError) {

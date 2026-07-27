@@ -512,7 +512,7 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
-                    "when": "view == devicesView && viewItem =~ /^device\\b/",
+                    "when": "view == devicesView && viewItem =~ /-local\\b/",
                     "group": "1_primary@2"
                 },
                 {
@@ -686,6 +686,26 @@
                     "group": "4_source@2"
                 },
                 {
+                    "command": "extension.brightscript.devicesView.toggleFilter.local",
+                    "when": "!brightscript.devicesView.filter.local",
+                    "group": "5_kind@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.local.active",
+                    "when": "brightscript.devicesView.filter.local",
+                    "group": "5_kind@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.cloud",
+                    "when": "!brightscript.devicesView.filter.cloud",
+                    "group": "5_kind@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.cloud.active",
+                    "when": "brightscript.devicesView.filter.cloud",
+                    "group": "5_kind@2"
+                },
+                {
                     "command": "extension.brightscript.devicesView.resetFilters",
                     "group": "9_reset@1"
                 }
@@ -761,6 +781,22 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.autoDetected.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.local",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.local.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.cloud",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.cloud.active",
                     "when": "false"
                 },
                 {
@@ -2718,6 +2754,18 @@
                         "default": true,
                         "description": "Show auto-detected devices (discovered on the network) in the Devices view.",
                         "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.local": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show local (LAN) devices in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.cloud": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show Roku Cloud Emulator devices in the Devices view.",
+                        "scope": "application"
                     }
                 }
             },
@@ -2777,6 +2825,18 @@
                         "type": "boolean",
                         "default": true,
                         "description": "Show auto-detected devices (discovered on the network) in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.local": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show local (LAN) devices in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.cloud": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show Roku Cloud Emulator devices in the device quick pick.",
                         "scope": "application"
                     }
                 }
@@ -4042,6 +4102,26 @@
             {
                 "command": "extension.brightscript.devicesView.toggleFilter.autoDetected.active",
                 "title": "☑ Auto Detected",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.local",
+                "title": "☐ Local",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.local.active",
+                "title": "☑ Local",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.cloud",
+                "title": "☐ Cloud",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.cloud.active",
+                "title": "☑ Cloud",
                 "category": "BrightScript"
             },
             {

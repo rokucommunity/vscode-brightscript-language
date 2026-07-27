@@ -17,7 +17,7 @@ import type { TelemetryManager } from './managers/TelemetryManager';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import cloneDeep = require('clone-deep');
 import { rokuDeploy, isLocalDeviceConfig, isRceDeviceConfig } from 'roku-deploy';
-import type { DeviceInfo, DeviceOption, DeviceStatus } from 'roku-deploy';
+import type { DeviceConfig, DeviceInfo, DeviceOption, DeviceStatus } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
 import type { BrightScriptCommands } from './BrightScriptCommands';
 import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
@@ -702,24 +702,29 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config: BrightScriptLaunchConfiguration,
         result: BrightScriptLaunchConfiguration
     ): Promise<BrightScriptLaunchConfiguration> {
-        //password validation probes the device by host, which only applies to local devices.
-        //for other device types, the launch config password is used as-is
-        if (this.isNonLocalDevice(result.device)) {
+        //`processHostParameter` always normalizes `result.device` before this runs (`host` is only
+        //its deprecated alias): `{host}` for a LAN device, the cloud config for a Roku Cloud
+        //Emulator device (its dev installer authenticates with the same digest auth as a LAN
+        //device), or a device-registry name string - which keeps the launch config password as-is,
+        //since roku-deploy resolves that device's own credentials.
+        const device = result.device;
+        if (typeof device !== 'object') {
             return result;
         }
-        const host = result.host;
+        const host = isLocalDeviceConfig(device) ? device.host : undefined;
         const serialNumber = result.deviceInfo?.['serial-number'];
 
         // Opportunistically drain any legacy IP-keyed password that still lives in
-        // workspaceState from pre-refactor extension installs. Reads never consult
-        // this store anymore; it's peeked here and disposed of once we know whether
-        // it works. This step is best-effort: an unreachable device just means we
-        // try again next launch; the authoritative error surfaces from the main flow.
-        const legacyPassword = this.getLegacyIpKeyedPassword(host);
+        // workspaceState from pre-refactor extension installs (the helpers no-op for anything but
+        // a local device config, since the store is keyed by ip). Reads never consult this store
+        // anymore; it's peeked here and disposed of once we know whether it works. This step is
+        // best-effort: an unreachable device just means we try again next launch; the
+        // authoritative error surfaces from the main flow.
+        const legacyPassword = this.getLegacyIpKeyedPassword(device);
         if (legacyPassword !== undefined) {
-            const validation = await this.deviceManager.validateDevicePassword(host, legacyPassword);
+            const validation = await this.deviceManager.validateDevicePassword(device, legacyPassword);
             if (validation === 'ok') {
-                await this.clearLegacyIpKeyedPassword(host);
+                await this.clearLegacyIpKeyedPassword(device);
                 // A legacy entry is explicit historical opt-in: persist it to the cred store
                 // (unconditionally, unlike the normal "refresh existing only" gate) and the
                 // global fallback, then use it.
@@ -731,7 +736,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 return result;
             } else if (validation === 'bad-password') {
                 // Reads don't use the legacy store anymore, so a proven-wrong entry is dead weight.
-                await this.clearLegacyIpKeyedPassword(host);
+                await this.clearLegacyIpKeyedPassword(device);
             }
             // 'unreachable' — leave the legacy entry alone (it may still be correct) and
             // fall through to the normal candidate flow, which will surface its own error.
@@ -741,18 +746,20 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         // `result.password`/`config.password` after the standard credential sources. The resolver
         // prompts (and persists an accepted password) the same way it does for the other commands.
         const resolution = await this.userInputManager.resolveDevicePassword({
-            host: host,
+            device: device,
             serialNumber: serialNumber,
             extraCandidates: [result.password, config.password]
         });
         if (resolution.status === 'unreachable') {
-            throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
+            throw new Error(`Debug session terminated: device '${host ?? this.describeNonLocalDevice(device)}' is unreachable.`);
         }
         if (resolution.status === 'cancelled') {
             throw new Error('Debug session terminated: password is required.');
         }
         result.password = resolution.password;
         // Keep the global password fallback in sync so later launches resolve without re-prompting.
+        // Consumers only ever offer it as a validated candidate, so a password from one device kind
+        // can never misfire against another - it just gets skipped.
         await this.context.workspaceState.update('remotePassword', resolution.password);
         return result;
     }
@@ -763,28 +770,29 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Peek the legacy IP-keyed password store (`workspaceState.devicePasswords`).
      * Reads never use this store anymore; it's consulted only for one-shot
      * migration inside `processPasswordParameter` and drained on the first
-     * successful device contact.
+     * successful device contact. The store is keyed by ip, so only a local
+     * device config can have an entry; every other device kind returns undefined.
      */
-    private getLegacyIpKeyedPassword(ip: string): string | undefined {
-        if (!ip) {
+    private getLegacyIpKeyedPassword(device: DeviceConfig): string | undefined {
+        if (!isLocalDeviceConfig(device) || !device.host) {
             return undefined;
         }
         const map = this.context.workspaceState.get<Record<string, string>>(this.legacyPasswordStoreKey) ?? {};
-        return map[ip];
+        return map[device.host];
     }
 
     /**
      * Remove an entry from the legacy IP-keyed password store.
      */
-    private async clearLegacyIpKeyedPassword(ip: string): Promise<void> {
-        if (!ip) {
+    private async clearLegacyIpKeyedPassword(device: DeviceConfig): Promise<void> {
+        if (!isLocalDeviceConfig(device) || !device.host) {
             return;
         }
         const map = this.context.workspaceState.get<Record<string, string>>(this.legacyPasswordStoreKey) ?? {};
-        if (!(ip in map)) {
+        if (!(device.host in map)) {
             return;
         }
-        delete map[ip];
+        delete map[device.host];
         await this.context.workspaceState.update(this.legacyPasswordStoreKey, map);
     }
 

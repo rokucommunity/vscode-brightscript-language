@@ -72,7 +72,8 @@ export class UserInputManager {
     }
 
     /**
-     * Resolve a developer password that the device at `host` accepts.
+     * Resolve a developer password that the target device accepts. The target is any roku-deploy
+     * device config, including a Roku Cloud Emulator config.
      *
      * Every known candidate is tried in order (stored credential, configured
      * `brightscript.devices[].password`, the default device password, and any caller-provided
@@ -85,12 +86,12 @@ export class UserInputManager {
      * @returns `ok` with the accepted password, `unreachable` when the device can't be contacted,
      *          or `cancelled` when the user dismisses the prompt.
      */
-    public async resolveDevicePassword(options: { host: string; serialNumber: string | undefined; extraCandidates?: Array<string | undefined> }): Promise<DevicePasswordResolution> {
-        const { host, serialNumber } = options;
+    public async resolveDevicePassword(options: { device: DeviceConfig; serialNumber: string | undefined; extraCandidates?: Array<string | undefined> }): Promise<DevicePasswordResolution> {
+        const { device, serialNumber } = options;
         const candidates = await this.collectDevicePasswordCandidates(serialNumber, options.extraCandidates);
 
         for (const candidate of candidates) {
-            const validation = await this.deviceManager.validateDevicePassword(host, candidate);
+            const validation = await this.deviceManager.validateDevicePassword(device, candidate);
             if (validation === 'ok') {
                 await this.persistDevicePassword(serialNumber, candidate);
                 return { status: 'ok', password: candidate };
@@ -111,7 +112,7 @@ export class UserInputManager {
             if (!value) {
                 return { status: 'cancelled' };
             }
-            const validation = await this.deviceManager.validateDevicePassword(host, value);
+            const validation = await this.deviceManager.validateDevicePassword(device, value);
             if (validation === 'ok') {
                 await this.persistDevicePassword(serialNumber, value);
                 return { status: 'ok', password: value };

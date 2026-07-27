@@ -512,9 +512,34 @@ describe('BrightScriptFileUtils ', () => {
             assert.isTrue(deviceManager.validateAndAddDevice.calledWith('1.2.3.4'));
             assert.isTrue(userInputManager.resolveDevicePassword.calledOnce);
             const args = userInputManager.resolveDevicePassword.firstCall.args[0];
-            assert.equal(args.host, '1.2.3.4');
+            assert.deepEqual(args.device, { host: '1.2.3.4' });
             assert.equal(args.serialNumber, 'SN123');
             assert.deepEqual(args.extraCandidates, ['global-pw']);
+        });
+
+        it('restarts a cloud emulator device through its device config without probing a host', async () => {
+            const cloudDeviceConfig = { instanceUrl: 'https://rce.example.com/instance', rceToken: 'super-secret-token' };
+            const cloudDevice = { key: 'rce:83', serialNumber: 'ESN83', device: cloudDeviceConfig, rce: { id: '83', status: 'running' }, deviceInfo: {} };
+            deviceManager.getDevice.withArgs('rce:83').returns(cloudDevice);
+            deviceManager.getDeviceDisplayName.returns('Chris (cloud emulator)');
+
+            await localCommands.restartDevice({ key: 'rce:83' });
+
+            assert.isFalse(deviceManager.validateAndAddDevice.called);
+            assert.deepEqual(userInputManager.resolveDevicePassword.firstCall.args[0].device, cloudDeviceConfig);
+            assert.equal(userInputManager.resolveDevicePassword.firstCall.args[0].serialNumber, 'ESN83');
+            assert.deepEqual(rebootStub.firstCall.args[0].device, cloudDeviceConfig);
+        });
+
+        it('checks for updates on a cloud emulator device through its device config', async () => {
+            const cloudDeviceConfig = { instanceUrl: 'https://rce.example.com/instance', rceToken: 'super-secret-token' };
+            const cloudDevice = { key: 'rce:83', serialNumber: 'ESN83', device: cloudDeviceConfig, rce: { id: '83', status: 'running' }, deviceInfo: {} };
+            deviceManager.getDevice.withArgs('rce:83').returns(cloudDevice);
+
+            await localCommands.checkForUpdates({ key: 'rce:83' });
+
+            assert.isFalse(deviceManager.validateAndAddDevice.called);
+            assert.deepEqual(checkForUpdateStub.firstCall.args[0].device, cloudDeviceConfig);
         });
 
         it('aborts without resolving a password or rebooting when the confirmation is dismissed', async () => {
@@ -603,16 +628,16 @@ describe('BrightScriptFileUtils ', () => {
                 localCommands.registerDevicesViewCommands({ toggleFilter: () => { }, resetFilters: () => { } } as any);
             });
 
-            it('maps the tree element key to the device ip', async () => {
-                deviceManager.getDevice.withArgs('SN123').returns({ ip: '1.2.3.4' });
+            it('passes the tree element through for the shared reference resolution', async () => {
+                const element = { key: 'SN123' };
 
-                await capturedCommands['extension.brightscript.devicesView.restartDevice']({ key: 'SN123' });
-                await capturedCommands['extension.brightscript.devicesView.checkAndInstallUpdates']({ key: 'SN123' });
+                await capturedCommands['extension.brightscript.devicesView.restartDevice'](element);
+                await capturedCommands['extension.brightscript.devicesView.checkAndInstallUpdates'](element);
 
                 assert.isTrue(restartStub.calledOnce);
-                assert.equal(restartStub.firstCall.args[0], '1.2.3.4');
+                assert.equal(restartStub.firstCall.args[0], element);
                 assert.isTrue(updatesStub.calledOnce);
-                assert.equal(updatesStub.firstCall.args[0], '1.2.3.4');
+                assert.equal(updatesStub.firstCall.args[0], element);
             });
 
             it('passes undefined (picker fallback) when invoked with no element', async () => {

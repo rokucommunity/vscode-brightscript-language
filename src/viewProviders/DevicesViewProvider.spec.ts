@@ -67,10 +67,11 @@ afterEach(() => {
 });
 
 describe('DevicesViewProvider', () => {
-    function makeDevice(overrides: { key: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean; serialNumber?: string; softwareVersion?: string; configuredIn?: string[] }) {
+    function makeDevice(overrides: { key: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean; serialNumber?: string; softwareVersion?: string; configuredIn?: string[]; isRce?: boolean }) {
         return {
             key: overrides.key,
-            ip: '1.2.3.4',
+            ip: overrides.isRce ? undefined : '1.2.3.4',
+            rce: overrides.isRce ? { id: '83', status: 'running' } : undefined,
             deviceState: overrides.deviceState ?? 'online',
             lastDeviceState: overrides.lastDeviceState ?? 'unknown',
             isConfigured: overrides.isConfigured ?? false,
@@ -93,6 +94,7 @@ describe('DevicesViewProvider', () => {
             getDevice: (key: string) => devices.find(d => d.key === key),
             getDeviceDisplayName: (device: any) => device.key,
             getAddressLabel: (device: any) => (device.rce ? 'cloud emulator' : device.ip),
+            getWebPortalUrl: (device: any) => (device.rce ? `https://developer.roku.com/cloud-emulator-bff/devices/${device.rce.id}/sideload/` : `http://${device.ip}`),
             getIconPath: () => undefined,
             hasDeviceCache: () => false,
             refresh: () => undefined,
@@ -209,21 +211,54 @@ describe('DevicesViewProvider', () => {
             const devices = [makeDevice({ key: 'tv1', isTv: true, softwareVersion: '15.3.4', serialNumber: 'SERIAL1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-notInUser-notInWorkspace-noPassword-isTv-canViewRegistry-canRestart');
+            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-noPassword-isTv-canViewRegistry-canRestart');
         });
 
         it('includes hasPassword and configured-in tokens, and gates version-specific tokens', async () => {
             const devices = [makeDevice({ key: 'stb1', softwareVersion: '12.0.0', serialNumber: 'SERIAL2', configuredIn: ['user', 'workspace'] })];
             const { provider } = createProvider(devices, { storedPasswords: { SERIAL2: 'secret' } });
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-inUser-inWorkspace-hasPassword-canViewRegistry');
+            expect(items[0].contextValue).to.equal('device-local-inUser-inWorkspace-hasPassword-canViewRegistry');
         });
 
         it('omits password and version-gated tokens when serial number and software version are unknown', async () => {
             const devices = [makeDevice({ key: 'stb1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-notInUser-notInWorkspace');
+            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace');
+        });
+
+        it('builds a cloud contextValue without the LAN-only capability tokens', async () => {
+            //an rce tv with a serial + modern firmware: settings and tv-input tokens must still be
+            //absent while password + registry + restart capabilities remain
+            const devices = [makeDevice({ key: 's:ESN1', isRce: true, isTv: true, softwareVersion: '15.2.4', serialNumber: 'ESN1' })];
+            const { provider } = createProvider(devices);
+            const items = await provider.getChildren();
+            expect(items[0].contextValue).to.equal('device-cloud-noPassword-canViewRegistry-canRestart');
+        });
+
+        it('lists the cloud action items for an rce device', async () => {
+            const devices = [makeDevice({ key: 's:ESN1', isRce: true, softwareVersion: '15.2.4', serialNumber: 'ESN1' })];
+            const { provider } = createProvider(devices);
+            const [deviceItem] = await provider.getChildren();
+
+            const deviceChildren = await provider.getChildren(deviceItem);
+            expect(deviceChildren.map(child => child.label)).to.deep.equal([
+                '🔗 Open device web portal',
+                '🔁 Restart Device',
+                '🔄 Check for Software Updates',
+                '📋 View Registry',
+                '🔑 Set Device Password',
+                '⭐ Set as Active Device',
+                'Device Info'
+            ]);
+
+            //the web portal points at the developer.roku.com dev-installer page for this device id
+            const webPortalItem = deviceChildren[0] as any;
+            expect(webPortalItem.command.arguments).to.deep.equal(['https://developer.roku.com/cloud-emulator-bff/devices/83/sideload/']);
+            //view registry and set-active address the device by key (there is no ip)
+            expect((deviceChildren[3] as any).command.arguments).to.deep.equal([{ key: 's:ESN1' }]);
+            expect((deviceChildren[5] as any).command.arguments).to.deep.equal([{ key: 's:ESN1' }]);
         });
 
         it('lists the action items followed by an expandable Device Info group holding the info fields', async () => {

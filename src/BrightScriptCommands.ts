@@ -19,8 +19,8 @@ import { vscodeContextManager } from './managers/VscodeContextManager';
 import type { CredentialStore } from './managers/CredentialStore';
 import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { DEVICE_FILTER_KEYS } from './deviceFilters';
-import { rokuDeploy, isLocalDeviceConfig } from 'roku-deploy';
-import type { DeviceConfig, RokuKey } from 'roku-deploy';
+import { rokuDeploy, isLocalDeviceConfig, RceDevice } from 'roku-deploy';
+import type { DeviceConfig, RceDeviceConfig, RokuKey } from 'roku-deploy';
 
 export class BrightScriptCommands {
 
@@ -384,13 +384,15 @@ export class BrightScriptCommands {
             }
         });
 
-        this.registerCommand('openRegistryInBrowser', async (host: string) => {
-            if (!host) {
-                host = (await this.userInputManager.promptForHost())?.host;
+        this.registerCommand('openRegistryInBrowser', async (hostOrItem?: string | { key?: string }) => {
+            const { device, host } = await this.resolveDeviceReference(hostOrItem);
+            const deviceConfig: DeviceConfig = device?.device ?? (host ? { host: host } : undefined);
+            if (!deviceConfig) {
+                return;
             }
 
             const apps = await util.spinAsync('Fetching app list', async () => {
-                return rokuDeploy.queryApps({ device: { host: host } });
+                return rokuDeploy.queryApps({ device: deviceConfig });
             });
 
             //convert the items to QuickPick items
@@ -419,32 +421,30 @@ export class BrightScriptCommands {
 
             if (selectedApp) {
                 const appId = selectedApp.appId;
-                let url = `http://${host}:8060/query/registry/${appId}`;
-                try {
-                    await vscode.env.openExternal(vscode.Uri.parse(url));
-                } catch (error) {
-                    await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
+                if (device?.rce) {
+                    //a cloud emulator device has no browser-reachable ECP url; fetch the registry
+                    //over ECP2 and show the response in an editor instead
+                    const response = await util.spinAsync('Fetching registry', async () => {
+                        return new RceDevice(device.device as RceDeviceConfig).queryRegistry(appId);
+                    });
+                    const document = await vscode.workspace.openTextDocument({
+                        language: 'xml',
+                        content: response.content ?? `<!-- empty registry response (status ${response.status}: ${response.statusMessage ?? 'no message'}) -->`
+                    });
+                    await vscode.window.showTextDocument(document, { preview: false });
+                } else {
+                    let url = `http://${host}:8060/query/registry/${appId}`;
+                    try {
+                        await vscode.env.openExternal(vscode.Uri.parse(url));
+                    } catch (error) {
+                        await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
+                    }
                 }
             }
         });
 
         this.registerCommand('setActiveDevice', async (deviceOrItem: string | { key: string }) => {
-            let device: RokuDevice | undefined;
-            let ip: string;
-            if (typeof deviceOrItem === 'object' && deviceOrItem?.key) {
-                device = this.deviceManager.getDevice(deviceOrItem.key);
-                ip = device?.ip;
-            } else if (typeof deviceOrItem === 'string') {
-                ip = deviceOrItem;
-            }
-            if (!device && !ip) {
-                //the picker can resolve either a LAN device (an ip) or a Roku Cloud Emulator device
-                //(a precomputed device option, no ip); resolve the latter back to a RokuDevice so we
-                //can key on it the same way as the other resolution paths above
-                const picked = await this.userInputManager.promptForHost();
-                ip = picked?.host;
-                device = picked?.device ? this.deviceManager.getDeviceByDeviceConfig(picked.device) : undefined;
-            }
+            const { device, host: ip } = await this.resolveDeviceReference(deviceOrItem);
             if (!device && !ip) {
                 throw new Error('Tried to set active device but failed.');
             }
@@ -779,12 +779,12 @@ export class BrightScriptCommands {
     }
 
     /**
-     * Restart a Roku device. When `host` is omitted (e.g. invoked from the command palette)
-     * a device picker is shown. Resolves and validates the developer password the same way a
-     * debug launch does before issuing the reboot.
+     * Restart a Roku device (LAN or Roku Cloud Emulator). When the target is omitted (e.g. invoked
+     * from the command palette) a device picker is shown. Resolves and validates the developer
+     * password the same way a debug launch does before issuing the reboot.
      */
-    public async restartDevice(host?: string): Promise<void> {
-        const target = await this.resolveDeviceHost(host);
+    public async restartDevice(reference?: string | { key?: string }): Promise<void> {
+        const target = await this.resolveTargetDevice(reference);
         if (!target) {
             return;
         }
@@ -801,7 +801,7 @@ export class BrightScriptCommands {
             return;
         }
 
-        const password = await this.resolveValidatedPassword(target.host, target.serialNumber);
+        const password = await this.resolveValidatedPassword(target.device, target.serialNumber, target.label);
         if (password === undefined) {
             return;
         }
@@ -810,18 +810,18 @@ export class BrightScriptCommands {
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
                 title: `Requesting restarting ${target.label}`
-            }, () => rokuDeploy.rebootDevice({ device: { host: target.host }, password: password, timeout: 10000 }));
+            }, () => rokuDeploy.rebootDevice({ device: target.device, password: password, timeout: 10000 }));
         } catch (e) {
             void vscode.window.showErrorMessage(`Failed to restart device: ${e.message}`);
         }
     }
 
     /**
-     * Ask a Roku device to check for and install any available software updates. Host and
-     * password are resolved the same way as `restartDevice`.
+     * Ask a Roku device (LAN or Roku Cloud Emulator) to check for and install any available
+     * software updates. Target and password are resolved the same way as `restartDevice`.
      */
-    public async checkForUpdates(host?: string): Promise<void> {
-        const target = await this.resolveDeviceHost(host);
+    public async checkForUpdates(reference?: string | { key?: string }): Promise<void> {
+        const target = await this.resolveTargetDevice(reference);
         if (!target) {
             return;
         }
@@ -838,7 +838,7 @@ export class BrightScriptCommands {
             return;
         }
 
-        const password = await this.resolveValidatedPassword(target.host, target.serialNumber);
+        const password = await this.resolveValidatedPassword(target.device, target.serialNumber, target.label);
         if (password === undefined) {
             return;
         }
@@ -847,38 +847,72 @@ export class BrightScriptCommands {
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
                 title: `Checking for updates: ${target.label}`
-            }, () => rokuDeploy.checkForUpdate({ device: { host: target.host }, password: password, timeout: 10000 }));
+            }, () => rokuDeploy.checkForUpdate({ device: target.device, password: password, timeout: 10000 }));
         } catch (e) {
             void vscode.window.showErrorMessage(`Failed to check for updates: ${e.message}`);
         }
     }
 
     /**
-     * Resolve the device a device-targeted command should act on.
+     * Resolve a device reference - the argument shape every device-targeted command receives -
+     * into what the device manager knows about it:
+     * - a Devices view tree element (or full RokuDevice), `{key}`, resolves through the device
+     *   manager (this is how a Roku Cloud Emulator device flows in; it has no host)
+     * - a bare string is a LAN host, passed through untouched (deliberately not looked up, so
+     *   callers keep their own probe/synthesized-key semantics for unknown hosts)
+     * - nothing shows the shared device picker, where a cloud pick resolves back to a RokuDevice
+     *   via its precomputed device option
      *
-     * When `host` is provided (e.g. from a Devices view tree item) it is used directly.
-     * Otherwise the device picker is always shown; these are device-specific actions, so we
-     * never silently fall back to the active device. The resolved host is probed so the caller
-     * has a fresh serial number for password lookup and a friendly display label for prompts.
+     * Both fields are undefined when nothing was resolved (unknown key, or picker dismissed).
+     */
+    private async resolveDeviceReference(reference?: string | { key?: string }): Promise<{ device: RokuDevice | undefined; host: string | undefined }> {
+        let device: RokuDevice | undefined;
+        let host: string | undefined;
+        if (typeof reference === 'object' && reference?.key) {
+            device = this.deviceManager.getDevice(reference.key);
+            host = device?.ip;
+        } else if (typeof reference === 'string') {
+            host = reference;
+        }
+
+        if (!device && !host) {
+            try {
+                const picked = await this.userInputManager.promptForHost();
+                host = picked?.host;
+                device = picked?.device
+                    ? this.deviceManager.getDeviceByDeviceConfig(picked.device)
+                    : undefined;
+            } catch {
+                // promptForHost rejects when the user dismisses the picker; treat as a cancel.
+            }
+        }
+        return { device: device, host: host };
+    }
+
+    /**
+     * Resolve the device a device-targeted command should act on, as a roku-deploy device config
+     * plus the serial number and display label the password/confirmation flow needs.
+     *
+     * The reference resolves through `resolveDeviceReference` (tree element / host string /
+     * device picker; these are device-specific actions, so we never silently fall back to the
+     * active device). A bare host is probed so the caller has a fresh serial number for password
+     * lookup and a friendly display label for prompts.
      *
      * Returns undefined when the user cancels device selection.
      */
-    private async resolveDeviceHost(host?: string): Promise<{ host: string; serialNumber: string | undefined; label: string } | undefined> {
-        if (!host) {
-            try {
-                host = (await this.userInputManager.promptForHost())?.host;
-            } catch {
-                // promptForHost rejects when the user dismisses the picker; treat as a cancel.
-                return undefined;
-            }
+    private async resolveTargetDevice(reference?: string | { key?: string }): Promise<{ device: DeviceConfig; serialNumber: string | undefined; label: string } | undefined> {
+        const { device, host } = await this.resolveDeviceReference(reference);
+
+        if (device) {
+            return { device: device.device, serialNumber: device.serialNumber, label: this.deviceManager.getDeviceDisplayName(device, true) };
         }
         if (!host) {
             return undefined;
         }
 
-        const device = await this.deviceManager.validateAndAddDevice(host);
-        const label = device ? this.deviceManager.getDeviceDisplayName(device, true) : host;
-        return { host: host, serialNumber: device?.serialNumber, label: label };
+        const probed = await this.deviceManager.validateAndAddDevice(host);
+        const label = probed ? this.deviceManager.getDeviceDisplayName(probed, true) : host;
+        return { device: { host: host }, serialNumber: probed?.serialNumber, label: label };
     }
 
     /**
@@ -887,14 +921,14 @@ export class BrightScriptCommands {
      * extra candidate. Shows an error and returns undefined when the device is unreachable, and
      * returns undefined when the user cancels the prompt.
      */
-    private async resolveValidatedPassword(host: string, serialNumber: string | undefined): Promise<string | undefined> {
+    private async resolveValidatedPassword(device: DeviceConfig, serialNumber: string | undefined, label: string): Promise<string | undefined> {
         const resolution = await this.userInputManager.resolveDevicePassword({
-            host: host,
+            device: device,
             serialNumber: serialNumber,
             extraCandidates: [await this.context.workspaceState.get('remotePassword')]
         });
         if (resolution.status === 'unreachable') {
-            void vscode.window.showErrorMessage(`Device at ${host} is unreachable.`);
+            void vscode.window.showErrorMessage(`Device '${label}' is unreachable.`);
             return undefined;
         }
         if (resolution.status === 'cancelled') {
@@ -1240,10 +1274,10 @@ export class BrightScriptCommands {
         // a missing/unknown key to undefined lets `restartDevice`/`checkForUpdates` fall back
         // to the active device or device picker.
         this.registerCommand('devicesView.restartDevice', (element?: { key?: string }) => {
-            return this.restartDevice(element?.key ? this.deviceManager.getDevice(element.key)?.ip : undefined);
+            return this.restartDevice(element);
         });
         this.registerCommand('devicesView.checkAndInstallUpdates', (element?: { key?: string }) => {
-            return this.checkForUpdates(element?.key ? this.deviceManager.getDevice(element.key)?.ip : undefined);
+            return this.checkForUpdates(element);
         });
 
         this.registerDeviceContextMenuCommands();
@@ -1274,20 +1308,20 @@ export class BrightScriptCommands {
             return vscode.commands.executeCommand('extension.brightscript.refreshDevice', element);
         });
         this.registerCommand('devicesView.deviceMenu.restartDevice', (element?: { key?: string }) => {
-            return this.restartDevice(getDevice(element)?.ip);
+            return this.restartDevice(element);
         });
         this.registerCommand('devicesView.deviceMenu.checkAndInstallUpdates', (element?: { key?: string }) => {
-            return this.checkForUpdates(getDevice(element)?.ip);
+            return this.checkForUpdates(element);
         });
         this.registerCommand('devicesView.deviceMenu.openWebPortal', (element?: { key?: string }) => {
-            const ip = getDevice(element)?.ip;
-            if (!ip) {
-                return vscode.window.showErrorMessage('Could not determine the IP address for this device');
+            const device = getDevice(element);
+            if (!device) {
+                return vscode.window.showErrorMessage('Could not determine the address for this device');
             }
-            return vscode.commands.executeCommand('extension.brightscript.openUrl', `http://${ip}`);
+            return vscode.commands.executeCommand('extension.brightscript.openUrl', this.deviceManager.getWebPortalUrl(device));
         });
         this.registerCommand('devicesView.deviceMenu.viewRegistry', (element?: { key?: string }) => {
-            return vscode.commands.executeCommand('extension.brightscript.openRegistryInBrowser', getDevice(element)?.ip);
+            return vscode.commands.executeCommand('extension.brightscript.openRegistryInBrowser', element);
         });
         // Set and Change share a handler; the menu shows one or the other based on whether a password is stored
         for (const commandName of ['devicesView.deviceMenu.setDevicePassword', 'devicesView.deviceMenu.changeDevicePassword']) {

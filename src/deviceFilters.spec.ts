@@ -71,6 +71,19 @@ describe('deviceFilters', () => {
             expect(offlineOnly.map(d => d.key)).to.deep.equal(['pending-first-load']);
         });
 
+        it('splits devices by kind with the local and cloud facets', () => {
+            const devices = [
+                makeDevice({ key: 'lan-device' }),
+                makeDevice({ key: 'cloud-device', isRce: true })
+            ];
+            //defaults show both kinds
+            expect(applyDeviceFilters(devices, DEFAULT_DEVICE_FILTERS).map(d => d.key)).to.deep.equal(['lan-device', 'cloud-device']);
+            //cloud off hides the rce device only
+            expect(applyDeviceFilters(devices, { ...DEFAULT_DEVICE_FILTERS, cloud: false }).map(d => d.key)).to.deep.equal(['lan-device']);
+            //local off hides the LAN device only
+            expect(applyDeviceFilters(devices, { ...DEFAULT_DEVICE_FILTERS, local: false }).map(d => d.key)).to.deep.equal(['cloud-device']);
+        });
+
         it('applies the dev-mode facets to RCE devices exactly like LAN devices', () => {
             const devices = [
                 makeDevice({ key: 'rce-dev-disabled', isRce: true, developerEnabled: 'false' }),

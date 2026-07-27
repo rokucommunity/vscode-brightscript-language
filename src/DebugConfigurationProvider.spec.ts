@@ -842,6 +842,9 @@ describe('BrightScriptConfigurationProvider', () => {
             if (device?.serialNumber) {
                 (result as any).deviceInfo = { 'serial-number': device.serialNumber };
             }
+            //simulate the state processHostParameter guarantees: `device` is always normalized
+            //before the password flow runs (a LAN host becomes a {host} device config)
+            (result as any).device ??= { host: (result as any).host };
             return (configProvider as any).processPasswordParameter(config, result);
         };
 
@@ -868,6 +871,60 @@ describe('BrightScriptConfigurationProvider', () => {
 
         afterEach(() => {
             delete (vscode.workspace as any)._configuration?.['brightscript.devices'];
+        });
+
+        it('resolves and validates the password for a cloud emulator device through its device config', async () => {
+            const cloudDevice = { instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'account-token' };
+            const resolveStub = sinon.stub(userInputManager, 'resolveDevicePassword').resolves({ status: 'ok', password: 'cloud-pw' });
+
+            const result: any = { device: cloudDevice, password: '${promptForPassword}', deviceInfo: { 'serial-number': 'ESN123' } };
+            const returned = await (configProvider as any).processPasswordParameter({ password: 'config-pw' }, result);
+
+            expect(returned.password).to.equal('cloud-pw');
+            const args = resolveStub.firstCall.args[0];
+            expect(args.device).to.equal(cloudDevice);
+            expect(args.serialNumber).to.equal('ESN123');
+            expect(args.extraCandidates).to.deep.equal(['${promptForPassword}', 'config-pw']);
+            //the accepted password syncs to the global fallback for cloud sessions too - consumers
+            //only ever offer it as a validated candidate, so it can't misfire across device kinds
+            expect(vscode.context.workspaceState['_data'].remotePassword).to.equal('cloud-pw');
+        });
+
+        it('throws with the device label when a cloud emulator device is unreachable during password resolution', async () => {
+            sinon.stub(userInputManager, 'resolveDevicePassword').resolves({ status: 'unreachable' });
+
+            const result: any = { device: { esn: 'ESN123', rceToken: 'account-token' }, deviceInfo: {} };
+            let error: Error | undefined;
+            try {
+                await (configProvider as any).processPasswordParameter({}, result);
+            } catch (e) {
+                error = e as Error;
+            }
+            expect(error?.message).to.contain('ESN123');
+            expect(error?.message).to.contain('unreachable');
+        });
+
+        it('throws when the password prompt is cancelled for a cloud emulator device', async () => {
+            sinon.stub(userInputManager, 'resolveDevicePassword').resolves({ status: 'cancelled' });
+
+            const result: any = { device: { id: '83', rceToken: 'account-token' }, deviceInfo: {} };
+            let error: Error | undefined;
+            try {
+                await (configProvider as any).processPasswordParameter({}, result);
+            } catch (e) {
+                error = e as Error;
+            }
+            expect(error?.message).to.contain('password is required');
+        });
+
+        it('keeps the config password as-is for a device-registry name', async () => {
+            const resolveStub = sinon.stub(userInputManager, 'resolveDevicePassword');
+
+            const result: any = { device: 'my-registry-device', password: 'registry-pw' };
+            const returned = await (configProvider as any).processPasswordParameter({}, result);
+
+            expect(returned.password).to.equal('registry-pw');
+            expect(resolveStub.called).to.be.false;
         });
 
         it('accepts the first candidate that validates ok and refreshes the existing cred-store entry', async () => {

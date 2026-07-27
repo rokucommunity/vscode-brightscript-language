@@ -1125,32 +1125,32 @@ describe('DeviceManager', () => {
 
         it(`returns 'ok' when the device accepts the credentials`, async () => {
             validateStub.resolves(true);
-            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'rokudev');
             expect(result).to.equal('ok');
             expect(validateStub.firstCall.args[0]).to.deep.equal({ device: { host: '192.168.1.100' }, password: 'rokudev' });
         });
 
         it(`returns 'bad-password' when the device rejects the credentials`, async () => {
             validateStub.resolves(false);
-            const result = await manager.validateDevicePassword('192.168.1.100', 'wrong');
+            const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'wrong');
             expect(result).to.equal('bad-password');
         });
 
         it(`returns 'unreachable' when roku-deploy throws DeviceUnreachableError`, async () => {
             validateStub.rejects(new DeviceUnreachableError('offline'));
-            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'rokudev');
             expect(result).to.equal('unreachable');
         });
 
         it(`returns 'unreachable' on unexpected response codes`, async () => {
             validateStub.rejects(new InvalidDeviceResponseCodeError('500'));
-            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'rokudev');
             expect(result).to.equal('unreachable');
         });
 
         it(`returns 'unreachable' on any other unexpected error`, async () => {
             validateStub.rejects(new Error('something weird'));
-            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'rokudev');
             expect(result).to.equal('unreachable');
         });
     });

@@ -197,11 +197,9 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 return;
             }
 
-            //cloud emulator devices don't support the ip-based device actions yet, so only show the info group
-            if (device.rce) {
-                result.push(new DeviceInfoGroupTreeItem(element));
-                return result;
-            }
+            //both device kinds share one action list; ip-routed actions (screenshot, tv input)
+            //stay local-only until their commands can route through a device config
+            const isLocalDevice = !device.rce;
 
             result.push(
                 this.createDeviceInfoTreeItem({
@@ -209,11 +207,11 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     parent: element,
                     collapsibleState: vscode.TreeItemCollapsibleState.None,
                     tooltip: 'Open the web portal for this device',
-                    description: device.ip,
+                    description: this.deviceManager.getAddressLabel(device),
                     command: {
                         command: 'extension.brightscript.openUrl',
                         title: 'Open',
-                        arguments: [`http://${device.ip}`]
+                        arguments: [this.deviceManager.getWebPortalUrl(device)]
                     }
                 })
             );
@@ -257,11 +255,11 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         parent: element,
                         collapsibleState: vscode.TreeItemCollapsibleState.None,
                         tooltip: 'View the ECP Registry',
-                        description: device.ip,
+                        description: this.deviceManager.getAddressLabel(device),
                         command: {
                             command: 'extension.brightscript.openRegistryInBrowser',
                             title: 'Open',
-                            arguments: [device.ip]
+                            arguments: [{ key: device.key }]
                         }
                     })
                 );
@@ -308,26 +306,28 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     command: {
                         command: 'extension.brightscript.setActiveDevice',
                         title: 'Set Active Device',
-                        arguments: [device.ip]
+                        arguments: [{ key: device.key }]
                     }
                 })
             );
 
-            result.push(
-                this.createDeviceInfoTreeItem({
-                    label: '📷 Capture Screenshot',
-                    parent: element,
-                    collapsibleState: vscode.TreeItemCollapsibleState.None,
-                    tooltip: 'Capture a screenshot',
-                    command: {
-                        command: 'extension.brightscript.captureScreenshot',
-                        title: 'Capture Screenshot',
-                        arguments: [device.ip]
-                    }
-                })
-            );
+            if (isLocalDevice) {
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: '📷 Capture Screenshot',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'Capture a screenshot',
+                        command: {
+                            command: 'extension.brightscript.captureScreenshot',
+                            title: 'Capture Screenshot',
+                            arguments: [device.ip]
+                        }
+                    })
+                );
+            }
 
-            if (device.deviceInfo?.['is-tv'] === 'true') {
+            if (isLocalDevice && device.deviceInfo?.['is-tv'] === 'true') {
                 result.push(
                     this.createDeviceInfoTreeItem({
                         label: '📺 Switch TV Input',
@@ -386,12 +386,17 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      */
     private async buildDeviceContextValue(device: RokuDevice): Promise<string> {
         const tokens = ['device'];
-        tokens.push(device.configuredIn?.includes('user') ? 'inUser' : 'notInUser');
-        tokens.push(device.configuredIn?.includes('workspace') ? 'inWorkspace' : 'notInWorkspace');
+        //settings entries are LAN host entries, and tv-input/restart/update commands are still
+        //ip-routed, so cloud devices omit those capability tokens entirely
+        tokens.push(device.rce ? 'cloud' : 'local');
+        if (!device.rce) {
+            tokens.push(device.configuredIn?.includes('user') ? 'inUser' : 'notInUser');
+            tokens.push(device.configuredIn?.includes('workspace') ? 'inWorkspace' : 'notInWorkspace');
+        }
         if (device.serialNumber) {
             tokens.push(await this.hasStoredPasswordForSerial(device.serialNumber) ? 'hasPassword' : 'noPassword');
         }
-        if (device.deviceInfo?.['is-tv'] === 'true') {
+        if (!device.rce && device.deviceInfo?.['is-tv'] === 'true') {
             tokens.push('isTv');
         }
         const softwareVersion = device.deviceInfo?.['software-version'];

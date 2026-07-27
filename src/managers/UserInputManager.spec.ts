@@ -448,7 +448,7 @@ describe('UserInputManager', () => {
             await credentialStore.setPassword('SN-001', 'stored-pw');
             sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: 'SN-001' });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: 'SN-001' });
 
             expect(resolution).to.deep.equal({ status: 'ok', password: 'stored-pw' });
             expect(await credentialStore.getPassword('SN-001')).to.equal('stored-pw');
@@ -459,7 +459,7 @@ describe('UserInputManager', () => {
             stub.onCall(0).resolves('bad-password');
             stub.onCall(1).resolves('ok');
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: 'SN-001', extraCandidates: ['rejected-pw', 'accepted-pw'] });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: 'SN-001', extraCandidates: ['rejected-pw', 'accepted-pw'] });
 
             expect(resolution).to.deep.equal({ status: 'ok', password: 'accepted-pw' });
             expect(stub.callCount).to.equal(2);
@@ -470,7 +470,7 @@ describe('UserInputManager', () => {
             sinon.stub(deviceManager, 'validateDevicePassword').resolves('unreachable');
             const promptStub = sinon.stub(userInputManager as any, 'promptForDevicePassword');
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: 'SN-001' });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: 'SN-001' });
 
             expect(resolution).to.deep.equal({ status: 'unreachable' });
             expect(promptStub.called).to.be.false;
@@ -482,7 +482,7 @@ describe('UserInputManager', () => {
             stub.onSecondCall().resolves('ok');
             (sinon.stub(userInputManager as any, 'promptForDevicePassword') as any).resolves('typed-pw');
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: 'SN-001', extraCandidates: ['rejected-pw'] });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: 'SN-001', extraCandidates: ['rejected-pw'] });
 
             expect(resolution).to.deep.equal({ status: 'ok', password: 'typed-pw' });
         });
@@ -494,7 +494,7 @@ describe('UserInputManager', () => {
             promptStub.onCall(0).resolves('still-wrong');
             promptStub.onCall(1).resolves(undefined);
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: undefined });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: undefined });
 
             expect(resolution).to.deep.equal({ status: 'cancelled' });
             expect(promptStub.callCount).to.equal(2);
@@ -503,7 +503,7 @@ describe('UserInputManager', () => {
         it('does not seed the cred store when no entry exists for the serial', async () => {
             sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: 'SN-NEW', extraCandidates: ['winning-pw'] });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: 'SN-NEW', extraCandidates: ['winning-pw'] });
 
             expect(resolution).to.deep.equal({ status: 'ok', password: 'winning-pw' });
             expect(await credentialStore.getPassword('SN-NEW')).to.be.undefined;

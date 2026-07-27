@@ -15,6 +15,8 @@ export interface DeviceFilters {
     offline: boolean;
     userDefined: boolean;
     autoDetected: boolean;
+    local: boolean;
+    cloud: boolean;
 }
 
 export const DEVICE_FILTER_KEYS: Array<keyof DeviceFilters> = [
@@ -26,7 +28,9 @@ export const DEVICE_FILTER_KEYS: Array<keyof DeviceFilters> = [
     'online',
     'offline',
     'userDefined',
-    'autoDetected'
+    'autoDetected',
+    'local',
+    'cloud'
 ];
 
 /**
@@ -42,7 +46,9 @@ export const DEVICE_FILTER_LABELS: Record<keyof DeviceFilters, string> = {
     online: 'Online',
     offline: 'Offline',
     userDefined: 'User Defined',
-    autoDetected: 'Auto Detected'
+    autoDetected: 'Auto Detected',
+    local: 'Local',
+    cloud: 'Cloud'
 };
 
 /**
@@ -53,7 +59,8 @@ export const DEVICE_FILTER_GROUPS: Array<Array<keyof DeviceFilters>> = [
     ['devModeEnabled', 'devModeDisabled'],
     ['tv', 'setTopBox', 'stick'],
     ['online', 'offline'],
-    ['userDefined', 'autoDetected']
+    ['userDefined', 'autoDetected'],
+    ['local', 'cloud']
 ];
 
 export const DEFAULT_DEVICE_FILTERS: DeviceFilters = {
@@ -65,7 +72,9 @@ export const DEFAULT_DEVICE_FILTERS: DeviceFilters = {
     online: true,
     offline: false,
     userDefined: true,
-    autoDetected: true
+    autoDetected: true,
+    local: true,
+    cloud: true
 };
 
 /**
@@ -121,6 +130,14 @@ export function applyDeviceFilters(devices: RokuDevice[], filters: DeviceFilters
             return false;
         }
         if (!devEnabled && !filters.devModeDisabled) {
+            return false;
+        }
+
+        const isCloudDevice = !!device.rce;
+        if (isCloudDevice && !filters.cloud) {
+            return false;
+        }
+        if (!isCloudDevice && !filters.local) {
             return false;
         }
 
