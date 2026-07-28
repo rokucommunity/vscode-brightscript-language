@@ -362,6 +362,15 @@
     }
 
     /**
+     * True only while a device's very first details fetch is in flight (nothing cached yet, not even
+     * an error). Refreshes after that keep showing the existing content and swap it in place when the
+     * new details arrive, instead of collapsing the expanded section back to a spinner.
+     */
+    function isFirstDetailsLoad(detailsState: DeviceDetailsState | undefined): boolean {
+        return !detailsState || (detailsState.loading && detailsState.snapshots === undefined && detailsState.error === undefined);
+    }
+
+    /**
      * The dropdown's change handler: any change here is a deliberate user pick, even one that lands back
      * on the value that was already selected, so the flag is always set unconditionally.
      */
@@ -773,7 +782,7 @@
 
                     {#if expandedDeviceId === device.id}
                         <div class="deviceDetails">
-                            {#if !detailsState || detailsState.loading}
+                            {#if isFirstDetailsLoad(detailsState)}
                                 <Loader />
                             {:else}
                                 {#if detailsState.error}
