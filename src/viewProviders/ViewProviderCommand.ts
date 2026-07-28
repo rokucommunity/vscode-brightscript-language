@@ -1,5 +1,6 @@
 export enum ViewProviderCommand {
     createRceDevice = 'createRceDevice',
+    createRceSnapshot = 'createRceSnapshot',
     deleteRceSnapshot = 'deleteRceSnapshot',
     deleteRokuFile = 'deleteRokuFile',
     enableRceDevMode = 'enableRceDevMode',
@@ -33,5 +34,6 @@ export enum ViewProviderCommand {
     updateRceDevice = 'updateRceDevice',
     updateWorkspaceState = 'updateWorkspaceState',
     viewReady = 'viewReady',
+    wakeRceDevice = 'wakeRceDevice',
     watchRceDevice = 'watchRceDevice'
 }

@@ -229,31 +229,49 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
             return true;
         });
 
-        this.addMessageCommandCallback(ViewProviderCommand.enableRceDevMode, async (message) => {
+        this.addMessageCommandCallback(ViewProviderCommand.createRceSnapshot, async (message) => {
             try {
                 const managementClient = await this.rceManager.getClient();
                 if (!managementClient) {
                     throw new Error('No active Cloud Emulator account is configured');
                 }
-                const deviceId = message.context.deviceId;
-                const devices = await managementClient.listDevices();
-                const device = devices.find((candidateDevice) => candidateDevice.id === deviceId);
-                if (!device) {
-                    throw new Error(`Device ${deviceId} was not found`);
-                }
+                const { deviceId, name, note } = message.context;
+                const createdSnapshot = await managementClient.createSnapshot(deviceId, {
+                    name: name,
+                    note: note
+                });
+                this.postOrQueueMessage(this.createResponseMessage(message, { snapshot: createdSnapshot }));
+            } catch (error) {
+                this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
+            }
+            await this.pushState();
+            return true;
+        });
 
-                const instanceApiUrl = device.running_device?.instance_api_url;
-                if (device.status !== 'running' || !instanceApiUrl) {
-                    throw new Error(`Device '${device.name}' must be running to enable dev mode`);
-                }
-
-                const token = await this.rceManager.getToken();
-                const rceDevice = this.createRceDevice({ instanceUrl: instanceApiUrl, rceToken: token });
+        this.addMessageCommandCallback(ViewProviderCommand.enableRceDevMode, async (message) => {
+            try {
+                const rceDevice = await this.getRunningRceDevice(message.context.deviceId, 'enable dev mode');
                 await rceDevice.sendDeveloperSettingsCombo();
                 this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
             } catch (error) {
                 this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
             }
+            await this.pushState();
+            return true;
+        });
+
+        this.addMessageCommandCallback(ViewProviderCommand.wakeRceDevice, async (message) => {
+            try {
+                const rceDevice = await this.getRunningRceDevice(message.context.deviceId, 'wake it');
+                //how the web app wakes a device: a Guide keypress (wakes the display) followed by Home
+                await rceDevice.sendKey('keypress', 'Guide');
+                await rceDevice.sendKey('keypress', 'Home');
+                this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
+            } catch (error) {
+                this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
+            }
+            //waking changes nothing the state payload carries, but pushing keeps the handler shape
+            //consistent and refreshes the running_device block's freshness either way
             await this.pushState();
             return true;
         });
@@ -314,6 +332,31 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         /* eslint-enable camelcase */
 
         await vscode.commands.executeCommand(VscodeCommand.rokuDeviceViewShowRceStream, streamRequest);
+    }
+
+    /**
+     * Resolve a device to an RceDevice client for its running instance's api. Throws when no account
+     * is configured or the device is missing or not running; `actionDescription` completes the
+     * not-running error ("must be running to <actionDescription>").
+     */
+    private async getRunningRceDevice(deviceId: number, actionDescription: string): Promise<RceDevice> {
+        const managementClient = await this.rceManager.getClient();
+        if (!managementClient) {
+            throw new Error('No active Cloud Emulator account is configured');
+        }
+        const devices = await managementClient.listDevices();
+        const device = devices.find((candidateDevice) => candidateDevice.id === deviceId);
+        if (!device) {
+            throw new Error(`Device ${deviceId} was not found`);
+        }
+
+        const instanceApiUrl = device.running_device?.instance_api_url;
+        if (device.status !== 'running' || !instanceApiUrl) {
+            throw new Error(`Device '${device.name}' must be running to ${actionDescription}`);
+        }
+
+        const token = await this.rceManager.getToken();
+        return this.createRceDevice({ instanceUrl: instanceApiUrl, rceToken: token });
     }
 
     /**

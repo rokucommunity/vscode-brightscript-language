@@ -42,7 +42,8 @@ function createFakeManagementClient() {
         listSnapshots: sinon.stub().resolves([]),
         getDeviceRuns: sinon.stub().resolves([]),
         updateDevice: sinon.stub(),
-        deleteSnapshot: sinon.stub()
+        deleteSnapshot: sinon.stub(),
+        createSnapshot: sinon.stub()
     };
 }
 
@@ -71,7 +72,8 @@ class FakeRceFinder extends EventEmitter {
  */
 class TestRceManagementViewProvider extends RceManagementViewProvider {
     public fakeRceDevice = {
-        sendDeveloperSettingsCombo: sinon.stub().resolves()
+        sendDeveloperSettingsCombo: sinon.stub().resolves(),
+        sendKey: sinon.stub().resolves()
     };
 
     public lastRceDeviceConfig: RceDeviceConfig | undefined;
@@ -598,6 +600,95 @@ describe('RceManagementViewProvider', () => {
             });
             const responseMessage = findResponseMessage(ViewProviderCommand.enableRceDevMode);
             expect(responseMessage.response.success).to.be.true;
+        });
+    });
+
+    describe('wakeRceDevice', () => {
+        it('responds with an error and never constructs an RceDevice when the device is not running', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', device_type: 'tv', status: 'shutdown' }
+            ]);
+            /* eslint-enable camelcase */
+
+            const testProvider = createProviderWithFakeRceDevice();
+
+            const message = { command: ViewProviderCommand.wakeRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.wakeRceDevice](message);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.wakeRceDevice);
+            expect(responseMessage.error.message).to.contain('must be running');
+            expect(testProvider.fakeRceDevice.sendKey.called).to.be.false;
+            expect(testProvider.lastRceDeviceConfig).to.be.undefined;
+        });
+
+        it('sends a Guide keypress followed by a Home keypress to a running device', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                {
+                    id: 5,
+                    name: 'my-device',
+                    device_type: 'tv',
+                    status: 'running',
+                    running_device: { instance_api_url: 'https://device.rce.roku.com/instance/abc' }
+                }
+            ]);
+            /* eslint-enable camelcase */
+
+            const testProvider = createProviderWithFakeRceDevice();
+
+            const message = { command: ViewProviderCommand.wakeRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.wakeRceDevice](message);
+
+            expect(testProvider.fakeRceDevice.sendKey.getCalls().map((call) => call.args)).to.eql([
+                ['keypress', 'Guide'],
+                ['keypress', 'Home']
+            ]);
+            expect(testProvider.lastRceDeviceConfig).to.eql({
+                instanceUrl: 'https://device.rce.roku.com/instance/abc',
+                rceToken: 'token-work'
+            });
+            const responseMessage = findResponseMessage(ViewProviderCommand.wakeRceDevice);
+            expect(responseMessage.response.success).to.be.true;
+        });
+    });
+
+    describe('createRceSnapshot', () => {
+        it('creates the snapshot and responds with it', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            rceManager.fakeManagementClient.listDevices.resolves([]);
+            rceManager.fakeManagementClient.createSnapshot.resolves({ id: 42, name: 'before-testing' });
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.createRceSnapshot, context: { deviceId: 5, name: 'before-testing', note: 'clean install' } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.createRceSnapshot](message);
+
+            const createSnapshotArgs = rceManager.fakeManagementClient.createSnapshot.getCall(0).args;
+            expect(createSnapshotArgs[0]).to.equal(5);
+            expect(createSnapshotArgs[1]).to.eql({ name: 'before-testing', note: 'clean install' });
+            const responseMessage = findResponseMessage(ViewProviderCommand.createRceSnapshot);
+            expect(responseMessage.response.snapshot).to.eql({ id: 42, name: 'before-testing' });
+        });
+
+        it('responds with an error when the create fails', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            rceManager.fakeManagementClient.listDevices.resolves([]);
+            rceManager.fakeManagementClient.createSnapshot.rejects(new Error('snapshot limit reached'));
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.createRceSnapshot, context: { deviceId: 5, name: 'before-testing' } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.createRceSnapshot](message);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.createRceSnapshot);
+            expect(responseMessage.error.message).to.equal('snapshot limit reached');
         });
     });
 

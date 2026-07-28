@@ -72,6 +72,14 @@
 
     let enablingDevModeInFlight: Record<number, boolean> = {};
     let watchingDeviceInFlight: Record<number, boolean> = {};
+    let wakingDeviceInFlight: Record<number, boolean> = {};
+
+    //the running-device snapshot form; only one device's form is open at a time
+    let snapshotFormDeviceId: number | undefined = undefined;
+    let newSnapshotName = '';
+    let newSnapshotNote = '';
+    let creatingSnapshot = false;
+    let createSnapshotError: string | undefined = undefined;
 
     //recomputed on an interval so running-device runtime labels and progress bars stay current
     //without refetching device state
@@ -449,6 +457,53 @@
         }
     }
 
+    function toggleSnapshotForm(device: DeviceOut) {
+        if (snapshotFormDeviceId === device.id) {
+            snapshotFormDeviceId = undefined;
+            return;
+        }
+        snapshotFormDeviceId = device.id;
+        newSnapshotName = '';
+        newSnapshotNote = '';
+        createSnapshotError = undefined;
+    }
+
+    async function createSnapshot(device: DeviceOut) {
+        creatingSnapshot = true;
+        createSnapshotError = undefined;
+        try {
+            await intermediary.sendCommand(ViewProviderCommand.createRceSnapshot, {
+                deviceId: device.id,
+                name: newSnapshotName,
+                note: newSnapshotNote || undefined
+            });
+            snapshotFormDeviceId = undefined;
+            //running devices sit outside ensureRowSnapshotDetails' staleness sweep (it only walks
+            //stopped devices), so a cached snapshot list has to be refreshed here explicitly
+            if (deviceDetailsByDeviceId[device.id]) {
+                await loadDeviceDetails(device.id);
+            }
+        } catch (error) {
+            createSnapshotError = error.message;
+        } finally {
+            creatingSnapshot = false;
+        }
+    }
+
+    async function wakeDevice(device: DeviceOut) {
+        deviceActionError = undefined;
+        wakingDeviceInFlight = { ...wakingDeviceInFlight, [device.id]: true };
+        try {
+            await intermediary.sendCommand(ViewProviderCommand.wakeRceDevice, {
+                deviceId: device.id
+            });
+        } catch (error) {
+            deviceActionError = error.message;
+        } finally {
+            wakingDeviceInFlight = { ...wakingDeviceInFlight, [device.id]: false };
+        }
+    }
+
     async function watchDevice(device: DeviceOut) {
         deviceActionError = undefined;
         watchingDeviceInFlight = { ...watchingDeviceInFlight, [device.id]: true };
@@ -517,7 +572,7 @@
         margin-bottom: 0;
     }
 
-    #createDeviceForm {
+    #createDeviceForm, .snapshotForm {
         display: flex;
         flex-direction: column;
         gap: 6px;
@@ -744,13 +799,20 @@
                         {#if device.status === 'shutdown'}
                             <div class="startControl">
                                 <vscode-dropdown
+                                    disabled={isFirstDetailsLoad(detailsState)}
                                     value={detailsState?.selectedSnapshotId !== undefined ? String(detailsState.selectedSnapshotId) : ''}
                                     on:change={(event) => updateSelectedSnapshot(device.id, event.target.value)}>
-                                    {#each detailsState?.snapshots ?? [] as snapshot}
-                                        <vscode-option value={String(snapshot.id)} disabled={snapshot.ready === false}>
-                                            {snapshot.name ?? `Snapshot ${snapshot.id}`}{snapshot.ready === false ? ' (not ready)' : ''}
-                                        </vscode-option>
-                                    {/each}
+                                    {#if isFirstDetailsLoad(detailsState)}
+                                        <vscode-option value="">Loading...</vscode-option>
+                                    {:else if (detailsState?.snapshots ?? []).length === 0}
+                                        <vscode-option value="">No snapshots</vscode-option>
+                                    {:else}
+                                        {#each detailsState?.snapshots ?? [] as snapshot}
+                                            <vscode-option value={String(snapshot.id)} disabled={snapshot.ready === false}>
+                                                {snapshot.name ?? `Snapshot ${snapshot.id}`}{snapshot.ready === false ? ' (not ready)' : ''}
+                                            </vscode-option>
+                                        {/each}
+                                    {/if}
                                 </vscode-dropdown>
                                 <vscode-dropdown
                                     class="runtimeDropdown"
@@ -770,6 +832,17 @@
                                 </vscode-button>
                             </div>
                         {:else if device.status === 'running' || device.status === 'pending'}
+                            {#if device.status === 'running'}
+                                <vscode-button appearance="secondary" on:click={() => toggleSnapshotForm(device)}>
+                                    {snapshotFormDeviceId === device.id ? 'Cancel' : 'Snapshot'}
+                                </vscode-button>
+                                <vscode-button
+                                    appearance="secondary"
+                                    disabled={wakingDeviceInFlight[device.id]}
+                                    on:click={() => wakeDevice(device)}>
+                                    Wake
+                                </vscode-button>
+                            {/if}
                             <vscode-button
                                 appearance="icon"
                                 title="Stop device"
@@ -779,6 +852,18 @@
                             </vscode-button>
                         {/if}
                     </div>
+
+                    {#if snapshotFormDeviceId === device.id && device.status === 'running'}
+                        <div class="snapshotForm">
+                            <vscode-text-field placeholder="Name" value={newSnapshotName} on:input={(event) => (newSnapshotName = event.target.value)} />
+                            <vscode-text-field placeholder="Note (optional)" value={newSnapshotNote} on:input={(event) => (newSnapshotNote = event.target.value)} />
+                            {#if createSnapshotError}
+                                <div class="errorBanner">{createSnapshotError}</div>
+                            {/if}
+                            <vscode-button disabled={!newSnapshotName || creatingSnapshot} on:click={() => createSnapshot(device)}>Create Snapshot</vscode-button>
+                            <span class="mutedNote">Captures the device's current state. New snapshots can take a while to become ready.</span>
+                        </div>
+                    {/if}
 
                     {#if expandedDeviceId === device.id}
                         <div class="deviceDetails">
