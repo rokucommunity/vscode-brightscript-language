@@ -20,8 +20,8 @@ import type { CredentialStore } from './managers/CredentialStore';
 import type { DeviceTargetManager } from './managers/DeviceTargetManager';
 import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { DEVICE_FILTER_KEYS } from './deviceFilters';
-import { rokuDeploy, isLocalDeviceConfig, RceDevice } from 'roku-deploy';
-import type { DeviceConfig, RceDeviceConfig, RokuKey } from 'roku-deploy';
+import { rokuDeploy, isLocalDeviceConfig } from 'roku-deploy';
+import type { DeviceConfig, RokuKey } from 'roku-deploy';
 
 export class BrightScriptCommands {
 
@@ -423,14 +423,14 @@ export class BrightScriptCommands {
             if (selectedApp) {
                 const appId = selectedApp.appId;
                 if (device?.rce) {
-                    //a cloud emulator device has no browser-reachable ECP url; fetch the registry
-                    //over ECP2 and show the response in an editor instead
-                    const response = await util.spinAsync('Fetching registry', async () => {
-                        return new RceDevice(device.device as RceDeviceConfig).queryRegistry(appId);
+                    //a cloud emulator device has no browser-reachable ECP url; fetch the raw
+                    //registry response and show it in an editor instead
+                    const result = await util.spinAsync('Fetching registry', async () => {
+                        return rokuDeploy.ecp(device.device, `query/registry/${appId}`);
                     });
                     const document = await vscode.workspace.openTextDocument({
                         language: 'xml',
-                        content: response.content ?? `<!-- empty registry response (status ${response.status}: ${response.statusMessage ?? 'no message'}) -->`
+                        content: result.body || `<!-- empty registry response (status ${result.status}) -->`
                     });
                     await vscode.window.showTextDocument(document, { preview: false });
                 } else {

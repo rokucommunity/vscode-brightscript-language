@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import * as sinonImport from 'sinon';
 import { EventEmitter } from 'eventemitter3';
+import { rokuDeploy } from 'roku-deploy';
 import type { DeviceOut, RceDevice, RceDeviceConfig, RceManagementClient } from 'roku-deploy';
 import { vscode } from '../mockVscode.spec';
 import { RceManager } from '../managers/RceManager';
@@ -604,7 +605,7 @@ describe('RceManagementViewProvider', () => {
     });
 
     describe('wakeRceDevice', () => {
-        it('responds with an error and never constructs an RceDevice when the device is not running', async () => {
+        it('responds with an error and sends no key presses when the device is not running', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
             /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
@@ -612,19 +613,19 @@ describe('RceManagementViewProvider', () => {
                 { id: 5, name: 'my-device', device_type: 'tv', status: 'shutdown' }
             ]);
             /* eslint-enable camelcase */
+            const keyPress = sinon.stub(rokuDeploy, 'keyPress').resolves();
 
-            const testProvider = createProviderWithFakeRceDevice();
+            createProvider();
 
             const message = { command: ViewProviderCommand.wakeRceDevice, context: { deviceId: 5 } };
             await provider['messageCommandCallbacks'][ViewProviderCommand.wakeRceDevice](message);
 
             const responseMessage = findResponseMessage(ViewProviderCommand.wakeRceDevice);
             expect(responseMessage.error.message).to.contain('must be running');
-            expect(testProvider.fakeRceDevice.sendKey.called).to.be.false;
-            expect(testProvider.lastRceDeviceConfig).to.be.undefined;
+            expect(keyPress.called).to.be.false;
         });
 
-        it('sends a Guide keypress followed by a Home keypress to a running device', async () => {
+        it('sends a guide keypress followed by a home keypress to a running device', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
             /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
@@ -638,20 +639,21 @@ describe('RceManagementViewProvider', () => {
                 }
             ]);
             /* eslint-enable camelcase */
+            const keyPress = sinon.stub(rokuDeploy, 'keyPress').resolves();
 
-            const testProvider = createProviderWithFakeRceDevice();
+            createProvider();
 
             const message = { command: ViewProviderCommand.wakeRceDevice, context: { deviceId: 5 } };
             await provider['messageCommandCallbacks'][ViewProviderCommand.wakeRceDevice](message);
 
-            expect(testProvider.fakeRceDevice.sendKey.getCalls().map((call) => call.args)).to.eql([
-                ['keypress', 'Guide'],
-                ['keypress', 'Home']
-            ]);
-            expect(testProvider.lastRceDeviceConfig).to.eql({
+            const expectedDeviceConfig = {
                 instanceUrl: 'https://device.rce.roku.com/instance/abc',
                 rceToken: 'token-work'
-            });
+            };
+            expect(keyPress.getCalls().map((call) => call.args[0])).to.eql([
+                { device: expectedDeviceConfig, key: 'guide' },
+                { device: expectedDeviceConfig, key: 'home' }
+            ]);
             const responseMessage = findResponseMessage(ViewProviderCommand.wakeRceDevice);
             expect(responseMessage.response.success).to.be.true;
         });

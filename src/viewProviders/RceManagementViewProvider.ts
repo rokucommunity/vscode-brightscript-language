@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { DeviceOut, DeviceRun, RceDeviceConfig, RceManagementClient, SnapshotOut } from 'roku-deploy';
-import { RceDevice } from 'roku-deploy';
+import { RceDevice, rokuDeploy } from 'roku-deploy';
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
@@ -249,8 +249,8 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
 
         this.addMessageCommandCallback(ViewProviderCommand.enableRceDevMode, async (message) => {
             try {
-                const rceDevice = await this.getRunningRceDevice(message.context.deviceId, 'enable dev mode');
-                await rceDevice.sendDeveloperSettingsCombo();
+                const deviceConfig = await this.getRunningRceDeviceConfig(message.context.deviceId, 'enable dev mode');
+                await this.createRceDevice(deviceConfig).sendDeveloperSettingsCombo();
                 this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
             } catch (error) {
                 this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
@@ -261,10 +261,10 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
 
         this.addMessageCommandCallback(ViewProviderCommand.wakeRceDevice, async (message) => {
             try {
-                const rceDevice = await this.getRunningRceDevice(message.context.deviceId, 'wake it');
-                //how the web app wakes a device: a Guide keypress (wakes the display) followed by Home
-                await rceDevice.sendKey('keypress', 'Guide');
-                await rceDevice.sendKey('keypress', 'Home');
+                const deviceConfig = await this.getRunningRceDeviceConfig(message.context.deviceId, 'wake it');
+                //how the web app wakes a device: a guide keypress (wakes the display) followed by home
+                await rokuDeploy.keyPress({ device: deviceConfig, key: 'guide' });
+                await rokuDeploy.keyPress({ device: deviceConfig, key: 'home' });
                 this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
             } catch (error) {
                 this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
@@ -300,11 +300,11 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
     }
 
     /**
-     * Resolve a device to an RceDevice client for its running instance's api. Throws when no account
-     * is configured or the device is missing or not running; `actionDescription` completes the
-     * not-running error ("must be running to <actionDescription>").
+     * Resolve a device to the roku-deploy device config for its running instance. Throws when no
+     * account is configured or the device is missing or not running; `actionDescription` completes
+     * the not-running error ("must be running to <actionDescription>").
      */
-    private async getRunningRceDevice(deviceId: number, actionDescription: string): Promise<RceDevice> {
+    private async getRunningRceDeviceConfig(deviceId: number, actionDescription: string): Promise<RceDeviceConfig> {
         const managementClient = await this.rceManager.getClient();
         if (!managementClient) {
             throw new Error('No active Cloud Emulator account is configured');
@@ -321,7 +321,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         }
 
         const token = await this.rceManager.getToken();
-        return this.createRceDevice({ instanceUrl: instanceApiUrl, rceToken: token });
+        return { instanceUrl: instanceApiUrl, rceToken: token };
     }
 
     /**
