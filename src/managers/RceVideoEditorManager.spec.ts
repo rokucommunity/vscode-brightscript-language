@@ -5,6 +5,7 @@ import type * as vscodeType from 'vscode';
 import type { RceVideoSignalingClient, RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
 import { vscode } from '../mockVscode.spec';
 import { RceVideoEditorManager } from './RceVideoEditorManager';
+import { RceDeviceNotRunningError } from './RceManager';
 import { ViewProviderCommand } from '../viewProviders/ViewProviderCommand';
 import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 
@@ -110,6 +111,7 @@ describe('RceVideoEditorManager', () => {
     let manager: TestRceVideoEditorManager;
     let resolveStreamRequest: sinonImport.SinonStub;
     let getToken: sinonImport.SinonStub;
+    let rceFinder: EventEmitter;
 
     function createManager() {
         resolveStreamRequest = sinon.stub().resolves({
@@ -122,10 +124,11 @@ describe('RceVideoEditorManager', () => {
             iceServers: [{ urls: ['stun:stun.example.com'] }]
         });
         getToken = sinon.stub().resolves('management-api-token');
+        rceFinder = new EventEmitter();
         manager = new TestRceVideoEditorManager(vscode.context as any, {
             resolveStreamRequest: resolveStreamRequest,
             getToken: getToken
-        } as any);
+        } as any, rceFinder as any);
         return manager;
     }
 
@@ -313,5 +316,193 @@ describe('RceVideoEditorManager', () => {
         expect(errorMessages.length).to.equal(1);
         expect(errorMessages[0].context.message).to.contain('device 5 is asleep');
         expect(errorMessages[0].context.deviceName).to.equal('my-device');
+    });
+
+    it('renders a not-running resolution failure as the device-stopped state rather than an error', async () => {
+        createManager();
+        resolveStreamRequest.rejects(new RceDeviceNotRunningError(`Device 'my-device' is not running`, 'shutdown'));
+
+        await manager.open(5, 'my-device');
+        const fakePanel = manager.createdPanels[0];
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+        const stoppedMessages = findEventMessages(fakePanel, ViewProviderEvent.onRceStreamDeviceStopped);
+        expect(stoppedMessages.length).to.equal(1);
+        expect(stoppedMessages[0].context.message).to.contain('is not running');
+        expect(stoppedMessages[0].context.deviceId).to.equal(5);
+        expect(stoppedMessages[0].context.deviceName).to.equal('my-device');
+        expect(findEventMessages(fakePanel, ViewProviderEvent.onRceStreamError).length).to.equal(0);
+    });
+
+    it('waits for a pending device on the initial watch, connecting once it reaches running', async () => {
+        createManager();
+        resolveStreamRequest.onFirstCall().rejects(new RceDeviceNotRunningError(`Device 'my-device' is not running`, 'pending'));
+
+        await manager.open(5, 'my-device');
+        const fakePanel = manager.createdPanels[0];
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+        await new Promise((resolve) => {
+            setTimeout(resolve, 10);
+        });
+
+        const waitingMessages = findEventMessages(fakePanel, ViewProviderEvent.onRceStreamConnecting).filter((message) => message.context.waitingForDevice);
+        expect(waitingMessages.length).to.be.greaterThanOrEqual(1);
+        expect(findEventMessages(fakePanel, ViewProviderEvent.onRceStreamDeviceStopped).length).to.equal(0);
+        expect(findEventMessages(fakePanel, ViewProviderEvent.onRceStreamError).length).to.equal(0);
+        //the waiting loop's own status poll (running on the second resolution) connected the stream
+        expect(findEventMessages(fakePanel, ViewProviderEvent.onRceStreamOffer).length).to.equal(1);
+    });
+
+    describe('automatic reconnect', () => {
+        function sleep(ms: number): Promise<void> {
+            return new Promise((resolve) => {
+                setTimeout(resolve, ms);
+            });
+        }
+
+        /**
+         * Shrink the panel session's reconnect backoff so reconnect tests settle within a short
+         * real wait
+         */
+        function shrinkReconnectDelays(deviceId: number, delays: number[]) {
+            manager['editorPanelsByDeviceId'].get(deviceId)['session']['reconnectDelaysMs'] = delays;
+        }
+
+        it('renegotiates a fresh session when the client closes after the offer was posted', async () => {
+            createManager();
+            await manager.open(5, 'my-device');
+            const fakePanel = manager.createdPanels[0];
+            await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+            shrinkReconnectDelays(5, [0]);
+
+            manager.createdClients[0].emit('close');
+            await sleep(10);
+
+            //the drop was reported as a reconnect status, not as closed
+            expect(findEventMessages(fakePanel, ViewProviderEvent.onRceStreamClosed).length).to.equal(0);
+            const connectingMessages = findEventMessages(fakePanel, ViewProviderEvent.onRceStreamConnecting);
+            const reconnectMessage = connectingMessages[connectingMessages.length - 1];
+            expect(reconnectMessage.context.reconnectAttempt).to.equal(1);
+            //the stream was re-resolved and a second client negotiated a fresh offer
+            expect(resolveStreamRequest.calledTwice).to.be.true;
+            expect(manager.createdClients.length).to.equal(2);
+            expect(findEventMessages(fakePanel, ViewProviderEvent.onRceStreamOffer).length).to.equal(2);
+        });
+
+        it('renegotiates when the webview reports its peer connection failed', async () => {
+            createManager();
+            await manager.open(5, 'my-device');
+            const fakePanel = manager.createdPanels[0];
+            await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+            shrinkReconnectDelays(5, [0]);
+
+            await fakePanel.receiveMessage({ command: ViewProviderCommand.reportRceStreamFailure, context: { message: 'ICE connection failed' } });
+            await sleep(10);
+
+            expect(manager.createdClients[0].stop.called).to.be.true;
+            expect(resolveStreamRequest.calledTwice).to.be.true;
+            expect(manager.createdClients.length).to.equal(2);
+        });
+
+        it('posts onRceStreamDeviceStopped instead of retrying when the device is not running anymore', async () => {
+            createManager();
+            await manager.open(5, 'my-device');
+            const fakePanel = manager.createdPanels[0];
+            await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+            shrinkReconnectDelays(5, [0, 0]);
+            resolveStreamRequest.rejects(new RceDeviceNotRunningError(`Device 'my-device' must be running and expose a video stream to watch it`));
+
+            manager.createdClients[0].emit('close');
+            await sleep(10);
+
+            const stoppedMessages = findEventMessages(fakePanel, ViewProviderEvent.onRceStreamDeviceStopped);
+            expect(stoppedMessages.length).to.equal(1);
+            expect(stoppedMessages[0].context.message).to.contain('must be running');
+            //the not-running report ends the loop on the first attempt, with no error banner and
+            //without closing the tab (the user can start the device and watch again from it)
+            expect(resolveStreamRequest.calledTwice).to.be.true;
+            expect(findEventMessages(fakePanel, ViewProviderEvent.onRceStreamError).length).to.equal(0);
+            expect(fakePanel.disposed).to.be.false;
+        });
+
+        it('posts the error banner after exhausting the reconnect attempts', async () => {
+            createManager();
+            await manager.open(5, 'my-device');
+            const fakePanel = manager.createdPanels[0];
+            await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+            shrinkReconnectDelays(5, [0, 0]);
+            resolveStreamRequest.rejects(new Error('gateway unreachable'));
+
+            manager.createdClients[0].emit('close');
+            await sleep(30);
+
+            const errorMessages = findEventMessages(fakePanel, ViewProviderEvent.onRceStreamError);
+            expect(errorMessages.length).to.equal(1);
+            expect(errorMessages[0].context.message).to.contain('could not reconnect');
+            expect(errorMessages[0].context.message).to.contain('gateway unreachable');
+            expect(fakePanel.disposed).to.be.false;
+        });
+
+        it('shows the device-stopped state when the finder reports the tab device left running, leaving other tabs alone', async () => {
+            createManager();
+            resolveStreamRequest.callsFake((deviceId: number) => Promise.resolve({
+                deviceId: deviceId,
+                deviceName: `device-${deviceId}`,
+                websocketUrl: 'wss://device.rce.roku.com/instance/abc/janus',
+                streamId: deviceId,
+                iceServers: []
+            }));
+            await manager.open(5, 'device-5');
+            await manager.open(6, 'device-6');
+            const panelForDevice5 = manager.createdPanels[0];
+            const panelForDevice6 = manager.createdPanels[1];
+            await panelForDevice5.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+            await panelForDevice6.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+            rceFinder.emit('devices', [{ id: 5, status: 'shutdown' }, { id: 6, status: 'running' }]);
+
+            const stoppedMessages = findEventMessages(panelForDevice5, ViewProviderEvent.onRceStreamDeviceStopped);
+            expect(stoppedMessages.length).to.equal(1);
+            expect(stoppedMessages[0].context.message).to.contain('was stopped');
+            expect(manager.createdClients[0].stop.called).to.be.true;
+            //the other tab's stream is untouched, and neither tab was closed
+            expect(findEventMessages(panelForDevice6, ViewProviderEvent.onRceStreamDeviceStopped).length).to.equal(0);
+            expect(manager.createdClients[1].stop.called).to.be.false;
+            expect(panelForDevice5.disposed).to.be.false;
+        });
+
+        it('resumes the tab stream by itself when the device starts again', async () => {
+            createManager();
+            await manager.open(5, 'my-device');
+            const fakePanel = manager.createdPanels[0];
+            await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+            rceFinder.emit('devices', [{ id: 5, status: 'shutdown' }]);
+            expect(findEventMessages(fakePanel, ViewProviderEvent.onRceStreamDeviceStopped).length).to.equal(1);
+
+            rceFinder.emit('devices', [{ id: 5, status: 'pending' }]);
+            await sleep(10);
+
+            //the waiting phase's own status poll (running by then) reconnected the stream
+            expect(manager.createdClients.length).to.equal(2);
+            expect(findEventMessages(fakePanel, ViewProviderEvent.onRceStreamOffer).length).to.equal(2);
+            expect(fakePanel.disposed).to.be.false;
+        });
+
+        it('closing the tab cancels an in-flight reconnect loop', async () => {
+            createManager();
+            await manager.open(5, 'my-device');
+            const fakePanel = manager.createdPanels[0];
+            await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+            shrinkReconnectDelays(5, [60000]);
+
+            manager.createdClients[0].emit('close');
+            //the loop is parked on its backoff wait; disposing the panel stops the session
+            fakePanel.dispose();
+            await sleep(10);
+
+            expect(resolveStreamRequest.calledOnce).to.be.true;
+            expect(manager.createdClients.length).to.equal(1);
+        });
     });
 });

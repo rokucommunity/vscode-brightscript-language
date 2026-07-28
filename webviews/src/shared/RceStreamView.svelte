@@ -18,8 +18,11 @@
     let rceStreamDeviceId: number | undefined = undefined;
     let rceStreamDeviceName: string | undefined = undefined;
     let rceStreamPeer: RceStreamPeer | undefined = undefined;
-    let rceStreamStatus: 'connecting' | 'streaming' = 'connecting';
+    let rceStreamStatus: 'connecting' | 'reconnecting' | 'waiting' | 'streaming' | 'stopped' = 'connecting';
     let rceStreamError: string | undefined = undefined;
+    let rceStreamStoppedMessage: string | undefined = undefined;
+    let rceStreamReconnectAttempt: number | undefined = undefined;
+    let rceStreamReconnectAttemptLimit: number | undefined = undefined;
     let rceMediaStream: MediaStream | undefined = undefined;
     let rceVideoElement: HTMLVideoElement;
     let rceStreamMuted = true;
@@ -28,12 +31,45 @@
         rceVideoElement.srcObject = rceMediaStream ?? null;
     }
 
+    $: rceStreamStatusLabel =
+        rceStreamStatus === 'reconnecting' && rceStreamReconnectAttempt !== undefined
+            ? `reconnecting (${rceStreamReconnectAttempt}/${rceStreamReconnectAttemptLimit})`
+            : rceStreamStatus === 'waiting'
+                ? 'waiting for the device to start'
+                : rceStreamStatus === 'stopped'
+                    ? 'device stopped'
+                    : rceStreamStatus;
+
     //posted at the very start of the extension host's negotiation, before it has anything else to
     //report (even before it knows whether an account token is available) - this is what makes any
     //failure before an offer (no token, a connect() failure, a negotiation timeout) visible at all,
-    //rather than the session dying silently
+    //rather than the session dying silently. Reconnect attempts (the extension host's automatic
+    //recovery after a dropped stream) arrive as this same event with a reconnectAttempt counter.
     intermediary.observeEvent(ViewProviderEvent.onRceStreamConnecting, (message) => {
-        enterRceStreamMode(message.context.deviceId, message.context.deviceName);
+        const isRetry = message.context.reconnectAttempt !== undefined || message.context.waitingForDevice === true;
+        //a retry keeps the user's mute choice; a fresh watch starts muted again
+        enterRceStreamMode(message.context.deviceId, message.context.deviceName, { preserveMute: isRetry });
+        if (message.context.waitingForDevice) {
+            //the device is still starting; the extension host is polling its status and will
+            //connect once it reaches running
+            rceStreamStatus = 'waiting';
+        } else if (message.context.reconnectAttempt !== undefined) {
+            rceStreamStatus = 'reconnecting';
+            rceStreamReconnectAttempt = message.context.reconnectAttempt;
+            rceStreamReconnectAttemptLimit = message.context.reconnectAttemptLimit;
+        }
+    });
+
+    //the device is not running anymore (stopped by the user or its runtime limit); rendered as a
+    //neutral device-stopped state with a Watch Again action rather than an error banner
+    intermediary.observeEvent(ViewProviderEvent.onRceStreamDeviceStopped, (message) => {
+        if (rceStreamDeviceName === undefined) {
+            enterRceStreamMode(message.context.deviceId, message.context.deviceName ?? 'Cloud Emulator device');
+        }
+        teardownRceStreamPeer();
+        rceStreamStatus = 'stopped';
+        rceStreamError = undefined;
+        rceStreamStoppedMessage = message.context.message ?? `Device '${rceStreamDeviceName}' is no longer running`;
     });
 
     intermediary.observeEvent(ViewProviderEvent.onRceStreamOffer, (message) => {
@@ -51,6 +87,10 @@
     });
 
     intermediary.observeEvent(ViewProviderEvent.onRceStreamClosed, () => {
+        //a stopped device already explains itself; the generic closed message is for everything else
+        if (rceStreamStatus === 'stopped') {
+            return;
+        }
         rceStreamError = rceStreamError ?? 'The video stream closed unexpectedly';
     });
 
@@ -62,19 +102,26 @@
 
     //enters (or re-enters) stream mode: tears down any previous peer connection, shows the header for
     //the given device, and clears any previous error so a fresh attempt starts from a clean banner
-    function enterRceStreamMode(deviceId: number | undefined, deviceName: string) {
+    function enterRceStreamMode(deviceId: number | undefined, deviceName: string, options: { preserveMute?: boolean } = {}) {
         teardownRceStreamPeer();
 
         rceStreamDeviceId = deviceId;
         rceStreamDeviceName = deviceName;
         rceStreamStatus = 'connecting';
         rceStreamError = undefined;
-        rceStreamMuted = true;
+        rceStreamStoppedMessage = undefined;
+        rceStreamReconnectAttempt = undefined;
+        rceStreamReconnectAttemptLimit = undefined;
+        if (!options.preserveMute) {
+            rceStreamMuted = true;
+        }
     }
 
     function startRceStreamPeer(offer: { deviceId: number; deviceName: string; offer: RceStreamJsep; iceServers: IceServer[] }) {
-        //a new offer while already streaming tears down the old peer connection first
-        enterRceStreamMode(offer.deviceId, offer.deviceName);
+        //a new offer while already streaming tears down the old peer connection first. The mute
+        //choice is preserved here because the preceding onRceStreamConnecting already reset it when
+        //this negotiation was a fresh watch rather than a reconnect.
+        enterRceStreamMode(offer.deviceId, offer.deviceName, { preserveMute: true });
 
         const peer = new RceStreamPeer();
         rceStreamPeer = peer;
@@ -90,7 +137,10 @@
             rceStreamStatus = 'streaming';
         });
         peer.on('error', (error) => {
+            //show the failure, but also report it to the extension host, which owns the automatic
+            //reconnect loop; when a reconnect does start, its connecting event clears this banner
             rceStreamError = error.message;
+            intermediary.sendCommand(ViewProviderCommand.reportRceStreamFailure, { message: error.message });
         });
 
         peer.answerOffer(offer.offer, offer.iceServers).catch((error) => {
@@ -113,8 +163,10 @@
             return;
         }
         //re-runs the whole negotiation rather than reusing anything remembered locally, since the
-        //extension host re-resolves the device's current stream details fresh
-        intermediary.sendCommand(ViewProviderCommand.stopRceStream);
+        //extension host re-resolves the device's current stream details fresh. The host stops any
+        //lingering session itself when it starts the new one, so nothing is sent ahead of this
+        //(stopRceStream in particular must not be sent: the editor tab host treats it as "close
+        //the tab")
         intermediary.sendCommand(ViewProviderCommand.watchRceDevice, { deviceId: rceStreamDeviceId });
     }
 
@@ -160,6 +212,18 @@
         gap: 8px;
     }
 
+    #rceStreamStoppedBanner {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    #rceStreamStoppedHint {
+        opacity: 0.7;
+        font-size: 0.9em;
+    }
+
     #rceStreamVideo {
         max-width: 100vw;
         max-height: 100vh;
@@ -173,11 +237,18 @@
     <div id="rceStreamContainer">
         <div id="rceStreamHeader">
             <span id="rceStreamDeviceName">{rceStreamDeviceName}</span>
-            <span id="rceStreamStatusLabel">{rceStreamStatus}</span>
-            <vscode-button appearance="secondary" on:click={toggleRceStreamMute}>
-                {rceStreamMuted ? 'Unmute' : 'Mute'}
+            <span id="rceStreamStatusLabel">{rceStreamStatusLabel}</span>
+            {#if rceStreamStatus !== 'stopped'}
+                <vscode-button appearance="secondary" on:click={toggleRceStreamMute}>
+                    {rceStreamMuted ? 'Unmute' : 'Mute'}
+                </vscode-button>
+            {/if}
+            <!-- with nothing streaming there is nothing to "stop", but this is still the only
+                in-view exit (the Device View leaves stream mode, a video tab closes), so it stays
+                with a label matching what it does -->
+            <vscode-button appearance="secondary" on:click={stopRceStream}>
+                {rceStreamStatus === 'stopped' ? 'Close' : 'Stop'}
             </vscode-button>
-            <vscode-button appearance="secondary" on:click={stopRceStream}>Stop</vscode-button>
         </div>
         {#if rceStreamError}
             <div id="rceStreamErrorBanner">
@@ -185,7 +256,14 @@
                 <vscode-button appearance="secondary" on:click={retryRceStream}>Retry</vscode-button>
             </div>
         {/if}
-        <!-- svelte-ignore a11y-media-has-caption -->
-        <video id="rceStreamVideo" bind:this={rceVideoElement} autoplay playsinline muted={rceStreamMuted} />
+        {#if rceStreamStatus === 'stopped'}
+            <div id="rceStreamStoppedBanner">
+                <span>{rceStreamStoppedMessage}</span>
+                <span id="rceStreamStoppedHint">The stream will resume automatically when the device starts</span>
+            </div>
+        {:else}
+            <!-- svelte-ignore a11y-media-has-caption -->
+            <video id="rceStreamVideo" bind:this={rceVideoElement} autoplay playsinline muted={rceStreamMuted} />
+        {/if}
     </div>
 {/if}

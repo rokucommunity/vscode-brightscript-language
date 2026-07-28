@@ -197,11 +197,17 @@ export class RceManager {
             throw new Error(`Device ${deviceId} was not found`);
         }
 
+        //typed errors so stream hosts can tell "the device is not running" apart from transient
+        //failures: a pending device is waited for, a stopped one renders as a device-stopped state
+        //rather than a retryable error
+        if (device.status !== 'running') {
+            throw new RceDeviceNotRunningError(`Device '${device.name}' is not running`, device.status);
+        }
         const runningDevice = device.running_device;
         //janus_id can legitimately be 0 (a valid stream id), so its presence must be checked
         //with a nullish check rather than a truthiness check
-        if (device.status !== 'running' || !runningDevice?.janus_websocket_url || runningDevice?.janus_id === undefined || runningDevice?.janus_id === null) {
-            throw new Error(`Device '${device.name}' must be running and expose a video stream to watch it`);
+        if (!runningDevice?.janus_websocket_url || runningDevice?.janus_id === undefined || runningDevice?.janus_id === null) {
+            throw new RceDeviceNotRunningError(`Device '${device.name}' must be running and expose a video stream to watch it`, device.status);
         }
 
         /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
@@ -324,6 +330,28 @@ export class RceManager {
     public static readonly legacyTokenSecretKey = 'brightscript.rce.token';
 
     private static readonly activeAccountStateKey = 'brightscript.rce.activeAccount';
+}
+
+/**
+ * Thrown by resolveStreamRequest when the device exists but is not running (or exposes no video
+ * stream), so stream hosts can react to the device's actual state instead of a retryable error
+ * banner: `deviceStatus` 'pending' means the device is still starting (wait for it); anything else
+ * renders as a device-stopped state.
+ */
+export class RceDeviceNotRunningError extends Error {
+    public constructor(message: string, public readonly deviceStatus?: string) {
+        super(message);
+        this.name = 'RceDeviceNotRunningError';
+    }
+
+    /**
+     * Identify this error by name rather than instanceof, so the check survives the error being
+     * relayed across an executeCommand boundary (which may hand back a copy rather than the
+     * original instance)
+     */
+    public static is(error: unknown): boolean {
+        return (error as Error)?.name === 'RceDeviceNotRunningError';
+    }
 }
 
 export interface RceAccount {

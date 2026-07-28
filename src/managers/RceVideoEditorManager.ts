@@ -6,7 +6,9 @@ import { VscodeCommand } from '../commands/VscodeCommand';
 import { ViewProviderCommand } from '../viewProviders/ViewProviderCommand';
 import { RceStreamSession } from '../viewProviders/RceStreamSession';
 import { buildWebviewIndexHtml } from '../viewProviders/webviewHtml';
-import type { RceManager } from './RceManager';
+import type { DeviceOut } from 'roku-deploy';
+import type { RceManager, RceStreamRequestConfig } from './RceManager';
+import type { RceFinder } from '../deviceDiscovery/RceFinder';
 
 /**
  * Owns the Cloud Emulator video editor tabs: one WebviewPanel per device, each rendering that
@@ -18,7 +20,8 @@ import type { RceManager } from './RceManager';
 export class RceVideoEditorManager implements vscode.Disposable {
     constructor(
         private extensionContext: vscode.ExtensionContext,
-        private rceManager: RceManager
+        private rceManager: RceManager,
+        private rceFinder?: RceFinder
     ) {
         this.webviewBasePath = path.join(extensionContext.extensionPath, 'dist', 'webviews');
         extensionContext.subscriptions.push(
@@ -26,6 +29,11 @@ export class RceVideoEditorManager implements vscode.Disposable {
                 await this.open(deviceId, deviceName);
             })
         );
+
+        //keep every tab's stream in step with its device's status from the management-api poll: an
+        //externally stopped device shows the device-stopped state promptly (its Janus socket can
+        //linger after the instance stops) and a restarting one waits instead of erroring
+        this.rceFinder?.on('devices', this.handleFinderDevices);
 
         //restore video tabs across window reloads: VS Code only resurrects webview panels whose
         //viewType has a serializer, handing back the state the webview saved (its device id),
@@ -49,7 +57,21 @@ export class RceVideoEditorManager implements vscode.Disposable {
     private webviewBasePath: string;
     private editorPanelsByDeviceId = new Map<number, RceVideoEditorPanel>();
 
+    /**
+     * Relay each streamed device's current status (from an RceFinder poll emission) into its tab's
+     * stream session. Bound so `on`/`off` see the same function reference.
+     */
+    private handleFinderDevices = (devices: DeviceOut[]) => {
+        for (const [deviceId, editorPanel] of this.editorPanelsByDeviceId) {
+            const device = devices.find((candidateDevice) => candidateDevice.id === deviceId);
+            if (device) {
+                editorPanel.handleDeviceStatusChanged(device.status);
+            }
+        }
+    };
+
     public dispose() {
+        this.rceFinder?.off('devices', this.handleFinderDevices);
         for (const editorPanel of this.editorPanelsByDeviceId.values()) {
             editorPanel.dispose();
         }
@@ -161,7 +183,10 @@ class RceVideoEditorPanel implements vscode.Disposable {
             getApiToken: () => this.rceManager.getToken(),
             postEvent: (event, context) => this.postOrQueueMessage({ event: event, context: context }),
             isViewReady: () => this.viewReady,
-            createSignalingClient: createSignalingClient
+            createSignalingClient: createSignalingClient,
+            //this panel is pinned to one device, so the session's reconnect loop resolves through
+            //the same helper watch() uses (which also keeps the tab title current)
+            resolveStreamRequest: () => this.resolveStreamRequest()
         });
 
         panel.webview.onDidReceiveMessage(async (message) => {
@@ -179,6 +204,7 @@ class RceVideoEditorPanel implements vscode.Disposable {
         });
 
         panel.onDidDispose(() => {
+            this.disposed = true;
             this.session.stop();
             for (const listener of this.disposeListeners) {
                 listener();
@@ -188,6 +214,7 @@ class RceVideoEditorPanel implements vscode.Disposable {
 
     private session: RceStreamSession;
     private deviceName: string;
+    private disposed = false;
     private viewReady = false;
     private queuedMessages = [];
     private disposeListeners: Array<() => void> = [];
@@ -205,23 +232,49 @@ class RceVideoEditorPanel implements vscode.Disposable {
     }
 
     /**
-     * Resolve the device's current stream details and start (or restart) the session. Failures of
-     * any kind (device not running, account trouble) render in the tab's stream error banner, which
-     * carries a Retry action that comes back through here.
+     * Resolve the device's current stream details and start (or restart) the session. A stopped
+     * device renders as the tab's device-stopped state (with its Watch Again action); other
+     * failures (account trouble, a dead gateway) render in the stream error banner, whose Retry
+     * action comes back through here.
      */
     public async watch(): Promise<void> {
         try {
-            const streamRequest = await this.rceManager.resolveStreamRequest(this.deviceId);
-            this.deviceName = streamRequest.deviceName;
-            this.panel.title = streamRequest.deviceName;
+            const streamRequest = await this.resolveStreamRequest();
             await this.session.start(streamRequest);
         } catch (e) {
-            this.session.postError(
-                `Failed to start the video stream for device '${this.deviceName}': ${(e as Error).message}`,
-                this.deviceId,
-                this.deviceName
-            );
+            //a pending device enters the waiting-for-device phase, a stopped one the device-stopped
+            //state; everything else renders in the stream error banner
+            if (!this.session.handleDeviceNotRunning(e, this.deviceId, this.deviceName)) {
+                this.session.postError(
+                    `Failed to start the video stream for device '${this.deviceName}': ${(e as Error).message}`,
+                    this.deviceId,
+                    this.deviceName
+                );
+            }
         }
+    }
+
+    /**
+     * Relay the device's current management-api status into the stream session (see
+     * RceStreamSession.handleDeviceStatusChanged).
+     */
+    public handleDeviceStatusChanged(status: string | undefined): void {
+        this.session.handleDeviceStatusChanged(status);
+    }
+
+    /**
+     * Resolve this panel's device to its current stream details, keeping the tab title in sync with
+     * the device's name. Shared by watch() and the session's automatic reconnect loop.
+     */
+    private async resolveStreamRequest(): Promise<RceStreamRequestConfig> {
+        const streamRequest = await this.rceManager.resolveStreamRequest(this.deviceId);
+        this.deviceName = streamRequest.deviceName;
+        //a reconnect resolution can land after the tab was closed; a disposed panel throws on any
+        //property access
+        if (!this.disposed) {
+            this.panel.title = streamRequest.deviceName;
+        }
+        return streamRequest;
     }
 
     private async handleWebviewMessage(message): Promise<void> {
@@ -245,6 +298,10 @@ class RceVideoEditorPanel implements vscode.Disposable {
             await this.session.sendAnswer(message.context.jsep);
         } else if (command === ViewProviderCommand.sendRceStreamIceCandidate) {
             this.session.handleIceCandidate(message.context);
+        } else if (command === ViewProviderCommand.reportRceStreamFailure) {
+            //the webview's peer connection failed (for example the ICE connection dropped); the
+            //session reruns the whole negotiation through its reconnect loop
+            this.session.handleStreamFailure(message.context?.message);
         } else if (command === ViewProviderCommand.stopRceStream) {
             //this tab exists only to show the stream, so stopping it closes the tab
             this.panel.dispose();

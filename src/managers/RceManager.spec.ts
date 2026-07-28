@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { createSandbox } from 'sinon';
 import type { RceManagementClient } from 'roku-deploy';
 import { vscode } from '../mockVscode.spec';
-import { RceManager } from './RceManager';
+import { RceDeviceNotRunningError, RceManager } from './RceManager';
 
 const sinon = createSandbox();
 
@@ -170,7 +170,7 @@ describe('RceManager', () => {
             expect(caughtError.message).to.contain('No active Cloud Emulator account');
         });
 
-        it('throws when the device is not running', async () => {
+        it('throws the typed not-running error, carrying the device status, when the device is not running', async () => {
             await manager.addAccount('work', 'token-work');
             /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             manager.devices = [{ id: 5, name: 'my-device', status: 'shutdown' }];
@@ -182,7 +182,24 @@ describe('RceManager', () => {
             } catch (e) {
                 caughtError = e as Error;
             }
-            expect(caughtError.message).to.contain('must be running');
+            expect(caughtError.message).to.contain('is not running');
+            //typed so stream hosts can react to the device's actual state (wait for pending, show
+            //device-stopped otherwise), identified by name so the check survives an executeCommand
+            //relay
+            expect(RceDeviceNotRunningError.is(caughtError)).to.be.true;
+            expect((caughtError as RceDeviceNotRunningError).deviceStatus).to.equal('shutdown');
+            //a plain error is not misidentified
+            expect(RceDeviceNotRunningError.is(new Error('is not running'))).to.be.false;
+
+            //a pending device carries its status too, which is what the waiting-for-device phase keys on
+            manager.devices = [{ id: 5, name: 'my-device', status: 'pending' }];
+            caughtError = undefined;
+            try {
+                await manager.resolveStreamRequest(5);
+            } catch (e) {
+                caughtError = e as Error;
+            }
+            expect((caughtError as RceDeviceNotRunningError).deviceStatus).to.equal('pending');
         });
 
         it('throws when a running device has no janus_websocket_url or no janus_id', async () => {

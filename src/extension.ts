@@ -88,8 +88,8 @@ export class Extension {
         this.extensionOutputChannel.appendLine('Extension startup');
         const rceManager = new RceManager(context);
         rceManager.register(context);
-        context.subscriptions.push(new RceVideoEditorManager(context, rceManager));
         const rceFinder = new RceFinder(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
+        context.subscriptions.push(new RceVideoEditorManager(context, rceManager, rceFinder));
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel, rceFinder);
         const credentialStore = new CredentialStore(context);
         let userInputManager = new UserInputManager(

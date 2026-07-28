@@ -14,6 +14,7 @@ export enum ViewProviderCommand {
     getWorkspaceState = 'getWorkspaceState',
     loadRokuAppOverlaysThumbnails = 'loadRokuAppOverlaysThumbnails',
     openRokuFile = 'openRokuFile',
+    reportRceStreamFailure = 'reportRceStreamFailure',
     runRceAccountCommand = 'runRceAccountCommand',
     runRokuAutomationConfig = 'runRokuAutomationConfig',
     sendMessageToWebviews = 'sendMessageToWebviews',

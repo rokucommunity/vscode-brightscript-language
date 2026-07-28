@@ -6,6 +6,7 @@ import { RtaManager } from '../managers/RtaManager';
 import { vscode } from '../mockVscode.spec';
 import { RokuDeviceViewViewProvider } from './RokuDeviceViewViewProvider';
 import type { RceStreamRequestConfig } from '../managers/RceManager';
+import { RceDeviceNotRunningError } from '../managers/RceManager';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { VscodeCommand } from '../commands/VscodeCommand';
@@ -107,14 +108,19 @@ describe('RokuDeviceViewViewProvider', () => {
     let postOrQueueMessage: sinonImport.SinonStub;
     let getToken: sinonImport.SinonStub;
     let getDevice: sinonImport.SinonStub;
+    let resolveStreamRequest: sinonImport.SinonStub;
+    let rceFinder: EventEmitter;
 
     function createProvider(): TestRokuDeviceViewViewProvider {
         const rtaManager = new RtaManager(vscode.context);
         getToken = sinon.stub().resolves('management-api-token');
         getDevice = sinon.stub().returns(undefined);
+        resolveStreamRequest = sinon.stub().resolves(createStreamRequest());
+        rceFinder = new EventEmitter();
         provider = new TestRokuDeviceViewViewProvider(vscode.context, {
             rtaManager: rtaManager,
-            rceManager: { getToken: getToken },
+            rceManager: { getToken: getToken, resolveStreamRequest: resolveStreamRequest },
+            rceFinder: rceFinder,
             deviceManager: {
                 getDevice: getDevice,
                 getDeviceDisplayName: (device: any) => device.deviceInfo?.['user-device-name'] ?? device.key
@@ -122,6 +128,19 @@ describe('RokuDeviceViewViewProvider', () => {
         } as any);
         postOrQueueMessage = sinon.stub(provider as any, 'postOrQueueMessage');
         return provider;
+    }
+
+    /**
+     * Shrink the session's reconnect backoff so reconnect tests settle within a short real wait
+     */
+    function shrinkReconnectDelays(delays: number[]) {
+        provider['rceStreamSession']['reconnectDelaysMs'] = delays;
+    }
+
+    function sleep(ms: number): Promise<void> {
+        return new Promise((resolve) => {
+            setTimeout(resolve, ms);
+        });
     }
 
     function findEventMessages(event: ViewProviderEvent) {
@@ -265,8 +284,11 @@ describe('RokuDeviceViewViewProvider', () => {
             expect(errorMessages[0].context.deviceName).to.equal('my-device');
         });
 
-        it('posts a descriptive onRceStreamError carrying the device id/name when connect() rejects', async () => {
+        it('posts a descriptive onRceStreamError carrying the device id/name when connect() rejects and the retries run out', async () => {
             createProvider();
+            //a failed initial connection now retries in the background; no delays means no retries,
+            //so the exhaustion error posts before start() resolves
+            shrinkReconnectDelays([]);
             provider.nextConnectError = new Error('Timed out negotiating the Janus stream');
 
             await provider['startRceStreamSession'](createStreamRequest());
@@ -279,9 +301,28 @@ describe('RokuDeviceViewViewProvider', () => {
             expect(errorMessages[0].context.deviceName).to.equal('my-device');
         });
 
-        it('posts onRceStreamError carrying the device id/name when the client emits an error event', async () => {
+        it('retries a failed initial connection and recovers (a just-started device gateway can refuse at first)', async () => {
             createProvider();
-            const client = await startFirstSession();
+            shrinkReconnectDelays([0]);
+            provider.nextConnectError = new Error('Failed to connect to the Janus WebSocket: Unexpected server response: 503');
+
+            await provider['startRceStreamSession'](createStreamRequest());
+            provider.nextConnectError = undefined;
+            await sleep(10);
+
+            expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
+            expect(provider.createdClients).to.have.length(2);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamOffer)).to.have.length(1);
+            const connectingMessages = findEventMessages(ViewProviderEvent.onRceStreamConnecting);
+            expect(connectingMessages[connectingMessages.length - 1].context.reconnectAttempt).to.equal(1);
+        });
+
+        it('posts onRceStreamError carrying the device id/name when the client emits an error before the offer was posted', async () => {
+            createProvider();
+            provider.deferNextConnect = true;
+            const startPromise = provider['startRceStreamSession'](createStreamRequest());
+            await flushMicrotasks();
+            const client = provider.createdClients[0];
 
             client.emit('error', new Error('Janus WebSocket error'));
 
@@ -290,15 +331,24 @@ describe('RokuDeviceViewViewProvider', () => {
             expect(errorMessages[0].context.message).to.contain('Janus WebSocket error');
             expect(errorMessages[0].context.deviceId).to.equal(5);
             expect(errorMessages[0].context.deviceName).to.equal('my-device');
+
+            provider.pendingConnectResolvers[0]({ offer: defaultFakeOffer, iceServers: [] });
+            await startPromise;
         });
 
-        it('posts onRceStreamClosed when the client emits a close event', async () => {
+        it('posts onRceStreamClosed when the client closes before the offer was posted', async () => {
             createProvider();
-            const client = await startFirstSession();
+            provider.deferNextConnect = true;
+            const startPromise = provider['startRceStreamSession'](createStreamRequest());
+            await flushMicrotasks();
+            const client = provider.createdClients[0];
 
             client.emit('close');
 
             expect(findEventMessages(ViewProviderEvent.onRceStreamClosed)).to.have.length(1);
+
+            provider.pendingConnectResolvers[0]({ offer: defaultFakeOffer, iceServers: [] });
+            await startPromise;
         });
 
         it('stops the previous session before starting a new one', async () => {
@@ -308,6 +358,241 @@ describe('RokuDeviceViewViewProvider', () => {
 
             expect(firstClient.stop.calledOnce).to.be.true;
             expect(secondClient.stop.called).to.be.false;
+        });
+    });
+
+    describe('automatic reconnect', () => {
+        it('renegotiates a fresh session when the client closes after the offer was posted', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            shrinkReconnectDelays([0]);
+
+            client.emit('close');
+            await sleep(10);
+
+            //the drop was reported as a reconnect status, not as closed
+            expect(findEventMessages(ViewProviderEvent.onRceStreamClosed)).to.have.length(0);
+            const connectingMessages = findEventMessages(ViewProviderEvent.onRceStreamConnecting);
+            const reconnectMessage = connectingMessages[connectingMessages.length - 1];
+            expect(reconnectMessage.context.reconnectAttempt).to.equal(1);
+            expect(reconnectMessage.context.reconnectAttemptLimit).to.equal(1);
+            //the stream details were re-resolved and a second client negotiated a fresh offer
+            expect(resolveStreamRequest.calledOnceWith(5)).to.be.true;
+            expect(provider.createdClients).to.have.length(2);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamOffer)).to.have.length(2);
+            expect(client.stop.called).to.be.true;
+        });
+
+        it('renegotiates when the client errors after the offer was posted, without posting an error banner', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            shrinkReconnectDelays([0]);
+
+            client.emit('error', new Error('Janus hung up on stream 7'));
+            await sleep(10);
+
+            expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
+            expect(resolveStreamRequest.calledOnceWith(5)).to.be.true;
+            expect(provider.createdClients).to.have.length(2);
+            expect(client.stop.called).to.be.true;
+        });
+
+        it('renegotiates when the webview reports its peer connection failed', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            shrinkReconnectDelays([0]);
+
+            const message = { command: ViewProviderCommand.reportRceStreamFailure, context: { message: 'ICE connection failed' } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.reportRceStreamFailure](message);
+            await sleep(10);
+
+            expect(client.stop.called).to.be.true;
+            expect(resolveStreamRequest.calledOnceWith(5)).to.be.true;
+            expect(provider.createdClients).to.have.length(2);
+        });
+
+        it('posts onRceStreamDeviceStopped instead of retrying when the device is not running anymore', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            shrinkReconnectDelays([0, 0]);
+            resolveStreamRequest.rejects(new RceDeviceNotRunningError(`Device 'my-device' must be running and expose a video stream to watch it`));
+
+            client.emit('close');
+            await sleep(10);
+
+            const stoppedMessages = findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped);
+            expect(stoppedMessages).to.have.length(1);
+            expect(stoppedMessages[0].context.deviceId).to.equal(5);
+            expect(stoppedMessages[0].context.deviceName).to.equal('my-device');
+            expect(stoppedMessages[0].context.message).to.contain('must be running');
+            //the not-running report ends the loop on the first attempt, with no error banner
+            expect(resolveStreamRequest.calledOnce).to.be.true;
+            expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
+            expect(provider['rceStreamSession'].isActive).to.be.false;
+        });
+
+        it('posts the error banner after exhausting the reconnect attempts', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            shrinkReconnectDelays([0, 0]);
+            resolveStreamRequest.rejects(new Error('gateway unreachable'));
+
+            client.emit('close');
+            await sleep(30);
+
+            expect(resolveStreamRequest.calledTwice).to.be.true;
+            const errorMessages = findEventMessages(ViewProviderEvent.onRceStreamError);
+            expect(errorMessages).to.have.length(1);
+            expect(errorMessages[0].context.message).to.contain('could not reconnect');
+            expect(errorMessages[0].context.message).to.contain('gateway unreachable');
+            expect(provider['rceStreamSession'].isActive).to.be.false;
+        });
+
+        it('waits for a pending device instead of consuming attempts, then reconnects once it is running', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            shrinkReconnectDelays([0]);
+            provider['rceStreamSession']['pendingPollDelayMs'] = 0;
+            resolveStreamRequest.onFirstCall().rejects(new RceDeviceNotRunningError(`Device 'my-device' is not running`, 'pending'));
+            resolveStreamRequest.onSecondCall().rejects(new RceDeviceNotRunningError(`Device 'my-device' is not running`, 'pending'));
+
+            client.emit('close');
+            await sleep(30);
+
+            const waitingMessages = findEventMessages(ViewProviderEvent.onRceStreamConnecting).filter((message) => message.context.waitingForDevice);
+            expect(waitingMessages).to.have.length(2);
+            //the pending polls were not treated as a stopped device or as failed attempts
+            expect(findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped)).to.have.length(0);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
+            expect(provider.createdClients).to.have.length(2);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamOffer)).to.have.length(2);
+        });
+
+        it('gives up on a device that stays pending past the poll limit with a timeout error', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            shrinkReconnectDelays([0]);
+            provider['rceStreamSession']['pendingPollDelayMs'] = 0;
+            provider['rceStreamSession']['pendingPollLimit'] = 2;
+            resolveStreamRequest.rejects(new RceDeviceNotRunningError(`Device 'my-device' is not running`, 'pending'));
+
+            client.emit('close');
+            await sleep(30);
+
+            const errorMessages = findEventMessages(ViewProviderEvent.onRceStreamError);
+            expect(errorMessages).to.have.length(1);
+            expect(errorMessages[0].context.message).to.contain('Timed out waiting for device');
+            expect(findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped)).to.have.length(0);
+            expect(provider['rceStreamSession'].isActive).to.be.false;
+        });
+
+        it('stop() cancels an in-flight reconnect loop', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            shrinkReconnectDelays([60000]);
+
+            client.emit('close');
+            //the loop is now parked on its backoff wait; stopping cuts it short
+            provider['rceStreamSession'].stop();
+            await sleep(10);
+
+            expect(resolveStreamRequest.called).to.be.false;
+            expect(provider['rceStreamSession'].isActive).to.be.false;
+            expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
+        });
+    });
+
+    describe('device status from the finder poll', () => {
+        it('shows the device-stopped state when the streamed device leaves running, ignoring other devices', async () => {
+            createProvider();
+            const client = await startFirstSession();
+
+            //another device stopping does not touch this stream
+            rceFinder.emit('devices', [{ id: 99, status: 'shutdown' }]);
+            expect(client.stop.called).to.be.false;
+
+            rceFinder.emit('devices', [{ id: 5, status: 'shutdown' }]);
+
+            expect(client.stop.called).to.be.true;
+            const stoppedMessages = findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped);
+            expect(stoppedMessages).to.have.length(1);
+            expect(stoppedMessages[0].context.message).to.contain('was stopped');
+            expect(provider['rceStreamSession'].isActive).to.be.false;
+        });
+
+        it('moves to waiting when the streamed device is pending (restarting), then reconnects', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            shrinkReconnectDelays([0]);
+            provider['rceStreamSession']['pendingPollDelayMs'] = 0;
+
+            rceFinder.emit('devices', [{ id: 5, status: 'pending' }]);
+            await sleep(10);
+
+            expect(client.stop.called).to.be.true;
+            const waitingMessages = findEventMessages(ViewProviderEvent.onRceStreamConnecting).filter((message) => message.context.waitingForDevice);
+            expect(waitingMessages.length).to.be.greaterThanOrEqual(1);
+            //the resolution (running again by the time it was polled) reconnected the stream
+            expect(provider.createdClients).to.have.length(2);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamOffer)).to.have.length(2);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped)).to.have.length(0);
+        });
+
+        it('a running status report leaves the stream alone', async () => {
+            createProvider();
+            const client = await startFirstSession();
+
+            rceFinder.emit('devices', [{ id: 5, status: 'running' }]);
+
+            expect(client.stop.called).to.be.false;
+            expect(provider.createdClients).to.have.length(1);
+        });
+
+        it('resumes the stream by itself when the stopped device starts again', async () => {
+            createProvider();
+            await startFirstSession();
+            shrinkReconnectDelays([0]);
+            provider['rceStreamSession']['pendingPollDelayMs'] = 0;
+
+            rceFinder.emit('devices', [{ id: 5, status: 'shutdown' }]);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped)).to.have.length(1);
+            //further stopped reports change nothing
+            rceFinder.emit('devices', [{ id: 5, status: 'shutdown' }]);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped)).to.have.length(1);
+
+            rceFinder.emit('devices', [{ id: 5, status: 'running' }]);
+            await sleep(10);
+
+            expect(provider.createdClients).to.have.length(2);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamOffer)).to.have.length(2);
+            const waitingMessages = findEventMessages(ViewProviderEvent.onRceStreamConnecting).filter((message) => message.context.waitingForDevice);
+            expect(waitingMessages.length).to.be.greaterThanOrEqual(1);
+        });
+
+        it('does not resume after the user stopped the stream themselves', async () => {
+            createProvider();
+            await startFirstSession();
+            const message = { command: ViewProviderCommand.stopRceStream, context: {} };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.stopRceStream](message);
+
+            rceFinder.emit('devices', [{ id: 5, status: 'running' }]);
+            await sleep(10);
+
+            expect(provider.createdClients).to.have.length(1);
+        });
+
+        it('re-posts the device-stopped state to a reloaded webview', async () => {
+            createProvider();
+            markViewReady();
+            await startFirstSession();
+
+            rceFinder.emit('devices', [{ id: 5, status: 'shutdown' }]);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped)).to.have.length(1);
+
+            //the webview was recreated (view closed/reopened); its copy of the stopped state is gone
+            markViewReady();
+
+            expect(findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped)).to.have.length(2);
         });
     });
 
@@ -394,6 +679,36 @@ describe('RokuDeviceViewViewProvider', () => {
             expect(errorMessages[0].context.message).to.contain('Device 5 was not found');
             expect(errorMessages[0].context.deviceId).to.equal(5);
             expect(errorMessages[0].context.deviceName).to.equal('my-device');
+        });
+
+        it('shows the device-stopped state when the retry resolution finds the device stopped', async () => {
+            createProvider();
+            await startFirstSession();
+            sinon.stub(vscode.commands, 'executeCommand').rejects(new RceDeviceNotRunningError(`Device 'my-device' is not running`, 'shutdown'));
+
+            const message = { command: ViewProviderCommand.watchRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.watchRceDevice](message);
+
+            const stoppedMessages = findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped);
+            expect(stoppedMessages).to.have.length(1);
+            expect(stoppedMessages[0].context.message).to.contain('is not running');
+            expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
+        });
+
+        it('enters the waiting-for-device state when the retry resolution finds the device pending', async () => {
+            createProvider();
+            await startFirstSession();
+            sinon.stub(vscode.commands, 'executeCommand').rejects(new RceDeviceNotRunningError(`Device 'my-device' is not running`, 'pending'));
+
+            const message = { command: ViewProviderCommand.watchRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.watchRceDevice](message);
+            await sleep(10);
+
+            const waitingMessages = findEventMessages(ViewProviderEvent.onRceStreamConnecting).filter((candidate) => candidate.context.waitingForDevice);
+            expect(waitingMessages.length).to.be.greaterThanOrEqual(1);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
+            //the waiting loop's own status poll (which resolves running here) reconnected the stream
+            expect(findEventMessages(ViewProviderEvent.onRceStreamOffer)).to.have.length(2);
         });
     });
 

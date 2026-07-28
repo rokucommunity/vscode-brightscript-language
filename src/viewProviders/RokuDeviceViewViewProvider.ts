@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { ChannelPublishedEvent } from 'roku-debug';
-import type { RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
+import type { DeviceOut, RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
 import { RceVideoSignalingClient } from 'roku-deploy';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
@@ -28,6 +28,9 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         postEvent: (event, context) => this.postOrQueueMessage(this.createEventMessage(event, context)),
         isViewReady: () => this.isViewReady(),
         createSignalingClient: (config, options) => this.createSignalingClient(config, options),
+        //the session's automatic reconnect loop re-resolves the device's current stream details
+        //(a restarted instance has a fresh Janus url and TURN credentials) through the manager
+        resolveStreamRequest: (deviceId) => this.dependencies.rceManager.resolveStreamRequest(deviceId),
         //drives the view-title "Open Video in Editor Tab" button's visibility. A setContext failure
         //is inconsequential (the button just shows/hides late), so it must never surface as an
         //unhandled rejection out of a stream lifecycle transition
@@ -38,6 +41,12 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
 
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
+
+        //keep the stream in step with the device's status from the management-api poll: an
+        //externally stopped device shows the device-stopped state promptly (its Janus socket can
+        //linger after the instance stops) and a restarting one waits instead of erroring.
+        //Optional-chained because provider specs construct with partial dependencies.
+        this.dependencies.rceFinder?.on('devices', this.handleFinderDevices);
 
         this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewEnableNodeInspector);
         this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewDisableNodeInspector);
@@ -82,6 +91,13 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
             return Promise.resolve(true);
         });
 
+        //the webview's peer connection failed (for example the ICE connection dropped); the session
+        //reruns the whole negotiation through its reconnect loop
+        this.addMessageCommandCallback(ViewProviderCommand.reportRceStreamFailure, (message) => {
+            this.rceStreamSession.handleStreamFailure(message.context?.message);
+            return Promise.resolve(true);
+        });
+
         //the Retry action re-sends watchRceDevice with the device id it remembered from
         //onRceStreamOffer. This webview can only reach this provider (each webview only talks to the
         //provider that owns it), so re-resolving the device's current stream details goes through the
@@ -93,7 +109,11 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
             try {
                 await vscode.commands.executeCommand(VscodeCommand.rceWatchDeviceById, deviceId);
             } catch (e) {
-                this.rceStreamSession.postError(`Failed to restart the video stream: ${(e as Error).message}`, deviceId, deviceName);
+                //a pending device enters the waiting-for-device phase, a stopped one the
+                //device-stopped state; everything else is this host's error to report
+                if (!this.rceStreamSession.handleDeviceNotRunning(e, deviceId, deviceName)) {
+                    this.rceStreamSession.postError(`Failed to restart the video stream: ${(e as Error).message}`, deviceId, deviceName);
+                }
             }
             return true;
         });
@@ -138,8 +158,21 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         delete this.resumeScreenshotCapture;
     }
 
+    /**
+     * Relay the streamed device's current status (from an RceFinder poll emission) into the stream
+     * session. Bound so `on`/`off` see the same function reference.
+     */
+    private handleFinderDevices = (devices: DeviceOut[]) => {
+        const deviceId = this.rceStreamSession.deviceId;
+        const device = deviceId === undefined ? undefined : devices.find((candidateDevice) => candidateDevice.id === deviceId);
+        if (device) {
+            this.rceStreamSession.handleDeviceStatusChanged(device.status);
+        }
+    };
+
     public dispose() {
         super.dispose();
+        this.dependencies.rceFinder?.off('devices', this.handleFinderDevices);
         this.rceStreamSession.stop();
     }
 
@@ -177,11 +210,15 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
             await vscode.commands.executeCommand(VscodeCommand.rceWatchDeviceById, Number(device.rce.id));
         } catch (e) {
             const deviceName = this.dependencies.deviceManager.getDeviceDisplayName(device);
-            this.rceStreamSession.postError(
-                `Failed to start the video stream for device '${deviceName}': ${(e as Error).message}`,
-                Number(device.rce.id),
-                deviceName
-            );
+            //a pending device enters the waiting-for-device phase, a stopped one the device-stopped
+            //state; everything else is this host's error to report
+            if (!this.rceStreamSession.handleDeviceNotRunning(e, Number(device.rce.id), deviceName)) {
+                this.rceStreamSession.postError(
+                    `Failed to start the video stream for device '${deviceName}': ${(e as Error).message}`,
+                    Number(device.rce.id),
+                    deviceName
+                );
+            }
         }
     }
 

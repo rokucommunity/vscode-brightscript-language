@@ -786,7 +786,7 @@ describe('RceManagementViewProvider', () => {
             } catch (error) {
                 caughtError = error as Error;
             }
-            expect(caughtError?.message).to.contain('must be running');
+            expect(caughtError?.message).to.contain('is not running');
         });
     });
 
