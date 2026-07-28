@@ -12,19 +12,22 @@ import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { debounce } from 'lodash';
 import { icons } from '../icons';
 import { OrderManager } from './OrderManager';
+import { Prober } from './Prober';
 import { ConfiguredDeviceManager } from './ConfiguredDeviceManager';
 import { DiscoveredDeviceManager } from './DiscoveredDeviceManager';
 import type {
-    ActiveDeviceEntry,
     BroadcastOrder,
     BroadcastReason,
+    ReconcileOrder,
+    ReconcileReason
+} from './OrderManager';
+import type {
+    ActiveDeviceEntry,
     ConfiguredDeviceEntry,
     DeviceState,
     DeviceStateEntry,
     DiscoveredDeviceEntry,
     PasswordValidationResult,
-    ReconcileOrder,
-    ReconcileReason,
     RokuDevice
 } from './types';
 
@@ -208,15 +211,13 @@ export class DeviceManager {
      */
     private orderManager = new OrderManager();
 
-    // Health check tracking and cooldowns
-    private resolveDeviceSequence = new Map<string, number>();
     /**
-     * The single "trust window" for cached device info: cache younger than this is treated as
-     * truth (device assumed online on load, resolveDevice short-circuits to cache instead of
-     * hitting the network). One constant on purpose — it used to be two identical 5-minute
-     * constants under different names.
+     * The device-info probing machinery (in-flight de-dupe, last-wins sequence guard, cache
+     * trust window). Owns HOW we talk to a device; this class decides WHEN and applies results.
      */
-    private readonly DEVICE_FRESHNESS_MS = 5 * 60 * 1_000; // 5 minutes
+    private prober = new Prober(this.globalStateManager, () => this.networkId);
+
+    // Health check cooldowns
     private readonly OFFLINE_COOLDOWN_MS = 5_000; // 5 seconds - minimum time between resolve attempts for offline devices
     private readonly UNHEALTHY_BROADCAST_MIN_INTERVAL_MS = 60_000; // 1 minute - suppress unhealthy-device broadcast orders this soon after a scan
 
@@ -225,7 +226,6 @@ export class DeviceManager {
     private readonly HYDRATION_RETRY_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes - minimum time between hydration attempts per IP
     private hydrationInFlight = new Set<string>();
     private hydrationLastAttempt = new Map<string, number>();
-    public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
 
     // Notifications and event debouncing
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
@@ -596,7 +596,7 @@ export class DeviceManager {
             } else {
                 // For non-online devices, check cache freshness
                 const cached = lookup.serialNumber ? this.globalStateManager.getCachedDevice(lookup.serialNumber) : undefined;
-                const isFreshCache = cached && (now - cached.createdAt < this.DEVICE_FRESHNESS_MS);
+                const isFreshCache = cached && (now - cached.createdAt < Prober.DEVICE_FRESHNESS_MS);
                 resolvedState = isFreshCache ? 'online' : 'unknown';
             }
         }
@@ -777,7 +777,7 @@ export class DeviceManager {
 
         // Clear all timestamps and per-device state
         this.lastScanDate = null;
-        this.resolveDeviceSequence.clear();
+        this.prober.clearSequences();
         this.hydrationLastAttempt.clear();
 
         // Reset configured device states to unknown
@@ -1049,28 +1049,19 @@ export class DeviceManager {
             return false;
         }
 
-        // Increment and capture sequence number to handle concurrent refresh calls
-        // Use IP for sequence tracking (primary key)
-        const currentSeq = (this.resolveDeviceSequence.get(device.ip) ?? 0) + 1;
-        this.resolveDeviceSequence.set(device.ip, currentSeq);
+        // Begin a probe sequence: when overlapping checks finish out of order, only the newest
+        // check may apply its result (guard below, after the awaits)
+        const currentSeq = this.prober.nextSequence(device.ip);
 
-        // Get device info from cache or network
-        let deviceInfo: DeviceInfoRaw | undefined;
-
-        // Try to find cached data via serial number
-        const serialForCache = knownSerial ?? this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
-        const cached = serialForCache ? this.globalStateManager.getCachedDevice(serialForCache) : undefined;
-        // Check if the serial was last seen at this IP (don't trust cache if device moved)
-        const cachedIp = serialForCache ? this.globalStateManager.getIpForSerial(serialForCache, this.networkId) : undefined;
-        const cacheIsFresh = cached && (Date.now() - cached.createdAt < this.DEVICE_FRESHNESS_MS) && cachedIp === device.ip;
-
-        // Use cache only if:
+        // Get device info from cache or network. Use cache only if:
         // - Not forced
-        // - Cache is fresh
+        // - Cache is inside the trust window (fresh AND still mapped to this IP)
         // - Device is not offline (offline devices should always hit network to check if back online)
-        if (!force && cacheIsFresh && !isOffline) {
-            // Use cached data
-            deviceInfo = cached.deviceInfo as DeviceInfoRaw;
+        let deviceInfo: DeviceInfoRaw | undefined;
+        const freshCached = (!force && !isOffline) ? this.prober.getFreshCachedDeviceInfo(device.ip, knownSerial) : undefined;
+
+        if (freshCached) {
+            deviceInfo = freshCached;
         } else {
             // Set to pending before making network call
             // This prevents unnecessary state flicker (online→pending→online) when using cache
@@ -1081,7 +1072,7 @@ export class DeviceManager {
 
             // Fetch fresh data from network
             try {
-                deviceInfo = await this.fetchDeviceInfo(device.ip, 8060);
+                deviceInfo = await this.prober.fetchDeviceInfo(device.ip, 8060);
 
                 if (doSyntheticDelay) {
                     await this.randomDelay(400, 1_000);
@@ -1092,7 +1083,7 @@ export class DeviceManager {
         }
 
         // Only apply result if this is still the latest request for this device
-        if (this.resolveDeviceSequence.get(device.ip) !== currentSeq) {
+        if (!this.prober.isCurrentSequence(device.ip, currentSeq)) {
             // Stale response - a newer check was started, ignore this result
             return !!deviceInfo;
         }
@@ -1230,57 +1221,6 @@ export class DeviceManager {
 
         if (needsScan) {
             this.submitUnhealthyDeviceBroadcast();
-        }
-    }
-
-    /**
-     * In-flight device-info requests by `ip:port`. Concurrent callers share one HTTP request
-     * (the doc's "first one wins" de-dupe rule for a device within a single flow). This is
-     * complementary to `resolveDeviceSequence`, which is last-wins for *applying* the result —
-     * the first fetch supplies the data, the newest resolve call applies the state.
-     */
-    private inFlightDeviceInfo = new Map<string, Promise<DeviceInfoRaw | undefined>>();
-
-    /**
-     * Fetch device info from the network, sharing any request already in flight for the same
-     * ip:port. Caches the result in globalStateManager for future lookups.
-     */
-    private fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw | undefined> {
-        const key = `${ip}:${port}`;
-        let inFlight = this.inFlightDeviceInfo.get(key);
-        if (inFlight === undefined) {
-            //safe to share: fetchDeviceInfoInner never rejects (it catches and returns undefined)
-            inFlight = this.fetchDeviceInfoInner(ip, port).finally(() => {
-                this.inFlightDeviceInfo.delete(key);
-            });
-            this.inFlightDeviceInfo.set(key, inFlight);
-        }
-        return inFlight;
-    }
-
-    /**
-     * Fetch device info from the network. Always makes a network request.
-     */
-    private async fetchDeviceInfoInner(ip: string, port: number): Promise<DeviceInfoRaw> {
-        try {
-            const info = await rokuDeploy.getDeviceInfo({
-                host: ip,
-                remotePort: port,
-                timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
-            });
-            if (info['serial-number']) {
-                this.globalStateManager.setCachedDevice(info['serial-number'], {
-                    serialNumber: info['serial-number'],
-                    deviceInfo: info,
-                    createdAt: Date.now()
-                });
-                this.globalStateManager.setSerialNumberForIp(this.networkId, ip, info['serial-number']);
-            }
-
-            return info;
-        } catch (e) {
-            console.error(e);
-            return undefined;
         }
     }
 

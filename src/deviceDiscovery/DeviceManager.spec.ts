@@ -322,49 +322,6 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('fetchDeviceInfo in-flight de-dupe', () => {
-        it('shares a single HTTP request between concurrent callers for the same ip:port', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-            let resolveFetch: (value: any) => void;
-            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').returns(new Promise((resolve) => {
-                resolveFetch = resolve;
-            }) as any);
-
-            const first = manager['fetchDeviceInfo']('192.168.1.10', 8060);
-            const second = manager['fetchDeviceInfo']('192.168.1.10', 8060);
-
-            resolveFetch({ 'serial-number': 'shared-1' });
-
-            const [firstResult, secondResult] = await Promise.all([first, second]);
-            expect(getDeviceInfoStub.calledOnce).to.be.true;
-            expect(firstResult['serial-number']).to.equal('shared-1');
-            expect(secondResult['serial-number']).to.equal('shared-1');
-        });
-
-        it('does not share requests across different IPs', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'serial-number': 'x' } as any);
-
-            await Promise.all([
-                manager['fetchDeviceInfo']('192.168.1.10', 8060),
-                manager['fetchDeviceInfo']('192.168.1.11', 8060)
-            ]);
-
-            expect(getDeviceInfoStub.calledTwice).to.be.true;
-        });
-
-        it('makes a fresh request after the shared one settles', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'serial-number': 'x' } as any);
-
-            await manager['fetchDeviceInfo']('192.168.1.10', 8060);
-            await manager['fetchDeviceInfo']('192.168.1.10', 8060);
-
-            expect(getDeviceInfoStub.calledTwice).to.be.true;
-        });
-    });
-
     describe('ssdp:byebye (finder lost event)', () => {
         it('removes the discovered entry and marks configured entries at that IP offline', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
@@ -1926,25 +1883,6 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('fetchDeviceInfo', () => {
-        it('always makes network call (no caching in fetchDeviceInfo)', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
-                'device-id': 'device-123',
-                'serial-number': 'device-123',
-                'default-device-name': 'Roku Express'
-            } as any);
-
-            // Call twice in rapid succession - both should hit network
-            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
-            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
-
-            // fetchDeviceInfo always makes network calls (caching is in resolveDevice)
-            expect(getDeviceInfoStub.callCount).to.equal(2);
-        });
-    });
-
     describe('resolveDevice caching', () => {
         it('only makes one network call for rapid successive requests', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
@@ -2997,18 +2935,18 @@ describe('DeviceManager', () => {
                     expect(getDeviceInfoStub.calledTwice).to.be.true;
                 });
 
-                it('clears resolveDeviceSequence map', () => {
+                it('clears the prober sequence tracking', () => {
                     manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                     const device = createMockDevice();
 
-                    // Populate sequence map
-                    manager['resolveDeviceSequence'].set(device.ip, 5);
-                    expect(manager['resolveDeviceSequence'].get(device.ip)).to.equal(5);
+                    // Populate sequence tracking
+                    manager['prober'].nextSequence(device.ip);
+                    expect(manager['prober'].isCurrentSequence(device.ip, 1)).to.be.true;
 
                     manager.clearAllCache();
 
-                    expect(manager['resolveDeviceSequence'].has(device.ip)).to.be.false;
+                    expect(manager['prober'].isCurrentSequence(device.ip, 1)).to.be.false;
                 });
             });
 
@@ -3085,7 +3023,7 @@ describe('DeviceManager', () => {
                     manager.clearAllCache();
 
                     // Sequence should be cleared
-                    expect(manager['resolveDeviceSequence'].has(device.ip)).to.be.false;
+                    expect(manager['prober'].isCurrentSequence(device.ip, 1)).to.be.false;
 
                     // Complete the health check
                     if (resolvePromise) {

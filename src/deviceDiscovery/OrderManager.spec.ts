@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
 import { OrderManager } from './OrderManager';
-import type { BroadcastOrder, ReconcileOrder } from './types';
+import type { BroadcastOrder, ReconcileOrder } from './OrderManager';
 
 describe('OrderManager', () => {
     let manager: OrderManager;
