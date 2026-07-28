@@ -31,6 +31,9 @@ afterEach(() => {
 
 function createFakeManagementClient() {
     return {
+        /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+        getUserInfo: sinon.stub().resolves({ organisation: { max_project_runtime: 172800 } }),
+        /* eslint-enable camelcase */
         listDevices: sinon.stub(),
         createDevice: sinon.stub(),
         startDevice: sinon.stub(),
@@ -162,6 +165,57 @@ describe('RceManagementViewProvider', () => {
             expect(responseMessage.response.devices).to.be.undefined;
             expect(rceManager.fakeManagementClient.listDevices.called).to.be.false;
         });
+
+        it('includes the org runtime cap in the state payload and only fetches the user info once per token', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            rceManager.fakeManagementClient.listDevices.resolves([]);
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.getRceState, context: {} };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.getRceState](message);
+            await provider['messageCommandCallbacks'][ViewProviderCommand.getRceState](message);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.getRceState);
+            expect(responseMessage.response.maxProjectRuntimeSeconds).to.equal(172800);
+            expect(rceManager.fakeManagementClient.getUserInfo.callCount).to.equal(1);
+        });
+
+        it('refetches the org runtime cap after the active account changes', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            await rceManager.addAccount('personal', 'token-personal');
+            rceManager.fakeManagementClient.listDevices.resolves([]);
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.getRceState, context: {} };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.getRceState](message);
+            expect(rceManager.fakeManagementClient.getUserInfo.callCount).to.equal(1);
+
+            //fires token-changed, which must clear the cached cap (the pushState it triggers refetches)
+            await rceManager.setActiveAccount('work');
+            await flushMicrotasks();
+
+            expect(rceManager.fakeManagementClient.getUserInfo.callCount).to.equal(2);
+        });
+
+        it('leaves the runtime cap undefined but still returns devices when the user info fetch fails', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            rceManager.fakeManagementClient.getUserInfo.rejects(new Error('user info unavailable'));
+            rceManager.fakeManagementClient.listDevices.resolves([]);
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.getRceState, context: {} };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.getRceState](message);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.getRceState);
+            expect(responseMessage.response.maxProjectRuntimeSeconds).to.be.undefined;
+            expect(responseMessage.response.devices).to.eql([]);
+        });
     });
 
     describe('startRceDevice', () => {
@@ -264,6 +318,50 @@ describe('RceManagementViewProvider', () => {
             const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
             expect(startDeviceArgs[1].snapshot_id).to.equal(30);
             expect(startDeviceArgs[1].firmware_version_id).to.equal('rce-fw:3');
+        });
+
+        it('passes the webview-selected max runtime through to startDevice', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10], firmware_version_id: 'rce-fw:1' }
+            ]);
+            rceManager.fakeManagementClient.listSnapshots.resolves([
+                { id: 10, created_at: '2026-01-01', firmware_version_id: 'rce-fw:1' }
+            ]);
+            /* eslint-enable camelcase */
+            rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5, maxRuntimeSeconds: 8 * 3600 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
+
+            const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
+            expect(startDeviceArgs[1].max_runtime).to.equal(8 * 3600);
+        });
+
+        it('defaults max runtime to one hour when the message does not carry one', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10], firmware_version_id: 'rce-fw:1' }
+            ]);
+            rceManager.fakeManagementClient.listSnapshots.resolves([
+                { id: 10, created_at: '2026-01-01', firmware_version_id: 'rce-fw:1' }
+            ]);
+            /* eslint-enable camelcase */
+            rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
+
+            const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
+            expect(startDeviceArgs[1].max_runtime).to.equal(3600);
         });
 
         it('does not persist rceLastSnapshotByDevice when the start resolved a default snapshot rather than an explicit pick', async () => {

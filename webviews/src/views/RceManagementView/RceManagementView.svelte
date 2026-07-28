@@ -3,7 +3,7 @@
 
     import { onDestroy } from 'svelte';
     import type { DeviceOut, DeviceRun, SnapshotOut } from 'roku-deploy';
-    import { Refresh, Edit, Check, Close, Trash } from 'svelte-codicons';
+    import { Refresh, Edit, Check, Close, Trash, Play, DebugStop } from 'svelte-codicons';
     import { intermediary } from '../../ExtensionIntermediary';
     import Loader from '../../shared/Loader.svelte';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
@@ -26,6 +26,38 @@
 
     let deviceActionError: string | undefined = undefined;
     let deviceActionsInFlight: Record<number, boolean> = {};
+
+    //max-runtime choices offered when starting a device, capped by the org's runtime limit; the
+    //limit itself becomes the top choice when the presets don't land on it exactly. Picks are kept
+    //outside DeviceDetailsState so a details refetch does not reset them
+    const runtimeHourPresets = [1, 2, 4, 8, 16, 24, 48];
+    const defaultRuntimeHours = 1;
+    let selectedRuntimeHoursByDeviceId: Record<number, number> = {};
+    let maxProjectRuntimeSeconds: number | undefined = undefined;
+    $: runtimeHourOptions = buildRuntimeHourOptions(maxProjectRuntimeSeconds);
+
+    function buildRuntimeHourOptions(orgMaxRuntimeSeconds: number | undefined): number[] {
+        if (!orgMaxRuntimeSeconds) {
+            return runtimeHourPresets;
+        }
+        const maxHours = orgMaxRuntimeSeconds / 3600;
+        const options = runtimeHourPresets.filter((hours) => hours <= maxHours);
+        if (!options.includes(maxHours)) {
+            options.push(maxHours);
+        }
+        return options;
+    }
+
+    /**
+     * Resolves the hours a start request should use: the user's pick when the current option list
+     * still offers it (an account switch can lower the cap), otherwise the default.
+     */
+    function resolveRuntimeHours(pickedHours: number | undefined, availableOptions: number[]): number {
+        if (pickedHours !== undefined && availableOptions.includes(pickedHours)) {
+            return pickedHours;
+        }
+        return availableOptions.includes(defaultRuntimeHours) ? defaultRuntimeHours : availableOptions[0];
+    }
 
     let expandedDeviceId: number | undefined = undefined;
     let deviceDetailsByDeviceId: Record<number, DeviceDetailsState> = {};
@@ -56,8 +88,36 @@
         activeAccountName = state.activeAccountName;
         hasToken = state.hasToken;
         devices = state.devices;
+        maxProjectRuntimeSeconds = state.maxProjectRuntimeSeconds;
         stateError = state.error;
         loading = false;
+        ensureRowSnapshotDetails(devices);
+    }
+
+    /**
+     * Eagerly loads details for stopped devices so every row's snapshot picker has names without
+     * expanding the device. State re-applies on every finder poll, so this only fetches when the
+     * cache is missing or the device's snapshot id list no longer matches what was cached.
+     */
+    function ensureRowSnapshotDetails(currentDevices: DeviceOut[] | undefined) {
+        for (const device of currentDevices ?? []) {
+            //the state observer separately refreshes the expanded device's details
+            if (device.status !== 'shutdown' || device.id === expandedDeviceId) {
+                continue;
+            }
+            const detailsState = deviceDetailsByDeviceId[device.id];
+            if (detailsState?.loading) {
+                continue;
+            }
+            const cachedSnapshotIds = (detailsState?.snapshots ?? []).map((snapshot) => snapshot.id);
+            const deviceSnapshotIds = device.snapshots ?? [];
+            const cacheIsCurrent = detailsState !== undefined &&
+                cachedSnapshotIds.length === deviceSnapshotIds.length &&
+                deviceSnapshotIds.every((snapshotId) => cachedSnapshotIds.includes(snapshotId));
+            if (!cacheIsCurrent) {
+                void loadDeviceDetails(device.id);
+            }
+        }
     }
 
     async function loadState() {
@@ -116,7 +176,8 @@
         try {
             await intermediary.sendCommand(ViewProviderCommand.startRceDevice, {
                 deviceId: device.id,
-                snapshotId: snapshotId
+                snapshotId: snapshotId,
+                maxRuntimeSeconds: resolveRuntimeHours(selectedRuntimeHoursByDeviceId[device.id], runtimeHourOptions) * 3600
             });
         } catch (error) {
             deviceActionError = error.message;
@@ -304,6 +365,10 @@
      * The dropdown's change handler: any change here is a deliberate user pick, even one that lands back
      * on the value that was already selected, so the flag is always set unconditionally.
      */
+    function updateSelectedRuntimeHours(deviceId: number, rawHours: string) {
+        selectedRuntimeHoursByDeviceId = { ...selectedRuntimeHoursByDeviceId, [deviceId]: Number(rawHours) };
+    }
+
     function updateSelectedSnapshot(deviceId: number, rawSnapshotId: string) {
         const snapshotId = rawSnapshotId ? Number(rawSnapshotId) : undefined;
         deviceDetailsByDeviceId = {
@@ -468,11 +533,13 @@
         align-items: center;
         gap: 8px;
         padding: 6px 0;
+        /* the start control wraps under the device info when the sidebar is too narrow for one line */
+        flex-wrap: wrap;
     }
 
     .deviceInfo {
         flex: 1;
-        min-width: 0;
+        min-width: 140px;
         display: flex;
         flex-direction: column;
         cursor: pointer;
@@ -549,11 +616,17 @@
         display: flex;
         align-items: center;
         gap: 6px;
+        flex: 1;
     }
 
     .startControl vscode-dropdown {
         flex: 1;
         min-width: 100px;
+    }
+
+    .startControl .runtimeDropdown {
+        flex: 0 0 auto;
+        min-width: 62px;
     }
 
     .snapshotRow, .historyRow {
@@ -660,9 +733,41 @@
                             {/if}
                         </div>
                         {#if device.status === 'shutdown'}
-                            <vscode-button disabled={deviceActionsInFlight[device.id]} on:click={() => startDevice(device)}>Start</vscode-button>
+                            <div class="startControl">
+                                <vscode-dropdown
+                                    value={detailsState?.selectedSnapshotId !== undefined ? String(detailsState.selectedSnapshotId) : ''}
+                                    on:change={(event) => updateSelectedSnapshot(device.id, event.target.value)}>
+                                    {#each detailsState?.snapshots ?? [] as snapshot}
+                                        <vscode-option value={String(snapshot.id)} disabled={snapshot.ready === false}>
+                                            {snapshot.name ?? `Snapshot ${snapshot.id}`}{snapshot.ready === false ? ' (not ready)' : ''}
+                                        </vscode-option>
+                                    {/each}
+                                </vscode-dropdown>
+                                <vscode-dropdown
+                                    class="runtimeDropdown"
+                                    title="Maximum runtime"
+                                    value={String(resolveRuntimeHours(selectedRuntimeHoursByDeviceId[device.id], runtimeHourOptions))}
+                                    on:change={(event) => updateSelectedRuntimeHours(device.id, event.target.value)}>
+                                    {#each runtimeHourOptions as hours}
+                                        <vscode-option value={String(hours)}>{hours}h</vscode-option>
+                                    {/each}
+                                </vscode-dropdown>
+                                <vscode-button
+                                    appearance="icon"
+                                    title="Start device"
+                                    disabled={deviceActionsInFlight[device.id] || (detailsState && !detailsState.loading && !detailsState.selectedSnapshotId)}
+                                    on:click={() => startDevice(device, detailsState?.userPickedSnapshotId ? detailsState.selectedSnapshotId : undefined)}>
+                                    <Play />
+                                </vscode-button>
+                            </div>
                         {:else if device.status === 'running' || device.status === 'pending'}
-                            <vscode-button disabled={deviceActionsInFlight[device.id]} on:click={() => stopDevice(device)}>Stop</vscode-button>
+                            <vscode-button
+                                appearance="icon"
+                                title="Stop device"
+                                disabled={deviceActionsInFlight[device.id]}
+                                on:click={() => stopDevice(device)}>
+                                <DebugStop />
+                            </vscode-button>
                         {/if}
                     </div>
 
@@ -723,25 +828,6 @@
                                         <span>Note: {device.note || 'No note'}</span>
                                         <vscode-button appearance="icon" title="Edit name and note" on:click={() => startEditingDevice(device)}>
                                             <Edit />
-                                        </vscode-button>
-                                    </div>
-                                {/if}
-
-                                {#if device.status === 'shutdown'}
-                                    <div class="startControl">
-                                        <vscode-dropdown
-                                            value={detailsState.selectedSnapshotId !== undefined ? String(detailsState.selectedSnapshotId) : ''}
-                                            on:change={(event) => updateSelectedSnapshot(device.id, event.target.value)}>
-                                            {#each detailsState.snapshots ?? [] as snapshot}
-                                                <vscode-option value={String(snapshot.id)} disabled={snapshot.ready === false}>
-                                                    {snapshot.name ?? `Snapshot ${snapshot.id}`}{snapshot.ready === false ? ' (not ready)' : ''}
-                                                </vscode-option>
-                                            {/each}
-                                        </vscode-dropdown>
-                                        <vscode-button
-                                            disabled={deviceActionsInFlight[device.id] || !detailsState.selectedSnapshotId}
-                                            on:click={() => startDevice(device, detailsState.userPickedSnapshotId ? detailsState.selectedSnapshotId : undefined)}>
-                                            Start
                                         </vscode-button>
                                     </div>
                                 {/if}

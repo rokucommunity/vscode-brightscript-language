@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { DeviceOut, DeviceRun, RceDeviceConfig, SnapshotOut } from 'roku-deploy';
+import type { DeviceOut, DeviceRun, RceDeviceConfig, RceManagementClient, SnapshotOut } from 'roku-deploy';
 import { RceDevice } from 'roku-deploy';
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import { ViewProviderId } from './ViewProviderId';
@@ -21,6 +21,8 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         this.rceFinder = dependencies.rceFinder;
 
         this.unsubscribeFromTokenChanged = this.rceManager.onTokenChanged(() => {
+            //a different account can belong to a different org, so its runtime cap must be refetched
+            this.cachedMaxProjectRuntimeSeconds = undefined;
             void this.pushState();
         });
 
@@ -86,6 +88,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                 }
                 const deviceId = message.context.deviceId;
                 const explicitSnapshotId = message.context.snapshotId;
+                const maxRuntimeSeconds = message.context.maxRuntimeSeconds ?? RceManagementViewProvider.defaultMaxRuntimeSeconds;
                 const devices = await managementClient.listDevices();
                 const device = devices.find((candidateDevice) => candidateDevice.id === deviceId);
                 if (!device) {
@@ -120,7 +123,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                 const startedDevice = await managementClient.startDevice(deviceId, {
                     snapshot_id: snapshotId,
                     firmware_version_id: firmwareVersionId,
-                    max_runtime: 3600
+                    max_runtime: maxRuntimeSeconds
                 });
                 /* eslint-enable camelcase */
                 //only remember an explicit user pick; a resolved default (remembered/live/last) must not
@@ -331,6 +334,12 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
     private static readonly allowedAccountCommands = ['addAccount', 'switchAccount', 'removeAccount'];
 
     /**
+     * Max runtime used when the webview does not send one (one hour, matching the runtime
+     * dropdown's default choice)
+     */
+    private static readonly defaultMaxRuntimeSeconds = 3600;
+
+    /**
      * How often the transition watch re-polls the finder while a device is expected to be settling
      * (pending -> running, or pending -> shutdown)
      */
@@ -416,9 +425,10 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
             devices: devices
         };
 
-        if (devices === undefined) {
-            const managementClient = await this.rceManager.getClient();
-            if (managementClient) {
+        const managementClient = await this.rceManager.getClient();
+        if (managementClient) {
+            state.maxProjectRuntimeSeconds = await this.getMaxProjectRuntimeSeconds(managementClient);
+            if (devices === undefined) {
                 try {
                     state.devices = await managementClient.listDevices();
                 } catch (error) {
@@ -428,6 +438,26 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         }
 
         return state;
+    }
+
+    /**
+     * The active org's device runtime cap in seconds, fetched once per token and reused across
+     * state builds (the token-changed handler clears it). Stays undefined when the fetch fails,
+     * which the webview treats as "cap unknown" and falls back to its full preset list.
+     */
+    private cachedMaxProjectRuntimeSeconds: number | undefined;
+
+    private async getMaxProjectRuntimeSeconds(managementClient: RceManagementClient): Promise<number | undefined> {
+        if (this.cachedMaxProjectRuntimeSeconds === undefined) {
+            try {
+                const userInfo = await managementClient.getUserInfo();
+                this.cachedMaxProjectRuntimeSeconds = userInfo.organisation?.max_project_runtime;
+            } catch {
+                //the cap is presentation-only (the api enforces it server-side), so a failed fetch
+                //should never block the rest of the state payload
+            }
+        }
+        return this.cachedMaxProjectRuntimeSeconds;
     }
 
     private async pushState(devices?: DeviceOut[]) {
@@ -481,6 +511,8 @@ interface RceManagementViewState {
     activeAccountName: string | undefined;
     hasToken: boolean;
     devices: DeviceOut[] | undefined;
+    /** The active org's device runtime cap in seconds; undefined when no account is active or the fetch failed */
+    maxProjectRuntimeSeconds?: number;
     error?: string;
 }
 
