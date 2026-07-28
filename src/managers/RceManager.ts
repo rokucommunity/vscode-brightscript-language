@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { EventEmitter } from 'eventemitter3';
 import { RceManagementClient } from 'roku-deploy';
-import type { UserOut } from 'roku-deploy';
+import type { IceServer, UserOut } from 'roku-deploy';
 
 /**
  * Owns the Roku Cloud Emulator (RCE) accounts and the shared management-api client.
@@ -181,6 +181,43 @@ export class RceManager {
     }
 
     /**
+     * Resolve a device's current Janus stream details into the config a video stream session starts
+     * from. Throws when no account is configured or the device is missing, not running, or exposes
+     * no video stream. Never includes the management api token; the session host fetches that itself
+     * when it creates the signaling client.
+     */
+    public async resolveStreamRequest(deviceId: number): Promise<RceStreamRequestConfig> {
+        const managementClient = await this.getClient();
+        if (!managementClient) {
+            throw new Error('No active Cloud Emulator account is configured');
+        }
+        const devices = await managementClient.listDevices();
+        const device = devices.find((candidateDevice) => candidateDevice.id === deviceId);
+        if (!device) {
+            throw new Error(`Device ${deviceId} was not found`);
+        }
+
+        const runningDevice = device.running_device;
+        //janus_id can legitimately be 0 (a valid stream id), so its presence must be checked
+        //with a nullish check rather than a truthiness check
+        if (device.status !== 'running' || !runningDevice?.janus_websocket_url || runningDevice?.janus_id === undefined || runningDevice?.janus_id === null) {
+            throw new Error(`Device '${device.name}' must be running and expose a video stream to watch it`);
+        }
+
+        /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+        return {
+            deviceId: device.id,
+            deviceName: device.name,
+            websocketUrl: runningDevice.janus_websocket_url,
+            streamId: runningDevice.janus_id,
+            pin: runningDevice.janus_pin ?? undefined,
+            janusToken: runningDevice.janus_token ?? undefined,
+            iceServers: runningDevice.janus_ice_servers ?? []
+        };
+        /* eslint-enable camelcase */
+    }
+
+    /**
      * The default label for an account, derived from the authenticated user (for example `chrisdp (fubo)`)
      */
     private buildDefaultAccountName(user: UserOut): string {
@@ -292,4 +329,19 @@ export class RceManager {
 export interface RceAccount {
     name: string;
     token: string;
+}
+
+/**
+ * A device's resolved Janus stream details, ready to hand to an RceStreamSession. Never includes
+ * the management api token; the session host fetches that itself when it creates the signaling
+ * client.
+ */
+export interface RceStreamRequestConfig {
+    deviceId: number;
+    deviceName: string;
+    websocketUrl: string;
+    streamId: number;
+    pin?: string;
+    janusToken?: string;
+    iceServers: IceServer[];
 }

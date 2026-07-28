@@ -419,14 +419,19 @@
                     "group": "navigation@3"
                 },
                 {
+                    "command": "extension.brightscript.rokuDeviceView.openVideoEditor",
+                    "when": "view == rokuDeviceView && brightscript.rokuDeviceView.isRceStreamActive",
+                    "group": "navigation@4"
+                },
+                {
                     "command": "extension.brightscript.rokuDeviceView.copyScreenshot",
                     "when": "view == rokuDeviceView",
-                    "group": "navigation@4"
+                    "group": "navigation@5"
                 },
                 {
                     "command": "extension.brightscript.disconnectFromDevice",
                     "when": "view == rokuDeviceView && brightscript.isOnDeviceComponentAvailable",
-                    "group": "navigation@5"
+                    "group": "navigation@6"
                 },
                 {
                     "command": "extension.brightscript.rokuAutomationView.startRecording",
@@ -514,6 +519,11 @@
                     "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
                     "when": "view == devicesView && viewItem =~ /^device\\b/",
                     "group": "1_primary@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.watchDevice",
+                    "when": "view == devicesView && viewItem =~ /-cloud\\b/",
+                    "group": "1_primary@3"
                 },
                 {
                     "command": "extension.brightscript.devicesView.deviceMenu.switchTvInput",
@@ -4205,6 +4215,11 @@
                 "category": "BrightScript"
             },
             {
+                "command": "extension.brightscript.devicesView.deviceMenu.watchDevice",
+                "title": "🎥 Watch Device",
+                "category": "BrightScript"
+            },
+            {
                 "command": "extension.brightscript.devicesView.deviceMenu.switchTvInput",
                 "title": "📺 Switch TV Input",
                 "category": "BrightScript"
@@ -4445,6 +4460,13 @@
                 "title": "Copy Screenshot",
                 "category": "BrightScript",
                 "icon": "$(clippy)"
+            },
+            {
+                "command": "extension.brightscript.rokuDeviceView.openVideoEditor",
+                "title": "Open Video in Editor Tab",
+                "category": "BrightScript",
+                "icon": "$(link-external)",
+                "enablement": "brightscript.rokuDeviceView.isRceStreamActive"
             },
             {
                 "command": "extension.brightscript.disconnectFromDevice",

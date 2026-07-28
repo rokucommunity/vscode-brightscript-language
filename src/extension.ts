@@ -7,6 +7,7 @@ import { util } from './util';
 import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import { RceFinder } from './deviceDiscovery/RceFinder';
 import { RceManager } from './managers/RceManager';
+import { RceVideoEditorManager } from './managers/RceVideoEditorManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
@@ -87,6 +88,7 @@ export class Extension {
         this.extensionOutputChannel.appendLine('Extension startup');
         const rceManager = new RceManager(context);
         rceManager.register(context);
+        context.subscriptions.push(new RceVideoEditorManager(context, rceManager));
         const rceFinder = new RceFinder(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel, rceFinder);
         const credentialStore = new CredentialStore(context);

@@ -9,9 +9,7 @@
     import { utils as rtaUtils } from 'roku-test-automation/client/dist/utils';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
-    import { RceStreamPeer } from './RceStreamPeer';
-    import type { RceStreamJsep } from './RceStreamPeer';
-    import type { IceServer } from 'roku-deploy';
+    import RceStreamView from '../../shared/RceStreamView.svelte';
 
     window.vscode = acquireVsCodeApi();
 
@@ -21,117 +19,28 @@
         requestScreenshot();
     });
 
-    //Roku Cloud Emulator video stream mode: entered when the RCE panel's Watch button leads the
-    //extension host to negotiate a Janus session and post its offer here; replaces the screenshot
-    //view until Stop is clicked. All Janus signaling runs extension-side (see RceVideoSignalingClient
-    //in roku-deploy, reached through RokuDeviceViewViewProvider); this view only ever holds the
-    //RTCPeerConnection, exchanging SDP/ICE with the extension host over the message commands/events
-    //below rather than talking to Janus directly.
-    let rceStreamDeviceId: number | undefined = undefined;
-    let rceStreamDeviceName: string | undefined = undefined;
-    let rceStreamPeer: RceStreamPeer | undefined = undefined;
-    let rceStreamStatus: 'connecting' | 'streaming' = 'connecting';
-    let rceStreamError: string | undefined = undefined;
-    let rceMediaStream: MediaStream | undefined = undefined;
-    let rceVideoElement: HTMLVideoElement;
-    let rceStreamMuted = true;
+    //Roku Cloud Emulator video stream mode: entered when the extension host negotiates a Janus
+    //session and posts its offer here; replaces the screenshot view until Stop is clicked. The
+    //stream itself (peer connection, header, error banner) lives in the shared RceStreamView
+    //component - this view only tracks whether stream mode is active so it can route between the
+    //stream and the screenshot/setup views.
+    let rceStreamActive = false;
 
-    $: if (rceVideoElement) {
-        rceVideoElement.srcObject = rceMediaStream ?? null;
-    }
-
-    //posted at the very start of the extension host's negotiation, before it has anything else to
-    //report (even before it knows whether an account token is available) - this is what makes any
-    //failure before an offer (no token, a connect() failure, a negotiation timeout) visible at all,
-    //rather than the session dying silently behind the default screenshot/setup-form view
-    intermediary.observeEvent(ViewProviderEvent.onRceStreamConnecting, (message) => {
-        enterRceStreamMode(message.context.deviceId, message.context.deviceName);
+    intermediary.observeEvent(ViewProviderEvent.onRceStreamConnecting, () => {
+        rceStreamActive = true;
     });
 
-    intermediary.observeEvent(ViewProviderEvent.onRceStreamOffer, (message) => {
-        startRceStreamPeer(message.context);
+    intermediary.observeEvent(ViewProviderEvent.onRceStreamError, () => {
+        //an early failure (before onRceStreamConnecting reached this webview instance) still enters
+        //stream mode so RceStreamView has somewhere to show the error
+        rceStreamActive = true;
     });
 
-    intermediary.observeEvent(ViewProviderEvent.onRceStreamError, (message) => {
-        //an error can arrive before onRceStreamConnecting's own webview instance ever saw it (a queued
-        //message flushed out of order, or a genuinely unexpected error), so if this webview is not
-        //already showing stream mode, enter it here too rather than letting the error go nowhere
-        if (rceStreamDeviceName === undefined) {
-            enterRceStreamMode(message.context.deviceId, message.context.deviceName ?? 'Cloud Emulator device');
-        }
-        rceStreamError = message.context.message;
-    });
-
-    intermediary.observeEvent(ViewProviderEvent.onRceStreamClosed, () => {
-        rceStreamError = rceStreamError ?? 'The video stream closed unexpectedly';
-    });
-
-    function teardownRceStreamPeer() {
-        rceStreamPeer?.stop();
-        rceStreamPeer = undefined;
-        rceMediaStream = undefined;
-    }
-
-    //enters (or re-enters) stream mode: tears down any previous peer connection, shows the header for
-    //the given device, and clears any previous error so a fresh attempt starts from a clean banner
-    function enterRceStreamMode(deviceId: number | undefined, deviceName: string) {
-        teardownRceStreamPeer();
-
-        rceStreamDeviceId = deviceId;
-        rceStreamDeviceName = deviceName;
-        rceStreamStatus = 'connecting';
-        rceStreamError = undefined;
-        rceStreamMuted = true;
-    }
-
-    function startRceStreamPeer(offer: { deviceId: number; deviceName: string; offer: RceStreamJsep; iceServers: IceServer[] }) {
-        //a new offer while already streaming tears down the old peer connection first
-        enterRceStreamMode(offer.deviceId, offer.deviceName);
-
-        const peer = new RceStreamPeer();
-        rceStreamPeer = peer;
-
-        peer.on('answer', (jsep) => {
-            intermediary.sendCommand(ViewProviderCommand.sendRceStreamAnswer, { jsep: jsep });
-        });
-        peer.on('candidate', (candidateMessage) => {
-            intermediary.sendCommand(ViewProviderCommand.sendRceStreamIceCandidate, candidateMessage);
-        });
-        peer.on('track', (mediaStream) => {
-            rceMediaStream = mediaStream;
-            rceStreamStatus = 'streaming';
-        });
-        peer.on('error', (error) => {
-            rceStreamError = error.message;
-        });
-
-        peer.answerOffer(offer.offer, offer.iceServers).catch((error) => {
-            rceStreamError = error.message;
-        });
-    }
-
-    function stopRceStream() {
-        teardownRceStreamPeer();
-        rceStreamDeviceId = undefined;
-        rceStreamDeviceName = undefined;
-        intermediary.sendCommand(ViewProviderCommand.stopRceStream);
+    function onRceStreamStopped() {
+        rceStreamActive = false;
         if (enableScreenshotCaptureAutoRefresh) {
             requestScreenshot();
         }
-    }
-
-    function retryRceStream() {
-        if (rceStreamDeviceId === undefined) {
-            return;
-        }
-        //re-runs the whole negotiation rather than reusing anything remembered locally, since the
-        //extension host re-resolves the device's current stream details fresh
-        intermediary.sendCommand(ViewProviderCommand.stopRceStream);
-        intermediary.sendCommand(ViewProviderCommand.watchRceDevice, { deviceId: rceStreamDeviceId });
-    }
-
-    function toggleRceStreamMute() {
-        rceStreamMuted = !rceStreamMuted;
     }
 
     let shouldRepositionNodeInfo = false;
@@ -346,7 +255,7 @@
 
     let currentlyCapturingScreenshot = false;
     async function requestScreenshot() {
-        if (!deviceAvailable || currentlyCapturingScreenshot || rceStreamDeviceName !== undefined) {
+        if (!deviceAvailable || currentlyCapturingScreenshot || rceStreamActive) {
             return;
         }
 
@@ -488,73 +397,13 @@
     .hide {
         display: none;
     }
-
-    #rceStreamContainer {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-
-    #rceStreamHeader {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 10px;
-        background-color: var(--vscode-breadcrumb-background);
-    }
-
-    #rceStreamDeviceName {
-        font-weight: bold;
-        flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    #rceStreamStatusLabel {
-        opacity: 0.7;
-        font-size: 0.9em;
-    }
-
-    #rceStreamErrorBanner {
-        color: var(--vscode-debugConsole-errorForeground);
-        padding: 10px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    #rceStreamVideo {
-        max-width: 100vw;
-        max-height: 100vh;
-        margin-left: auto;
-        margin-right: auto;
-        background-color: black;
-    }
 </style>
 
 <svelte:window on:keydown={onKeydown} />
 <div id="container" on:mouseenter="{onMouseEnter}" on:mouseleave="{onMouseLeave}">
-    {#if rceStreamDeviceName !== undefined}
-        <div id="rceStreamContainer">
-            <div id="rceStreamHeader">
-                <span id="rceStreamDeviceName">{rceStreamDeviceName}</span>
-                <span id="rceStreamStatusLabel">{rceStreamStatus}</span>
-                <vscode-button appearance="secondary" on:click={toggleRceStreamMute}>
-                    {rceStreamMuted ? 'Unmute' : 'Mute'}
-                </vscode-button>
-                <vscode-button appearance="secondary" on:click={stopRceStream}>Stop</vscode-button>
-            </div>
-            {#if rceStreamError}
-                <div id="rceStreamErrorBanner">
-                    <span>{rceStreamError}</span>
-                    <vscode-button appearance="secondary" on:click={retryRceStream}>Retry</vscode-button>
-                </div>
-            {/if}
-            <!-- svelte-ignore a11y-media-has-caption -->
-            <video id="rceStreamVideo" bind:this={rceVideoElement} autoplay playsinline muted={rceStreamMuted} />
-        </div>
+    <RceStreamView on:stopped={onRceStreamStopped} />
+    {#if rceStreamActive}
+        <!-- RceStreamView above renders the stream; nothing else shows in stream mode -->
     {:else if deviceAvailable}
     <div
         id="screenshotContainer"
@@ -584,7 +433,7 @@
     {/if}
 </div>
 
-{#if focusedNode && rceStreamDeviceName === undefined}
+{#if focusedNode && !rceStreamActive}
     <div id="nodeInfo" class:reposition={shouldRepositionNodeInfo}>
         {#if currentPositionMatches.length}
             {currentPositionMatchesIndex + 1} of {currentPositionMatches.length} <span class="note">(use arrow keys to see others)</span><br>

@@ -5,6 +5,7 @@ import type { RequestType } from 'roku-test-automation';
 import type { AsyncSubscription, Event } from '@parcel/watcher';
 import type { ChannelPublishedEvent } from 'roku-debug';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
+import { buildWebviewIndexHtml } from './webviewHtml';
 import type { WebviewViewProviderManager } from '../managers/WebviewViewProviderManager';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { ViewProviderCommand } from './ViewProviderCommand';
@@ -232,46 +233,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return this.getIndexHtml();
     }
 
-    /**
-    * Get a webview-supported URI for the given path
-    */
-    private asWebviewUri(...parts: string[]) {
-        return this.view?.webview?.asWebviewUri?.(
-            vscode.Uri.file(
-                path.join(...parts)
-            )
-        );
-    }
-
     private getIndexHtml() {
-        let html: string;
-        try {
-            html = fsExtra.readFileSync(this.webviewBasePath + '/index.html').toString();
-        } catch (e) {
-            console.error(e);
-            html = '<h1>Error loading webview</h1>';
-        }
-        //the data that will be replaced in the index.html
-        const data = {
+        return buildWebviewIndexHtml({
+            webview: this.view?.webview ?? this.panel?.webview,
+            webviewBasePath: this.webviewBasePath,
             viewName: this.id,
-            baseHref: `${this.asWebviewUri(this.webviewBasePath)}/`,
-            additionalScriptContents: this.additionalScriptContents().join('\n                        ')
-        };
-        /**
-         * replace placeholders in the html, in one of these formats:
-         * <!--{{thing1}}-->
-         * //{{thing2}}
-         * {{thing3}}
-         */
-        html = html.replace(/(\/\/{{(\w+)}})|({{(\w+)}})|(<!--{{(\w+)}})/gm, (...match: string[]) => {
-            const [, , key1, , key2, , key3] = match;
-            return data[key1] ?? data[key2] ?? data[key3] ?? match[0];
+            additionalScriptContents: this.additionalScriptContents()
         });
-        // remove leading slash for css/js urls so we can make them relative to the baseHref
-        html = html.replace(/((?:href|src)\s*=\s*["'])(\/.*")/g, (...match: string[]) => {
-            return match[1] + match[2]?.replace(/^\/+/, '');
-        });
-        return html;
     }
 
     public async resolveWebviewView(

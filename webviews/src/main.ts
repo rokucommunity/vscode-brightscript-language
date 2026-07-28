@@ -9,6 +9,7 @@ import rokuAppOverlaysView from './views/RokuAppOverlaysView/RokuAppOverlaysView
 import sceneGraphInspectorView from './views/SceneGraphInspectorView/SceneGraphInspectorView.svelte';
 import rokuReplView from './views/RokuReplView/RokuReplView.svelte';
 import rceManagementView from './views/RceManagementView/RceManagementView.svelte';
+import rceVideoView from './views/RceVideoView/RceVideoView.svelte';
 
 
 import './style.css';
@@ -35,7 +36,8 @@ const views = {
     rokuAppOverlaysView,
     sceneGraphInspectorView,
     rokuReplView,
-    rceManagementView
+    rceManagementView,
+    rceVideoView
 };
 
 const app = new views[viewName]({

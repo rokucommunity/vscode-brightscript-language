@@ -5,7 +5,7 @@ import type { RceVideoSignalingClient, RceVideoSignalingConfig, RceVideoSignalin
 import { RtaManager } from '../managers/RtaManager';
 import { vscode } from '../mockVscode.spec';
 import { RokuDeviceViewViewProvider } from './RokuDeviceViewViewProvider';
-import type { RceStreamRequestConfig } from './RokuDeviceViewViewProvider';
+import type { RceStreamRequestConfig } from '../managers/RceManager';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { VscodeCommand } from '../commands/VscodeCommand';
@@ -374,7 +374,9 @@ describe('RokuDeviceViewViewProvider', () => {
             await provider['messageCommandCallbacks'][ViewProviderCommand.watchRceDevice](message);
 
             expect(client.stop.calledOnce).to.be.true;
-            const executeCommandArgs = executeCommand.getCall(0).args;
+            //the session stop also fires a setContext call (the editor pop-out button's visibility),
+            //so find the watch command rather than assuming call order
+            const executeCommandArgs = executeCommand.getCalls().find((call) => call.args[0] !== 'setContext').args;
             expect(executeCommandArgs[0]).to.equal(VscodeCommand.rceWatchDeviceById);
             expect(executeCommandArgs[1]).to.equal(5);
         });
@@ -417,7 +419,7 @@ describe('RokuDeviceViewViewProvider', () => {
             markViewReady();
 
             expect(client.stop.called).to.be.false;
-            expect(provider['activeRceStream'].offerDelivered).to.be.true;
+            expect(provider['rceStreamSession']['activeStream'].offerDelivered).to.be.true;
             //the offer itself was already posted (BaseWebviewViewProvider queues it and flushes the
             //queue right after onViewReady returns; that queuing/flushing is base-class behavior not
             //re-tested here)
@@ -430,7 +432,7 @@ describe('RokuDeviceViewViewProvider', () => {
             //the offer is delivered directly rather than queued
             markViewReady();
             const client = await startFirstSession();
-            expect(provider['activeRceStream'].offerDelivered).to.be.true;
+            expect(provider['rceStreamSession']['activeStream'].offerDelivered).to.be.true;
 
             //the panel was closed and reopened (or otherwise recreated); the new webview's viewReady
             //arrives, but the old webview's peer connection this session's offer went to is gone
@@ -455,7 +457,7 @@ describe('RokuDeviceViewViewProvider', () => {
             await startPromise;
 
             expect(client.stop.called).to.be.false;
-            expect(provider['activeRceStream'].offerDelivered).to.be.true;
+            expect(provider['rceStreamSession']['activeStream'].offerDelivered).to.be.true;
             expect(findEventMessages(ViewProviderEvent.onRceStreamOffer)).to.have.length(1);
         });
     });

@@ -1211,6 +1211,13 @@ export class BrightScriptCommands {
         this.registerCommand('devicesView.deviceMenu.switchTvInput', (element?: { key?: string }) => {
             return vscode.commands.executeCommand('extension.brightscript.changeTvInput', element);
         });
+        this.registerCommand('devicesView.deviceMenu.watchDevice', (element?: { key?: string }) => {
+            const device = getDevice(element);
+            if (!device?.rce) {
+                return vscode.window.showErrorMessage('Watching a video stream is only available for cloud emulator devices');
+            }
+            return vscode.commands.executeCommand('extension.brightscript.rce.watchDeviceInEditor', Number(device.rce.id), this.deviceManager.getDeviceDisplayName(device));
+        });
         this.registerCommand('devicesView.deviceMenu.refreshDevice', (element?: { key?: string }) => {
             return vscode.commands.executeCommand('extension.brightscript.refreshDevice', element);
         });

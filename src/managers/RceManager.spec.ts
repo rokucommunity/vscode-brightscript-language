@@ -20,13 +20,18 @@ class TestRceManager extends RceManager {
         username: 'chrisdp',
         organisation: { name: 'fubo' }
     };
+    /**
+     * The device list resolveStreamRequest sees
+     */
+    public devices: any[] = [];
     protected override createClient(token: string): RceManagementClient {
         this.createdTokens.push(token);
         return {
             token: token,
             getUserInfo: () => {
                 return this.userInfoError ? Promise.reject(this.userInfoError) : Promise.resolve(this.userInfo);
-            }
+            },
+            listDevices: () => Promise.resolve(this.devices)
         } as unknown as RceManagementClient;
     }
 }
@@ -152,5 +157,85 @@ describe('RceManager', () => {
         off();
         await manager.addAccount('personal', 'token-personal');
         expect(events.length).to.equal(countBefore);
+    });
+
+    describe('resolveStreamRequest', () => {
+        it('throws when no account is configured', async () => {
+            let caughtError: Error;
+            try {
+                await manager.resolveStreamRequest(5);
+            } catch (e) {
+                caughtError = e as Error;
+            }
+            expect(caughtError.message).to.contain('No active Cloud Emulator account');
+        });
+
+        it('throws when the device is not running', async () => {
+            await manager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            manager.devices = [{ id: 5, name: 'my-device', status: 'shutdown' }];
+            /* eslint-enable camelcase */
+
+            let caughtError: Error;
+            try {
+                await manager.resolveStreamRequest(5);
+            } catch (e) {
+                caughtError = e as Error;
+            }
+            expect(caughtError.message).to.contain('must be running');
+        });
+
+        it('throws when a running device has no janus_websocket_url or no janus_id', async () => {
+            await manager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            manager.devices = [{ id: 5, name: 'my-device', status: 'running', running_device: {} }];
+
+            let caughtError: Error;
+            try {
+                await manager.resolveStreamRequest(5);
+            } catch (e) {
+                caughtError = e as Error;
+            }
+            expect(caughtError.message).to.contain('must be running');
+
+            manager.devices = [{ id: 5, name: 'my-device', status: 'running', running_device: { janus_websocket_url: 'wss://x/janus', janus_id: null } }];
+            /* eslint-enable camelcase */
+            caughtError = undefined;
+            try {
+                await manager.resolveStreamRequest(5);
+            } catch (e) {
+                caughtError = e as Error;
+            }
+            expect(caughtError.message).to.contain('must be running');
+        });
+
+        it('resolves the full stream config for a running device, treating a janus_id of 0 as valid', async () => {
+            await manager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            manager.devices = [{
+                id: 5,
+                name: 'my-device',
+                status: 'running',
+                running_device: {
+                    janus_websocket_url: 'wss://device.rce.roku.com/instance/abc/janus',
+                    janus_id: 0,
+                    janus_pin: '1234',
+                    janus_token: 'janus-secret',
+                    janus_ice_servers: [{ urls: ['stun:stun.example.com'] }]
+                }
+            }];
+            /* eslint-enable camelcase */
+
+            const streamRequest = await manager.resolveStreamRequest(5);
+            expect(streamRequest).to.eql({
+                deviceId: 5,
+                deviceName: 'my-device',
+                websocketUrl: 'wss://device.rce.roku.com/instance/abc/janus',
+                streamId: 0,
+                pin: '1234',
+                janusToken: 'janus-secret',
+                iceServers: [{ urls: ['stun:stun.example.com'] }]
+            });
+        });
     });
 });

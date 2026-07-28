@@ -1,19 +1,40 @@
 import * as vscode from 'vscode';
 import type { ChannelPublishedEvent } from 'roku-debug';
-import type { IceServer, RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
+import type { RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
 import { RceVideoSignalingClient } from 'roku-deploy';
 import { VscodeCommand } from '../commands/VscodeCommand';
+import { vscodeContextManager } from '../managers/VscodeContextManager';
+import type { RceStreamRequestConfig } from '../managers/RceManager';
 import { BaseRdbViewProvider } from './BaseRdbViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
-import { ViewProviderEvent } from './ViewProviderEvent';
+import { RceStreamSession } from './RceStreamSession';
 
 export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuDeviceView;
 
     private temporarilyDisableScreenshotCapture = false;
     private resumeScreenshotCapture?: () => void;
-    private activeRceStream: ActiveRceStream | undefined;
+
+    /**
+     * The Janus signaling session behind this view's Cloud Emulator video stream mode. The session
+     * lives extension-side (see RceStreamSession) because the Janus WebSocket host requires an
+     * Authorization header on the socket handshake, which only a Node WebSocket client (not a
+     * webview WebSocket) can set. The webview only ever sees the resulting SDP offer/answer and ICE
+     * candidates via the message plumbing below.
+     */
+    private rceStreamSession = new RceStreamSession({
+        getApiToken: () => this.dependencies.rceManager.getToken(),
+        postEvent: (event, context) => this.postOrQueueMessage(this.createEventMessage(event, context)),
+        isViewReady: () => this.isViewReady(),
+        createSignalingClient: (config, options) => this.createSignalingClient(config, options),
+        //drives the view-title "Open Video in Editor Tab" button's visibility. A setContext failure
+        //is inconsequential (the button just shows/hides late), so it must never surface as an
+        //unhandled rejection out of a stream lifecycle transition
+        onActiveChanged: (active) => {
+            vscodeContextManager.set('brightscript.rokuDeviceView.isRceStreamActive', active).catch(() => { });
+        }
+    });
 
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
@@ -29,58 +50,50 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         });
 
         //internal command (no package.json contribution): the RCE panel invokes this with a stream
-        //request config to hand a Cloud Emulator device's video stream off to this view. This view
-        //owns the Janus signaling session (see RceVideoSignalingClient in roku-deploy) rather than the
-        //webview, because the Janus WebSocket host requires an Authorization header on the socket
-        //handshake, which only a Node WebSocket client (not a webview WebSocket) can set. The webview
-        //only ever sees the resulting SDP offer/answer and ICE candidates via the message plumbing below.
+        //request config to hand a Cloud Emulator device's video stream off to this view.
         this.registerCommand(VscodeCommand.rokuDeviceViewShowRceStream, (streamRequest: RceStreamRequestConfig) => {
             void vscode.commands.executeCommand('rokuDeviceView.focus');
             this.view?.show(false);
             void this.startRceStreamSession(streamRequest);
         });
 
-        this.addMessageCommandCallback(ViewProviderCommand.sendRceStreamAnswer, async (message) => {
-            try {
-                await this.activeRceStream?.client.sendAnswer(message.context.jsep);
-            } catch (e) {
-                this.postRceStreamError(
-                    `Failed to start the video stream for device '${this.activeRceStream?.deviceName}': ${(e as Error).message}`,
-                    this.activeRceStream?.deviceId,
-                    this.activeRceStream?.deviceName
-                );
+        //the view-title pop-out button: opens the currently-streaming device's video in its own
+        //editor tab (a second, independent stream session - the Janus gateway allows concurrent
+        //watchers), leaving this view's stream running
+        this.registerCommand(VscodeCommand.rokuDeviceViewOpenVideoEditor, async () => {
+            if (this.rceStreamSession.deviceId === undefined) {
+                return;
             }
+            await vscode.commands.executeCommand(VscodeCommand.rceWatchDeviceInEditor, this.rceStreamSession.deviceId, this.rceStreamSession.deviceName);
+        });
+
+        this.addMessageCommandCallback(ViewProviderCommand.sendRceStreamAnswer, async (message) => {
+            await this.rceStreamSession.sendAnswer(message.context.jsep);
             return true;
         });
 
         this.addMessageCommandCallback(ViewProviderCommand.sendRceStreamIceCandidate, (message) => {
-            const context = message.context;
-            if (context.completed) {
-                this.activeRceStream?.client.sendCandidatesComplete();
-            } else {
-                this.activeRceStream?.client.sendCandidate(context.candidate);
-            }
+            this.rceStreamSession.handleIceCandidate(message.context);
             return Promise.resolve(true);
         });
 
         this.addMessageCommandCallback(ViewProviderCommand.stopRceStream, (message) => {
-            this.stopActiveRceStream();
+            this.rceStreamSession.stop();
             return Promise.resolve(true);
         });
 
         //the Retry action re-sends watchRceDevice with the device id it remembered from
         //onRceStreamOffer. This webview can only reach this provider (each webview only talks to the
         //provider that owns it), so re-resolving the device's current stream details goes through the
-        //rceWatchDeviceById internal command, which RceManagementViewProvider also uses to implement
-        //its own webview's Watch button
+        //rceWatchDeviceById internal command, which RceManagementViewProvider registers
         this.addMessageCommandCallback(ViewProviderCommand.watchRceDevice, async (message) => {
             const deviceId = message.context.deviceId;
-            const deviceName = this.activeRceStream?.deviceName;
-            this.stopActiveRceStream();
+            const deviceName = this.rceStreamSession.deviceName;
+            this.rceStreamSession.stop();
             try {
                 await vscode.commands.executeCommand(VscodeCommand.rceWatchDeviceById, deviceId);
             } catch (e) {
-                this.postRceStreamError(`Failed to restart the video stream: ${(e as Error).message}`, deviceId, deviceName);
+                this.rceStreamSession.postError(`Failed to restart the video stream: ${(e as Error).message}`, deviceId, deviceName);
             }
             return true;
         });
@@ -127,37 +140,21 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
 
     public dispose() {
         super.dispose();
-        this.stopActiveRceStream();
+        this.rceStreamSession.stop();
     }
 
     protected onViewReady() {
         super.onViewReady();
 
-        //onViewReady fires both on a cold open (the panel was just created, for example because
-        //startRceStreamSession's own executeCommand('rokuDeviceView.focus') just created it) and on a
-        //reload (the panel already existed and was closed/reopened, or the webview otherwise restarted).
-        //Those need opposite handling:
-        // - a session whose offer already reached a live webview (offerDelivered) has no answering side
-        //   left once THIS onViewReady fires again, since that was a different, now-gone webview
-        //   instance's peer connection - stop it.
-        // - a session whose offer was posted but only queued (offerPosted, not yet delivered) is about
-        //   to have that same offer flushed to this webview right after this callback returns
-        //   (BaseWebviewViewProvider's order is: set viewReady, call onViewReady, then flush queued
-        //   messages) - mark it delivered rather than stopping a session that is about to be answered.
-        // - a session with no offer yet is still negotiating; leave it alone. Once its offer does post,
-        //   the view will already be ready here, so startRceStreamSession marks it delivered (and
-        //   posts, rather than queues, the offer) directly instead of ever queuing it.
-        if (this.activeRceStream?.offerDelivered) {
-            this.stopActiveRceStream();
-        } else if (this.activeRceStream?.offerPosted) {
-            this.activeRceStream.offerDelivered = true;
-        }
+        //reconcile the stream session with the webview that just reported in (a reloaded webview has
+        //no peer connection left for an already-delivered offer; a queued offer is about to flush)
+        this.rceStreamSession.handleViewReady();
 
         //a webview that opens with no stream session underway connects to the active device when
         //that device is a Cloud Emulator device: its video stream is this view's equivalent of the
         //LAN screenshot view, so opening the view should reach it without a trip to the RCE panel's
         //Watch button
-        if (!this.activeRceStream) {
+        if (!this.rceStreamSession.isActive) {
             void this.watchActiveRceDevice();
         }
     }
@@ -175,12 +172,12 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
             return;
         }
         try {
-            //the same resolve-and-hand-off path the RCE panel's Watch button and the webview's
-            //Retry action use (registered by RceManagementViewProvider)
+            //the same resolve-and-hand-off path the webview's Retry action uses (registered by
+            //RceManagementViewProvider)
             await vscode.commands.executeCommand(VscodeCommand.rceWatchDeviceById, Number(device.rce.id));
         } catch (e) {
             const deviceName = this.dependencies.deviceManager.getDeviceDisplayName(device);
-            this.postRceStreamError(
+            this.rceStreamSession.postError(
                 `Failed to start the video stream for device '${deviceName}': ${(e as Error).message}`,
                 Number(device.rce.id),
                 deviceName
@@ -196,134 +193,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         return new RceVideoSignalingClient(config, options);
     }
 
-    /**
-     * Stop any active Janus signaling session, then connect a new one for the given stream request and
-     * post its offer to the webview once negotiated. The api token is fetched here, extension-side, and
-     * never included in the onRceStreamOffer payload sent to the webview.
-     *
-     * Posts onRceStreamConnecting first, before any async work (including the token fetch): the
-     * webview only has a stream-mode UI to show anything in (the header, a "connecting" status, an
-     * error banner) once it has seen this event, so without it a failure before the offer - no
-     * account token, a connect() failure, a negotiation timeout - was previously invisible, silently
-     * leaving the default screenshot/setup-form view showing instead.
-     */
-    private async startRceStreamSession(streamRequest: RceStreamRequestConfig): Promise<void> {
-        this.stopActiveRceStream();
-
-        this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRceStreamConnecting, {
-            deviceId: streamRequest.deviceId,
-            deviceName: streamRequest.deviceName
-        }));
-
-        const apiToken = await this.dependencies.rceManager.getToken();
-        if (apiToken === undefined) {
-            this.postRceStreamError(
-                `No active Cloud Emulator account is configured; cannot watch device '${streamRequest.deviceName}'`,
-                streamRequest.deviceId,
-                streamRequest.deviceName
-            );
-            return;
-        }
-
-        const client = this.createSignalingClient({
-            websocketUrl: streamRequest.websocketUrl,
-            streamId: streamRequest.streamId,
-            pin: streamRequest.pin,
-            janusToken: streamRequest.janusToken,
-            apiToken: apiToken,
-            iceServers: streamRequest.iceServers
-        });
-        const session: ActiveRceStream = {
-            client: client,
-            deviceId: streamRequest.deviceId,
-            deviceName: streamRequest.deviceName,
-            offerPosted: false,
-            offerDelivered: false
-        };
-        this.activeRceStream = session;
-
-        client.on('error', (error) => {
-            this.postRceStreamError(`Video stream error for device '${streamRequest.deviceName}': ${error.message}`, streamRequest.deviceId, streamRequest.deviceName);
-        });
-        client.on('close', () => {
-            if (this.activeRceStream === session) {
-                this.activeRceStream = undefined;
-            }
-            this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRceStreamClosed));
-        });
-
-        try {
-            const { offer, iceServers } = await client.connect();
-            session.offerPosted = true;
-            //if the webview was already ready by the time the offer is ready to post, this post goes
-            //straight to it rather than being queued, so it is already delivered - see onViewReady
-            if (this.isViewReady()) {
-                session.offerDelivered = true;
-            }
-            this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRceStreamOffer, {
-                deviceId: streamRequest.deviceId,
-                deviceName: streamRequest.deviceName,
-                offer: offer,
-                iceServers: iceServers
-            }));
-        } catch (e) {
-            this.postRceStreamError(
-                `Failed to start the video stream for device '${streamRequest.deviceName}': ${(e as Error).message}`,
-                streamRequest.deviceId,
-                streamRequest.deviceName
-            );
-        }
+    private startRceStreamSession(streamRequest: RceStreamRequestConfig): Promise<void> {
+        return this.rceStreamSession.start(streamRequest);
     }
-
-    private stopActiveRceStream(): void {
-        this.activeRceStream?.client.stop();
-        this.activeRceStream = undefined;
-    }
-
-    /**
-     * Posts onRceStreamError, always carrying whatever device context is available (so the webview,
-     * which may not yet be in stream mode when an early failure hits, can enter it itself and show
-     * the error rather than the message going nowhere), and logs the full message to the extension
-     * host console so a live signaling failure's real reason is captured there too.
-     */
-    private postRceStreamError(message: string, deviceId?: number, deviceName?: string): void {
-        console.error(`RCE video stream error: ${message}`);
-        this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRceStreamError, {
-            message: message,
-            deviceId: deviceId,
-            deviceName: deviceName
-        }));
-    }
-}
-
-/**
- * Sent by RceManagementViewProvider's watchRceDevice handler when the user clicks Watch on a
- * running device. Never includes the RCE management api token; RokuDeviceViewViewProvider fetches
- * that itself, extension-side, when it creates the signaling client.
- */
-export interface RceStreamRequestConfig {
-    deviceId: number;
-    deviceName: string;
-    websocketUrl: string;
-    streamId: number;
-    pin?: string;
-    janusToken?: string;
-    iceServers: IceServer[];
-}
-
-interface ActiveRceStream {
-    client: RceVideoSignalingClient;
-    deviceId: number;
-    deviceName: string;
-    /**
-     * Whether this session's onRceStreamOffer has been posted (immediately or queued) at all.
-     */
-    offerPosted: boolean;
-    /**
-     * Whether this session's offer has actually reached a live webview: either it was posted while
-     * the view was already ready, or a later onViewReady saw it queued and is about to flush it.
-     * Only a session with this true has a peer connection on the other end that onViewReady should
-     * consider stale (and stop) the next time it fires.
-     */
-    offerDelivered: boolean;
 }

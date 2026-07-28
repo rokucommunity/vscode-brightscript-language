@@ -509,7 +509,9 @@
         watchingDeviceInFlight = { ...watchingDeviceInFlight, [device.id]: true };
         try {
             await intermediary.sendCommand(ViewProviderCommand.watchRceDevice, {
-                deviceId: device.id
+                deviceId: device.id,
+                //lets the editor tab title itself before the stream details resolve
+                deviceName: device.name
             });
         } catch (error) {
             deviceActionError = error.message;

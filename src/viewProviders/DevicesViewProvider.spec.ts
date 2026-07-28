@@ -251,6 +251,7 @@ describe('DevicesViewProvider', () => {
                 '🔑 Set Device Password',
                 '⭐ Set as Active Device',
                 '📷 Capture Screenshot',
+                '🎥 Watch Device',
                 'Device Info'
             ]);
 

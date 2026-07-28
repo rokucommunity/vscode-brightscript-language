@@ -323,6 +323,22 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 })
             );
 
+            if (device.rce) {
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: '🎥 Watch Device',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'Open this device\'s video stream in an editor tab',
+                        command: {
+                            command: 'extension.brightscript.rce.watchDeviceInEditor',
+                            title: 'Watch Device',
+                            arguments: [Number(device.rce.id), this.deviceManager.getDeviceDisplayName(device)]
+                        }
+                    })
+                );
+            }
+
             if (device.deviceInfo?.['is-tv'] === 'true') {
                 result.push(
                     this.createDeviceInfoTreeItem({
