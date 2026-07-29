@@ -3,6 +3,7 @@ export enum ViewProviderCommand {
     createRceSnapshot = 'createRceSnapshot',
     deleteRceSnapshot = 'deleteRceSnapshot',
     deleteRokuFile = 'deleteRokuFile',
+    disableRceLimitedEcp = 'disableRceLimitedEcp',
     enableRceDevMode = 'enableRceDevMode',
     getAppUI = 'getAppUI',
     getRceDeviceDetails = 'getRceDeviceDetails',

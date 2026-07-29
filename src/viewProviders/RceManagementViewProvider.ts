@@ -259,6 +259,21 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
             return true;
         });
 
+        this.addMessageCommandCallback(ViewProviderCommand.disableRceLimitedEcp, async (message) => {
+            try {
+                const deviceConfig = await this.getRunningRceDeviceConfig(message.context.deviceId, 'change its ECP mode');
+                //walks the on-screen settings to flip Control-by-mobile-apps network access off
+                //Limited. Sent over the ECP2 auth-proxy socket (not the /ecp1 proxy) because
+                //limited mode is exactly the state that 403s plain ECP keypresses.
+                await this.createRceDevice(deviceConfig).sendKeySequence(RceManagementViewProvider.disableLimitedEcpKeySequence);
+                this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
+            } catch (error) {
+                this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
+            }
+            await this.pushState();
+            return true;
+        });
+
         this.addMessageCommandCallback(ViewProviderCommand.wakeRceDevice, async (message) => {
             try {
                 const deviceConfig = await this.getRunningRceDeviceConfig(message.context.deviceId, 'wake it');
@@ -340,6 +355,14 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
     private transitionWatchTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     private static readonly allowedAccountCommands = ['addAccount', 'switchAccount', 'removeAccount'];
+
+    /**
+     * The remote-key walk through the on-screen settings that flips Control-by-mobile-apps network
+     * access off Limited mode ('Select' is the remote's OK button)
+     */
+    private static readonly disableLimitedEcpKeySequence = [
+        'Home', 'Up', 'Right', 'Up', 'Right', 'Up', 'Right', 'Up', 'Right', 'Right', 'Down', 'Select', 'Up', 'Select'
+    ];
 
     /**
      * Max runtime used when the webview does not send one (one hour, matching the runtime

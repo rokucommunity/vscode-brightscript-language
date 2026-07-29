@@ -74,7 +74,8 @@ class FakeRceFinder extends EventEmitter {
 class TestRceManagementViewProvider extends RceManagementViewProvider {
     public fakeRceDevice = {
         sendDeveloperSettingsCombo: sinon.stub().resolves(),
-        sendKey: sinon.stub().resolves()
+        sendKey: sinon.stub().resolves(),
+        sendKeySequence: sinon.stub().resolves()
     };
 
     public lastRceDeviceConfig: RceDeviceConfig | undefined;
@@ -656,6 +657,84 @@ describe('RceManagementViewProvider', () => {
             ]);
             const responseMessage = findResponseMessage(ViewProviderCommand.wakeRceDevice);
             expect(responseMessage.response.success).to.be.true;
+        });
+    });
+
+    describe('disableRceLimitedEcp', () => {
+        it('responds with an error and sends nothing when the device is not running', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', device_type: 'tv', status: 'shutdown' }
+            ]);
+            /* eslint-enable camelcase */
+
+            const testProvider = createProviderWithFakeRceDevice();
+
+            const message = { command: ViewProviderCommand.disableRceLimitedEcp, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.disableRceLimitedEcp](message);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.disableRceLimitedEcp);
+            expect(responseMessage.error.message).to.contain('must be running');
+            expect(testProvider.fakeRceDevice.sendKeySequence.called).to.be.false;
+        });
+
+        it('sends the settings-walk key sequence to a running device over the RceDevice socket path', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                {
+                    id: 5,
+                    name: 'my-device',
+                    device_type: 'tv',
+                    status: 'running',
+                    running_device: { instance_api_url: 'https://device.rce.roku.com/instance/abc' }
+                }
+            ]);
+            /* eslint-enable camelcase */
+
+            const testProvider = createProviderWithFakeRceDevice();
+
+            const message = { command: ViewProviderCommand.disableRceLimitedEcp, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.disableRceLimitedEcp](message);
+
+            expect(testProvider.lastRceDeviceConfig).to.eql({
+                instanceUrl: 'https://device.rce.roku.com/instance/abc',
+                rceToken: 'token-work'
+            });
+            expect(testProvider.fakeRceDevice.sendKeySequence.calledOnce).to.be.true;
+            expect(testProvider.fakeRceDevice.sendKeySequence.firstCall.args[0]).to.eql([
+                'Home', 'Up', 'Right', 'Up', 'Right', 'Up', 'Right', 'Up', 'Right', 'Right', 'Down', 'Select', 'Up', 'Select'
+            ]);
+            const responseMessage = findResponseMessage(ViewProviderCommand.disableRceLimitedEcp);
+            expect(responseMessage.response.success).to.be.true;
+        });
+
+        it('relays a key-sequence failure into the error response', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                {
+                    id: 5,
+                    name: 'my-device',
+                    device_type: 'tv',
+                    status: 'running',
+                    running_device: { instance_api_url: 'https://device.rce.roku.com/instance/abc' }
+                }
+            ]);
+            /* eslint-enable camelcase */
+
+            const testProvider = createProviderWithFakeRceDevice();
+            testProvider.fakeRceDevice.sendKeySequence.rejects(new Error(`Key press 'Up' (step 2 of 14) failed with ECP2 status 500`));
+
+            const message = { command: ViewProviderCommand.disableRceLimitedEcp, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.disableRceLimitedEcp](message);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.disableRceLimitedEcp);
+            expect(responseMessage.error.message).to.contain('step 2 of 14');
         });
     });
 
