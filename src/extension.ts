@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import * as prettyBytes from 'pretty-bytes';
 import { extensions } from 'vscode';
+import { isRceDeviceConfig } from 'roku-deploy';
+import type { DeviceOption } from 'roku-deploy';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
@@ -199,9 +201,10 @@ export class Extension {
 
         //register a descriptor factory so we can inject process-level env vars into the debug adapter before it starts.
         //this is required for features like DAP protocol logging, which must be configured before the first DAP message arrives.
+        //note: an inline or server-based adapter (no executable) skips env injection entirely; we always spawn an executable today.
         context.subscriptions.push(
             vscode.debug.registerDebugAdapterDescriptorFactory('brightscript', {
-                createDebugAdapterDescriptor: (session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): vscode.ProviderResult<vscode.DebugAdapterDescriptor> => {
+                createDebugAdapterDescriptor: async (session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): Promise<vscode.DebugAdapterDescriptor | undefined> => {
                     if (!executable) {
                         return executable;
                     }
@@ -211,6 +214,17 @@ export class Extension {
                     const dapLogFilePath = (session.configuration as any).debugAdapterProtocolLogFilePath as string | undefined;
                     if (dapLogFilePath) {
                         env.ROKU_DAP_LOG_FILE = dapLogFilePath;
+                    }
+
+                    //hand the Cloud Emulator account token to the adapter as an env var rather than through the
+                    //launch config (which ends up in DAP traffic and logs); roku-debug hydrates the device
+                    //option's rceToken from ROKU_RCE_TOKEN whenever the launch config did not carry one
+                    const device = session.configuration.device as DeviceOption | undefined;
+                    if (typeof device === 'object' && isRceDeviceConfig(device)) {
+                        const accountToken = await rceManager.getToken();
+                        if (accountToken) {
+                            env.ROKU_RCE_TOKEN = accountToken;
+                        }
                     }
 
                     return new vscode.DebugAdapterExecutable(executable.command, executable.args, { ...executable.options, env: env });
