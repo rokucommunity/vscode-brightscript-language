@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as rta from 'roku-test-automation';
+import { isLocalDeviceConfig } from 'roku-deploy';
+import type { DeviceOption } from 'roku-deploy';
 import * as vscode from 'vscode';
 import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { ViewProviderId } from '../viewProviders/ViewProviderId';
@@ -26,17 +28,26 @@ export class RtaManager {
     private webviewViewProviderManager?: WebviewViewProviderManager;
     private lastAppUIResponse: rta.AppUIResponse | undefined;
 
-    public setupRtaWithConfig(config: { host?: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
+    public setupRtaWithConfig(config: { device?: DeviceOption; host?: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
         //roku-test-automation talks to the device by host over the local network, so a device without
-        //a host (like a Roku Cloud Emulator device) cannot back the RDB views yet
-        if (!config.host) {
+        //a host (like a Roku Cloud Emulator device) cannot back the RDB views yet. A debug session's
+        //launch config addresses the device through `device`; the bare `host` field remains only for
+        //the RDB view's manual-ip flow, and is deliberately ignored when a device config is present
+        //(an RCE session's raw `host` field can hold an unresolved placeholder).
+        let host: string | undefined;
+        if (typeof config.device === 'object') {
+            host = isLocalDeviceConfig(config.device) ? config.device.host : undefined;
+        } else {
+            host = config.host;
+        }
+        if (!host) {
             return;
         }
         const enableDebugging = ['info', 'debug', 'trace'].includes(config.logLevel);
         const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {
                 devices: [{
-                    host: config.host,
+                    host: host,
                     password: config.password
                 }]
             },
