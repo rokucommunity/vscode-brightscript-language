@@ -652,8 +652,8 @@ describe('RceManagementViewProvider', () => {
                 rceToken: 'token-work'
             };
             expect(keyPress.getCalls().map((call) => call.args[0])).to.eql([
-                { device: expectedDeviceConfig, key: 'guide' },
-                { device: expectedDeviceConfig, key: 'home' }
+                { device: expectedDeviceConfig, key: 'Guide' },
+                { device: expectedDeviceConfig, key: 'Home' }
             ]);
             const responseMessage = findResponseMessage(ViewProviderCommand.wakeRceDevice);
             expect(responseMessage.response.success).to.be.true;

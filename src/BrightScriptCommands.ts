@@ -21,7 +21,7 @@ import type { DeviceTargetManager } from './managers/DeviceTargetManager';
 import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { DEVICE_FILTER_KEYS } from './deviceFilters';
 import { rokuDeploy, isLocalDeviceConfig } from 'roku-deploy';
-import type { DeviceConfig, RokuKey } from 'roku-deploy';
+import type { DeviceConfig, RemoteKeyText } from 'roku-deploy';
 
 export class BrightScriptCommands {
 
@@ -866,10 +866,10 @@ export class BrightScriptCommands {
         const device = await this.resolveActiveDeviceConfig(target);
         if (device) {
             console.log('sending keypress', key);
-            //the ECP keypress endpoint accepts any key name Roku itself supports, including the
-            //mixed-case names and `Lit_`-prefixed literal characters this extension sends; `RokuKey`
-            //only types the canonical lowercase subset, so cast rather than narrow what we can send
-            return rokuDeploy.keyPress({ device: device, key: key as RokuKey });
+            //keyPress enforces the canonical RemoteKeyText names at the type level, but this sends
+            //dynamic keys - command-supplied names and `Lit_`-prefixed literal characters - so cast
+            //rather than narrow what we can send
+            return rokuDeploy.keyPress({ device: device, key: key as RemoteKeyText });
         }
     }
 

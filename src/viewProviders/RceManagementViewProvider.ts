@@ -278,8 +278,8 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
             try {
                 const deviceConfig = await this.getRunningRceDeviceConfig(message.context.deviceId, 'wake it');
                 //how the web app wakes a device: a guide keypress (wakes the display) followed by home
-                await rokuDeploy.keyPress({ device: deviceConfig, key: 'guide' });
-                await rokuDeploy.keyPress({ device: deviceConfig, key: 'home' });
+                await rokuDeploy.keyPress({ device: deviceConfig, key: 'Guide' });
+                await rokuDeploy.keyPress({ device: deviceConfig, key: 'Home' });
                 this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
             } catch (error) {
                 this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
