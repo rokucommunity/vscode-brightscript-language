@@ -969,6 +969,60 @@ describe('DeviceManager', () => {
             expect(manager.getAllDevices().length).to.equal(0);
         });
 
+        it('discards an earlier check\'s result when a newer check for the same IP already applied its own', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            (vscode.window as any).state = { focused: true };
+
+            const device = createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' });
+            addDevice(device);
+
+            // First check's network call fails fast (device unreachable) - this is NOT the race
+            // window. The race window is the synthetic delay that runs *after* the fetch settles.
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
+            getDeviceInfoStub.onCall(0).rejects(new Error('Unreachable'));
+            getDeviceInfoStub.onCall(1).resolves({
+                'device-id': 'device-1',
+                'serial-number': 'device-1',
+                'default-device-name': 'Roku Express'
+            } as any);
+
+            // Hold the first check's synthetic delay open so a second, independent check can
+            // start, finish, and apply its result before the first one resumes.
+            let releaseFirstDelay: () => void;
+            const firstDelay = new Promise<void>(resolve => {
+                releaseFirstDelay = resolve;
+            });
+            const randomDelayStub = sinon.stub(manager as any, 'randomDelay');
+            randomDelayStub.onCall(0).returns(firstDelay);
+            randomDelayStub.onCall(1).resolves();
+
+            // Start the first (soon-to-be-stale) check.
+            const firstCheck = manager['resolveDevice'](device, true);
+
+            // Let it reach (and suspend on) its synthetic delay. By that point its own network
+            // call has already failed and cleared out of the in-flight map, which is what lets
+            // the second check below issue its own independent request instead of joining it.
+            for (let i = 0; i < 20 && randomDelayStub.callCount < 1; i++) {
+                await Promise.resolve();
+            }
+            expect(randomDelayStub.callCount).to.equal(1);
+
+            // Start a second, newer check for the SAME device while the first is still suspended.
+            await manager['resolveDevice'](device, true);
+
+            // The newer check's result (online) is applied.
+            expect(manager.getAllDevices()[0].deviceState).to.equal('online');
+
+            // Now let the first (stale) check's failure resolve. Its result must be discarded -
+            // it must NOT flip the device back to offline or remove it.
+            releaseFirstDelay();
+            await firstCheck;
+
+            expect(getDeviceInfoStub.callCount).to.equal(2);
+            expect(manager.getAllDevices().length).to.equal(1);
+            expect(manager.getAllDevices()[0].deviceState).to.equal('online');
+        });
+
         it('preserves cache data when device goes offline (for offline display)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             (vscode.window as any).state = { focused: true };
@@ -1012,7 +1066,11 @@ describe('DeviceManager', () => {
             expect(result).to.be.true;
         });
 
-        it('ignores stale health check response when newer check completes first', async () => {
+        it('concurrent health checks of the same device share one request (the de-dupe rule)', async () => {
+            // Under the de-dupe rule, two truly-concurrent checks can no longer race two
+            // different responses — the second joins the first's in-flight request. The
+            // still-possible ordering hazard (first check settles, second starts and applies,
+            // first applies late) is covered by the "discards an earlier check's result" test.
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             (vscode.window as any).state = { focused: true };
 
@@ -1022,43 +1080,24 @@ describe('DeviceManager', () => {
             // Stub refresh to prevent cascade of health checks
             sinon.stub(manager, 'refresh');
 
-            // Create two controllable promises for the health checks
-            let rejectSlowCheck: (err: Error) => void;
-            let resolveFastCheck: (value: any) => void;
-            const slowCheckPromise = new Promise<any>((_resolve, reject) => {
-                rejectSlowCheck = reject;
-            });
-            const fastCheckPromise = new Promise<any>(resolve => {
-                resolveFastCheck = resolve;
-            });
+            let resolveFetch: (value: any) => void;
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').returns(new Promise<any>(resolve => {
+                resolveFetch = resolve;
+            }) as any);
 
-            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
-            getDeviceInfoStub.onFirstCall().returns(slowCheckPromise);
-            getDeviceInfoStub.onSecondCall().returns(fastCheckPromise);
+            const first = manager.healthCheckDevice(device, true, false);
+            const second = manager.healthCheckDevice(device, true, false);
 
-            // Start first (slow) health check - will return unhealthy
-            const slowResult = manager.healthCheckDevice(device, true);
-
-            // Start second (fast) health check - will return healthy
-            const fastResult = manager.healthCheckDevice(device, true);
-
-            // Fast check completes first with healthy result
-            resolveFastCheck({
+            resolveFetch({
                 'device-id': 'device-123',
                 'serial-number': 'device-123',
                 'default-device-name': 'Roku Express'
             });
-            await fastResult;
+            const [firstResult, secondResult] = await Promise.all([first, second]);
 
-            // Device should be online (fast check succeeded)
-            expect(manager.getAllDevices().length).to.equal(1);
-            expect(manager.getAllDevices()[0].deviceState).to.equal('online');
-
-            // Slow check completes later with unhealthy result
-            rejectSlowCheck(new Error('Device not responding'));
-            await slowResult;
-
-            // Device should STILL be online - slow check result was ignored (stale)
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+            expect(firstResult).to.be.true;
+            expect(secondResult).to.be.true;
             expect(manager.getAllDevices().length).to.equal(1);
             expect(manager.getAllDevices()[0].deviceState).to.equal('online');
         });
@@ -1742,12 +1781,61 @@ describe('DeviceManager', () => {
                 'default-device-name': 'Roku Express'
             } as any);
 
-            // Call twice in rapid succession - both should hit network
+            // Call twice SEQUENTIALLY - both should hit network (in-flight sharing only applies
+            // to concurrent callers; a settled request is not reused)
             await manager['fetchDeviceInfo']('192.168.1.100', 8060);
             await manager['fetchDeviceInfo']('192.168.1.100', 8060);
 
             // fetchDeviceInfo always makes network calls (caching is in resolveDevice)
             expect(getDeviceInfoStub.callCount).to.equal(2);
+        });
+    });
+
+    describe('fetchDeviceInfo in-flight de-dupe (the design doc\'s "de-dupe rule")', () => {
+        it('shares a single HTTP request between concurrent callers for the same ip:port', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            let resolveFetch: (value: any) => void;
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').returns(new Promise((resolve) => {
+                resolveFetch = resolve;
+            }) as any);
+
+            //e.g. the broadcast response and the reconcile racing on the same device
+            const first = manager['fetchDeviceInfo']('192.168.1.10', 8060);
+            const second = manager['fetchDeviceInfo']('192.168.1.10', 8060);
+
+            resolveFetch({ 'serial-number': 'shared-1' });
+            const [firstResult, secondResult] = await Promise.all([first, second]);
+
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+            expect(firstResult['serial-number']).to.equal('shared-1');
+            expect(secondResult['serial-number']).to.equal('shared-1');
+        });
+
+        it('does not share requests across different IPs', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'serial-number': 'x' } as any);
+
+            await Promise.all([
+                manager['fetchDeviceInfo']('192.168.1.10', 8060),
+                manager['fetchDeviceInfo']('192.168.1.11', 8060)
+            ]);
+
+            expect(getDeviceInfoStub.calledTwice).to.be.true;
+        });
+
+        it('shares failures too (joiners get undefined, no unhandled rejection)', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Unreachable'));
+
+            const [first, second] = await Promise.all([
+                manager['fetchDeviceInfo']('192.168.1.10', 8060),
+                manager['fetchDeviceInfo']('192.168.1.10', 8060)
+            ]);
+
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+            expect(first).to.be.undefined;
+            expect(second).to.be.undefined;
         });
     });
 

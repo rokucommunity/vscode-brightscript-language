@@ -150,6 +150,46 @@ describe('BrightScriptFileUtils ', () => {
         });
     });
 
+    describe('refreshDevice', () => {
+        let capturedCommands: Record<string, (...args: any[]) => any>;
+        let deviceManager: any;
+
+        beforeEach(() => {
+            deviceManager = {
+                getDevice: sinon.stub(),
+                healthCheckDevice: sinon.stub().resolves(true)
+            };
+            const localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
+            capturedCommands = {};
+            sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
+                capturedCommands[name] = cb;
+            });
+            localCommands.registerCommands();
+        });
+
+        afterEach(() => {
+            (vscode.commands.registerCommand as any).restore();
+        });
+
+        it('decodes the encoded tree key via getDevice before health checking', async () => {
+            const device = { ip: '192.168.1.100', serialNumber: 'ABC123', key: 's:ABC123' };
+            deviceManager.getDevice.returns(device);
+
+            await capturedCommands['extension.brightscript.refreshDevice']({ key: 's:ABC123' });
+
+            assert.isTrue(deviceManager.getDevice.calledOnceWith('s:ABC123'));
+            assert.isTrue(deviceManager.healthCheckDevice.calledOnceWith(device, true));
+        });
+
+        it('does nothing when the key does not resolve to a device', async () => {
+            deviceManager.getDevice.returns(undefined);
+
+            await capturedCommands['extension.brightscript.refreshDevice']({ key: 's:GONE' });
+
+            assert.isTrue(deviceManager.healthCheckDevice.notCalled);
+        });
+    });
+
     describe('clearDefaultDevicePassword', () => {
         let localCommands: BrightScriptCommands;
         let capturedCommands: Record<string, (...args: any[]) => any>;

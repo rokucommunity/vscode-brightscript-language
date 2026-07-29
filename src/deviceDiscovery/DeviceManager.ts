@@ -903,7 +903,6 @@ export class DeviceManager {
         // Check if the serial was last seen at this IP (don't trust cache if device moved)
         const cachedIp = serialForCache ? this.globalStateManager.getIpForSerial(serialForCache, this.networkId) : undefined;
         const cacheIsFresh = cached && (Date.now() - cached.createdAt < this.DEVICE_INFO_CACHE_MS) && cachedIp === device.ip;
-        console.log('[TRACE] resolveDevice', device.ip, 'serialForCache=', serialForCache, 'cachedIp=', cachedIp, 'cacheIsFresh=', cacheIsFresh);
 
         // Use cache only if:
         // - Not forced
@@ -1104,10 +1103,35 @@ export class DeviceManager {
     }
 
     /**
-     * Fetch device info from the network. Always makes a network request.
-     * Caches the result in globalStateManager for future lookups.
+     * In-flight device-info requests by `ip:port`. This is the design doc's "de-dupe rule":
+     * within a single refresh flow a device only gets device-info'd once — concurrent callers
+     * (e.g. the broadcast response and the reconcile racing on the same device) share one HTTP
+     * request instead of each issuing their own. First one in wins; everyone else joins it.
      */
-    private async fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw> {
+    private inFlightDeviceInfo = new Map<string, Promise<DeviceInfoRaw | undefined>>();
+
+    /**
+     * Fetch device info from the network, sharing any request already in flight for the same
+     * ip:port (see the de-dupe rule in docs/device-discovery.md). Never rejects — failures
+     * return undefined. Success caches the result in globalStateManager for future lookups.
+     */
+    private fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw | undefined> {
+        const key = `${ip}:${port}`;
+        let inFlight = this.inFlightDeviceInfo.get(key);
+        if (inFlight === undefined) {
+            //safe to share: fetchDeviceInfoInner never rejects (it catches and returns undefined)
+            inFlight = this.fetchDeviceInfoInner(ip, port).finally(() => {
+                this.inFlightDeviceInfo.delete(key);
+            });
+            this.inFlightDeviceInfo.set(key, inFlight);
+        }
+        return inFlight;
+    }
+
+    /**
+     * Fetch device info from the network. Always makes a network request.
+     */
+    private async fetchDeviceInfoInner(ip: string, port: number): Promise<DeviceInfoRaw> {
         try {
             const info = await rokuDeploy.getDeviceInfo({
                 host: ip,
@@ -1493,7 +1517,7 @@ export class DeviceManager {
     }, this.DEVICES_CHANGED_DEBOUNCE_MS);
 
     private async randomDelay(min: number, max: number) {
-        const randomness = Math.random() * ((max - min) + min);
+        const randomness = min + (Math.random() * (max - min));
         await util.sleep(randomness);
     }
 }
