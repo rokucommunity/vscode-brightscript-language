@@ -71,11 +71,21 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         });
         this.context.subscriptions.push({ dispose: unsubscribeContextChange });
 
-        this.deviceManager.on('scanNeeded-changed', () => {
+        // While the panel is visible, fulfill live broadcast/reconcile orders as they arrive,
+        // except timer-driven `stale` ones (avoid surprise scans while the user is looking).
+        // Fulfillment is atomic — if another visible consumer (e.g. the device picker) already
+        // fulfilled this order, the slot is empty and the call is a no-op.
+        this.deviceManager.on('broadcast-ordered', () => {
             if (!this.visible) {
                 return;
             }
-            this.deviceManager.refresh();
+            this.deviceManager.fulfillPendingBroadcast({ except: ['stale'] });
+        });
+        this.deviceManager.on('reconcile-ordered', () => {
+            if (!this.visible) {
+                return;
+            }
+            this.deviceManager.fulfillPendingReconcile({ except: ['stale'] });
         });
 
         // Re-render when a device's stored password changes so the Clear item appears/disappears
@@ -98,8 +108,15 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (!this.visible) {
                 return;
             }
-            this.deviceManager.refresh();
+            this.fulfillPendingOrders();
         });
+
+        // onDidChangeVisibility only fires on *changes* — if the panel is already open when the
+        // extension activates, sync the flag now and consume any queued (startup) orders
+        this.visible = treeView.visible;
+        if (this.visible) {
+            this.fulfillPendingOrders();
+        }
 
         // Health check device when expanded (not on every getChildren/devices-changed)
         treeView.onDidExpandElement(e => {
@@ -119,6 +136,17 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.deviceManager.on('scan-ended', () => {
             this.endScanProgress();
         });
+    }
+
+    /**
+     * When the panel becomes visible, fulfill any broadcast/reconcile orders that were queued
+     * while it was hidden. On-open fulfills every reason (spec's tree-view table: "fulfills
+     * pending broadcast AND reconcile orders for any reason") — a queued `stale` broadcast is
+     * still staleness-gated inside the DeviceManager, so this never over-scans.
+     */
+    private fulfillPendingOrders() {
+        this.deviceManager.fulfillPendingBroadcast();
+        this.deviceManager.fulfillPendingReconcile();
     }
 
     private showScanProgress() {

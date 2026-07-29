@@ -88,6 +88,10 @@ describe('DevicesViewProvider', () => {
 
     function createProvider(devices: any[], options?: { storedPasswords?: Record<string, string> }) {
         const emitter = new EventEmitter();
+        //a real pending-slot implementation backs the fake so the take/fulfill semantics are
+        //exercised for real; execution routes to the broadcast/reconcile stubs below
+        let pendingBroadcast: any = null;
+        let pendingReconcile: any = null;
         const deviceManager: any = {
             on: (event: string, handler: any) => emitter.on(event, handler),
             getAllDevices: () => devices,
@@ -95,8 +99,42 @@ describe('DevicesViewProvider', () => {
             getDeviceDisplayName: (device: any) => device.key,
             getIconPath: () => undefined,
             hasDeviceCache: () => false,
-            refresh: () => undefined,
-            healthCheckDevice: () => Promise.resolve()
+            healthCheckDevice: () => Promise.resolve(),
+            broadcast: sinon.stub().returns(true),
+            reconcile: sinon.stub(),
+            submitBroadcast: (reason: string) => {
+                const order = { reason: reason, timestamp: Date.now() };
+                if (!(pendingBroadcast && pendingBroadcast.reason !== 'stale' && reason === 'stale')) {
+                    pendingBroadcast = order;
+                }
+                emitter.emit('broadcast-ordered', order);
+            },
+            submitReconcile: (reason: string) => {
+                const order = { reason: reason, timestamp: Date.now() };
+                if (!(pendingReconcile && pendingReconcile.reason !== 'stale' && reason === 'stale')) {
+                    pendingReconcile = order;
+                }
+                emitter.emit('reconcile-ordered', order);
+            },
+            getPendingBroadcast: () => pendingBroadcast,
+            getPendingReconcile: () => pendingReconcile,
+            fulfillPendingBroadcast: (fulfillOptions?: { except?: string[] }) => {
+                if (!pendingBroadcast || fulfillOptions?.except?.includes(pendingBroadcast.reason)) {
+                    return false;
+                }
+                const order = pendingBroadcast;
+                pendingBroadcast = null;
+                return deviceManager.broadcast(order.reason !== 'stale');
+            },
+            fulfillPendingReconcile: (fulfillOptions?: { except?: string[] }) => {
+                if (!pendingReconcile || fulfillOptions?.except?.includes(pendingReconcile.reason)) {
+                    return false;
+                }
+                const order = pendingReconcile;
+                pendingReconcile = null;
+                deviceManager.reconcile(order.reason === 'refresh-clicked');
+                return true;
+            }
         };
         const credentialStore: any = {
             on: () => undefined,
@@ -491,6 +529,81 @@ describe('DevicesViewProvider', () => {
             });
 
             expect(treeChanged.called).to.be.false;
+        });
+    });
+
+    describe('order fulfillment (spec: tree-view table)', () => {
+        it('fulfills a live non-stale broadcast order while visible (forced)', () => {
+            const { provider, deviceManager } = createProvider([]);
+            provider['visible'] = true;
+
+            deviceManager.submitBroadcast('network');
+
+            expect(deviceManager.broadcast.calledOnceWith(true)).to.be.true;
+            expect(deviceManager.getPendingBroadcast()).to.be.null;
+        });
+
+        it('fulfills a live reconcile order with force only for refresh-clicked', () => {
+            const { provider, deviceManager } = createProvider([]);
+            provider['visible'] = true;
+
+            deviceManager.submitReconcile('config-changed');
+            expect(deviceManager.reconcile.calledOnceWith(false)).to.be.true;
+
+            deviceManager.reconcile.resetHistory();
+            deviceManager.submitReconcile('refresh-clicked');
+            expect(deviceManager.reconcile.calledOnceWith(true)).to.be.true;
+        });
+
+        it('ignores live stale orders while visible, leaving them pending', () => {
+            const { provider, deviceManager } = createProvider([]);
+            provider['visible'] = true;
+
+            deviceManager.submitBroadcast('stale');
+            deviceManager.submitReconcile('stale');
+
+            expect(deviceManager.broadcast.called).to.be.false;
+            expect(deviceManager.reconcile.called).to.be.false;
+            expect(deviceManager.getPendingBroadcast()).to.include({ reason: 'stale' });
+            expect(deviceManager.getPendingReconcile()).to.include({ reason: 'stale' });
+        });
+
+        it('leaves live orders pending while hidden', () => {
+            const { deviceManager } = createProvider([]);
+
+            deviceManager.submitBroadcast('sleep');
+            deviceManager.submitReconcile('sleep');
+
+            expect(deviceManager.broadcast.called).to.be.false;
+            expect(deviceManager.reconcile.called).to.be.false;
+            expect(deviceManager.getPendingBroadcast()).to.include({ reason: 'sleep' });
+            expect(deviceManager.getPendingReconcile()).to.include({ reason: 'sleep' });
+        });
+
+        it('fulfills orders queued while hidden when the panel becomes visible (ALL reasons)', () => {
+            const { provider, deviceManager } = createProvider([]);
+
+            deviceManager.submitBroadcast('network');
+            deviceManager.submitReconcile('refresh-clicked');
+
+            provider['visible'] = true;
+            provider['fulfillPendingOrders']();
+
+            expect(deviceManager.broadcast.calledOnceWith(true)).to.be.true;
+            expect(deviceManager.reconcile.calledOnceWith(true)).to.be.true;
+            expect(deviceManager.getPendingBroadcast()).to.be.null;
+            expect(deviceManager.getPendingReconcile()).to.be.null;
+        });
+
+        it('fulfills a queued stale broadcast on open without forcing (staleness-gated)', () => {
+            const { provider, deviceManager } = createProvider([]);
+
+            deviceManager.submitBroadcast('stale');
+
+            provider['visible'] = true;
+            provider['fulfillPendingOrders']();
+
+            expect(deviceManager.broadcast.calledOnceWith(false)).to.be.true;
         });
     });
 });

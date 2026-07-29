@@ -39,8 +39,9 @@ export class DeviceManager {
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
                 if (this.deviceDiscoveryEnabled) {
-                    //emit that we need a scan (will trigger UI to refresh and show devices as needed when enabled)
-                    this.setScanNeeded(true);
+                    //order a broadcast + reconcile so the views discover/health-check once enabled
+                    this.submitBroadcast('startup');
+                    this.submitReconcile('startup');
                     this.systemSleepMonitor.start();
                     void this.activateMonitoring();
                 } else {
@@ -54,11 +55,11 @@ export class DeviceManager {
                 this.emitDevicesChanged();
             }
 
-            //if the `devices` setting was changed, re-apply configured devices and health check them
+            //if the `devices` setting was changed, re-apply configured devices immediately (cheap,
+            //local) and order a health check for the views to fulfill when one is visible
             if (event?.affectsConfiguration('brightscript.devices')) {
-                this.loadConfiguredDevices().then(() => {
-                    return this.healthCheckAllDevices(false, true);
-                }).catch(() => { });
+                this.loadConfiguredDevices().catch(() => { });
+                this.submitReconcile('config-changed');
             }
 
             //if the `defaultDevicePassword` setting was changed, refresh any device views that rely on it
@@ -86,7 +87,9 @@ export class DeviceManager {
 
     private setupMonitors() {
         this.systemSleepMonitor = new SystemSleepMonitor(() => {
-            this.setScanNeeded();
+            //order a broadcast + reconcile so the views rescan/health-check on wake
+            this.submitBroadcast('sleep');
+            this.submitReconcile('sleep');
         });
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
@@ -107,8 +110,9 @@ export class DeviceManager {
 
             this.restartRokuFinder();
 
-            //this is important for telling the devices view to refresh and health check its devices
-            this.setScanNeeded();
+            //order a broadcast + reconcile so the views rescan/health-check on the new network
+            this.submitBroadcast('network');
+            this.submitReconcile('network');
         });
     }
 
@@ -130,14 +134,13 @@ export class DeviceManager {
             // Sleep monitor runs all the time when enabled (ignores focus state)
             this.systemSleepMonitor.start();
 
-            this.activateMonitoring().then(() => {
-                const lastSeenDeviceIds = this.globalStateManager.getLastSeenDevices(this.networkId);
-                if (lastSeenDeviceIds.length === 0) {
-                    this.refresh();
-                } else {
-                    this.setScanNeeded();
-                }
-            }).catch((e) => {
+            //order a broadcast + reconcile for the views to fulfill when they open.
+            //No proactive scan here even on a cold cache — per the design doc, no network
+            //traffic happens until a view is actually visible to consume these orders.
+            this.submitBroadcast('startup');
+            this.submitReconcile('startup');
+
+            this.activateMonitoring().catch((e) => {
                 console.error(e);
             });
         }
@@ -147,9 +150,16 @@ export class DeviceManager {
     // Core state and dependencies
     private configuredDevices: ConfiguredDeviceEntry[] = [];
     private discoveredDevices: DiscoveredDeviceEntry[] = [];
-    private scanNeeded = false;
     private lastUsedDeviceIp: string | undefined = undefined;
     private networkId: string;
+
+    // Orders (see docs/device-discovery.md "Orders"): deferred work submitted by triggers and
+    // fulfilled by visible views. One pending slot per order type — a newer order replaces the
+    // slot, except a `stale` order never downgrades a pending real trigger.
+    private pendingBroadcast: BroadcastOrder | null = null;
+    private pendingReconcile: ReconcileOrder | null = null;
+    private broadcastStaleTimer: ReturnType<typeof setInterval> | undefined;
+    private reconcileStaleTimer: ReturnType<typeof setInterval> | undefined;
 
     private emitter = new EventEmitter();
     private systemSleepMonitor: SystemSleepMonitor;
@@ -168,14 +178,19 @@ export class DeviceManager {
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
     private deviceOnlineNotifiers = new Map<string, ReturnType<typeof debounce>>();
 
-    // Scan state management
+    // Scan state management. STALE_SCAN_THRESHOLD_MS is both the non-forced broadcast gate
+    // ("don't scan if the last scan is younger than this") and the `stale` broadcast timer
+    // interval — one definition of "it's been a while".
     private readonly STALE_SCAN_THRESHOLD_MS = 30 * 60 * 1_000; // 30 minutes
+    private readonly STALE_RECONCILE_INTERVAL_MS = 5 * 60 * 1_000; // 5 minutes - the spec's stale reconcile timer
+    private readonly UNHEALTHY_BROADCAST_MIN_INTERVAL_MS = 60_000; // 1 minute - suppress unhealthy-device orders this soon after a scan
     private lastScanDate: Date | null = null;
 
     public on(eventName: 'devices-changed', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'scan-started', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'scan-ended', handler: () => void, disposables?: Disposable[]): () => void;
-    public on(eventName: 'scanNeeded-changed', handler: () => void, disposables?: Disposable[]): () => void;
+    public on(eventName: 'broadcast-ordered', handler: (order: BroadcastOrder) => void, disposables?: Disposable[]): () => void;
+    public on(eventName: 'reconcile-ordered', handler: (order: ReconcileOrder) => void, disposables?: Disposable[]): () => void;
     public on(eventName: string, handler: (payload: any) => void, disposables?: Disposable[]): () => void {
         this.emitter.on(eventName, handler);
         const unsubscribe = () => {
@@ -504,12 +519,88 @@ export class DeviceManager {
         return !!this.globalStateManager.getCachedDevice(serialNumber);
     }
 
+    // #region Orders (docs/device-discovery.md "Orders" / "When are orders submitted?")
     /**
-     * Re-scan the network for devices and health-check existing ones
+     * Submit a broadcast (SSDP scan) order. Fills the pending slot AND emits `broadcast-ordered`
+     * so a visible view can fulfill it live; a hidden view consumes the slot when it opens.
+     * A `stale` submission never overwrites a pending real trigger.
      */
-    public refresh(force = false, doSyntheticDelay = true): boolean {
-        this.healthCheckAllDevices(force, doSyntheticDelay).catch(() => { });
-        // Block automatic scans when device discovery is disabled
+    public submitBroadcast(reason: BroadcastReason): void {
+        const order: BroadcastOrder = { reason: reason, timestamp: Date.now() };
+        if (!(this.pendingBroadcast && this.pendingBroadcast.reason !== 'stale' && reason === 'stale')) {
+            this.pendingBroadcast = order;
+        }
+        this.emitter.emit('broadcast-ordered', order);
+    }
+
+    /**
+     * Submit a reconcile (health-check-all) order. Same slot + event semantics as
+     * {@link submitBroadcast}.
+     */
+    public submitReconcile(reason: ReconcileReason): void {
+        const order: ReconcileOrder = { reason: reason, timestamp: Date.now() };
+        if (!(this.pendingReconcile && this.pendingReconcile.reason !== 'stale' && reason === 'stale')) {
+            this.pendingReconcile = order;
+        }
+        this.emitter.emit('reconcile-ordered', order);
+    }
+
+    /**
+     * The pending broadcast order, if a trigger queued one that no view has fulfilled yet.
+     */
+    public getPendingBroadcast(): BroadcastOrder | null {
+        return this.pendingBroadcast;
+    }
+
+    public getPendingReconcile(): ReconcileOrder | null {
+        return this.pendingReconcile;
+    }
+
+    /**
+     * Atomically consume AND execute the pending broadcast order, if any. The one-call
+     * fulfillment API for views: take + broadcast in a single step, with the force policy owned
+     * here — forced for every reason except `stale`, which stays staleness-gated.
+     *
+     * Consumption is atomic: when two visible views react to the same order event, the first
+     * caller fulfills it and later callers find the slot empty and do nothing.
+     *
+     * @param options.except - reasons to leave QUEUED (not consumed) for another view, e.g.
+     *   `{ except: ['stale'] }`. A blacklist on purpose: new reasons are acted on by default.
+     * @returns true if an order was consumed and a scan actually started
+     */
+    public fulfillPendingBroadcast(options?: { except?: BroadcastReason[] }): boolean {
+        const pending = this.pendingBroadcast;
+        if (!pending || options?.except?.includes(pending.reason)) {
+            return false;
+        }
+        this.pendingBroadcast = null;
+        return this.broadcast(pending.reason !== 'stale');
+    }
+
+    /**
+     * Atomically consume AND execute the pending reconcile order, if any. One-call twin of
+     * {@link fulfillPendingBroadcast}; the force policy here is: forced only for
+     * `refresh-clicked` (an explicit "I want fresh data now" from the user).
+     */
+    public fulfillPendingReconcile(options?: { except?: ReconcileReason[] }): boolean {
+        const pending = this.pendingReconcile;
+        if (!pending || options?.except?.includes(pending.reason)) {
+            return false;
+        }
+        this.pendingReconcile = null;
+        this.reconcile(pending.reason === 'refresh-clicked');
+        return true;
+    }
+    // #endregion
+
+    /**
+     * Broadcast an SSDP M-SEARCH to discover devices on the network. Does NOT health-check
+     * existing devices — that's {@link reconcile}. Non-forced calls are staleness-gated (no
+     * scan when the last scan is younger than STALE_SCAN_THRESHOLD_MS) and blocked while
+     * device discovery is disabled.
+     * @returns true if a scan was started
+     */
+    public broadcast(force = false): boolean {
         if (!force && !this.deviceDiscoveryEnabled) {
             return false;
         }
@@ -517,23 +608,18 @@ export class DeviceManager {
     }
 
     /**
-     * Trigger a network scan for devices without health checking existing devices.
-     * Use this when you just want to discover new devices without verifying existing ones.
-     * @param force - If true, scan even if deviceDiscovery is disabled
-     * @returns true if a scan was started, false otherwise
+     * Health-check every known device (configured + discovered), marking them online/offline.
+     * Does NOT scan for new devices — that's {@link broadcast}.
      */
-    public scan(force = false): boolean {
-        if (!force && !this.deviceDiscoveryEnabled) {
-            return false;
-        }
-        return this.discoverAll(force);
+    public reconcile(force = false, doSyntheticDelay = true): void {
+        this.healthCheckAllDevices(force, doSyntheticDelay).catch(() => { });
     }
 
     /**
      * Clear discovered devices from the device list, keeping configured devices.
      * Useful for refreshing the network scan without losing user-configured devices.
      */
-    public async clearCurrentDeviceList() {
+    public clearCurrentDeviceList(): void {
         // Clear discovered devices (ephemeral)
         this.discoveredDevices = [];
 
@@ -550,9 +636,10 @@ export class DeviceManager {
         //clear the cache for the current list of devices
         this.globalStateManager.setLastSeenDevices(this.networkId, []);
 
-        await this.healthCheckAllDevices(false, false).catch(() => { });
+        //this is a user-initiated action, so order a health check of the remaining (configured)
+        //devices rather than running one directly — a visible view fulfills it immediately
+        this.submitReconcile('refresh-clicked');
         this.emitDevicesChanged();
-
     }
 
     public clearAllCache() {
@@ -576,7 +663,7 @@ export class DeviceManager {
         }
 
         // Clear discovered devices (state goes with them)
-        this.clearCurrentDeviceList().catch(() => { });
+        this.clearCurrentDeviceList();
     }
 
     public async healthCheckDevice(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }, force = false, doSyntheticDelay = true): Promise<boolean> {
@@ -592,10 +679,26 @@ export class DeviceManager {
         // Cooldown is handled by fetchDeviceInfo cache; force bypasses it
         const isHealthy = await this.resolveDevice(device, doSyntheticDelay, force);
         if (!isHealthy && device.isDiscovered) {
-            // force a scan if passive scan is permitted
-            this.refresh(this.deviceDiscoveryEnabled);
+            // a discovered device went dark — order a rescan for the views to fulfill
+            this.submitUnhealthyDeviceBroadcast();
         }
         return isHealthy;
+    }
+
+    /**
+     * Submit an `unhealthy-device` broadcast order (a discovered device failed a health check,
+     * so the network picture may have changed). Rate-limited: suppressed when discovery is
+     * disabled or when a scan ran within the last minute — the terminating guard for the
+     * potential scan → health-check → fail → scan feedback loop.
+     */
+    private submitUnhealthyDeviceBroadcast(): void {
+        if (!this.deviceDiscoveryEnabled) {
+            return;
+        }
+        if (this.timeSinceLastScan < this.UNHEALTHY_BROADCAST_MIN_INTERVAL_MS) {
+            return;
+        }
+        this.submitBroadcast('unhealthy-device');
     }
 
     /**
@@ -1048,7 +1151,7 @@ export class DeviceManager {
         }
         this.emitDevicesChanged();
 
-        // Health check all devices - if any discovered device is unhealthy, trigger a scan
+        // Health check all devices - if any discovered device is unhealthy, order a scan
         let needsScan = false;
         await Promise.all([...allIps].map(async (ip) => {
             const isHealthy = await this.resolveDevice({ ip: ip }, doSyntheticDelay, force);
@@ -1058,7 +1161,7 @@ export class DeviceManager {
         }));
 
         if (needsScan) {
-            this.discoverAll(this.deviceDiscoveryEnabled);
+            this.submitUnhealthyDeviceBroadcast();
         }
     }
 
@@ -1158,8 +1261,7 @@ export class DeviceManager {
      * Discover all Roku devices on the network and watch for new ones that connect
      */
     private discoverAll(force: boolean): boolean {
-        if (force || this.scanNeeded || this.timeSinceLastScan > this.STALE_SCAN_THRESHOLD_MS) {
-            this.scanNeeded = false;
+        if (force || this.timeSinceLastScan > this.STALE_SCAN_THRESHOLD_MS) {
             this.lastScanDate = new Date();
             this.finder.scan();
             return true;
@@ -1393,12 +1495,39 @@ export class DeviceManager {
 
     private async activateMonitoring() {
         this.networkChangeMonitor.start();
+
+        //periodically submit `stale` broadcast/reconcile orders so long-lived sessions
+        //eventually refresh (the spec's "it's been a while" timers; views decide whether and
+        //how to fulfill them — visible views deliberately ignore live `stale` orders)
+        this.stopStaleTimers();
+        this.broadcastStaleTimer = setInterval(() => {
+            this.submitBroadcast('stale');
+        }, this.STALE_SCAN_THRESHOLD_MS);
+        this.reconcileStaleTimer = setInterval(() => {
+            this.submitReconcile('stale');
+        }, this.STALE_RECONCILE_INTERVAL_MS);
+        //don't keep the process alive just for these timers
+        this.broadcastStaleTimer?.unref?.();
+        this.reconcileStaleTimer?.unref?.();
+
         await this.startRokuFinder();
     }
 
     private deactivateMonitoring() {
         this.networkChangeMonitor.stop();
+        this.stopStaleTimers();
         this.stopRokuFinder();
+    }
+
+    private stopStaleTimers() {
+        if (this.broadcastStaleTimer) {
+            clearInterval(this.broadcastStaleTimer);
+            this.broadcastStaleTimer = undefined;
+        }
+        if (this.reconcileStaleTimer) {
+            clearInterval(this.reconcileStaleTimer);
+            this.reconcileStaleTimer = undefined;
+        }
     }
 
     /**
@@ -1501,17 +1630,6 @@ export class DeviceManager {
         this.networkChangeMonitor.stop();
     }
 
-    /**
-     * Set the flag indicating a scan is needed. Emits 'scanNeeded-changed' event
-     * when the flag flips from false to true.
-     */
-    private setScanNeeded(force = false): void {
-        if (!this.scanNeeded || force) {
-            this.scanNeeded = true;
-            this.emitter.emit('scanNeeded-changed');
-        }
-    }
-
     private emitDevicesChanged = throttleBounce(() => {
         this.emitter.emit('devices-changed');
     }, this.DEVICES_CHANGED_DEBOUNCE_MS);
@@ -1523,6 +1641,45 @@ export class DeviceManager {
 }
 
 export type DeviceState = 'offline' | 'unknown' | 'pending' | 'online';
+
+/**
+ * Why a broadcast (SSDP scan) was ordered. Views filter on this — e.g. a visible view ignores
+ * `stale` (timer-driven) orders to avoid surprise scans. (See docs/device-discovery.md "Orders")
+ */
+export type BroadcastReason =
+    | 'startup'
+    | 'network'
+    | 'sleep'
+    | 'refresh-clicked'
+    | 'unhealthy-device'
+    | 'stale';
+
+/**
+ * Why a reconcile (health-check-all) was ordered.
+ */
+export type ReconcileReason =
+    | 'startup'
+    | 'network'
+    | 'sleep'
+    | 'refresh-clicked'
+    | 'config-changed'
+    | 'stale';
+
+/**
+ * A unit of deferred work: queued by triggers, fulfilled by visible views.
+ */
+export interface BroadcastOrder {
+    reason: BroadcastReason;
+    /**
+     * When the order was submitted (ms epoch)
+     */
+    timestamp: number;
+}
+
+export interface ReconcileOrder {
+    reason: ReconcileReason;
+    timestamp: number;
+}
 
 export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
 

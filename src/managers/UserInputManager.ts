@@ -48,6 +48,12 @@ export class UserInputManager {
         private credentialStore: CredentialStore
     ) { }
 
+    /**
+     * How long the picker waits after open with no broadcast before fulfilling any pending
+     * order (including `stale`) as a routine freshness fallback. Overridable for tests.
+     */
+    private scanTimeoutMs = 7_000;
+
     public async promptForHostManual(): Promise<HostWithDeviceInfo | undefined> {
         while (true) {
             const value = await vscode.window.showInputBox({
@@ -233,25 +239,54 @@ export class UserInputManager {
             setBusy(false);
         }, disposables);
 
-        const scanTimeoutMs = 7_000;
         let scanTimeoutId: NodeJS.Timeout | null = null;
-        let hasScanned = this.deviceManager.scan();
-        this.deviceManager.on('scanNeeded-changed', () => {
+
+        // On open: fulfill a queued real order (network/sleep/refresh-clicked/...), forced. A
+        // queued `stale` order is deliberately left alone — routine freshness is the 7s
+        // fallback's job (below), so opening the picker never scans the network by itself.
+        // (spec's quick-pick table: "on open, fulfills pending orders for any reason except stale")
+        let hasScanned = this.deviceManager.fulfillPendingBroadcast({ except: ['stale'] });
+
+        // On open, also fulfill a queued reconcile order (`stale` stays queued)
+        this.deviceManager.fulfillPendingReconcile({ except: ['stale'] });
+
+        this.deviceManager.on('broadcast-ordered', (order) => {
+            if (order.reason === 'stale') {
+                return;
+            }
+            // Suppress the 7s fallback even if another visible consumer fulfills this order —
+            // a scan is happening either way
             hasScanned = true;
             if (scanTimeoutId) {
                 clearTimeout(scanTimeoutId);
                 scanTimeoutId = null;
             }
-            this.deviceManager.scan();
+            this.deviceManager.fulfillPendingBroadcast({ except: ['stale'] });
         }, disposables);
+
+        this.deviceManager.on('reconcile-ordered', () => {
+            this.deviceManager.fulfillPendingReconcile({ except: ['stale'] });
+        }, disposables);
+
         scanTimeoutId = setTimeout(() => {
             if (hasScanned) {
                 return;
             }
-            this.deviceManager.scan();
-        }, scanTimeoutMs);
+            // Nothing scanned since the picker opened — fulfill whatever's pending with no
+            // exceptions. When the system is genuinely stale, the 30-minute timer has already
+            // queued a `stale` order (visible views ignore it live, so it waits here); its
+            // fulfillment is staleness-gated, so this never over-scans. If nothing is pending,
+            // nothing happens.
+            this.deviceManager.fulfillPendingBroadcast();
+        }, this.scanTimeoutMs);
 
         function dispose() {
+            // The fallback timer must not outlive the picker — a leaked timer would fire a
+            // broadcast on a picker that's already closed
+            if (scanTimeoutId) {
+                clearTimeout(scanTimeoutId);
+                scanTimeoutId = null;
+            }
             for (const disposable of disposables) {
                 disposable.dispose();
             }
@@ -265,7 +300,10 @@ export class UserInputManager {
                     if (selectedDevice.label === manualLabel) {
                         deferred.resolve({ manual: true });
                     } else if (selectedDevice.label === scanForDevicesLabel) {
-                        this.deviceManager.refresh(true);
+                        //an explicit "scan" click is the refresh-clicked trigger — submit orders;
+                        //this picker (or another visible view) fulfills them immediately
+                        this.deviceManager.submitBroadcast('refresh-clicked');
+                        this.deviceManager.submitReconcile('refresh-clicked');
                         return;
                     } else {
                         const device = (selectedDevice as any).device as RokuDevice;
@@ -415,9 +453,12 @@ export class UserInputManager {
 
         quickPick.onDidTriggerButton(button => {
             if (button.tooltip === SCAN_FOR_DEVICES) {
-                this.deviceManager.refresh(true);
+                //an explicit "scan" click is the refresh-clicked trigger — submit orders;
+                //this picker (or another visible view) fulfills them immediately
+                this.deviceManager.submitBroadcast('refresh-clicked');
+                this.deviceManager.submitReconcile('refresh-clicked');
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
-                this.deviceManager.clearCurrentDeviceList().catch(() => { });
+                this.deviceManager.clearCurrentDeviceList();
                 void util.showTimedNotification('Clearing device list');
             } else if (button.tooltip === ENABLE_DEVICE_DISCOVERY) {
                 void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
