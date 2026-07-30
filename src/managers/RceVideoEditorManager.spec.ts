@@ -283,6 +283,31 @@ describe('RceVideoEditorManager', () => {
         expect(manager.createdClients.length).to.equal(1);
     });
 
+    it('does not start a session when the tab is closed while the stream details are resolving', async () => {
+        createManager();
+        let resolveStream: (value: unknown) => void;
+        resolveStreamRequest.onFirstCall().returns(new Promise((resolve) => {
+            resolveStream = resolve;
+        }));
+
+        const openPromise = manager.open(5, 'my-device');
+        const fakePanel = manager.createdPanels[0];
+
+        //the user closes the tab while watch() is still awaiting the stream resolution; its
+        //onDidDispose stop() ran against nothing, so a session started now would have no owner
+        fakePanel.dispose();
+        resolveStream({
+            deviceId: 5,
+            deviceName: 'my-device',
+            websocketUrl: 'wss://device.rce.roku.com/instance/abc/janus',
+            streamId: 7,
+            iceServers: []
+        });
+        await openPromise;
+
+        expect(manager.createdClients.length).to.equal(0);
+    });
+
     it('restores a serialized panel by device id: rebuilds the html, renegotiates, and dedupes later opens', async () => {
         createManager();
         const restoredPanel = new FakeWebviewPanel();

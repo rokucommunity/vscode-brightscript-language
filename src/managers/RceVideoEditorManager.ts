@@ -240,8 +240,17 @@ class RceVideoEditorPanel implements vscode.Disposable {
     public async watch(): Promise<void> {
         try {
             const streamRequest = await this.resolveStreamRequest();
+            //the tab can close while the stream details were resolving (a real management-api
+            //request). onDidDispose already ran its session.stop() against nothing, so starting now
+            //would open a Janus socket + keepalive that no dispose path can ever reach
+            if (this.disposed) {
+                return;
+            }
             await this.session.start(streamRequest);
         } catch (e) {
+            if (this.disposed) {
+                return;
+            }
             //a pending device enters the waiting-for-device phase, a stopped one the device-stopped
             //state; everything else renders in the stream error banner
             if (!this.session.handleDeviceNotRunning(e, this.deviceId, this.deviceName)) {
