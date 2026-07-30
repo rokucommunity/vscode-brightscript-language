@@ -582,14 +582,33 @@ describe('DevicesViewProvider', () => {
             expect(deviceManager.getPendingReconcileReasons()).to.include('sleep');
         });
 
+        //a minimal TreeView fake: enough for setTreeView to register handlers and for tests to
+        //toggle visibility through the real onDidChangeVisibility path
+        function createTreeView(visible: boolean) {
+            const emitter = new EventEmitter();
+            const treeView = {
+                visible: visible,
+                onDidChangeVisibility: (cb: (e: { visible: boolean }) => void) => emitter.on('visibility', cb),
+                onDidExpandElement: () => undefined
+            } as any;
+            return {
+                treeView: treeView,
+                setVisible: (value: boolean) => {
+                    treeView.visible = value;
+                    emitter.emit('visibility', { visible: value });
+                }
+            };
+        }
+
         it('fulfills orders queued while hidden when the panel becomes visible (ALL reasons)', () => {
             const { provider, deviceManager } = createProvider([]);
+            const { treeView, setVisible } = createTreeView(false);
+            provider.setTreeView(treeView);
 
             deviceManager.submitBroadcast('network');
             deviceManager.submitReconcile('refresh-clicked');
 
-            provider['visible'] = true;
-            provider['fulfillPendingOrders']();
+            setVisible(true);
 
             expect(deviceManager.broadcast.calledOnceWith(['network'])).to.be.true;
             expect(deviceManager.reconcile.calledOnceWith(['refresh-clicked'])).to.be.true;
@@ -597,27 +616,42 @@ describe('DevicesViewProvider', () => {
             expect(deviceManager.getPendingReconcileReasons()).to.be.empty;
         });
 
+        it('consumes queued startup orders when the panel is already open at activation', () => {
+            const { provider, deviceManager } = createProvider([]);
+
+            deviceManager.submitBroadcast('startup');
+            deviceManager.submitReconcile('startup');
+
+            //panel already visible when setTreeView runs — the startup sync path fulfills
+            provider.setTreeView(createTreeView(true).treeView);
+
+            expect(deviceManager.broadcast.calledOnceWith(['startup'])).to.be.true;
+            expect(deviceManager.reconcile.calledOnceWith(['startup'])).to.be.true;
+        });
+
         it('fulfills a queued stale broadcast on open with its reason intact (staleness-gated inside)', () => {
             const { provider, deviceManager } = createProvider([]);
+            const { treeView, setVisible } = createTreeView(false);
+            provider.setTreeView(treeView);
 
             deviceManager.submitBroadcast('stale');
 
-            provider['visible'] = true;
-            provider['fulfillPendingOrders']();
+            setVisible(true);
 
             expect(deviceManager.broadcast.calledOnceWith(['stale'])).to.be.true;
         });
 
         it('accumulated reasons are fulfilled together in one execution', () => {
             const { provider, deviceManager } = createProvider([]);
+            const { treeView, setVisible } = createTreeView(false);
+            provider.setTreeView(treeView);
 
             //multiple triggers fire while no view is visible — each queues its own reason
             deviceManager.submitBroadcast('stale');
             deviceManager.submitBroadcast('sleep');
             deviceManager.submitBroadcast('network');
 
-            provider['visible'] = true;
-            provider['fulfillPendingOrders']();
+            setVisible(true);
 
             //one scan satisfies all of them
             expect(deviceManager.broadcast.calledOnce).to.be.true;

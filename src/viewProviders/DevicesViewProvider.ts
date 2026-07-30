@@ -103,19 +103,22 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private scanProgressResolver: (() => void) | null = null;
 
     public setTreeView(treeView: vscode.TreeView<vscode.TreeItem>) {
+        // On open, fulfill orders queued while hidden — every reason (spec's tree-view table:
+        // "fulfills pending broadcast AND reconcile orders for any reason"); a queued `stale`
+        // broadcast is still staleness-gated inside the DeviceManager, so this never over-scans.
         treeView.onDidChangeVisibility(e => {
             this.visible = e.visible;
             if (!this.visible) {
                 return;
             }
-            this.fulfillPendingOrders();
+            this.deviceManager.fulfillPendingOrders();
         });
 
         // onDidChangeVisibility only fires on *changes* — if the panel is already open when the
         // extension activates, sync the flag now and consume any queued (startup) orders
         this.visible = treeView.visible;
         if (this.visible) {
-            this.fulfillPendingOrders();
+            this.deviceManager.fulfillPendingOrders();
         }
 
         // Expanding a device is explicit engagement with it — the manager freshens it
@@ -137,16 +140,6 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.deviceManager.on('scan-ended', () => {
             this.endScanProgress();
         });
-    }
-
-    /**
-     * When the panel becomes visible, fulfill any orders that were queued while it was hidden.
-     * On-open fulfills every reason (spec's tree-view table: "fulfills pending broadcast AND
-     * reconcile orders for any reason") — a queued `stale` broadcast is still staleness-gated
-     * inside the DeviceManager, so this never over-scans.
-     */
-    private fulfillPendingOrders() {
-        this.deviceManager.fulfillPendingOrders();
     }
 
     private showScanProgress() {
