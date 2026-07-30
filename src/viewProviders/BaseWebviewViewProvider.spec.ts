@@ -71,4 +71,55 @@ describe('BaseWebviewViewProvider', () => {
             expect(postMessage.calledOnceWith(message)).to.be.true;
         });
     });
+
+    describe('webview lifecycle', () => {
+        function createFakeView() {
+            return {
+                webview: {
+                    options: undefined,
+                    html: '',
+                    onDidReceiveMessage: sinon.stub(),
+                    postMessage: sinon.stub().resolves(true)
+                },
+                onDidDispose: sinon.stub()
+            } as any;
+        }
+
+        it('queues messages again after the webview is destroyed, flushing them to the next instance', async () => {
+            const view = createFakeView();
+            await provider.resolveWebviewView(view, {} as any, {} as any);
+            //the first webview reported ready
+            provider['viewReady'] = true;
+
+            //the view was hidden: VS Code destroys the webview and fires onDidDispose
+            view.onDidDispose.firstCall.args[0]();
+
+            const message = provider.createEventMessage('posted-while-hidden' as any);
+            provider.postOrQueueMessage(message);
+            //queued, not posted at the destroyed webview (where it would be silently lost)
+            expect(postMessage.called).to.be.false;
+
+            //the view is reshown: a fresh view resolves and its webview reports ready
+            const nextView = createFakeView();
+            await provider.resolveWebviewView(nextView, {} as any, {} as any);
+            provider['viewReady'] = true;
+            provider['postQueuedMessages']();
+            expect(postMessage.calledOnceWith(message)).to.be.true;
+        });
+
+        it('re-resolving resets viewReady, and a late dispose from the old view leaves the new one alone', async () => {
+            const view = createFakeView();
+            await provider.resolveWebviewView(view, {} as any, {} as any);
+            provider['viewReady'] = true;
+
+            //a re-resolution can land before the old view's dispose callback fires
+            const nextView = createFakeView();
+            await provider.resolveWebviewView(nextView, {} as any, {} as any);
+
+            expect(provider['viewReady']).to.be.false;
+
+            view.onDidDispose.firstCall.args[0]();
+            expect(provider['view']).to.equal(nextView);
+        });
+    });
 });

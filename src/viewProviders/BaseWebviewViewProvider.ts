@@ -248,6 +248,22 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         _token: vscode.CancellationToken
     ) {
         this.view = view;
+        //this webview instance has not reported in yet: without this reset, a provider whose
+        //previous webview already reported ready would direct-post at the new one before its
+        //viewReady arrives, instead of queueing for the flush that follows it
+        this.viewReady = false;
+        //a hidden view destroys its webview and this provider is re-resolved with a fresh one on
+        //reshow. While no webview exists, messages must queue rather than post at the disposed
+        //instance, where they would be silently lost. Optional-called because provider specs
+        //resolve with minimal fake views.
+        view.onDidDispose?.(() => {
+            //a re-resolution can land before this dispose callback fires; only clear state that
+            //still belongs to this instance
+            if (this.view === view) {
+                this.view = undefined;
+                this.viewReady = false;
+            }
+        });
         const webview = view.webview;
         this.setupViewMessageObserver(webview);
 
