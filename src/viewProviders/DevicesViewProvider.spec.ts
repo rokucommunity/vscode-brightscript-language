@@ -124,7 +124,7 @@ describe('DevicesViewProvider', () => {
                 }
                 const order = pendingBroadcast;
                 pendingBroadcast = null;
-                return deviceManager.broadcast(order.reason !== 'stale');
+                return deviceManager.broadcast(order.reason);
             },
             fulfillPendingReconcile: (fulfillOptions?: { except?: string[] }) => {
                 if (!pendingReconcile || fulfillOptions?.except?.includes(pendingReconcile.reason)) {
@@ -132,7 +132,7 @@ describe('DevicesViewProvider', () => {
                 }
                 const order = pendingReconcile;
                 pendingReconcile = null;
-                deviceManager.reconcile(order.reason === 'refresh-clicked');
+                deviceManager.reconcile(order.reason);
                 return true;
             }
         };
@@ -533,26 +533,26 @@ describe('DevicesViewProvider', () => {
     });
 
     describe('order fulfillment (spec: tree-view table)', () => {
-        it('fulfills a live non-stale broadcast order while visible (forced)', () => {
+        it('fulfills a live non-stale broadcast order while visible', () => {
             const { provider, deviceManager } = createProvider([]);
             provider['visible'] = true;
 
             deviceManager.submitBroadcast('network');
 
-            expect(deviceManager.broadcast.calledOnceWith(true)).to.be.true;
+            expect(deviceManager.broadcast.calledOnceWith('network')).to.be.true;
             expect(deviceManager.getPendingBroadcast()).to.be.null;
         });
 
-        it('fulfills a live reconcile order with force only for refresh-clicked', () => {
+        it('fulfills live reconcile orders, passing the reason through', () => {
             const { provider, deviceManager } = createProvider([]);
             provider['visible'] = true;
 
             deviceManager.submitReconcile('config-changed');
-            expect(deviceManager.reconcile.calledOnceWith(false)).to.be.true;
+            expect(deviceManager.reconcile.calledOnceWith('config-changed')).to.be.true;
 
             deviceManager.reconcile.resetHistory();
             deviceManager.submitReconcile('refresh-clicked');
-            expect(deviceManager.reconcile.calledOnceWith(true)).to.be.true;
+            expect(deviceManager.reconcile.calledOnceWith('refresh-clicked')).to.be.true;
         });
 
         it('ignores live stale orders while visible, leaving them pending', () => {
@@ -589,13 +589,13 @@ describe('DevicesViewProvider', () => {
             provider['visible'] = true;
             provider['fulfillPendingOrders']();
 
-            expect(deviceManager.broadcast.calledOnceWith(true)).to.be.true;
-            expect(deviceManager.reconcile.calledOnceWith(true)).to.be.true;
+            expect(deviceManager.broadcast.calledOnceWith('network')).to.be.true;
+            expect(deviceManager.reconcile.calledOnceWith('refresh-clicked')).to.be.true;
             expect(deviceManager.getPendingBroadcast()).to.be.null;
             expect(deviceManager.getPendingReconcile()).to.be.null;
         });
 
-        it('fulfills a queued stale broadcast on open without forcing (staleness-gated)', () => {
+        it('fulfills a queued stale broadcast on open with its reason intact (staleness-gated inside)', () => {
             const { provider, deviceManager } = createProvider([]);
 
             deviceManager.submitBroadcast('stale');
@@ -603,7 +603,7 @@ describe('DevicesViewProvider', () => {
             provider['visible'] = true;
             provider['fulfillPendingOrders']();
 
-            expect(deviceManager.broadcast.calledOnceWith(false)).to.be.true;
+            expect(deviceManager.broadcast.calledOnceWith('stale')).to.be.true;
         });
     });
 });

@@ -628,8 +628,9 @@ export class DeviceManager {
 
     /**
      * Atomically consume AND execute the pending broadcast order, if any. The one-call
-     * fulfillment API for views: take + broadcast in a single step, with the force policy owned
-     * here — forced for every reason except `stale`, which stays staleness-gated.
+     * fulfillment API for views: take + broadcast in a single step. The order's reason travels
+     * into {@link broadcast}, which decides the urgency internally (a `stale` timer-tick stays
+     * staleness-gated; every real trigger scans now).
      *
      * Consumption is atomic: when two visible views react to the same order event, the first
      * caller fulfills it and later callers find the slot empty and do nothing.
@@ -644,13 +645,14 @@ export class DeviceManager {
             return false;
         }
         this.pendingBroadcast = null;
-        return this.broadcast(pending.reason !== 'stale');
+        return this.broadcast(pending.reason);
     }
 
     /**
      * Atomically consume AND execute the pending reconcile order, if any. One-call twin of
-     * {@link fulfillPendingBroadcast}; the force policy here is: forced only for
-     * `refresh-clicked` (an explicit "I want fresh data now" from the user).
+     * {@link fulfillPendingBroadcast}; the reason travels into {@link reconcile}, which decides
+     * internally whether the per-device cache trust window is bypassed (only for
+     * `refresh-clicked` — an explicit "I want fresh data now" from the user).
      */
     public fulfillPendingReconcile(options?: { except?: ReconcileReason[] }): boolean {
         const pending = this.pendingReconcile;
@@ -658,31 +660,40 @@ export class DeviceManager {
             return false;
         }
         this.pendingReconcile = null;
-        this.reconcile(pending.reason === 'refresh-clicked');
+        this.reconcile(pending.reason);
         return true;
     }
     // #endregion
 
     /**
      * Broadcast an SSDP M-SEARCH to discover devices on the network. Does NOT health-check
-     * existing devices — that's {@link reconcile}. Non-forced calls are staleness-gated (no
-     * scan when the last scan is younger than STALE_SCAN_THRESHOLD_MS) and blocked while
-     * device discovery is disabled.
+     * existing devices — that's {@link reconcile}. The reason decides the urgency: every real
+     * trigger scans now, while a `stale` timer-tick is only a "things might be old" hint — it
+     * scans only when discovery is enabled AND the last scan is older than
+     * STALE_SCAN_THRESHOLD_MS. Reachable only through order fulfillment.
      * @returns true if a scan was started
      */
-    public broadcast(force = false): boolean {
-        if (!force && !this.deviceDiscoveryEnabled) {
-            return false;
+    private broadcast(reason: BroadcastReason): boolean {
+        if (reason === 'stale') {
+            if (!this.deviceDiscoveryEnabled || this.timeSinceLastScan <= this.STALE_SCAN_THRESHOLD_MS) {
+                return false;
+            }
         }
-        return this.discoverAll(force);
+        this.lastScanDate = new Date();
+        this.finder.scan();
+        return true;
     }
 
     /**
      * Health-check every known device (configured + discovered), marking them online/offline.
-     * Does NOT scan for new devices — that's {@link broadcast}.
+     * Does NOT scan for new devices — that's {@link broadcast}. The reason decides the urgency:
+     * only an explicit user click bypasses each device's cache trust window — a bypassing
+     * reconcile is one HTTP request per known device, so only "I want fresh data NOW" earns
+     * that. Reachable only through order fulfillment.
      */
-    public reconcile(force = false, doSyntheticDelay = true): void {
-        this.healthCheckAllDevices(force, doSyntheticDelay).catch(() => { });
+    private reconcile(reason: ReconcileReason): void {
+        const bypassDeviceCache = reason === 'refresh-clicked';
+        this.healthCheckAllDevices(bypassDeviceCache, true).catch(() => { });
     }
 
     /**
@@ -1287,19 +1298,6 @@ export class DeviceManager {
             return undefined;
         }
     }
-
-    /**
-     * Discover all Roku devices on the network and watch for new ones that connect
-     */
-    private discoverAll(force: boolean): boolean {
-        if (force || this.timeSinceLastScan > this.STALE_SCAN_THRESHOLD_MS) {
-            this.lastScanDate = new Date();
-            this.finder.scan();
-            return true;
-        }
-        return false;
-    }
-
 
     /**
      * Add or update a device in the discoveredDevices array.
