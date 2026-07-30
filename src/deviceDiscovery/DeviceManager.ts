@@ -502,12 +502,13 @@ export class DeviceManager {
             }
         }
 
-        // Cloud emulator devices live in their own source array; merge them in by key
+        // Cloud emulator devices live in their own source array; merge them in by key. On an
+        // s:{esn} collision with a configured/discovered LAN entry, the cloud entry wins - the
+        // same precedence getDevice uses - so a row always displays the device its key-routed
+        // actions resolve to
         for (const entry of this.rceDevices) {
             const device = this.buildRceDevice(entry);
-            if (!mergedDevices.has(device.key)) {
-                mergedDevices.set(device.key, device);
-            }
+            mergedDevices.set(device.key, device);
         }
 
         // Convert to array and sort

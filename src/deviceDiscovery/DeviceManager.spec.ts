@@ -1405,6 +1405,23 @@ describe('DeviceManager', () => {
             expect(manager.getDevice('rce:83')?.rce?.id).to.equal('83');
         });
 
+        it('a key collision between a configured LAN entry and a cloud device resolves to the cloud device everywhere', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            addDevice(createMockDevice({
+                serialNumber: 'XY020078HH5S',
+                isConfigured: true,
+                isDiscovered: false,
+                deviceInfo: { 'default-device-name': 'My LAN Roku' }
+            }));
+            manager['onRceDevices']([rceDevice()] as any);
+
+            //one row for the key, and it is the same device the key-routed actions resolve to
+            const matches = manager.getAllDevices().filter(x => x.key === 's:XY020078HH5S');
+            expect(matches).to.have.length(1);
+            expect(matches[0].rce).to.exist;
+            expect(manager.getDevice('s:XY020078HH5S')?.rce).to.exist;
+        });
+
         it('health checks a cloud device through a finder rescan, including one with no esn yet', async () => {
             const fakeFinder = new EventEmitter() as any;
             fakeFinder.start = () => { };
