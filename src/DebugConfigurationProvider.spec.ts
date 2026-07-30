@@ -326,6 +326,63 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(threw?.message).to.contain('unable to reach device');
             });
 
+            it('resolves a ${promptForHost} placeholder inside a local device config into the device option', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '5.6.7.8', serialNumber: 'abc123', deviceInfo: deviceInfo, key: 's:abc123' } as any;
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                sinon.stub(userInputManager, 'promptForHost').resolves({ host: '5.6.7.8', deviceInfo: deviceInfo, device: { host: '5.6.7.8' } });
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+
+                const result = await (configProvider as any).processHostParameter({ device: { host: '${promptForHost}' } });
+
+                //the device option is rebuilt from the resolved host - roku-debug addresses the device
+                //through `device.host`, so the literal placeholder must never survive there
+                expect(result.host).to.equal('5.6.7.8');
+                expect(result.device).to.eql({ host: '5.6.7.8' });
+            });
+
+            it('prompts for the ${promptForHost} placeholder in the top-level host field', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '5.6.7.8', serialNumber: 'abc123', deviceInfo: deviceInfo, key: 's:abc123' } as any;
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                const promptStub = sinon.stub(userInputManager, 'promptForHost').resolves({ host: '5.6.7.8', deviceInfo: deviceInfo, device: { host: '5.6.7.8' } });
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+
+                const result = await (configProvider as any).processHostParameter({ host: '${promptForHost}' });
+
+                expect(promptStub.called).to.be.true;
+                expect(result.host).to.equal('5.6.7.8');
+                expect(result.device).to.eql({ host: '5.6.7.8' });
+            });
+
+            it('resolves ${activeHost} inside a local device config through the active-device lookup', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '5.6.7.8', serialNumber: 'abc123', deviceInfo: deviceInfo, key: 's:abc123' } as any;
+                //the healthy active device answers, so the picker is never shown
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves({ host: '5.6.7.8', deviceInfo: deviceInfo }) };
+                const promptStub = sinon.stub(userInputManager, 'promptForHost');
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+
+                const result = await (configProvider as any).processHostParameter({ device: { host: '${activeHost}' } });
+
+                expect(promptStub.called).to.be.false;
+                expect(result.host).to.equal('5.6.7.8');
+                expect(result.device).to.eql({ host: '5.6.7.8' });
+            });
+
+            it('prompts instead of crashing when a local device config has an empty host and no top-level host exists', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '5.6.7.8', serialNumber: 'abc123', deviceInfo: deviceInfo, key: 's:abc123' } as any;
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                const promptStub = sinon.stub(userInputManager, 'promptForHost').resolves({ host: '5.6.7.8', deviceInfo: deviceInfo, device: { host: '5.6.7.8' } });
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+
+                const result = await (configProvider as any).processHostParameter({ device: { host: '' } });
+
+                expect(promptStub.called).to.be.true;
+                expect(result.device).to.eql({ host: '5.6.7.8' });
+            });
+
             it('threads a cloud emulator pick from the picker and skips the host requirement', async () => {
                 //the precomputed device option carries the account token, like the real ones built by
                 //the device manager at scan time
@@ -746,6 +803,16 @@ describe('BrightScriptConfigurationProvider', () => {
                 rootDir: '${env:SOME_PROCESS_VAR}'
             });
             expect(config.rootDir).to.equal('processValue');
+        });
+
+        it('substitutes placeholders nested inside the device object', async () => {
+            //the substitution pass works over the whole config as a JSON string, so nested values
+            //like device.host must resolve the same way top-level fields do
+            sinon.stub(process, 'env').value({ ...process.env, ROKU_DEV_HOST: '1.2.3.4' });
+            const config = await processEnvVariables(folder, {
+                device: { host: '${env:ROKU_DEV_HOST}' }
+            });
+            expect(config.device).to.eql({ host: '1.2.3.4' });
         });
 
         it('does not mutate process.env', async () => {

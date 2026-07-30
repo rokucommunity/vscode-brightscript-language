@@ -565,7 +565,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * @param config  current config object
      */
     private async processLocalHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
-        const trimmedHost = config.host.trim();
+        //`host` can be missing entirely (a config that only supplies `device: { host: '' }`) - treat
+        //that the same as an empty host and prompt, rather than crashing on the trim
+        const trimmedHost = (config.host ?? '').trim();
         const needsHostPrompt =
             trimmedHost === '' ||
             trimmedHost === '${promptForHost}' ||
@@ -623,8 +625,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.deviceInfo = device.deviceInfo;
 
         //`device` is the canonical way to address the target device (`host` is its deprecated alias),
-        //so always hand roku-debug a device option built from the resolved host
-        config.device ??= { host: config.host };
+        //so always hand roku-debug a device option built from the resolved host. Rebuild it even when
+        //the config supplied its own local device object: its host may have been a `${promptForHost}`
+        //placeholder that the resolution above replaced, and roku-debug addresses the device through
+        //`device.host`, not the top-level `host`
+        config.device = { host: config.host };
 
         return config;
     }

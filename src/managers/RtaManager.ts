@@ -30,13 +30,14 @@ export class RtaManager {
 
     public setupRtaWithConfig(config: { device?: DeviceOption; host?: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
         //roku-test-automation talks to the device by host over the local network, so a device without
-        //a host (like a Roku Cloud Emulator device) cannot back the RDB views yet. A debug session's
-        //launch config addresses the device through `device`; the bare `host` field remains only for
-        //the RDB view's manual-ip flow, and is deliberately ignored when a device config is present
-        //(an RCE session's raw `host` field can hold an unresolved placeholder).
+        //a host (a Roku Cloud Emulator config, or a roku-deploy device-registry name that only
+        //roku-deploy can resolve) cannot back the RDB views yet. A debug session's launch config
+        //addresses the device through `device`; the bare `host` field remains only for the RDB view's
+        //manual-ip flow, and is deliberately ignored whenever any `device` is present (a non-local
+        //session's raw `host` field can hold an unresolved placeholder).
         let host: string | undefined;
-        if (typeof config.device === 'object') {
-            host = isLocalDeviceConfig(config.device) ? config.device.host : undefined;
+        if (config.device !== undefined) {
+            host = typeof config.device === 'object' && isLocalDeviceConfig(config.device) ? config.device.host : undefined;
         } else {
             host = config.host;
         }
