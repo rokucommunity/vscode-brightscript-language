@@ -55,7 +55,7 @@ export class DeviceTargetManager {
 
     /**
      * Resolve the device a command should target when no explicit reference was given: an explicit
-     * reference wins, then the remote-control device (`remoteDeviceKey` - follows the last
+     * reference wins, then the remote-control device (`remoteControlDeviceKey` - follows the last
      * sideload, the last remote pick, and Set as Active Device), then the
      * `brightscript.remoteControl` host setting (a local device by definition), then the shared
      * device picker.
@@ -64,8 +64,8 @@ export class DeviceTargetManager {
      */
     public async resolveActiveTargetDevice(reference?: string | { key?: string }): Promise<DeviceTarget | undefined> {
         if (!reference) {
-            const remoteDeviceKey = this.context.workspaceState.get<string>('remoteDeviceKey');
-            const remoteDevice = remoteDeviceKey ? this.deviceManager.getDevice(remoteDeviceKey) : undefined;
+            const remoteControlDeviceKey = this.context.workspaceState.get<string>('remoteControlDeviceKey');
+            const remoteDevice = remoteControlDeviceKey ? this.deviceManager.getDevice(remoteControlDeviceKey) : undefined;
             if (remoteDevice) {
                 return { device: remoteDevice.device, serialNumber: remoteDevice.serialNumber, label: this.deviceManager.getDeviceDisplayName(remoteDevice, true) };
             }

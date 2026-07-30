@@ -68,15 +68,15 @@ export class Extension {
         context.subscriptions.push(this);
         const currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version as string;
 
-        //one-time migration: `remoteHost` workspace state is superseded by `remoteDeviceKey`, which
+        //one-time migration: `remoteHost` workspace state is superseded by `remoteControlDeviceKey`, which
         //tracks the remote-control target for LAN and Cloud Emulator devices alike (distinct from
         //`activeDeviceKey`, which only the user's Set as Active Device writes). Carry a remembered
         //LAN host forward as a synthesized ip key, then drop the old state entirely
         const legacyRemoteHost = context.workspaceState.get<string>('remoteHost');
         if (legacyRemoteHost !== undefined) {
             // eslint-disable-next-line no-template-curly-in-string
-            if (legacyRemoteHost && legacyRemoteHost !== '${promptForHost}' && !context.workspaceState.get('remoteDeviceKey')) {
-                await context.workspaceState.update('remoteDeviceKey', `i:${legacyRemoteHost}`);
+            if (legacyRemoteHost && legacyRemoteHost !== '${promptForHost}' && !context.workspaceState.get('remoteControlDeviceKey')) {
+                await context.workspaceState.update('remoteControlDeviceKey', `i:${legacyRemoteHost}`);
             }
             await context.workspaceState.update('remoteHost', undefined);
         }

@@ -608,8 +608,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             //alike; a synthesized ip-based key covers a brand-new host the device manager doesn't
             //know yet). It deliberately does NOT touch activeDeviceKey - the active device is the
             //user's explicit pick and only Set as Active Device writes it
-            const remoteDeviceKey = this.deviceManager.getDevice({ ip: config.host })?.key ?? `i:${config.host}`;
-            await this.context.workspaceState.update('remoteDeviceKey', remoteDeviceKey);
+            const remoteControlDeviceKey = this.deviceManager.getDevice({ ip: config.host })?.key ?? `i:${config.host}`;
+            await this.context.workspaceState.update('remoteControlDeviceKey', remoteControlDeviceKey);
         }
 
         // If the host didn't come from the picker, probe it so we have fresh SN/deviceInfo.
@@ -664,7 +664,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         const sideloadedDevice = typeof config.device === 'object'
             ? this.deviceManager.getDeviceByDeviceConfig(config.device)
             : undefined;
-        await this.context.workspaceState.update('remoteDeviceKey', sideloadedDevice?.key ?? '');
+        await this.context.workspaceState.update('remoteControlDeviceKey', sideloadedDevice?.key ?? '');
 
         //Cloud Emulator api tokens come from SecretStorage (the RceManager active account) only - a
         //launch config can never supply its own, so any token already present here is config-supplied

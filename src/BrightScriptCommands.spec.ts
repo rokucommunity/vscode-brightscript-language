@@ -226,7 +226,7 @@ describe('BrightScriptFileUtils ', () => {
             vscodeContextSetStub.restore();
         });
 
-        it('sets activeDeviceKey and remoteDeviceKey for a LAN device selected by key', async () => {
+        it('sets activeDeviceKey and remoteControlDeviceKey for a LAN device selected by key', async () => {
             deviceManager.getDevice.withArgs('s:abc123').returns({ ip: '1.2.3.4', key: 's:abc123' });
 
             await capturedCommands['extension.brightscript.setActiveDevice']({ key: 's:abc123' });
@@ -234,16 +234,16 @@ describe('BrightScriptFileUtils ', () => {
             //the user's explicit pick moves both identities: the active device AND the
             //remote-control target it implies
             assert.equal(vscode.context.workspaceState.get('activeDeviceKey'), 's:abc123');
-            assert.equal(vscode.context.workspaceState.get('remoteDeviceKey'), 's:abc123');
+            assert.equal(vscode.context.workspaceState.get('remoteControlDeviceKey'), 's:abc123');
         });
 
-        it('sets activeDeviceKey and remoteDeviceKey for a cloud device selected by key', async () => {
+        it('sets activeDeviceKey and remoteControlDeviceKey for a cloud device selected by key', async () => {
             deviceManager.getDevice.withArgs('rce:83').returns({ ip: undefined, key: 'rce:83', rce: { id: '83', status: 'running' } });
 
             await capturedCommands['extension.brightscript.setActiveDevice']({ key: 'rce:83' });
 
             assert.equal(vscode.context.workspaceState.get('activeDeviceKey'), 'rce:83');
-            assert.equal(vscode.context.workspaceState.get('remoteDeviceKey'), 'rce:83');
+            assert.equal(vscode.context.workspaceState.get('remoteControlDeviceKey'), 'rce:83');
         });
 
         it('resolves a cloud device picked from the fallback picker', async () => {
@@ -254,7 +254,7 @@ describe('BrightScriptFileUtils ', () => {
             await capturedCommands['extension.brightscript.setActiveDevice']();
 
             assert.equal(vscode.context.workspaceState.get('activeDeviceKey'), 'rce:83');
-            assert.equal(vscode.context.workspaceState.get('remoteDeviceKey'), 'rce:83');
+            assert.equal(vscode.context.workspaceState.get('remoteControlDeviceKey'), 'rce:83');
         });
 
         it('throws when nothing can be resolved', async () => {
@@ -269,14 +269,14 @@ describe('BrightScriptFileUtils ', () => {
             assert.isTrue(threw);
         });
 
-        it('clearActiveDevice clears activeDeviceKey and remoteDeviceKey', async () => {
+        it('clearActiveDevice clears activeDeviceKey and remoteControlDeviceKey', async () => {
             await vscode.context.workspaceState.update('activeDeviceKey', 's:abc123');
-            await vscode.context.workspaceState.update('remoteDeviceKey', 's:abc123');
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:abc123');
 
             await capturedCommands['extension.brightscript.clearActiveDevice']();
 
             assert.equal(vscode.context.workspaceState.get('activeDeviceKey'), '');
-            assert.equal(vscode.context.workspaceState.get('remoteDeviceKey'), '');
+            assert.equal(vscode.context.workspaceState.get('remoteControlDeviceKey'), '');
         });
     });
 
@@ -412,7 +412,7 @@ describe('BrightScriptFileUtils ', () => {
 
         it('sends the resolved remote-control device and key to rokuDeploy.keyPress', async () => {
             const lanDevice = { host: '10.0.0.5' };
-            await vscode.context.workspaceState.update('remoteDeviceKey', 's:abc123');
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:abc123');
             deviceManager.getDevice.withArgs('s:abc123').returns({ device: lanDevice });
 
             await localCommands.sendRemoteCommand('Select');
@@ -423,7 +423,7 @@ describe('BrightScriptFileUtils ', () => {
 
         it('prefixes literal characters with Lit_ before sending', async () => {
             const lanDevice = { host: '10.0.0.5' };
-            await vscode.context.workspaceState.update('remoteDeviceKey', 's:abc123');
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:abc123');
             deviceManager.getDevice.withArgs('s:abc123').returns({ device: lanDevice });
 
             await localCommands.sendRemoteCommand('a', undefined, true);
@@ -443,7 +443,7 @@ describe('BrightScriptFileUtils ', () => {
 
         it('falls back to the remote-control device when a tree element key is unknown', async () => {
             const lanDevice = { host: '10.0.0.5' };
-            await vscode.context.workspaceState.update('remoteDeviceKey', 's:abc123');
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:abc123');
             deviceManager.getDevice.withArgs('s:abc123').returns({ device: lanDevice });
             deviceManager.getDevice.withArgs('stale-key').returns(undefined);
 
@@ -454,7 +454,7 @@ describe('BrightScriptFileUtils ', () => {
 
         it('forwards a cloud emulator device config to rokuDeploy.keyPress', async () => {
             const cloudDevice = { instanceUrl: 'https://rce.example.com/instance', rceToken: 'super-secret-token' };
-            await vscode.context.workspaceState.update('remoteDeviceKey', 'rce:83');
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
             deviceManager.getDevice.withArgs('rce:83').returns({ device: cloudDevice });
 
             await localCommands.sendRemoteCommand('Home');
@@ -464,7 +464,7 @@ describe('BrightScriptFileUtils ', () => {
 
         it('sends the explicit host as a LAN device config, ignoring the remote-control device', async () => {
             deviceManager.getDevice.withArgs('s:abc123').returns({ device: { host: '10.0.0.5' } });
-            await vscode.context.workspaceState.update('remoteDeviceKey', 's:abc123');
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:abc123');
 
             await localCommands.sendRemoteCommand('Select', '192.168.1.50');
 
@@ -473,7 +473,7 @@ describe('BrightScriptFileUtils ', () => {
 
         it('the picker fallback flows a cloud pick through and remembers it as the remote-control device', async () => {
             //no remembered remote-control device
-            await vscode.context.workspaceState.update('remoteDeviceKey', '');
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', '');
             await vscode.context.workspaceState.update('activeDeviceKey', '');
             const cloudDevice = { id: '83', rceToken: 'super-secret-token' };
             deviceManager.getDeviceByDeviceConfig.withArgs(cloudDevice).returns({ key: 'rce:83', device: cloudDevice, rce: { id: '83', status: 'running' } });
@@ -487,7 +487,7 @@ describe('BrightScriptFileUtils ', () => {
             assert.isTrue(userInputManager.promptForHost.calledOnce);
             assert.deepEqual(keyPressStub.firstCall.args[0], { device: cloudDevice, key: 'Home' });
             //the pick becomes the remote-control device, so the next command skips the picker...
-            assert.equal(vscode.context.workspaceState.get('remoteDeviceKey'), 'rce:83');
+            assert.equal(vscode.context.workspaceState.get('remoteControlDeviceKey'), 'rce:83');
             //...but never the user's explicit active device
             assert.equal(vscode.context.workspaceState.get('activeDeviceKey'), '');
         });
@@ -495,7 +495,7 @@ describe('BrightScriptFileUtils ', () => {
         it('a ${promptForHost} placeholder in the host setting never reaches the device as a literal host', async () => {
             //the exact setup that produced "getaddrinfo ENOTFOUND ${promptForHost}": no remembered
             //device and the remoteControl host setting holds the placeholder
-            await vscode.context.workspaceState.update('remoteDeviceKey', '');
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', '');
             (vscode.workspace as any)._configuration = (vscode.workspace as any)._configuration ?? {};
             // eslint-disable-next-line no-template-curly-in-string
             (vscode.workspace as any)._configuration['brightscript.remoteControl.host'] = '${promptForHost}';
@@ -518,7 +518,7 @@ describe('BrightScriptFileUtils ', () => {
         });
 
         it('the picker fallback remembers a LAN pick as the remote-control device', async () => {
-            await vscode.context.workspaceState.update('remoteDeviceKey', '');
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', '');
             const userInputManager = {
                 promptForHost: sandbox.stub().resolves({ host: '10.0.0.9', deviceInfo: {}, device: { host: '10.0.0.9' } })
             };
@@ -527,7 +527,7 @@ describe('BrightScriptFileUtils ', () => {
             await promptCommands.sendRemoteCommand('Select');
 
             assert.deepEqual(keyPressStub.firstCall.args[0], { device: { host: '10.0.0.9' }, key: 'Select' });
-            assert.equal(vscode.context.workspaceState.get('remoteDeviceKey'), 'i:10.0.0.9');
+            assert.equal(vscode.context.workspaceState.get('remoteControlDeviceKey'), 'i:10.0.0.9');
         });
     });
 

@@ -454,7 +454,7 @@ export class BrightScriptCommands {
             //way around: only this command writes activeDeviceKey
             const activeDeviceKey = device?.key ?? `i:${ip}`;
             await this.context.workspaceState.update('activeDeviceKey', activeDeviceKey);
-            await this.context.workspaceState.update('remoteDeviceKey', activeDeviceKey);
+            await this.context.workspaceState.update('remoteControlDeviceKey', activeDeviceKey);
 
             const label = device ? this.deviceManager.getDeviceDisplayName(device, true) : ip;
             await util.showTimedNotification(`'${label}' set as active device`);
@@ -599,7 +599,7 @@ export class BrightScriptCommands {
 
         this.registerCommand('clearActiveDevice', async () => {
             await this.context.workspaceState.update('activeDeviceKey', '');
-            await this.context.workspaceState.update('remoteDeviceKey', '');
+            await this.context.workspaceState.update('remoteControlDeviceKey', '');
             await util.showTimedNotification('Active device cleared');
         });
 
@@ -872,7 +872,7 @@ export class BrightScriptCommands {
      * - An explicit target wins outright: a host string, an already-resolved device config, or a
      *   Devices view tree element (`{key}`, resolved through the device manager; an unknown key
      *   falls through to the active device below).
-     * - Otherwise the remote-control device (`remoteDeviceKey` in workspace state - the fluid
+     * - Otherwise the remote-control device (`remoteControlDeviceKey` in workspace state - the fluid
      *   target that follows the last sideload, the last remote pick, and Set as Active Device) is
      *   resolved through the device manager and its precomputed `.device` config is returned as-is
      *   - LAN or cloud, untouched.
@@ -893,8 +893,8 @@ export class BrightScriptCommands {
             return target as DeviceConfig;
         }
 
-        const remoteDeviceKey = this.context.workspaceState.get<string>('remoteDeviceKey');
-        const remoteDevice = remoteDeviceKey ? this.deviceManager.getDevice(remoteDeviceKey) : undefined;
+        const remoteControlDeviceKey = this.context.workspaceState.get<string>('remoteControlDeviceKey');
+        const remoteDevice = remoteControlDeviceKey ? this.deviceManager.getDevice(remoteControlDeviceKey) : undefined;
         if (remoteDevice) {
             return remoteDevice.device;
         }
@@ -912,7 +912,7 @@ export class BrightScriptCommands {
         const pickedDevice = picked.device ? this.deviceManager.getDeviceByDeviceConfig(picked.device) : undefined;
         const pickedKey = pickedDevice?.key ?? (picked.host ? `i:${picked.host}` : undefined);
         if (pickedKey) {
-            await this.context.workspaceState.update('remoteDeviceKey', pickedKey);
+            await this.context.workspaceState.update('remoteControlDeviceKey', pickedKey);
         }
         return picked.device ?? { host: picked.host };
     }
