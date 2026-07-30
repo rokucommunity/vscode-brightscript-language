@@ -113,23 +113,21 @@ describe('DevicesViewProvider', () => {
             getPendingBroadcastReasons: () => [...pendingBroadcastReasons],
             getPendingReconcileReasons: () => [...pendingReconcileReasons],
             fulfillPendingBroadcast: (fulfillOptions?: { except?: string[] }) => {
-                const reasons = [...pendingBroadcastReasons].filter(x => !fulfillOptions?.except?.includes(x));
-                if (reasons.length === 0) {
+                const triggers = [...pendingBroadcastReasons].filter(x => !fulfillOptions?.except?.includes(x));
+                if (triggers.length === 0) {
                     return false;
                 }
-                for (const reason of reasons) {
-                    pendingBroadcastReasons.delete(reason);
-                }
+                const reasons = [...pendingBroadcastReasons];
+                pendingBroadcastReasons.clear();
                 return deviceManager.broadcast(reasons);
             },
             fulfillPendingReconcile: (fulfillOptions?: { except?: string[] }) => {
-                const reasons = [...pendingReconcileReasons].filter(x => !fulfillOptions?.except?.includes(x));
-                if (reasons.length === 0) {
+                const triggers = [...pendingReconcileReasons].filter(x => !fulfillOptions?.except?.includes(x));
+                if (triggers.length === 0) {
                     return false;
                 }
-                for (const reason of reasons) {
-                    pendingReconcileReasons.delete(reason);
-                }
+                const reasons = [...pendingReconcileReasons];
+                pendingReconcileReasons.clear();
                 deviceManager.reconcile(reasons);
                 return true;
             }

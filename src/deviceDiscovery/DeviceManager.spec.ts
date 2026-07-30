@@ -273,16 +273,18 @@ describe('DeviceManager', () => {
             expect(manager.getPendingBroadcastReasons()).to.include('stale');
         });
 
-        it('takes the real reasons and leaves the except-listed ones queued', () => {
+        it('when a real reason triggers execution, the whole set is cleared — excepted reasons included', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
             manager.submitBroadcast('stale');
             manager.submitBroadcast('network');
 
             const result = manager.fulfillPendingBroadcast({ except: ['stale'] });
 
+            //the scan satisfies the stale want too, so it rides along instead of staying queued
             expect(result).to.be.true;
-            expect(broadcastStub.calledOnceWith(['network'])).to.be.true;
-            expect(manager.getPendingBroadcastReasons()).to.eql(['stale']);
+            expect(broadcastStub.calledOnce).to.be.true;
+            expect(broadcastStub.firstCall.args[0]).to.have.members(['stale', 'network']);
+            expect(manager.getPendingBroadcastReasons()).to.be.empty;
         });
 
         it('returns false and does nothing when no order is pending', () => {

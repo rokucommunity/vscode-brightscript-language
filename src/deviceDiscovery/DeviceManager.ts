@@ -634,18 +634,19 @@ export class DeviceManager {
      * Consumption is atomic: when two visible views react to the same order event, the first
      * caller fulfills it and later callers find the set empty and do nothing.
      *
-     * @param options.except - reasons to leave QUEUED (not consumed) for another view, e.g.
+     * @param options.except - reasons that do not TRIGGER fulfillment on their own, e.g.
      *   `{ except: ['stale'] }`. A blacklist on purpose: new reasons are acted on by default.
+     *   When a non-excepted reason does trigger execution, the whole set is cleared — the scan
+     *   satisfies every queued reason, excepted ones included.
      * @returns true if orders were consumed and a scan actually started
      */
     public fulfillPendingBroadcast(options?: { except?: BroadcastReason[] }): boolean {
-        const reasons = this.getPendingBroadcastReasons().filter(x => !options?.except?.includes(x));
-        if (reasons.length === 0) {
+        const triggers = this.getPendingBroadcastReasons().filter(x => !options?.except?.includes(x));
+        if (triggers.length === 0) {
             return false;
         }
-        for (const reason of reasons) {
-            this.pendingBroadcastReasons.delete(reason);
-        }
+        const reasons = this.getPendingBroadcastReasons();
+        this.pendingBroadcastReasons.clear();
         return this.broadcast(reasons);
     }
 
@@ -656,13 +657,12 @@ export class DeviceManager {
      * `refresh-clicked` is among them — an explicit "I want fresh data now" from the user).
      */
     public fulfillPendingReconcile(options?: { except?: ReconcileReason[] }): boolean {
-        const reasons = this.getPendingReconcileReasons().filter(x => !options?.except?.includes(x));
-        if (reasons.length === 0) {
+        const triggers = this.getPendingReconcileReasons().filter(x => !options?.except?.includes(x));
+        if (triggers.length === 0) {
             return false;
         }
-        for (const reason of reasons) {
-            this.pendingReconcileReasons.delete(reason);
-        }
+        const reasons = this.getPendingReconcileReasons();
+        this.pendingReconcileReasons.clear();
         this.reconcile(reasons);
         return true;
     }
