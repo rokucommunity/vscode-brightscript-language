@@ -118,13 +118,14 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             this.fulfillPendingOrders();
         }
 
-        // Health check device when expanded (not on every getChildren/devices-changed)
+        // Expanding a device is explicit engagement with it — the manager freshens it
+        // (not on every getChildren/devices-changed)
         treeView.onDidExpandElement(e => {
             const element = e.element;
             if (element instanceof DeviceTreeItem && element.key) {
                 const device = this.deviceManager.getDevice(element.key);
                 if (device) {
-                    this.deviceManager.healthCheckDevice(device).catch(() => { });
+                    this.deviceManager.deviceEngaged(device).catch(() => { });
                 }
             }
         });
@@ -139,14 +140,13 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     /**
-     * When the panel becomes visible, fulfill any broadcast/reconcile orders that were queued
-     * while it was hidden. On-open fulfills every reason (spec's tree-view table: "fulfills
-     * pending broadcast AND reconcile orders for any reason") — a queued `stale` broadcast is
-     * still staleness-gated inside the DeviceManager, so this never over-scans.
+     * When the panel becomes visible, fulfill any orders that were queued while it was hidden.
+     * On-open fulfills every reason (spec's tree-view table: "fulfills pending broadcast AND
+     * reconcile orders for any reason") — a queued `stale` broadcast is still staleness-gated
+     * inside the DeviceManager, so this never over-scans.
      */
     private fulfillPendingOrders() {
-        this.deviceManager.fulfillPendingBroadcast();
-        this.deviceManager.fulfillPendingReconcile();
+        this.deviceManager.fulfillPendingOrders();
     }
 
     private showScanProgress() {

@@ -156,8 +156,7 @@ describe('BrightScriptFileUtils ', () => {
 
         beforeEach(() => {
             deviceManager = {
-                submitBroadcast: sinon.stub(),
-                submitReconcile: sinon.stub(),
+                submitRefreshOrders: sinon.stub(),
                 broadcast: sinon.stub(),
                 reconcile: sinon.stub()
             };
@@ -173,18 +172,16 @@ describe('BrightScriptFileUtils ', () => {
             (vscode.commands.registerCommand as any).restore();
         });
 
-        it('refreshDeviceList submits refresh-clicked orders instead of scanning directly', () => {
+        it('refreshDeviceList submits refresh orders instead of scanning directly', () => {
             capturedCommands['extension.brightscript.refreshDeviceList']();
-            assert.isTrue(deviceManager.submitBroadcast.calledOnceWith('refresh-clicked'));
-            assert.isTrue(deviceManager.submitReconcile.calledOnceWith('refresh-clicked'));
+            assert.isTrue(deviceManager.submitRefreshOrders.calledOnce);
             assert.isTrue(deviceManager.broadcast.notCalled);
             assert.isTrue(deviceManager.reconcile.notCalled);
         });
 
-        it('rescanDevices submits refresh-clicked orders instead of scanning directly', () => {
+        it('rescanDevices submits refresh orders instead of scanning directly', () => {
             capturedCommands['extension.brightscript.rescanDevices']();
-            assert.isTrue(deviceManager.submitBroadcast.calledOnceWith('refresh-clicked'));
-            assert.isTrue(deviceManager.submitReconcile.calledOnceWith('refresh-clicked'));
+            assert.isTrue(deviceManager.submitRefreshOrders.calledOnce);
             assert.isTrue(deviceManager.broadcast.notCalled);
             assert.isTrue(deviceManager.reconcile.notCalled);
         });
@@ -197,7 +194,7 @@ describe('BrightScriptFileUtils ', () => {
         beforeEach(() => {
             deviceManager = {
                 getDevice: sinon.stub(),
-                healthCheckDevice: sinon.stub().resolves(true)
+                deviceEngaged: sinon.stub().resolves(true)
             };
             const localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
             capturedCommands = {};
@@ -211,14 +208,14 @@ describe('BrightScriptFileUtils ', () => {
             (vscode.commands.registerCommand as any).restore();
         });
 
-        it('decodes the encoded tree key via getDevice before health checking', async () => {
+        it('decodes the encoded tree key via getDevice before engaging the device', async () => {
             const device = { ip: '192.168.1.100', serialNumber: 'ABC123', key: 's:ABC123' };
             deviceManager.getDevice.returns(device);
 
             await capturedCommands['extension.brightscript.refreshDevice']({ key: 's:ABC123' });
 
             assert.isTrue(deviceManager.getDevice.calledOnceWith('s:ABC123'));
-            assert.isTrue(deviceManager.healthCheckDevice.calledOnceWith(device, true));
+            assert.isTrue(deviceManager.deviceEngaged.calledOnceWith(device));
         });
 
         it('does nothing when the key does not resolve to a device', async () => {
@@ -226,7 +223,7 @@ describe('BrightScriptFileUtils ', () => {
 
             await capturedCommands['extension.brightscript.refreshDevice']({ key: 's:GONE' });
 
-            assert.isTrue(deviceManager.healthCheckDevice.notCalled);
+            assert.isTrue(deviceManager.deviceEngaged.notCalled);
         });
     });
 
@@ -532,7 +529,7 @@ describe('BrightScriptFileUtils ', () => {
         beforeEach(() => {
             sandbox = sinon.createSandbox();
             deviceManager = {
-                healthCheckDevice: sandbox.stub().resolves(true),
+                deviceEngaged: sandbox.stub().resolves(true),
                 getDevice: sandbox.stub().returns({ ip: '1.2.3.4', deviceInfo: { 'serial-number': 'SN123' } })
             };
             localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
@@ -555,7 +552,7 @@ describe('BrightScriptFileUtils ', () => {
         });
 
         it('returns undefined when the active host fails the health check', async () => {
-            deviceManager.healthCheckDevice.resolves(false);
+            deviceManager.deviceEngaged.resolves(false);
             const result = await localCommands.getHealthyActiveHost();
             assert.isUndefined(result);
         });

@@ -60,15 +60,13 @@ export class BrightScriptCommands {
 
         //the "Refresh" button in the Devices list. Submits orders rather than scanning directly
         //(spec: "Clicking refresh... always submits a broadcast order and a reconcile order") —
-        //a visible view fulfills them immediately, forced since the reason is refresh-clicked
+        //a visible view fulfills them immediately
         this.registerCommand('refreshDeviceList', (key: string) => {
-            this.deviceManager.submitBroadcast('refresh-clicked');
-            this.deviceManager.submitReconcile('refresh-clicked');
+            this.deviceManager.submitRefreshOrders();
         });
 
         this.registerCommand('rescanDevices', () => {
-            this.deviceManager.submitBroadcast('refresh-clicked');
-            this.deviceManager.submitReconcile('refresh-clicked');
+            this.deviceManager.submitRefreshOrders();
         });
 
         // Refresh a single device (inline button on hover in devices panel).
@@ -76,7 +74,7 @@ export class BrightScriptCommands {
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
             const device = this.deviceManager.getDevice(item.key);
             if (device) {
-                await this.deviceManager.healthCheckDevice(device, true);
+                await this.deviceManager.deviceEngaged(device);
             }
         });
 
@@ -1101,7 +1099,7 @@ export class BrightScriptCommands {
         if (!activeHost) {
             return undefined;
         }
-        const isHealthy = await this.deviceManager.healthCheckDevice({ ip: activeHost }, true, false);
+        const isHealthy = await this.deviceManager.deviceEngaged({ ip: activeHost });
         if (!isHealthy) {
             return undefined;
         }

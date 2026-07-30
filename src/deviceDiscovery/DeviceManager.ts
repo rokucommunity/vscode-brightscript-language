@@ -666,7 +666,40 @@ export class DeviceManager {
         this.reconcile(reasons);
         return true;
     }
+
+    /**
+     * Fulfill both pending order types in one call — the common case for views (on open, on
+     * becoming visible). Views that need per-order-type policy (e.g. the quick pick's 7s
+     * fallback only wants broadcasts) can still call the specific fulfillments directly.
+     */
+    public fulfillPendingOrders(options?: { except?: Array<BroadcastReason | ReconcileReason> }): { scanStarted: boolean; reconciled: boolean } {
+        return {
+            scanStarted: this.fulfillPendingBroadcast({ except: options?.except as BroadcastReason[] }),
+            reconciled: this.fulfillPendingReconcile({ except: options?.except as ReconcileReason[] })
+        };
+    }
+
+    /**
+     * The "user clicked refresh / scan" interaction (spec: Clicking refresh): always submits a
+     * broadcast order AND a reconcile order, regardless of how recently either ran. Views report
+     * the interaction; which order types it implies is the manager's business.
+     */
+    public submitRefreshOrders(): void {
+        this.submitBroadcast('refresh-clicked');
+        this.submitReconcile('refresh-clicked');
+    }
     // #endregion
+
+    /**
+     * The user engaged with a specific device — clicked it, expanded it, selected it in the
+     * picker, or is about to launch to it (spec: "explicit engagement with that specific
+     * device"). Freshens the device now (bypassing its cache trust window) and reports whether
+     * it responded. Fire-and-forget callers can ignore the result; callers that need to know
+     * (picker validation, pre-launch checks) await it.
+     */
+    public async deviceEngaged(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }): Promise<boolean> {
+        return this.healthCheckDevice(deviceOrLookup, true, false);
+    }
 
     /**
      * Broadcast an SSDP M-SEARCH to discover devices on the network. Does NOT health-check
@@ -752,7 +785,7 @@ export class DeviceManager {
         this.clearCurrentDeviceList();
     }
 
-    public async healthCheckDevice(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }, force = false, doSyntheticDelay = true): Promise<boolean> {
+    private async healthCheckDevice(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }, force = false, doSyntheticDelay = true): Promise<boolean> {
         // If already a device object with deviceState, use it directly; otherwise look it up
         const device = 'deviceState' in deviceOrLookup
             ? deviceOrLookup

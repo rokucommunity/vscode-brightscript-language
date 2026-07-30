@@ -99,7 +99,7 @@ describe('DevicesViewProvider', () => {
             getDeviceDisplayName: (device: any) => device.key,
             getIconPath: () => undefined,
             hasDeviceCache: () => false,
-            healthCheckDevice: () => Promise.resolve(),
+            deviceEngaged: () => Promise.resolve(true),
             broadcast: sinon.stub().returns(true),
             reconcile: sinon.stub(),
             submitBroadcast: (reason: string) => {
@@ -130,6 +130,12 @@ describe('DevicesViewProvider', () => {
                 pendingReconcileReasons.clear();
                 deviceManager.reconcile(reasons);
                 return true;
+            },
+            fulfillPendingOrders: (fulfillOptions?: { except?: string[] }) => {
+                return {
+                    scanStarted: deviceManager.fulfillPendingBroadcast(fulfillOptions),
+                    reconciled: deviceManager.fulfillPendingReconcile(fulfillOptions)
+                };
             }
         };
         const credentialStore: any = {

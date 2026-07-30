@@ -241,14 +241,11 @@ export class UserInputManager {
 
         let scanTimeoutId: NodeJS.Timeout | null = null;
 
-        // On open: fulfill a queued real order (network/sleep/refresh-clicked/...), forced. A
-        // queued `stale` order is deliberately left alone — routine freshness is the 7s
+        // On open: fulfill queued real orders (network/sleep/refresh-clicked/...). Queued
+        // `stale` orders are deliberately left alone — routine freshness is the 7s
         // fallback's job (below), so opening the picker never scans the network by itself.
         // (spec's quick-pick table: "on open, fulfills pending orders for any reason except stale")
-        let hasScanned = this.deviceManager.fulfillPendingBroadcast({ except: ['stale'] });
-
-        // On open, also fulfill a queued reconcile order (`stale` stays queued)
-        this.deviceManager.fulfillPendingReconcile({ except: ['stale'] });
+        let hasScanned = this.deviceManager.fulfillPendingOrders({ except: ['stale'] }).scanStarted;
 
         this.deviceManager.on('broadcast-ordered', (order) => {
             if (order.reason === 'stale') {
@@ -302,14 +299,13 @@ export class UserInputManager {
                     } else if (selectedDevice.label === scanForDevicesLabel) {
                         //an explicit "scan" click is the refresh-clicked trigger — submit orders;
                         //this picker (or another visible view) fulfills them immediately
-                        this.deviceManager.submitBroadcast('refresh-clicked');
-                        this.deviceManager.submitReconcile('refresh-clicked');
+                        this.deviceManager.submitRefreshOrders();
                         return;
                     } else {
                         const device = (selectedDevice as any).device as RokuDevice;
                         // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
                         setBusy(true);
-                        const isHealthy = await this.deviceManager.healthCheckDevice(device, true, false);
+                        const isHealthy = await this.deviceManager.deviceEngaged(device);
                         setBusy(false);
                         if (!isHealthy) {
                             await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
@@ -455,8 +451,7 @@ export class UserInputManager {
             if (button.tooltip === SCAN_FOR_DEVICES) {
                 //an explicit "scan" click is the refresh-clicked trigger — submit orders;
                 //this picker (or another visible view) fulfills them immediately
-                this.deviceManager.submitBroadcast('refresh-clicked');
-                this.deviceManager.submitReconcile('refresh-clicked');
+                this.deviceManager.submitRefreshOrders();
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
                 this.deviceManager.clearCurrentDeviceList();
                 void util.showTimedNotification('Clearing device list');
