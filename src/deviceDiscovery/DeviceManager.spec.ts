@@ -393,7 +393,7 @@ describe('DeviceManager', () => {
             expect(isHealthy).to.be.true;
             //engagement policy: no synthetic delay, cache trust window bypassed
             expect(resolveStub.calledOnce).to.be.true;
-            expect(resolveStub.firstCall.args.slice(1)).to.eql([false, true]);
+            expect(resolveStub.firstCall.args[1]).to.eql({ bypassCache: true, syntheticDelay: false });
         });
 
         it('resolves an encoded tree key itself', async () => {
@@ -858,7 +858,7 @@ describe('DeviceManager', () => {
     });
 
     describe('healthCheckAllDevices', () => {
-        it('sets all devices to pending and checks all when force=true', async () => {
+        it('sets all devices to pending and checks all when bypassing the device cache', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const device1 = createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' });
@@ -889,7 +889,7 @@ describe('DeviceManager', () => {
             expect(resolveDeviceSpy.calledTwice).to.be.true;
         });
 
-        it('sets devices to pending before checking when force=false', async () => {
+        it('sets devices to pending before checking when the cache is trusted', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const device = createMockDevice();
@@ -923,7 +923,7 @@ describe('DeviceManager', () => {
             sinon.stub(manager as any, 'randomDelay').resolves();
 
             // Pre-populate the cache by calling resolveDevice once
-            await manager['resolveDevice'](device, false);
+            await manager['resolveDevice'](device, { syntheticDelay: false });
             expect(getDeviceInfoStub.calledOnce).to.be.true;
 
             // Now call healthCheckAllDevices - should use cached data
@@ -934,7 +934,7 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('resolveDevice cooldown (force=false)', () => {
+    describe('resolveDevice cooldown (cache trusted)', () => {
         it('skips network fetch if within cooldown period (uses cached data)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
@@ -991,7 +991,7 @@ describe('DeviceManager', () => {
             }
         });
 
-        it('deviceEngaged always fetches regardless of cooldown (engagement forces)', async () => {
+        it('deviceEngaged always fetches regardless of cooldown (engagement bypasses the cache)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const device = createMockDevice();
@@ -1006,11 +1006,11 @@ describe('DeviceManager', () => {
             // Stub random delay to be instant
             sinon.stub(manager as any, 'randomDelay').resolves();
 
-            // First call with force
+            // First engagement
             await manager.deviceEngaged(device);
             expect(getDeviceInfoStub.calledOnce).to.be.true;
 
-            // Second call immediately with force - should still fetch
+            // Second engagement immediately - should still fetch
             await manager.deviceEngaged(device);
             expect(getDeviceInfoStub.calledTwice).to.be.true;
         });
@@ -1262,7 +1262,7 @@ describe('DeviceManager', () => {
             randomDelayStub.onCall(1).resolves();
 
             // Start the first (soon-to-be-stale) check.
-            const firstCheck = manager['resolveDevice'](device, true);
+            const firstCheck = manager['resolveDevice'](device);
 
             // Let it reach (and suspend on) its synthetic delay. By that point its own network
             // call has already failed and cleared out of the in-flight map, which is what lets
@@ -1273,7 +1273,7 @@ describe('DeviceManager', () => {
             expect(randomDelayStub.callCount).to.equal(1);
 
             // Start a second, newer check for the SAME device while the first is still suspended.
-            await manager['resolveDevice'](device, true);
+            await manager['resolveDevice'](device);
 
             // The newer check's result (online) is applied.
             expect(manager.getAllDevices()[0].deviceState).to.equal('online');
@@ -1806,9 +1806,8 @@ describe('DeviceManager', () => {
 
             expect(resolveStub.calledOnce).to.be.true;
             expect(resolveStub.firstCall.args[0]).to.deep.equal({ ip: '192.168.1.50', serialNumber: 'no-cache-1' });
-            //silent background refresh: no synthetic delay, not forced
-            expect(resolveStub.firstCall.args[1]).to.equal(false);
-            expect(resolveStub.firstCall.args[2]).to.equal(false);
+            //silent background refresh: no synthetic delay, cache trusted
+            expect(resolveStub.firstCall.args[1]).to.eql({ syntheticDelay: false });
         });
 
         it('does not hydrate a device whose cache is fresh', async () => {
@@ -1972,8 +1971,8 @@ describe('DeviceManager', () => {
             sinon.stub(manager as any, 'randomDelay').resolves();
 
             // Call twice in rapid succession via resolveDevice
-            await manager['resolveDevice'](device, false);
-            await manager['resolveDevice'](device, false);
+            await manager['resolveDevice'](device, { syntheticDelay: false });
+            await manager['resolveDevice'](device, { syntheticDelay: false });
 
             // Should only have made one actual network call (second uses cache)
             expect(getDeviceInfoStub.callCount).to.equal(1);
@@ -1997,14 +1996,14 @@ describe('DeviceManager', () => {
                 sinon.stub(manager as any, 'randomDelay').resolves();
 
                 // First call - should hit network
-                await manager['resolveDevice'](device, false);
+                await manager['resolveDevice'](device, { syntheticDelay: false });
                 expect(getDeviceInfoStub.callCount).to.equal(1);
 
                 // Advance past TTL (5 minutes)
                 clock.tick((5 * 60 * 1_000) + 1);
 
                 // Second call - cache expired, should hit network again
-                await manager['resolveDevice'](device, false);
+                await manager['resolveDevice'](device, { syntheticDelay: false });
                 expect(getDeviceInfoStub.callCount).to.equal(2);
             } finally {
                 clock.restore();
@@ -2042,15 +2041,15 @@ describe('DeviceManager', () => {
             sinon.stub(manager as any, 'randomDelay').resolves();
 
             // Call for two different devices
-            await manager['resolveDevice'](device1, false);
-            await manager['resolveDevice'](device2, false);
+            await manager['resolveDevice'](device1, { syntheticDelay: false });
+            await manager['resolveDevice'](device2, { syntheticDelay: false });
 
             // Should make two network calls (different serials)
             expect(getDeviceInfoStub.callCount).to.equal(2);
 
             // Calling same devices again should use cache (keyed by serial)
-            await manager['resolveDevice'](device1, false);
-            await manager['resolveDevice'](device2, false);
+            await manager['resolveDevice'](device1, { syntheticDelay: false });
+            await manager['resolveDevice'](device2, { syntheticDelay: false });
 
             // Still only two calls (cache hit)
             expect(getDeviceInfoStub.callCount).to.equal(2);
@@ -2072,11 +2071,11 @@ describe('DeviceManager', () => {
             sinon.stub(manager as any, 'randomDelay').resolves();
 
             // First call - fetches from network (no cache, no IP→serial mapping)
-            await manager['resolveDevice'](deviceIpOnly, false);
+            await manager['resolveDevice'](deviceIpOnly, { syntheticDelay: false });
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
             // Now we have IP→serial mapping. Second call should use cache.
-            await manager['resolveDevice'](deviceIpOnly, false);
+            await manager['resolveDevice'](deviceIpOnly, { syntheticDelay: false });
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
             // Simulate network change
@@ -2086,7 +2085,7 @@ describe('DeviceManager', () => {
 
             // On new network, IP→serial mapping is cleared.
             // Resolving by IP alone should refetch since we can't look up the serial.
-            await manager['resolveDevice'](deviceIpOnly, false);
+            await manager['resolveDevice'](deviceIpOnly, { syntheticDelay: false });
             expect(getDeviceInfoStub.callCount).to.equal(2);
         });
 
@@ -2107,11 +2106,11 @@ describe('DeviceManager', () => {
             sinon.stub(manager as any, 'randomDelay').resolves();
 
             // First call - fetches from network
-            await manager['resolveDevice'](device, false);
+            await manager['resolveDevice'](device, { syntheticDelay: false });
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
             // Verify cache is working
-            await manager['resolveDevice'](device, false);
+            await manager['resolveDevice'](device, { syntheticDelay: false });
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
             // Simulate network change
@@ -2126,7 +2125,7 @@ describe('DeviceManager', () => {
             // Even though device info cache is keyed by serial, we validate that the
             // cached IP matches the device's current IP. After network change, this
             // validation fails so we must refetch to confirm the device is still at this IP.
-            await manager['resolveDevice'](device, false);
+            await manager['resolveDevice'](device, { syntheticDelay: false });
             expect(getDeviceInfoStub.callCount).to.equal(2); // Refetches after network change
         });
     });

@@ -251,7 +251,7 @@ export class DeviceManager {
      */
     public async validateAndAddDevice(ip: string): Promise<RokuDevice | undefined> {
         this.setDiscoveredDevice(ip, undefined);
-        await this.resolveDevice({ ip: ip }, false);
+        await this.resolveDevice({ ip: ip }, { syntheticDelay: false });
         return this.getDevice({ ip: ip });
     }
 
@@ -315,8 +315,8 @@ export class DeviceManager {
             //timestamp at queue time so even instantly-failing attempts are rate-limited
             this.hydrationLastAttempt.set(device.ip, now);
             this.hydrationInFlight.add(device.ip);
-            //silent background refresh: no synthetic delay, not forced (offline cooldown applies)
-            void this.resolveDevice({ ip: device.ip, serialNumber: device.serialNumber }, false, false)
+            //silent background refresh: no synthetic delay, cache trusted (offline cooldown applies)
+            void this.resolveDevice({ ip: device.ip, serialNumber: device.serialNumber }, { syntheticDelay: false })
                 .catch(() => { })
                 .finally(() => {
                     this.hydrationInFlight.delete(device.ip);
@@ -720,7 +720,7 @@ export class DeviceManager {
         }
 
         // Engagement wants a real answer now: bypass the cache trust window, no synthetic delay
-        const isHealthy = await this.resolveDevice(device, false, true);
+        const isHealthy = await this.resolveDevice(device, { bypassCache: true, syntheticDelay: false });
         if (!isHealthy && device.isDiscovered) {
             // a discovered device went dark — order a rescan for the views to fulfill
             this.submitUnhealthyDeviceBroadcast();
@@ -1105,17 +1105,22 @@ export class DeviceManager {
         this.emitDevicesChanged();
     }
 
-    private async resolveDevice(device: RokuDevice | { ip: string; serialNumber?: string }, doSyntheticDelay = true, force = false): Promise<boolean> {
+    private async resolveDevice(device: RokuDevice | { ip: string; serialNumber?: string }, options?: { bypassCache?: boolean; syntheticDelay?: boolean }): Promise<boolean> {
+        // bypassCache: skip the cache trust window AND the offline cooldown — "I want a real
+        // answer from the network NOW" (user engagement, refresh-clicked reconciles).
+        const bypassCache = options?.bypassCache ?? false;
+        const syntheticDelay = options?.syntheticDelay ?? true;
+
         // Extract serial from device if available (for proper state key management)
         const knownSerial = 'serialNumber' in device ? device.serialNumber : undefined;
 
         const currentStateObject = this.getDeviceState({ ip: device.ip, serialNumber: knownSerial });
 
-        // Offline cooldown: if device is offline and we recently checked, skip unless forced
+        // Offline cooldown: if device is offline and we recently checked, skip the re-check.
         // This prevents the loop: healthCheck → resolve → offline → emit → refresh → healthCheck...
         const isOffline = currentStateObject.state === 'offline';
         const recentlyCheckedOffline = isOffline && (Date.now() - currentStateObject.lastUpdated < this.OFFLINE_COOLDOWN_MS);
-        if (!force && recentlyCheckedOffline) {
+        if (!bypassCache && recentlyCheckedOffline) {
             return false;
         }
 
@@ -1135,10 +1140,10 @@ export class DeviceManager {
         const cacheIsFresh = cached && (Date.now() - cached.createdAt < this.DEVICE_INFO_CACHE_MS) && cachedIp === device.ip;
 
         // Use cache only if:
-        // - Not forced
+        // - The caller didn't ask to bypass it
         // - Cache is fresh
         // - Device is not offline (offline devices should always hit network to check if back online)
-        if (!force && cacheIsFresh && !isOffline) {
+        if (!bypassCache && cacheIsFresh && !isOffline) {
             // Use cached data
             deviceInfo = cached.deviceInfo as DeviceInfoRaw;
         } else {
@@ -1153,7 +1158,7 @@ export class DeviceManager {
             try {
                 deviceInfo = await this.fetchDeviceInfo(device.ip, 8060);
 
-                if (doSyntheticDelay) {
+                if (syntheticDelay) {
                     await this.randomDelay(400, 1_000);
                 }
             } catch {
@@ -1260,7 +1265,7 @@ export class DeviceManager {
         }
     }
 
-    private async healthCheckAllDevices(force = false): Promise<void> {
+    private async healthCheckAllDevices(bypassDeviceCache = false): Promise<void> {
         // Collect all unique IPs from both sources (same serial at different IPs = different entries to check)
         const discoveredIpSet = new Set(this.discoveredDevices.map(entry => entry.ip));
         const allIps = new Set([
@@ -1281,7 +1286,7 @@ export class DeviceManager {
         // Health check all devices - if any discovered device is unhealthy, order a scan
         let needsScan = false;
         await Promise.all([...allIps].map(async (ip) => {
-            const isHealthy = await this.resolveDevice({ ip: ip }, true, force);
+            const isHealthy = await this.resolveDevice({ ip: ip }, { bypassCache: bypassDeviceCache });
             if (!isHealthy && discoveredIpSet.has(ip)) {
                 needsScan = true;
             }
