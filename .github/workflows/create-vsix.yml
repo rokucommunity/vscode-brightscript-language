@@ -75,7 +75,7 @@ jobs:
       - name: Reject fork PRs
         if: true || github.event.pull_request.head.repo.fork
         run: |
-          echo "::error::Could not build a .vsix because fork PRs can't access the required secrets. Ask a maintainer to dispatch it manually: https://github.com/${{ github.repository }}/actions/workflows/create-vsix.yml"
+          echo "::error::Could not build a .vsix because fork PRs can't access the required secrets. Ask a maintainer to dispatch it manually for PR #${{ github.event.pull_request.number }}: https://github.com/${{ github.repository }}/actions/workflows/create-vsix.yml"
           exit 1
       - run: npm ci
       - run: npx ts-node scripts/create-vsix.ts ${{ steps.info.outputs.branch }}
