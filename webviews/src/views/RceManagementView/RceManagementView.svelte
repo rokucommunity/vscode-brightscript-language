@@ -2,7 +2,8 @@
     window.vscode = acquireVsCodeApi();
 
     import { onDestroy } from 'svelte';
-    import type { DeviceOut, DeviceRun, SnapshotOut } from 'roku-deploy';
+    import type { DeviceRun, SnapshotOut } from 'roku-deploy';
+    import type { RceStateDevice } from '../../../../src/viewProviders/RceManagementViewProvider';
     import { Refresh, Edit, Check, Close, Trash, Play, DebugStop } from 'svelte-codicons';
     import { intermediary } from '../../ExtensionIntermediary';
     import Loader from '../../shared/Loader.svelte';
@@ -14,7 +15,7 @@
     let accounts: string[] = [];
     let activeAccountName: string | undefined = undefined;
     let hasToken = false;
-    let devices: DeviceOut[] | undefined = undefined;
+    let devices: RceStateDevice[] | undefined = undefined;
     let stateError: string | undefined = undefined;
 
     let showCreateDeviceForm = false;
@@ -108,7 +109,7 @@
      * expanding the device. State re-applies on every finder poll, so this only fetches when the
      * cache is missing or the device's snapshot id list no longer matches what was cached.
      */
-    function ensureRowSnapshotDetails(currentDevices: DeviceOut[] | undefined) {
+    function ensureRowSnapshotDetails(currentDevices: RceStateDevice[] | undefined) {
         for (const device of currentDevices ?? []) {
             //the state observer separately refreshes the expanded device's details
             if (device.status !== 'shutdown' || device.id === expandedDeviceId) {
@@ -179,7 +180,7 @@
         }
     }
 
-    async function startDevice(device: DeviceOut, snapshotId: number | undefined = undefined) {
+    async function startDevice(device: RceStateDevice, snapshotId: number | undefined = undefined) {
         deviceActionError = undefined;
         deviceActionsInFlight = { ...deviceActionsInFlight, [device.id]: true };
         try {
@@ -195,7 +196,7 @@
         }
     }
 
-    async function stopDevice(device: DeviceOut) {
+    async function stopDevice(device: RceStateDevice) {
         deviceActionError = undefined;
         deviceActionsInFlight = { ...deviceActionsInFlight, [device.id]: true };
         try {
@@ -226,7 +227,7 @@
         return `${formatMinutesCompact(elapsedSeconds)} / ${formatMinutesCompact(maxRuntimeSeconds)}`;
     }
 
-    function runtimeInfo(device: DeviceOut, currentTimestamp: number): { label: string; percent: number } | undefined {
+    function runtimeInfo(device: RceStateDevice, currentTimestamp: number): { label: string; percent: number } | undefined {
         const runningDevice = device.running_device;
         if (!runningDevice?.started_at || !runningDevice?.max_runtime) {
             return undefined;
@@ -286,7 +287,7 @@
         });
     }
 
-    async function toggleDeviceExpanded(device: DeviceOut) {
+    async function toggleDeviceExpanded(device: RceStateDevice) {
         if (expandedDeviceId === device.id) {
             expandedDeviceId = undefined;
             //collapsing dismisses the action hints so they do not linger forever
@@ -397,7 +398,7 @@
         };
     }
 
-    function startEditingDevice(device: DeviceOut) {
+    function startEditingDevice(device: RceStateDevice) {
         editingDeviceId = device.id;
         editName = device.name;
         editNote = device.note ?? '';
@@ -408,7 +409,7 @@
         editingDeviceId = undefined;
     }
 
-    async function saveDeviceEdits(device: DeviceOut) {
+    async function saveDeviceEdits(device: RceStateDevice) {
         savingDeviceEdit = true;
         editDeviceError = undefined;
         try {
@@ -425,7 +426,7 @@
         }
     }
 
-    async function deleteSnapshot(device: DeviceOut, snapshot: SnapshotOut) {
+    async function deleteSnapshot(device: RceStateDevice, snapshot: SnapshotOut) {
         deletingSnapshotId = snapshot.id;
         try {
             await intermediary.sendCommand(ViewProviderCommand.deleteRceSnapshot, {
@@ -441,7 +442,7 @@
         }
     }
 
-    async function enableDevMode(device: DeviceOut) {
+    async function enableDevMode(device: RceStateDevice) {
         deviceActionError = undefined;
         enablingDevModeInFlight = { ...enablingDevModeInFlight, [device.id]: true };
         try {
@@ -464,7 +465,7 @@
     //It rides the ECP2 auth-proxy socket extension-side, which is why it works at all while the
     //device's plain ECP is limited. The walk is blind (it assumes the device is showing the home
     //screen), so the hint asks the user to verify on screen.
-    async function disableLimitedEcp(device: DeviceOut) {
+    async function disableLimitedEcp(device: RceStateDevice) {
         deviceActionError = undefined;
         disablingLimitedEcpInFlight = { ...disablingLimitedEcpInFlight, [device.id]: true };
         try {
@@ -483,7 +484,7 @@
         }
     }
 
-    function toggleSnapshotForm(device: DeviceOut) {
+    function toggleSnapshotForm(device: RceStateDevice) {
         if (snapshotFormDeviceId === device.id) {
             snapshotFormDeviceId = undefined;
             return;
@@ -494,7 +495,7 @@
         createSnapshotError = undefined;
     }
 
-    async function createSnapshot(device: DeviceOut) {
+    async function createSnapshot(device: RceStateDevice) {
         creatingSnapshot = true;
         createSnapshotError = undefined;
         try {
@@ -516,7 +517,7 @@
         }
     }
 
-    async function wakeDevice(device: DeviceOut) {
+    async function wakeDevice(device: RceStateDevice) {
         deviceActionError = undefined;
         wakingDeviceInFlight = { ...wakingDeviceInFlight, [device.id]: true };
         try {
@@ -530,7 +531,7 @@
         }
     }
 
-    async function watchDevice(device: DeviceOut) {
+    async function watchDevice(device: RceStateDevice) {
         deviceActionError = undefined;
         watchingDeviceInFlight = { ...watchingDeviceInFlight, [device.id]: true };
         try {

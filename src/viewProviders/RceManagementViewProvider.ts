@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { DeviceOut, DeviceRun, RceDeviceConfig, RceManagementClient, SnapshotOut } from 'roku-deploy';
+import type { DeviceOut, DeviceRun, DeviceStatus, DeviceType, RceDeviceConfig, RceManagementClient, SnapshotOut } from 'roku-deploy';
 import { RceDevice, rokuDeploy } from 'roku-deploy';
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import { ViewProviderId } from './ViewProviderId';
@@ -449,26 +449,52 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         const activeAccount = await this.rceManager.getActiveAccount();
         const hasToken = await this.rceManager.hasToken();
 
+        let deviceList = devices;
         const state: RceManagementViewState = {
             accounts: accounts.map((account) => account.name),
             activeAccountName: activeAccount?.name,
             hasToken: hasToken,
-            devices: devices
+            devices: undefined
         };
 
         const managementClient = await this.rceManager.getClient();
         if (managementClient) {
             state.maxProjectRuntimeSeconds = await this.getMaxProjectRuntimeSeconds(managementClient);
-            if (devices === undefined) {
+            if (deviceList === undefined) {
                 try {
-                    state.devices = await managementClient.listDevices();
+                    deviceList = await managementClient.listDevices();
                 } catch (error) {
                     state.error = (error as Error).message;
                 }
             }
         }
 
+        state.devices = deviceList?.map((device) => this.projectDeviceForWebview(device));
+
         return state;
+    }
+
+    //the webview gets only the fields it renders; DeviceOut's running_device otherwise carries the
+    //instance's stream credentials
+    private projectDeviceForWebview(device: DeviceOut): RceStateDevice {
+        /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+        return {
+            id: device.id,
+            name: device.name,
+            note: device.note,
+            device_type: device.device_type,
+            status: device.status,
+            serial_number: device.serial_number,
+            created_at: device.created_at,
+            last_snapshot_id: device.last_snapshot_id,
+            last_snapshot_name: device.last_snapshot_name,
+            snapshots: device.snapshots,
+            running_device: device.running_device ? {
+                started_at: device.running_device.started_at,
+                max_runtime: device.running_device.max_runtime
+            } : device.running_device
+        };
+        /* eslint-enable camelcase */
     }
 
     /**
@@ -541,11 +567,34 @@ interface RceManagementViewState {
     accounts: string[];
     activeAccountName: string | undefined;
     hasToken: boolean;
-    devices: DeviceOut[] | undefined;
+    devices: RceStateDevice[] | undefined;
     /** The active org's device runtime cap in seconds; undefined when no account is active or the fetch failed */
     maxProjectRuntimeSeconds?: number;
     error?: string;
 }
+
+/* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+/**
+ * The device fields the management webview renders - a projection of roku-deploy's DeviceOut that
+ * leaves the instance's stream credentials behind (see projectDeviceForWebview).
+ */
+export interface RceStateDevice {
+    id: number;
+    name: string;
+    note?: string | null;
+    device_type: DeviceType;
+    status?: DeviceStatus;
+    serial_number?: string | null;
+    created_at: string;
+    last_snapshot_id?: number | null;
+    last_snapshot_name?: string | null;
+    snapshots?: number[];
+    running_device?: {
+        started_at?: string | null;
+        max_runtime: number;
+    } | null;
+}
+/* eslint-enable camelcase */
 
 interface RceDeviceDetailsPayload {
     snapshots: SnapshotOut[] | undefined;

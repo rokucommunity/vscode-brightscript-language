@@ -156,6 +156,44 @@ describe('RceManagementViewProvider', () => {
             expect(JSON.stringify(responseMessage)).not.to.contain('token-personal');
         });
 
+        it('projects devices to the fields the webview renders, leaving the stream credentials behind', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([{
+                id: 5,
+                name: 'my-device',
+                device_type: 'tv',
+                status: 'running',
+                created_at: '2026-01-01',
+                running_device: {
+                    started_at: '2026-01-02',
+                    max_runtime: 3600,
+                    janus_token: 'janus-secret',
+                    janus_pin: '1234',
+                    janus_websocket_url: 'wss://device.rce.roku.com/instance/abc/janus',
+                    janus_ice_servers: [{ urls: ['turn:ice.rce.roku.com'], username: 'turn-user', credential: 'turn-secret' }],
+                    instance_api_url: 'https://device.rce.roku.com/instance/abc'
+                }
+            }]);
+            /* eslint-enable camelcase */
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.getRceState, context: {} };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.getRceState](message);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.getRceState);
+            const device = responseMessage.response.devices[0];
+            expect(device).to.include({ id: 5, name: 'my-device', status: 'running' });
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            expect(device.running_device).to.eql({ started_at: '2026-01-02', max_runtime: 3600 });
+            /* eslint-enable camelcase */
+            for (const secret of ['janus-secret', '1234', 'turn-user', 'turn-secret', 'instance/abc']) {
+                expect(JSON.stringify(responseMessage)).not.to.contain(secret);
+            }
+        });
+
         it('leaves devices undefined when no account is configured', async () => {
             rceManager = new TestRceManager(vscode.context as any);
 
@@ -936,7 +974,11 @@ describe('RceManagementViewProvider', () => {
 
             const eventMessages = findEventMessages(ViewProviderEvent.onRceStateChanged);
             expect(eventMessages.length).to.be.greaterThan(0);
-            expect(eventMessages[eventMessages.length - 1].context.devices).to.equal(emittedDevices);
+            const pushedDevices = eventMessages[eventMessages.length - 1].context.devices;
+            expect(pushedDevices).to.have.length(1);
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            expect(pushedDevices[0]).to.include({ id: 5, name: 'my-device', device_type: 'tv', status: 'running', created_at: '2026-01-01' });
+            /* eslint-enable camelcase */
             expect(rceManager.fakeManagementClient.listDevices.called).to.be.false;
         });
     });
