@@ -163,6 +163,19 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 supportsProcessStagingDir: true
             };
 
+            //the Cloud Emulator account token was only needed on the device config for this resolver's
+            //own device requests (device-info, password validation). Strip it before handing the config
+            //back: the resolved config is sent as the DAP launch request (so it lands in DAP traffic and
+            //protocol logs) and is readable by every extension in the window via
+            //`vscode.debug.activeDebugSession.configuration`. The debug adapter receives the token
+            //exclusively through the ROKU_RCE_TOKEN env var injected by the descriptor factory (see
+            //extension.ts), which roku-debug hydrates back onto the device config
+            if (typeof result.device === 'object' && isRceDeviceConfig(result.device)) {
+                const device = { ...result.device };
+                delete device.rceToken;
+                result.device = device;
+            }
+
             return result;
         } catch (e) {
             //log any exceptions to the extension panel
@@ -568,9 +581,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 await this.userInputManager.promptForHost();
 
             if (resolved && this.isNonLocalDevice(resolved.device)) {
-                //the user picked a Roku Cloud Emulator device from the (shared) device picker:
-                //adopt its precomputed device option and hand off to the non-local flow
-                config.device = resolved.device;
+                //the user picked a Roku Cloud Emulator device from the (shared) device picker: adopt a
+                //copy of its precomputed device option (never the original - the device manager owns
+                //that object) minus the account token it carries, so the non-local flow below stays the
+                //only token source and can treat any token already on the config as config-supplied
+                const device = { ...resolved.device };
+                if (isRceDeviceConfig(device)) {
+                    delete device.rceToken;
+                }
+                config.device = device;
                 return this.processNonLocalDeviceParameter(config, resolved.rce?.status);
             }
             config.host = resolved?.host;
@@ -619,8 +638,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      *
      * For a Roku Cloud Emulator device config specifically, `rceToken` is always overwritten with the
      * active Cloud Emulator account's token from SecretStorage - a launch config can never supply its
-     * own; a config-supplied one that differs surfaces a one-time warning explaining why it was
-     * replaced. Throws when no Cloud Emulator account is configured at all.
+     * own; a config-supplied one surfaces a warning explaining why it was replaced. The token only
+     * lives on the config while the resolver runs (device-info here, password validation later);
+     * `resolveDebugConfiguration` strips it before the resolved config is returned to VS Code.
+     * Throws when no Cloud Emulator account is configured at all.
      * @param config  current config object
      * @param pickedRceStatus  the management-api status of a cloud emulator device the user just
      *                         picked from the device picker, used for the friendly "not running"
@@ -645,18 +666,20 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
 
         //Cloud Emulator api tokens come from SecretStorage (the RceManager active account) only - a
-        //launch config can never supply its own. A device picked from the picker already carries the
-        //active account's token in its precomputed device option, so this overwrites it with the same
-        //value there; that's harmless, so it isn't special-cased.
+        //launch config can never supply its own, so any token already present here is config-supplied
+        //(the picker path strips the precomputed option's token before handing off) and gets a warning.
+        //The token is injected onto a copy for this resolver's own device requests (device-info below,
+        //password validation later) and is stripped again before the resolved config is returned - see
+        //resolveDebugConfiguration; the debug adapter gets it via the ROKU_RCE_TOKEN env var instead.
         if (typeof config.device === 'object' && isRceDeviceConfig(config.device)) {
             const accountToken = await this.rceManager.getToken();
             if (!accountToken) {
                 throw new Error('Debug session terminated: no Cloud Emulator account is configured. Add one from the Cloud Emulator panel (or run the "Add Cloud Emulator Account" command).');
             }
-            if (config.device.rceToken !== undefined && config.device.rceToken !== accountToken) {
+            if (config.device.rceToken !== undefined) {
                 void vscode.window.showWarningMessage('rceToken in launch configurations is not supported; the active Cloud Emulator account\'s token was used instead.');
             }
-            config.device.rceToken = accountToken;
+            config.device = { ...config.device, rceToken: accountToken };
         }
 
         if (pickedRceStatus !== undefined && pickedRceStatus !== 'running') {

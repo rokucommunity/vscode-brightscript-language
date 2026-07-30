@@ -216,9 +216,10 @@ export class Extension {
                         env.ROKU_DAP_LOG_FILE = dapLogFilePath;
                     }
 
-                    //hand the Cloud Emulator account token to the adapter as an env var rather than through the
-                    //launch config (which ends up in DAP traffic and logs); roku-debug hydrates the device
-                    //option's rceToken from ROKU_RCE_TOKEN whenever the launch config did not carry one
+                    //hand the Cloud Emulator account token to the adapter as an env var - its only transport;
+                    //the config resolver strips rceToken from the resolved config, which travels through DAP
+                    //traffic/logs and is readable by other extensions. roku-debug hydrates the device option's
+                    //rceToken from ROKU_RCE_TOKEN whenever the launch config did not carry one
                     const device = session.configuration.device as DeviceOption | undefined;
                     if (typeof device === 'object' && isRceDeviceConfig(device)) {
                         const accountToken = await rceManager.getToken();

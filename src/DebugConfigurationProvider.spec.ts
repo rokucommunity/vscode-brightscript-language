@@ -110,13 +110,16 @@ describe('BrightScriptConfigurationProvider', () => {
                 password: 'aaaa'
             });
 
-            //the device option is passed through for roku-debug to consume, with the active Cloud
-            //Emulator account's token injected (launch configs never supply their own)
-            const expectedDevice = { ...device, rceToken: 'account-token' };
-            expect(config.device).to.eql(expectedDevice);
+            //the device option is passed through for roku-debug to consume, WITHOUT the account token:
+            //the resolver only carries the token internally (it's stripped from the returned config,
+            //which ends up in DAP traffic/logs and other extensions' view of the session) - the debug
+            //adapter receives it through the ROKU_RCE_TOKEN env var instead
+            expect(config.device).to.eql(device);
             expect(config.password).to.equal('aaaa');
-            //device-info was fetched through roku-deploy's RCE path (no LAN probe/password validation)
-            expect((rokuDeploy.getDeviceInfo as any).calledWith({ device: expectedDevice, timeout: DeviceManager.RCE_DEVICE_INFO_TIMEOUT_MS })).to.be.true;
+            //device-info was fetched through roku-deploy's RCE path (no LAN probe/password validation),
+            //with the active account's token injected on the resolver's internal copy
+            const tokenedDevice = { ...device, rceToken: 'account-token' };
+            expect((rokuDeploy.getDeviceInfo as any).calledWith({ device: tokenedDevice, timeout: DeviceManager.RCE_DEVICE_INFO_TIMEOUT_MS })).to.be.true;
             expect(config.deviceInfo).to.eql({ 'developer-enabled': 'true', 'serial-number': 'SN-TEST' });
         });
 
@@ -324,9 +327,9 @@ describe('BrightScriptConfigurationProvider', () => {
             });
 
             it('threads a cloud emulator pick from the picker and skips the host requirement', async () => {
-                //no rceToken here - it's always injected from the active Cloud Emulator account, never
-                //config-supplied (see the dedicated rceToken-injection tests below)
-                const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc' };
+                //the precomputed device option carries the account token, like the real ones built by
+                //the device manager at scan time
+                const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'account-token' };
                 (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
                 sinon.stub(userInputManager, 'promptForHost').resolves({
                     host: undefined,
@@ -334,6 +337,7 @@ describe('BrightScriptConfigurationProvider', () => {
                     device: device,
                     rce: { status: 'running' }
                 } as any);
+                const warningStub = sinon.stub(vscode.window, 'showWarningMessage').resolves(undefined);
                 //the beforeEach above already stubbed rokuDeploy.getDeviceInfo; reconfigure the same
                 //stub rather than wrapping it a second time
                 (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
@@ -344,6 +348,11 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(result.device).to.eql(expectedDevice);
                 expect((rokuDeploy.getDeviceInfo as any).calledWith({ device: expectedDevice, timeout: DeviceManager.RCE_DEVICE_INFO_TIMEOUT_MS })).to.be.true;
                 expect(result.deviceInfo).to.eql({ 'developer-enabled': 'true' });
+                //the config adopts a copy, never the device manager's own precomputed object (the
+                //resolver injects/strips the token on the config, and must not reach into the cache)
+                expect(result.device).to.not.equal(device);
+                //the precomputed option's own token must not trip the config-supplied-token warning
+                expect(warningStub.called).to.be.false;
             });
 
             it('throws a friendly error when a picked cloud emulator device is not running', async () => {
@@ -422,22 +431,25 @@ describe('BrightScriptConfigurationProvider', () => {
                 (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
                 const warningStub = sinon.stub(vscode.window, 'showWarningMessage').resolves(undefined);
 
-                await (configProvider as any).processHostParameter({ host: '', device: device });
+                const result = await (configProvider as any).processHostParameter({ host: '', device: device });
 
-                expect(device.rceToken).to.equal('account-token');
+                expect(result.device.rceToken).to.equal('account-token');
                 expect(warningStub.calledOnce).to.be.true;
                 expect(warningStub.firstCall.args[0]).to.contain('rceToken');
             });
 
-            it('does not warn when the config-supplied rceToken already matches the active account token', async () => {
+            it('warns even when the config-supplied rceToken matches the active account token', async () => {
+                //a real token pasted into launch.json is the exact anti-pattern the policy exists to
+                //discourage (it's now a secret in source control), so a matching token must warn too
                 const device = { esn: 'ESN123', rceToken: 'account-token' };
                 (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
                 const warningStub = sinon.stub(vscode.window, 'showWarningMessage').resolves(undefined);
 
-                await (configProvider as any).processHostParameter({ host: '', device: device });
+                const result = await (configProvider as any).processHostParameter({ host: '', device: device });
 
-                expect(device.rceToken).to.equal('account-token');
-                expect(warningStub.called).to.be.false;
+                expect(result.device.rceToken).to.equal('account-token');
+                expect(warningStub.calledOnce).to.be.true;
+                expect(warningStub.firstCall.args[0]).to.contain('rceToken');
             });
 
             it('throws mentioning Cloud Emulator account setup when no account token is available', async () => {
