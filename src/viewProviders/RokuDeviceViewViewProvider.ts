@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { ChannelPublishedEvent } from 'roku-debug';
-import type { DeviceOut, RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
-import { RceVideoSignalingClient } from 'roku-deploy';
+import type { DeviceConfig, DeviceOut, RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
+import { isRceDeviceConfig, RceVideoSignalingClient } from 'roku-deploy';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import type { RceStreamRequestConfig } from '../managers/RceManager';
@@ -15,6 +15,15 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
 
     private temporarilyDisableScreenshotCapture = false;
     private resumeScreenshotCapture?: () => void;
+
+    /**
+     * The Cloud Emulator device of the most recent sideload (channel-published event), when there
+     * was one. This view follows the last sideloaded device - the same rule the LAN screenshot flow
+     * gets from RtaManager's RTA device - so this is what a reopened webview reconnects to.
+     * In-memory on purpose: RtaManager's device resets on a window reload too, and the view starts
+     * empty until the next sideload either way.
+     */
+    private lastSideloadedRceDevice?: { id: number; name: string };
 
     /**
      * The Janus signaling session behind this view's Cloud Emulator video stream mode. The session
@@ -58,8 +67,12 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
             this.view.show(false);
         });
 
-        //internal command (no package.json contribution): the RCE panel invokes this with a stream
-        //request config to hand a Cloud Emulator device's video stream off to this view.
+        //internal command (no package.json contribution): RceManagementViewProvider's
+        //rceWatchDeviceById command invokes this with a resolved stream request to hand a Cloud
+        //Emulator device's video stream to this view. Today that path serves this view's own
+        //webview Retry action (which cannot resolve stream details itself - each webview only
+        //talks to the provider that owns it); the sideload-follow path resolves directly instead,
+        //since this focus() must not fire during a debug launch.
         this.registerCommand(VscodeCommand.rokuDeviceViewShowRceStream, (streamRequest: RceStreamRequestConfig) => {
             void vscode.commands.executeCommand('rokuDeviceView.focus');
             this.view?.show(false);
@@ -156,6 +169,40 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         this.temporarilyDisableScreenshotCapture = false;
         this.resumeScreenshotCapture?.();
         delete this.resumeScreenshotCapture;
+
+        //this view follows the last sideloaded device, mirroring the LAN screenshot flow (whose RTA
+        //device RtaManager repoints on this same event): a cloud sideload starts/retargets the video
+        //stream, a LAN one hands the view back to the screenshot flow. Setting a device as the
+        //active device deliberately does NOT move this view - only a sideload does.
+        void this.followSideloadedDevice(e.body.launchConfiguration?.device);
+    }
+
+    /**
+     * Point this view at the device a channel was just published to. A Cloud Emulator device starts
+     * (or retargets) the video stream; anything else stops the stream and forgets the remembered
+     * cloud device, so the screenshot flow (which RtaManager just repointed) owns the view again.
+     */
+    private async followSideloadedDevice(deviceConfig: DeviceConfig | undefined): Promise<void> {
+        if (!deviceConfig || typeof deviceConfig !== 'object' || !isRceDeviceConfig(deviceConfig)) {
+            this.lastSideloadedRceDevice = undefined;
+            this.rceStreamSession.stop();
+            return;
+        }
+        //resolve the management-api device id: through the device manager when it knows the device,
+        //falling back to an id-addressed config's own id
+        const device = this.dependencies.deviceManager?.getDeviceByDeviceConfig?.(deviceConfig);
+        let deviceId: number | undefined;
+        if (device?.rce) {
+            deviceId = Number(device.rce.id);
+        } else if ('id' in deviceConfig) {
+            deviceId = Number(deviceConfig.id);
+        }
+        if (deviceId === undefined || Number.isNaN(deviceId)) {
+            return;
+        }
+        const deviceName = device ? this.dependencies.deviceManager.getDeviceDisplayName(device) : `device ${deviceId}`;
+        this.lastSideloadedRceDevice = { id: deviceId, name: deviceName };
+        await this.watchRceDevice(deviceId, deviceName);
     }
 
     /**
@@ -183,39 +230,33 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         //no peer connection left for an already-delivered offer; a queued offer is about to flush)
         this.rceStreamSession.handleViewReady();
 
-        //a webview that opens with no stream session underway connects to the active device when
-        //that device is a Cloud Emulator device: its video stream is this view's equivalent of the
-        //LAN screenshot view, so opening the view should reach it without a trip to the RCE panel's
-        //Watch button
-        if (!this.rceStreamSession.isActive) {
-            void this.watchActiveRceDevice();
+        //a webview that opens with no stream session underway reconnects to the last sideloaded
+        //device when that was a Cloud Emulator device: this view follows the last sideload (the
+        //LAN screenshot flow's rule), so reopening the view resumes that device's stream
+        if (!this.rceStreamSession.isActive && this.lastSideloadedRceDevice) {
+            void this.watchRceDevice(this.lastSideloadedRceDevice.id, this.lastSideloadedRceDevice.name);
         }
     }
 
     /**
-     * Start (or restart) the video stream for the active device when it is a Cloud Emulator device;
-     * a LAN (or missing) active device leaves the existing screenshot flow alone. Stream resolution
-     * failures (device not running, account trouble) surface through the webview's stream error
-     * banner - with its Retry button - rather than being swallowed.
+     * Start (or restart) the video stream for a Cloud Emulator device. Stream resolution failures
+     * (device not running, account trouble) surface through the webview's stream error banner -
+     * with its Retry button - rather than being swallowed. Deliberately does not focus the view:
+     * the sideload-follow path must never steal focus during a debug launch.
      */
-    private async watchActiveRceDevice(): Promise<void> {
-        const activeDeviceKey = this.extensionContext.workspaceState.get<string>('activeDeviceKey');
-        const device = activeDeviceKey ? this.dependencies.deviceManager.getDevice(activeDeviceKey) : undefined;
-        if (!device?.rce) {
-            return;
-        }
+    private async watchRceDevice(deviceId: number, deviceName: string): Promise<void> {
         try {
-            //the same resolve-and-hand-off path the webview's Retry action uses (registered by
-            //RceManagementViewProvider)
-            await vscode.commands.executeCommand(VscodeCommand.rceWatchDeviceById, Number(device.rce.id));
+            //the same stream resolution the webview's Retry action reaches through the
+            //rceWatchDeviceById command, called directly since no focus change is wanted here
+            const streamRequest = await this.dependencies.rceManager.resolveStreamRequest(deviceId);
+            await this.startRceStreamSession(streamRequest);
         } catch (e) {
-            const deviceName = this.dependencies.deviceManager.getDeviceDisplayName(device);
             //a pending device enters the waiting-for-device phase, a stopped one the device-stopped
             //state; everything else is this host's error to report
-            if (!this.rceStreamSession.handleDeviceNotRunning(e, Number(device.rce.id), deviceName)) {
+            if (!this.rceStreamSession.handleDeviceNotRunning(e, deviceId, deviceName)) {
                 this.rceStreamSession.postError(
                     `Failed to start the video stream for device '${deviceName}': ${(e as Error).message}`,
-                    Number(device.rce.id),
+                    deviceId,
                     deviceName
                 );
             }

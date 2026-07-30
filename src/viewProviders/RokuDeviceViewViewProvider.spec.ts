@@ -108,6 +108,7 @@ describe('RokuDeviceViewViewProvider', () => {
     let postOrQueueMessage: sinonImport.SinonStub;
     let getToken: sinonImport.SinonStub;
     let getDevice: sinonImport.SinonStub;
+    let getDeviceByDeviceConfig: sinonImport.SinonStub;
     let resolveStreamRequest: sinonImport.SinonStub;
     let rceFinder: EventEmitter;
 
@@ -115,6 +116,7 @@ describe('RokuDeviceViewViewProvider', () => {
         const rtaManager = new RtaManager(vscode.context);
         getToken = sinon.stub().resolves('management-api-token');
         getDevice = sinon.stub().returns(undefined);
+        getDeviceByDeviceConfig = sinon.stub().returns(undefined);
         resolveStreamRequest = sinon.stub().resolves(createStreamRequest());
         rceFinder = new EventEmitter();
         provider = new TestRokuDeviceViewViewProvider(vscode.context, {
@@ -123,6 +125,7 @@ describe('RokuDeviceViewViewProvider', () => {
             rceFinder: rceFinder,
             deviceManager: {
                 getDevice: getDevice,
+                getDeviceByDeviceConfig: getDeviceByDeviceConfig,
                 getDeviceDisplayName: (device: any) => device.deviceInfo?.['user-device-name'] ?? device.key
             }
         } as any);
@@ -777,42 +780,94 @@ describe('RokuDeviceViewViewProvider', () => {
         });
     });
 
-    describe('watchActiveRceDevice', () => {
-        it('connects to the active cloud device when the view opens with no stream underway', async () => {
-            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves() as sinonImport.SinonStub;
-            createProvider();
-            await vscode.context.workspaceState.update('activeDeviceKey', 's:ESN1');
-            getDevice.returns({ key: 's:ESN1', rce: { id: '83', status: 'running' }, deviceInfo: { 'user-device-name': 'Chris' } });
+    describe('follows the last sideloaded device', () => {
+        function publishChannel(device: any) {
+            provider.onChannelPublishedEvent({ body: { launchConfiguration: { device: device } } } as any);
+        }
 
+        it('starts the stream when a channel is published to a cloud device', async () => {
+            createProvider();
             markViewReady();
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: '83', status: 'running' }, deviceInfo: { 'user-device-name': 'Chris' } });
+
+            publishChannel({ esn: 'ESN1' });
             await flushMicrotasks();
 
-            expect(getDevice.calledWith('s:ESN1')).to.be.true;
-            expect(executeCommand.calledWith(VscodeCommand.rceWatchDeviceById, 83)).to.be.true;
+            expect(getDeviceByDeviceConfig.calledWith({ esn: 'ESN1' })).to.be.true;
+            expect(resolveStreamRequest.calledWith(83)).to.be.true;
+            expect(provider.createdClients).to.have.length(1);
         });
 
-        it('leaves a LAN or missing active device to the existing screenshot flow', async () => {
-            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves() as sinonImport.SinonStub;
+        it('falls back to an id-addressed config when the device manager does not know the device', async () => {
             createProvider();
-            await vscode.context.workspaceState.update('activeDeviceKey', 's:LAN1');
-            getDevice.returns({ key: 's:LAN1', ip: '192.168.1.100', deviceInfo: {} });
+            markViewReady();
+
+            publishChannel({ id: '84' });
+            await flushMicrotasks();
+
+            expect(resolveStreamRequest.calledWith(84)).to.be.true;
+        });
+
+        it('stops the stream and forgets the device when a channel is published to a LAN device', async () => {
+            createProvider();
+            markViewReady();
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: '83', status: 'running' }, deviceInfo: {} });
+            publishChannel({ esn: 'ESN1' });
+            await flushMicrotasks();
+            const client = provider.createdClients[0];
+
+            publishChannel({ host: '192.168.1.100' });
+            await flushMicrotasks();
+
+            expect(client.stop.called).to.be.true;
+            //a later view reopen does not reconnect to the forgotten cloud device
+            resolveStreamRequest.resetHistory();
+            markViewReady();
+            await flushMicrotasks();
+            expect(resolveStreamRequest.called).to.be.false;
+        });
+
+        it('reconnects to the last sideloaded cloud device when the view reopens', async () => {
+            createProvider();
+            markViewReady();
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: '83', status: 'running' }, deviceInfo: {} });
+            publishChannel({ esn: 'ESN1' });
+            await flushMicrotasks();
+            expect(provider.createdClients).to.have.length(1);
+
+            //the view was closed and reopened: the new webview's viewReady stops the delivered-offer
+            //session and the provider reconnects to the remembered sideloaded device
+            markViewReady();
+            await flushMicrotasks();
+
+            expect(provider.createdClients[0].stop.called).to.be.true;
+            expect(provider.createdClients).to.have.length(2);
+        });
+
+        it('does not auto-connect when nothing was sideloaded, leaving the screenshot flow alone', async () => {
+            createProvider();
 
             markViewReady();
             await flushMicrotasks();
-            expect(executeCommand.calledWith(VscodeCommand.rceWatchDeviceById)).to.be.false;
 
-            //no active device at all behaves the same way
-            getDevice.returns(undefined);
+            expect(resolveStreamRequest.called).to.be.false;
+        });
+
+        it('setting a device as the active device does not move this view', async () => {
+            createProvider();
+            markViewReady();
+            await vscode.context.workspaceState.update('activeDeviceKey', 's:ESN1');
+            getDevice.returns({ key: 's:ESN1', rce: { id: '83', status: 'running' }, deviceInfo: {} });
+
             markViewReady();
             await flushMicrotasks();
-            expect(executeCommand.calledWith(VscodeCommand.rceWatchDeviceById)).to.be.false;
+
+            expect(resolveStreamRequest.called).to.be.false;
         });
 
         it('does not auto-connect while a stream session is already underway', async () => {
-            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves() as sinonImport.SinonStub;
             createProvider();
-            await vscode.context.workspaceState.update('activeDeviceKey', 's:ESN1');
-            getDevice.returns({ key: 's:ESN1', rce: { id: '83', status: 'running' }, deviceInfo: {} });
+            provider['lastSideloadedRceDevice'] = { id: 83, name: 'Chris' };
 
             //a session whose offer is still negotiating when the webview reports ready
             provider.deferNextConnect = true;
@@ -822,19 +877,19 @@ describe('RokuDeviceViewViewProvider', () => {
             markViewReady();
             await flushMicrotasks();
 
-            expect(executeCommand.calledWith(VscodeCommand.rceWatchDeviceById)).to.be.false;
+            expect(resolveStreamRequest.called).to.be.false;
 
             provider.pendingConnectResolvers[0]({ offer: defaultFakeOffer, iceServers: [] });
             await startPromise;
         });
 
         it('surfaces stream resolution failures through the stream error banner', async () => {
-            sinon.stub(vscode.commands, 'executeCommand').rejects(new Error('device must be running'));
             createProvider();
-            await vscode.context.workspaceState.update('activeDeviceKey', 's:ESN1');
-            getDevice.returns({ key: 's:ESN1', rce: { id: '83', status: 'shutdown' }, deviceInfo: { 'user-device-name': 'Chris' } });
-
             markViewReady();
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: '83', status: 'shutdown' }, deviceInfo: { 'user-device-name': 'Chris' } });
+            resolveStreamRequest.rejects(new Error('device must be running'));
+
+            publishChannel({ esn: 'ESN1' });
             await flushMicrotasks();
 
             const errorMessages = findEventMessages(ViewProviderEvent.onRceStreamError);
