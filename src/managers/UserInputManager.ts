@@ -299,7 +299,7 @@ export class UserInputManager {
                     } else if (selectedDevice.label === scanForDevicesLabel) {
                         //an explicit "scan" click is the refresh-clicked trigger — submit orders;
                         //this picker (or another visible view) fulfills them immediately
-                        this.deviceManager.submitRefreshOrders();
+                        this.deviceManager.submitOrder('refresh-clicked');
                         return;
                     } else {
                         const device = (selectedDevice as any).device as RokuDevice;
@@ -451,7 +451,7 @@ export class UserInputManager {
             if (button.tooltip === SCAN_FOR_DEVICES) {
                 //an explicit "scan" click is the refresh-clicked trigger — submit orders;
                 //this picker (or another visible view) fulfills them immediately
-                this.deviceManager.submitRefreshOrders();
+                this.deviceManager.submitOrder('refresh-clicked');
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
                 this.deviceManager.clearCurrentDeviceList();
                 void util.showTimedNotification('Clearing device list');

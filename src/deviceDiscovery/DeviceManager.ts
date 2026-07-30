@@ -40,8 +40,7 @@ export class DeviceManager {
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
                 if (this.deviceDiscoveryEnabled) {
                     //order a broadcast + reconcile so the views discover/health-check once enabled
-                    this.submitBroadcast('startup');
-                    this.submitReconcile('startup');
+                    this.submitOrder('startup');
                     this.systemSleepMonitor.start();
                     void this.activateMonitoring();
                 } else {
@@ -59,7 +58,7 @@ export class DeviceManager {
             //local) and order a health check for the views to fulfill when one is visible
             if (event?.affectsConfiguration('brightscript.devices')) {
                 this.loadConfiguredDevices().catch(() => { });
-                this.submitReconcile('config-changed');
+                this.submitOrder('config-changed');
             }
 
             //if the `defaultDevicePassword` setting was changed, refresh any device views that rely on it
@@ -88,8 +87,7 @@ export class DeviceManager {
     private setupMonitors() {
         this.systemSleepMonitor = new SystemSleepMonitor(() => {
             //order a broadcast + reconcile so the views rescan/health-check on wake
-            this.submitBroadcast('sleep');
-            this.submitReconcile('sleep');
+            this.submitOrder('sleep');
         });
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
@@ -111,8 +109,7 @@ export class DeviceManager {
             this.restartRokuFinder();
 
             //order a broadcast + reconcile so the views rescan/health-check on the new network
-            this.submitBroadcast('network');
-            this.submitReconcile('network');
+            this.submitOrder('network');
         });
     }
 
@@ -137,8 +134,7 @@ export class DeviceManager {
             //order a broadcast + reconcile for the views to fulfill when they open.
             //No proactive scan here even on a cold cache — per the design doc, no network
             //traffic happens until a view is actually visible to consume these orders.
-            this.submitBroadcast('startup');
-            this.submitReconcile('startup');
+            this.submitOrder('startup');
 
             this.activateMonitoring().catch((e) => {
                 console.error(e);
@@ -680,14 +676,22 @@ export class DeviceManager {
     }
 
     /**
-     * The "user clicked refresh / scan" interaction (spec: Clicking refresh) — the only order
-     * submission views can make. Always submits a broadcast order AND a reconcile order,
-     * regardless of how recently either ran; the split into order types is internal, like every
-     * other trigger's.
+     * The single order-submission funnel (spec: When are orders submitted?). Callers name the
+     * trigger that happened; the reason determines which order types it implies. Most triggers
+     * imply both, with two exceptions: a config change can't introduce new devices on the
+     * network (reconcile only), and an unhealthy device warrants a rescan, not a health check
+     * of everything else (broadcast only).
+     *
+     * The `stale` timers don't go through here — they submit their single order type directly
+     * because they run on different cadences (broadcast every 30 minutes, reconcile every 5).
      */
-    public submitRefreshOrders(): void {
-        this.submitBroadcast('refresh-clicked');
-        this.submitReconcile('refresh-clicked');
+    public submitOrder(reason: OrderReason): void {
+        if (reason !== 'config-changed') {
+            this.submitBroadcast(reason as BroadcastReason);
+        }
+        if (reason !== 'unhealthy-device') {
+            this.submitReconcile(reason as ReconcileReason);
+        }
     }
     // #endregion
 
@@ -818,7 +822,7 @@ export class DeviceManager {
         if (this.timeSinceLastScan < this.UNHEALTHY_BROADCAST_MIN_INTERVAL_MS) {
             return;
         }
-        this.submitBroadcast('unhealthy-device');
+        this.submitOrder('unhealthy-device');
     }
 
     /**
@@ -1705,6 +1709,11 @@ export type ReconcileReason =
     | 'refresh-clicked'
     | 'config-changed'
     | 'stale';
+
+/**
+ * Any trigger accepted by the single submission funnel, {@link DeviceManager.submitOrder}.
+ */
+export type OrderReason = BroadcastReason | ReconcileReason;
 
 /**
  * A unit of deferred work: queued by triggers, fulfilled by visible views.

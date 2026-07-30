@@ -223,13 +223,31 @@ describe('DeviceManager', () => {
             expect(manager.getPendingReconcileReasons()).to.include('config-changed');
         });
 
-        it('submitRefreshOrders submits a refresh-clicked broadcast AND reconcile', () => {
+        it('submitOrder submits both order types for most reasons', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            manager.submitRefreshOrders();
+            manager.submitOrder('refresh-clicked');
 
             expect(manager.getPendingBroadcastReasons()).to.eql(['refresh-clicked']);
             expect(manager.getPendingReconcileReasons()).to.eql(['refresh-clicked']);
+        });
+
+        it('submitOrder submits only a reconcile for config-changed (a config edit cannot add network devices)', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager.submitOrder('config-changed');
+
+            expect(manager.getPendingBroadcastReasons()).to.be.empty;
+            expect(manager.getPendingReconcileReasons()).to.eql(['config-changed']);
+        });
+
+        it('submitOrder submits only a broadcast for unhealthy-device (rescan, do not hammer every device)', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager.submitOrder('unhealthy-device');
+
+            expect(manager.getPendingBroadcastReasons()).to.eql(['unhealthy-device']);
+            expect(manager.getPendingReconcileReasons()).to.be.empty;
         });
     });
 
@@ -337,7 +355,7 @@ describe('DeviceManager', () => {
         it('fulfillPendingOrders fulfills both order types in one call', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
             const reconcileStub = sinon.stub(manager as any, 'reconcile');
-            manager.submitRefreshOrders();
+            manager.submitOrder('refresh-clicked');
 
             const result = manager.fulfillPendingOrders();
 

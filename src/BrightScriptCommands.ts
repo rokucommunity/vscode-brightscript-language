@@ -62,11 +62,11 @@ export class BrightScriptCommands {
         //(spec: "Clicking refresh... always submits a broadcast order and a reconcile order") —
         //a visible view fulfills them immediately
         this.registerCommand('refreshDeviceList', (key: string) => {
-            this.deviceManager.submitRefreshOrders();
+            this.deviceManager.submitOrder('refresh-clicked');
         });
 
         this.registerCommand('rescanDevices', () => {
-            this.deviceManager.submitRefreshOrders();
+            this.deviceManager.submitOrder('refresh-clicked');
         });
 
         // Refresh a single device (inline button on hover in devices panel).

@@ -156,7 +156,7 @@ describe('BrightScriptFileUtils ', () => {
 
         beforeEach(() => {
             deviceManager = {
-                submitRefreshOrders: sinon.stub(),
+                submitOrder: sinon.stub(),
                 broadcast: sinon.stub(),
                 reconcile: sinon.stub()
             };
@@ -174,14 +174,14 @@ describe('BrightScriptFileUtils ', () => {
 
         it('refreshDeviceList submits refresh orders instead of scanning directly', () => {
             capturedCommands['extension.brightscript.refreshDeviceList']();
-            assert.isTrue(deviceManager.submitRefreshOrders.calledOnce);
+            assert.isTrue(deviceManager.submitOrder.calledOnceWith('refresh-clicked'));
             assert.isTrue(deviceManager.broadcast.notCalled);
             assert.isTrue(deviceManager.reconcile.notCalled);
         });
 
         it('rescanDevices submits refresh orders instead of scanning directly', () => {
             capturedCommands['extension.brightscript.rescanDevices']();
-            assert.isTrue(deviceManager.submitRefreshOrders.calledOnce);
+            assert.isTrue(deviceManager.submitOrder.calledOnceWith('refresh-clicked'));
             assert.isTrue(deviceManager.broadcast.notCalled);
             assert.isTrue(deviceManager.reconcile.notCalled);
         });
