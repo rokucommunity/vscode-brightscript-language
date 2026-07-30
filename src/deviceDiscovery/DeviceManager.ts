@@ -168,7 +168,7 @@ export class DeviceManager {
     private readonly DEVICE_INFO_CACHE_MS = 5 * 60 * 1_000; // 5 minutes - cache duration for fetchDeviceInfo
     private readonly FRESH_CACHE_THRESHOLD_MS = 5 * 60 * 1_000; // 5 minutes - cache fresher than this = online on load
     private readonly OFFLINE_COOLDOWN_MS = 5_000; // 5 seconds - minimum time between resolve attempts for offline devices
-    public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
+    private static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
 
     // Lazy hydration (background device-info refresh triggered by view reads — spec:
     // "Lazy hydration on read")
@@ -181,7 +181,7 @@ export class DeviceManager {
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
     private deviceOnlineNotifiers = new Map<string, ReturnType<typeof debounce>>();
 
-    // Scan state management. STALE_SCAN_THRESHOLD_MS is both the non-forced broadcast gate
+    // Scan state management. STALE_SCAN_THRESHOLD_MS is both the stale-only broadcast gate
     // ("don't scan if the last scan is younger than this") and the `stale` broadcast timer
     // interval — one definition of "it's been a while".
     private readonly STALE_SCAN_THRESHOLD_MS = 30 * 60 * 1_000; // 30 minutes
@@ -477,7 +477,7 @@ export class DeviceManager {
      * @param lookup - Device lookup by serial and/or IP
      * @returns The device state, defaulting to 'unknown' if not found
      */
-    public getDeviceState(lookup: { serialNumber?: string; ip?: string }): DeviceStateEntry {
+    private getDeviceState(lookup: { serialNumber?: string; ip?: string }): DeviceStateEntry {
         let match = this.findStateEntry(this.discoveredDevices, lookup);
         if (match) {
             return { state: match.state, lastUpdated: match.stateLastUpdated ?? Date.now() };
@@ -527,7 +527,7 @@ export class DeviceManager {
      * @param lookup - Device lookup by IP (and optionally serial for cache lookup)
      * @param state - Explicit state to set, or undefined for intelligent default
      */
-    public setDeviceState(lookup: { serialNumber?: string; ip?: string }, state?: DeviceState): void {
+    private setDeviceState(lookup: { serialNumber?: string; ip?: string }, state?: DeviceState): void {
         const now = Date.now();
         let resolvedState: DeviceState;
 
@@ -705,7 +705,27 @@ export class DeviceManager {
      * simply reported unhealthy.
      */
     public async deviceEngaged(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<boolean> {
-        return this.healthCheckDevice(deviceKeyOrLookup, true, false);
+        // If already a device object with deviceState, use it directly; otherwise look it up
+        let device: RokuDevice | undefined;
+        if (typeof deviceKeyOrLookup === 'string') {
+            device = this.getDevice(deviceKeyOrLookup);
+        } else if ('deviceState' in deviceKeyOrLookup) {
+            device = deviceKeyOrLookup;
+        } else {
+            device = this.getDevice(deviceKeyOrLookup);
+        }
+
+        if (!device) {
+            return false;
+        }
+
+        // Engagement wants a real answer now: bypass the cache trust window, no synthetic delay
+        const isHealthy = await this.resolveDevice(device, false, true);
+        if (!isHealthy && device.isDiscovered) {
+            // a discovered device went dark — order a rescan for the views to fulfill
+            this.submitUnhealthyDeviceBroadcast();
+        }
+        return isHealthy;
     }
 
     /**
@@ -737,7 +757,7 @@ export class DeviceManager {
      */
     private reconcile(reasons: ReconcileReason[]): void {
         const bypassDeviceCache = reasons.includes('refresh-clicked');
-        this.healthCheckAllDevices(bypassDeviceCache, true).catch(() => { });
+        this.healthCheckAllDevices(bypassDeviceCache).catch(() => { });
     }
 
     /**
@@ -790,30 +810,6 @@ export class DeviceManager {
 
         // Clear discovered devices (state goes with them)
         this.clearCurrentDeviceList();
-    }
-
-    private async healthCheckDevice(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }, force = false, doSyntheticDelay = true): Promise<boolean> {
-        // If already a device object with deviceState, use it directly; otherwise look it up
-        let device: RokuDevice | undefined;
-        if (typeof deviceKeyOrLookup === 'string') {
-            device = this.getDevice(deviceKeyOrLookup);
-        } else if ('deviceState' in deviceKeyOrLookup) {
-            device = deviceKeyOrLookup;
-        } else {
-            device = this.getDevice(deviceKeyOrLookup);
-        }
-
-        if (!device) {
-            return false;
-        }
-
-        // Cooldown is handled by fetchDeviceInfo cache; force bypasses it
-        const isHealthy = await this.resolveDevice(device, doSyntheticDelay, force);
-        if (!isHealthy && device.isDiscovered) {
-            // a discovered device went dark — order a rescan for the views to fulfill
-            this.submitUnhealthyDeviceBroadcast();
-        }
-        return isHealthy;
     }
 
     /**
@@ -1264,7 +1260,7 @@ export class DeviceManager {
         }
     }
 
-    private async healthCheckAllDevices(force = false, doSyntheticDelay = true): Promise<void> {
+    private async healthCheckAllDevices(force = false): Promise<void> {
         // Collect all unique IPs from both sources (same serial at different IPs = different entries to check)
         const discoveredIpSet = new Set(this.discoveredDevices.map(entry => entry.ip));
         const allIps = new Set([
@@ -1285,7 +1281,7 @@ export class DeviceManager {
         // Health check all devices - if any discovered device is unhealthy, order a scan
         let needsScan = false;
         await Promise.all([...allIps].map(async (ip) => {
-            const isHealthy = await this.resolveDevice({ ip: ip }, doSyntheticDelay, force);
+            const isHealthy = await this.resolveDevice({ ip: ip }, true, force);
             if (!isHealthy && discoveredIpSet.has(ip)) {
                 needsScan = true;
             }
