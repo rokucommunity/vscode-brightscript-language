@@ -71,6 +71,12 @@ jobs:
             }
             core.setOutput('branch', branch);
             console.log(`branch: "${branch}"`);
+      # GitHub withholds repository secrets from fork-triggered runs, so fail fast with a clear message
+      - name: Reject fork PRs
+        if: github.event.pull_request.head.repo.fork
+        run: |
+          echo "::error::Could not build a .vsix because forked PRs don't have access to the necessary github secrets. A maintainer must run this workflow manually: https://github.com/${{ github.repository }}/actions/workflows/create-vsix.yml"
+          exit 1
       - run: npm ci
       - run: npx ts-node scripts/create-vsix.ts ${{ steps.info.outputs.branch }}
       # upload the production .vsix (archive: false only supports a single file, so
