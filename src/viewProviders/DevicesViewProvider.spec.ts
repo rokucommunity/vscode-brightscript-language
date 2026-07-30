@@ -334,6 +334,8 @@ describe('DevicesViewProvider', () => {
             ];
             await vscodeContextManager.set('activeHost', '2.2.2.2');
             const { provider } = createProvider(devices);
+            //decorations are populated by the first visible render (no eager constructor read)
+            await provider.getChildren();
             const decorationProvider = provider['decorationProvider'];
 
             const activeDecoration = decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/stb2' } as any);
@@ -351,6 +353,7 @@ describe('DevicesViewProvider', () => {
             const devices = [makeDevice({ key: 'stb1', ip: '1.1.1.1', deviceState: 'offline' })];
             await vscodeContextManager.set('activeHost', '1.1.1.1');
             const { provider } = createProvider(devices);
+            await provider.getChildren();
 
             const decoration = provider['decorationProvider'].provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any);
             expect(decoration?.badge).to.equal('⭐');
@@ -364,6 +367,9 @@ describe('DevicesViewProvider', () => {
             ];
             await vscodeContextManager.set('activeHost', '1.1.1.1');
             const { provider } = createProvider(devices);
+            //live active-device moves only re-render while the panel is visible
+            provider['visible'] = true;
+            await provider.getChildren();
             const decorationProvider = provider['decorationProvider'];
 
             let treeChanges = 0;
@@ -599,6 +605,18 @@ describe('DevicesViewProvider', () => {
                 }
             };
         }
+
+        it('does not read the device list while hidden — marks it dirty for the next visible render', () => {
+            const { provider, deviceManager } = createProvider([]);
+            const readSpy = sinon.spy(deviceManager, 'getAllDevices');
+
+            //a devices-changed arrives while the panel is hidden: reading would trigger
+            //lazy hydration (network traffic) that nobody can see
+            provider['handleDevicesChanged']();
+
+            expect(readSpy.called).to.be.false;
+            expect(provider['devicesDirty']).to.be.true;
+        });
 
         it('fulfills orders queued while hidden when the panel becomes visible (ALL reasons)', () => {
             const { provider, deviceManager } = createProvider([]);

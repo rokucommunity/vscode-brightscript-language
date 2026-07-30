@@ -54,7 +54,7 @@ export class UserInputManager {
      */
     private scanTimeoutMs = 7_000;
 
-    public async promptForHostManual(): Promise<HostWithDeviceInfo | undefined> {
+    private async promptForHostManual(): Promise<HostWithDeviceInfo | undefined> {
         while (true) {
             const value = await vscode.window.showInputBox({
                 placeHolder: 'Please enter the IP address of your Roku device',

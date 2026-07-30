@@ -55,9 +55,9 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.decorationProvider = new DeviceDecorationProvider();
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
-        // Pre-populate devices and decorations so they're ready before first render
-        this.devices = this.deviceManager.getAllDevices();
-        this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
+        // No device-list read here: reads trigger lazy hydration (network traffic), and the
+        // spec says nothing hits the network until a view is actually visible. The first
+        // visible render reads via the dirty flag.
 
         this.deviceManager.on('devices-changed', () => {
             this.handleDevicesChanged();
@@ -74,7 +74,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         // While the panel is visible, fulfill live broadcast/reconcile orders as they arrive,
         // except timer-driven `stale` ones (avoid surprise scans while the user is looking).
         // Fulfillment is atomic — if another visible consumer (e.g. the device picker) already
-        // fulfilled this order, the slot is empty and the call is a no-op.
+        // fulfilled this order, the pending set is empty and the call is a no-op.
         this.deviceManager.on('broadcast-ordered', () => {
             if (!this.visible) {
                 return;
@@ -112,6 +112,10 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 return;
             }
             this.deviceManager.fulfillPendingOrders();
+            // Re-render if the device list changed while hidden (getChildren consumes the flag)
+            if (this.devicesDirty) {
+                this._onDidChangeTreeData.fire(null);
+            }
         });
 
         // onDidChangeVisibility only fires on *changes* — if the panel is already open when the
@@ -167,7 +171,16 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
     }
 
+    /**
+     * The device list changed (or the active device moved). While hidden, only mark the list
+     * dirty — reading it would trigger lazy hydration (network traffic) for a panel nobody can
+     * see. The dirty flag is consumed on the next visible render.
+     */
     private handleDevicesChanged(): void {
+        if (!this.visible) {
+            this.devicesDirty = true;
+            return;
+        }
         this.devices = this.deviceManager.getAllDevices();
         this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
         this._onDidChangeTreeData.fire(null);
@@ -197,12 +210,20 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         return util.getConfiguration('brightscript.deviceDiscovery').get('concealDeviceInfo') === true;
     }
 
-    private devices: Array<RokuDevice>;
+    private devices: Array<RokuDevice> = [];
+
+    /**
+     * Set when the device list changed while the panel was hidden; the next visible render
+     * re-reads. Starts true so the first render populates the list.
+     */
+    private devicesDirty = true;
 
     async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
         if (!element) {
-            // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
-            if (this.devices.length === 0) {
+            // Re-read on first render and after hidden-time changes (getChildren only runs
+            // when VS Code is actually rendering the tree, so a read here is a visible read)
+            if (this.devicesDirty || this.devices.length === 0) {
+                this.devicesDirty = false;
                 this.devices = this.deviceManager.getAllDevices();
                 this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
             }

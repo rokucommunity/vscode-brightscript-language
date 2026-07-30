@@ -452,7 +452,7 @@ describe('UserInputManager', () => {
                 'software-version': '11.5.0'
             };
             //manual entry probes the device the same way, so the gathered device info comes back too
-            sinon.stub(userInputManager, 'promptForHostManual').resolves({ host: '9.8.7.6', deviceInfo: deviceInfo });
+            sinon.stub(userInputManager as any, 'promptForHostManual').returns(Promise.resolve({ host: '9.8.7.6', deviceInfo: deviceInfo }) as any);
 
             const promptPromise = userInputManager.promptForHost();
 
@@ -478,7 +478,7 @@ describe('UserInputManager', () => {
             };
             const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '4.3.2.1', deviceInfo: deviceInfo } as any);
 
-            const result = await userInputManager.promptForHostManual();
+            const result = await userInputManager['promptForHostManual']();
 
             expect(validateStub.calledWith('4.3.2.1')).to.be.true;
             expect(result).to.eql({ host: '4.3.2.1', deviceInfo: deviceInfo });
@@ -488,7 +488,7 @@ describe('UserInputManager', () => {
             sinon.stub(vscode.window, 'showInputBox').resolves(undefined);
             const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice');
 
-            const result = await userInputManager.promptForHostManual();
+            const result = await userInputManager['promptForHostManual']();
 
             expect(result).to.be.undefined;
             expect(validateStub.called).to.be.false;
