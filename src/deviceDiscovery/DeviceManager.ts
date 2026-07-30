@@ -154,10 +154,11 @@ export class DeviceManager {
     private networkId: string;
 
     // Orders (see docs/device-discovery.md "Orders"): deferred work submitted by triggers and
-    // fulfilled by visible views. One pending slot per order type — a newer order replaces the
-    // slot, except a `stale` order never downgrades a pending real trigger.
-    private pendingBroadcast: BroadcastOrder | null = null;
-    private pendingReconcile: ReconcileOrder | null = null;
+    // fulfilled by visible views. Pending orders are a set of reasons per order type — the work
+    // is idempotent (one scan satisfies every queued "please scan"), so reasons accumulate and
+    // fulfillment executes once with everything it takes. A reason can't queue twice.
+    private pendingBroadcastReasons = new Set<BroadcastReason>();
+    private pendingReconcileReasons = new Set<ReconcileReason>();
     private broadcastStaleTimer: ReturnType<typeof setInterval> | undefined;
     private reconcileStaleTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -591,90 +592,93 @@ export class DeviceManager {
 
     // #region Orders (docs/device-discovery.md "Orders" / "When are orders submitted?")
     /**
-     * Submit a broadcast (SSDP scan) order. Fills the pending slot AND emits `broadcast-ordered`
-     * so a visible view can fulfill it live; a hidden view consumes the slot when it opens.
-     * A `stale` submission never overwrites a pending real trigger.
+     * Submit a broadcast (SSDP scan) order. Adds the reason to the pending set AND emits
+     * `broadcast-ordered` so a visible view can fulfill it live; a hidden view consumes the
+     * set when it opens. Reasons accumulate independently (e.g. `stale` and `sleep` can both
+     * be pending) but the same reason never queues twice.
      */
     public submitBroadcast(reason: BroadcastReason): void {
+        this.pendingBroadcastReasons.add(reason);
         const order: BroadcastOrder = { reason: reason, timestamp: Date.now() };
-        if (!(this.pendingBroadcast && this.pendingBroadcast.reason !== 'stale' && reason === 'stale')) {
-            this.pendingBroadcast = order;
-        }
         this.emitter.emit('broadcast-ordered', order);
     }
 
     /**
-     * Submit a reconcile (health-check-all) order. Same slot + event semantics as
+     * Submit a reconcile (health-check-all) order. Same set + event semantics as
      * {@link submitBroadcast}.
      */
     public submitReconcile(reason: ReconcileReason): void {
+        this.pendingReconcileReasons.add(reason);
         const order: ReconcileOrder = { reason: reason, timestamp: Date.now() };
-        if (!(this.pendingReconcile && this.pendingReconcile.reason !== 'stale' && reason === 'stale')) {
-            this.pendingReconcile = order;
-        }
         this.emitter.emit('reconcile-ordered', order);
     }
 
     /**
-     * The pending broadcast order, if a trigger queued one that no view has fulfilled yet.
+     * The reasons of all pending broadcast orders that no view has fulfilled yet.
      */
-    public getPendingBroadcast(): BroadcastOrder | null {
-        return this.pendingBroadcast;
+    public getPendingBroadcastReasons(): BroadcastReason[] {
+        return [...this.pendingBroadcastReasons];
     }
 
-    public getPendingReconcile(): ReconcileOrder | null {
-        return this.pendingReconcile;
+    public getPendingReconcileReasons(): ReconcileReason[] {
+        return [...this.pendingReconcileReasons];
     }
 
     /**
-     * Atomically consume AND execute the pending broadcast order, if any. The one-call
-     * fulfillment API for views: take + broadcast in a single step. The order's reason travels
-     * into {@link broadcast}, which decides the urgency internally (a `stale` timer-tick stays
-     * staleness-gated; every real trigger scans now).
+     * Atomically consume AND execute pending broadcast orders. The one-call fulfillment API
+     * for views: take + broadcast in a single step. The work is idempotent, so all taken
+     * reasons are satisfied by a single scan; the reasons travel into {@link broadcast}, which
+     * decides the urgency internally (only-`stale` stays staleness-gated; any real trigger
+     * scans now).
      *
      * Consumption is atomic: when two visible views react to the same order event, the first
-     * caller fulfills it and later callers find the slot empty and do nothing.
+     * caller fulfills it and later callers find the set empty and do nothing.
      *
      * @param options.except - reasons to leave QUEUED (not consumed) for another view, e.g.
      *   `{ except: ['stale'] }`. A blacklist on purpose: new reasons are acted on by default.
-     * @returns true if an order was consumed and a scan actually started
+     * @returns true if orders were consumed and a scan actually started
      */
     public fulfillPendingBroadcast(options?: { except?: BroadcastReason[] }): boolean {
-        const pending = this.pendingBroadcast;
-        if (!pending || options?.except?.includes(pending.reason)) {
+        const reasons = this.getPendingBroadcastReasons().filter(x => !options?.except?.includes(x));
+        if (reasons.length === 0) {
             return false;
         }
-        this.pendingBroadcast = null;
-        return this.broadcast(pending.reason);
+        for (const reason of reasons) {
+            this.pendingBroadcastReasons.delete(reason);
+        }
+        return this.broadcast(reasons);
     }
 
     /**
-     * Atomically consume AND execute the pending reconcile order, if any. One-call twin of
-     * {@link fulfillPendingBroadcast}; the reason travels into {@link reconcile}, which decides
-     * internally whether the per-device cache trust window is bypassed (only for
-     * `refresh-clicked` — an explicit "I want fresh data now" from the user).
+     * Atomically consume AND execute pending reconcile orders. One-call twin of
+     * {@link fulfillPendingBroadcast}; the reasons travel into {@link reconcile}, which decides
+     * internally whether the per-device cache trust window is bypassed (only when
+     * `refresh-clicked` is among them — an explicit "I want fresh data now" from the user).
      */
     public fulfillPendingReconcile(options?: { except?: ReconcileReason[] }): boolean {
-        const pending = this.pendingReconcile;
-        if (!pending || options?.except?.includes(pending.reason)) {
+        const reasons = this.getPendingReconcileReasons().filter(x => !options?.except?.includes(x));
+        if (reasons.length === 0) {
             return false;
         }
-        this.pendingReconcile = null;
-        this.reconcile(pending.reason);
+        for (const reason of reasons) {
+            this.pendingReconcileReasons.delete(reason);
+        }
+        this.reconcile(reasons);
         return true;
     }
     // #endregion
 
     /**
      * Broadcast an SSDP M-SEARCH to discover devices on the network. Does NOT health-check
-     * existing devices — that's {@link reconcile}. The reason decides the urgency: every real
-     * trigger scans now, while a `stale` timer-tick is only a "things might be old" hint — it
-     * scans only when discovery is enabled AND the last scan is older than
-     * STALE_SCAN_THRESHOLD_MS. Reachable only through order fulfillment.
+     * existing devices — that's {@link reconcile}. The reasons decide the urgency: any real
+     * trigger scans now, while a `stale` timer-tick is only a "things might be old" hint — a
+     * stale-only fulfillment scans only when discovery is enabled AND the last scan is older
+     * than STALE_SCAN_THRESHOLD_MS. Reachable only through order fulfillment.
      * @returns true if a scan was started
      */
-    private broadcast(reason: BroadcastReason): boolean {
-        if (reason === 'stale') {
+    private broadcast(reasons: BroadcastReason[]): boolean {
+        const staleOnly = reasons.every(x => x === 'stale');
+        if (staleOnly) {
             if (!this.deviceDiscoveryEnabled || this.timeSinceLastScan <= this.STALE_SCAN_THRESHOLD_MS) {
                 return false;
             }
@@ -686,13 +690,13 @@ export class DeviceManager {
 
     /**
      * Health-check every known device (configured + discovered), marking them online/offline.
-     * Does NOT scan for new devices — that's {@link broadcast}. The reason decides the urgency:
+     * Does NOT scan for new devices — that's {@link broadcast}. The reasons decide the urgency:
      * only an explicit user click bypasses each device's cache trust window — a bypassing
      * reconcile is one HTTP request per known device, so only "I want fresh data NOW" earns
      * that. Reachable only through order fulfillment.
      */
-    private reconcile(reason: ReconcileReason): void {
-        const bypassDeviceCache = reason === 'refresh-clicked';
+    private reconcile(reasons: ReconcileReason[]): void {
+        const bypassDeviceCache = reasons.includes('refresh-clicked');
         this.healthCheckAllDevices(bypassDeviceCache, true).catch(() => { });
     }
 

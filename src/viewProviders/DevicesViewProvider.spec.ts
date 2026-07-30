@@ -88,10 +88,10 @@ describe('DevicesViewProvider', () => {
 
     function createProvider(devices: any[], options?: { storedPasswords?: Record<string, string> }) {
         const emitter = new EventEmitter();
-        //a real pending-slot implementation backs the fake so the take/fulfill semantics are
+        //a real pending-set implementation backs the fake so the take/fulfill semantics are
         //exercised for real; execution routes to the broadcast/reconcile stubs below
-        let pendingBroadcast: any = null;
-        let pendingReconcile: any = null;
+        const pendingBroadcastReasons = new Set<string>();
+        const pendingReconcileReasons = new Set<string>();
         const deviceManager: any = {
             on: (event: string, handler: any) => emitter.on(event, handler),
             getAllDevices: () => devices,
@@ -103,36 +103,34 @@ describe('DevicesViewProvider', () => {
             broadcast: sinon.stub().returns(true),
             reconcile: sinon.stub(),
             submitBroadcast: (reason: string) => {
-                const order = { reason: reason, timestamp: Date.now() };
-                if (!(pendingBroadcast && pendingBroadcast.reason !== 'stale' && reason === 'stale')) {
-                    pendingBroadcast = order;
-                }
-                emitter.emit('broadcast-ordered', order);
+                pendingBroadcastReasons.add(reason);
+                emitter.emit('broadcast-ordered', { reason: reason, timestamp: Date.now() });
             },
             submitReconcile: (reason: string) => {
-                const order = { reason: reason, timestamp: Date.now() };
-                if (!(pendingReconcile && pendingReconcile.reason !== 'stale' && reason === 'stale')) {
-                    pendingReconcile = order;
-                }
-                emitter.emit('reconcile-ordered', order);
+                pendingReconcileReasons.add(reason);
+                emitter.emit('reconcile-ordered', { reason: reason, timestamp: Date.now() });
             },
-            getPendingBroadcast: () => pendingBroadcast,
-            getPendingReconcile: () => pendingReconcile,
+            getPendingBroadcastReasons: () => [...pendingBroadcastReasons],
+            getPendingReconcileReasons: () => [...pendingReconcileReasons],
             fulfillPendingBroadcast: (fulfillOptions?: { except?: string[] }) => {
-                if (!pendingBroadcast || fulfillOptions?.except?.includes(pendingBroadcast.reason)) {
+                const reasons = [...pendingBroadcastReasons].filter(x => !fulfillOptions?.except?.includes(x));
+                if (reasons.length === 0) {
                     return false;
                 }
-                const order = pendingBroadcast;
-                pendingBroadcast = null;
-                return deviceManager.broadcast(order.reason);
+                for (const reason of reasons) {
+                    pendingBroadcastReasons.delete(reason);
+                }
+                return deviceManager.broadcast(reasons);
             },
             fulfillPendingReconcile: (fulfillOptions?: { except?: string[] }) => {
-                if (!pendingReconcile || fulfillOptions?.except?.includes(pendingReconcile.reason)) {
+                const reasons = [...pendingReconcileReasons].filter(x => !fulfillOptions?.except?.includes(x));
+                if (reasons.length === 0) {
                     return false;
                 }
-                const order = pendingReconcile;
-                pendingReconcile = null;
-                deviceManager.reconcile(order.reason);
+                for (const reason of reasons) {
+                    pendingReconcileReasons.delete(reason);
+                }
+                deviceManager.reconcile(reasons);
                 return true;
             }
         };
@@ -539,20 +537,20 @@ describe('DevicesViewProvider', () => {
 
             deviceManager.submitBroadcast('network');
 
-            expect(deviceManager.broadcast.calledOnceWith('network')).to.be.true;
-            expect(deviceManager.getPendingBroadcast()).to.be.null;
+            expect(deviceManager.broadcast.calledOnceWith(['network'])).to.be.true;
+            expect(deviceManager.getPendingBroadcastReasons()).to.be.empty;
         });
 
-        it('fulfills live reconcile orders, passing the reason through', () => {
+        it('fulfills live reconcile orders, passing the reasons through', () => {
             const { provider, deviceManager } = createProvider([]);
             provider['visible'] = true;
 
             deviceManager.submitReconcile('config-changed');
-            expect(deviceManager.reconcile.calledOnceWith('config-changed')).to.be.true;
+            expect(deviceManager.reconcile.calledOnceWith(['config-changed'])).to.be.true;
 
             deviceManager.reconcile.resetHistory();
             deviceManager.submitReconcile('refresh-clicked');
-            expect(deviceManager.reconcile.calledOnceWith('refresh-clicked')).to.be.true;
+            expect(deviceManager.reconcile.calledOnceWith(['refresh-clicked'])).to.be.true;
         });
 
         it('ignores live stale orders while visible, leaving them pending', () => {
@@ -564,8 +562,8 @@ describe('DevicesViewProvider', () => {
 
             expect(deviceManager.broadcast.called).to.be.false;
             expect(deviceManager.reconcile.called).to.be.false;
-            expect(deviceManager.getPendingBroadcast()).to.include({ reason: 'stale' });
-            expect(deviceManager.getPendingReconcile()).to.include({ reason: 'stale' });
+            expect(deviceManager.getPendingBroadcastReasons()).to.include('stale');
+            expect(deviceManager.getPendingReconcileReasons()).to.include('stale');
         });
 
         it('leaves live orders pending while hidden', () => {
@@ -576,8 +574,8 @@ describe('DevicesViewProvider', () => {
 
             expect(deviceManager.broadcast.called).to.be.false;
             expect(deviceManager.reconcile.called).to.be.false;
-            expect(deviceManager.getPendingBroadcast()).to.include({ reason: 'sleep' });
-            expect(deviceManager.getPendingReconcile()).to.include({ reason: 'sleep' });
+            expect(deviceManager.getPendingBroadcastReasons()).to.include('sleep');
+            expect(deviceManager.getPendingReconcileReasons()).to.include('sleep');
         });
 
         it('fulfills orders queued while hidden when the panel becomes visible (ALL reasons)', () => {
@@ -589,10 +587,10 @@ describe('DevicesViewProvider', () => {
             provider['visible'] = true;
             provider['fulfillPendingOrders']();
 
-            expect(deviceManager.broadcast.calledOnceWith('network')).to.be.true;
-            expect(deviceManager.reconcile.calledOnceWith('refresh-clicked')).to.be.true;
-            expect(deviceManager.getPendingBroadcast()).to.be.null;
-            expect(deviceManager.getPendingReconcile()).to.be.null;
+            expect(deviceManager.broadcast.calledOnceWith(['network'])).to.be.true;
+            expect(deviceManager.reconcile.calledOnceWith(['refresh-clicked'])).to.be.true;
+            expect(deviceManager.getPendingBroadcastReasons()).to.be.empty;
+            expect(deviceManager.getPendingReconcileReasons()).to.be.empty;
         });
 
         it('fulfills a queued stale broadcast on open with its reason intact (staleness-gated inside)', () => {
@@ -603,7 +601,24 @@ describe('DevicesViewProvider', () => {
             provider['visible'] = true;
             provider['fulfillPendingOrders']();
 
-            expect(deviceManager.broadcast.calledOnceWith('stale')).to.be.true;
+            expect(deviceManager.broadcast.calledOnceWith(['stale'])).to.be.true;
+        });
+
+        it('accumulated reasons are fulfilled together in one execution', () => {
+            const { provider, deviceManager } = createProvider([]);
+
+            //multiple triggers fire while no view is visible — each queues its own reason
+            deviceManager.submitBroadcast('stale');
+            deviceManager.submitBroadcast('sleep');
+            deviceManager.submitBroadcast('network');
+
+            provider['visible'] = true;
+            provider['fulfillPendingOrders']();
+
+            //one scan satisfies all of them
+            expect(deviceManager.broadcast.calledOnce).to.be.true;
+            expect(deviceManager.broadcast.firstCall.args[0]).to.have.members(['stale', 'sleep', 'network']);
+            expect(deviceManager.getPendingBroadcastReasons()).to.be.empty;
         });
     });
 });

@@ -267,8 +267,8 @@ describe('UserInputManager', () => {
                 setTimeout(resolve, 10);
             });
 
-            expect(broadcastStub.calledOnceWith('network')).to.be.true;
-            expect(deviceManager.getPendingBroadcast()).to.be.null;
+            expect(broadcastStub.calledOnceWith(['network'])).to.be.true;
+            expect(deviceManager.getPendingBroadcastReasons()).to.be.empty;
 
             quickPick?.hide();
             await promptPromise.catch(() => { });
@@ -295,7 +295,7 @@ describe('UserInputManager', () => {
 
             //opening the picker does NOT consume the stale order — routine freshness is
             //the fallback's job, so a fresh open causes no immediate network activity
-            expect(deviceManager.getPendingBroadcast()).to.include({ reason: 'stale' });
+            expect(deviceManager.getPendingBroadcastReasons()).to.include('stale');
             expect(broadcastStub.called).to.be.false;
 
             //once the picker has been open past the fallback window with no broadcast, the
@@ -304,8 +304,8 @@ describe('UserInputManager', () => {
             await new Promise<void>(resolve => {
                 setTimeout(resolve, 50);
             });
-            expect(deviceManager.getPendingBroadcast()).to.be.null;
-            expect(broadcastStub.calledOnceWith('stale')).to.be.true;
+            expect(deviceManager.getPendingBroadcastReasons()).to.be.empty;
+            expect(broadcastStub.calledOnceWith(['stale'])).to.be.true;
 
             quickPick?.hide();
             await promptPromise.catch(() => { });
@@ -354,8 +354,8 @@ describe('UserInputManager', () => {
             });
 
             expect(reconcileSpy.calledOnce).to.be.true;
-            expect(reconcileSpy.firstCall.args[0]).to.equal('network');
-            expect(deviceManager.getPendingReconcile()).to.be.null;
+            expect(reconcileSpy.firstCall.args[0]).to.eql(['network']);
+            expect(deviceManager.getPendingReconcileReasons()).to.be.empty;
 
             quickPick?.hide();
             await promptPromise.catch(() => { });
@@ -379,7 +379,7 @@ describe('UserInputManager', () => {
             });
 
             expect(reconcileSpy.called).to.be.false;
-            expect(deviceManager.getPendingReconcile()).to.include({ reason: 'stale' });
+            expect(deviceManager.getPendingReconcileReasons()).to.include('stale');
 
             quickPick?.hide();
             await promptPromise.catch(() => { });
@@ -405,7 +405,7 @@ describe('UserInputManager', () => {
             deviceManager.submitReconcile('sleep');
 
             expect(reconcileSpy.calledOnce).to.be.true;
-            expect(deviceManager.getPendingReconcile()).to.be.null;
+            expect(deviceManager.getPendingReconcileReasons()).to.be.empty;
 
             quickPick?.hide();
             await promptPromise.catch(() => { });
