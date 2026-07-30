@@ -170,9 +170,15 @@ export class DeviceManager {
     private resolveDeviceSequence = new Map<string, number>();
     private readonly DEVICE_INFO_CACHE_MS = 5 * 60 * 1_000; // 5 minutes - cache duration for fetchDeviceInfo
     private readonly FRESH_CACHE_THRESHOLD_MS = 5 * 60 * 1_000; // 5 minutes - cache fresher than this = online on load
-    private readonly STALE_DEVICE_AFTER_SCAN_MS = 10_000; // 10 seconds - health check devices with cache older than this after scan
     private readonly OFFLINE_COOLDOWN_MS = 5_000; // 5 seconds - minimum time between resolve attempts for offline devices
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
+
+    // Lazy hydration (background device-info refresh triggered by view reads — spec:
+    // "Lazy hydration on read")
+    private readonly HYDRATION_MAX_CACHE_AGE_MS = 8 * 60 * 60 * 1_000; // 8 hours - cache older than this re-hydrates on read
+    private readonly HYDRATION_RETRY_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes - minimum time between hydration attempts per IP
+    private hydrationInFlight = new Set<string>();
+    private hydrationLastAttempt = new Map<string, number>();
 
     // Notifications and event debouncing
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
@@ -233,6 +239,9 @@ export class DeviceManager {
             }
         }
 
+        if (device) {
+            this.queueHydration([device]);
+        }
         return device;
     }
 
@@ -251,10 +260,71 @@ export class DeviceManager {
 
     /**
      * Get a list of all roku devices.
-     * Returns all devices without filtering.
+     * Returns all devices without filtering. Returns immediately from in-memory data; devices
+     * with missing or old cached info are hydrated in the background (see {@link queueHydration})
+     * and a `devices-changed` event fires when fresh data arrives.
      */
     public getAllDevices(): RokuDevice[] {
-        return this.buildAllDevices();
+        const devices = this.buildAllDevices();
+        this.queueHydration(devices);
+        return devices;
+    }
+
+    /**
+     * Does this device need a background device-info refresh? (spec: Lazy hydration on read)
+     * - never resolved (`unknown` with no cached deviceInfo), or
+     * - cached info older than {@link HYDRATION_MAX_CACHE_AGE_MS} (regardless of state)
+     */
+    private needsHydration(device: RokuDevice): boolean {
+        //a resolve is already in flight somewhere (required guard: the cache-age condition below
+        //is state-independent, so without this a pending device would re-queue on every read)
+        if (device.deviceState === 'pending') {
+            return false;
+        }
+        const cached = device.serialNumber ? this.globalStateManager.getCachedDevice(device.serialNumber) : undefined;
+        if (!cached) {
+            return device.deviceState === 'unknown';
+        }
+        return Date.now() - cached.createdAt > this.HYDRATION_MAX_CACHE_AGE_MS;
+    }
+
+    /**
+     * The "lazy hydration on read" mechanism from the design doc: queue background device-info
+     * fetches for devices that need one, then return immediately. As each resolve completes,
+     * `devices-changed` fires and views re-render with the fresh data.
+     *
+     * Re-entrancy protection (views call getAllDevices on every devices-changed, and resolves
+     * emit devices-changed, so this must converge):
+     * - while a fetch is in flight the device is `pending` and its IP is in `hydrationInFlight`
+     * - success renews the cache timestamp, so neither hydration condition holds anymore
+     * - failure removes discovered entries entirely; configured entries go `offline`
+     * - failure with a still-old cache would re-qualify — `hydrationLastAttempt` caps that at
+     *   one attempt per IP per {@link HYDRATION_RETRY_COOLDOWN_MS}
+     */
+    private queueHydration(devices: RokuDevice[]): void {
+        const now = Date.now();
+        for (const device of devices) {
+            if (!this.needsHydration(device)) {
+                continue;
+            }
+            if (this.hydrationInFlight.has(device.ip)) {
+                continue;
+            }
+            const lastAttempt = this.hydrationLastAttempt.get(device.ip);
+            if (lastAttempt !== undefined && now - lastAttempt < this.HYDRATION_RETRY_COOLDOWN_MS) {
+                continue;
+            }
+
+            //timestamp at queue time so even instantly-failing attempts are rate-limited
+            this.hydrationLastAttempt.set(device.ip, now);
+            this.hydrationInFlight.add(device.ip);
+            //silent background refresh: no synthetic delay, not forced (offline cooldown applies)
+            void this.resolveDevice({ ip: device.ip, serialNumber: device.serialNumber }, false, false)
+                .catch(() => { })
+                .finally(() => {
+                    this.hydrationInFlight.delete(device.ip);
+                });
+        }
     }
 
     /**
@@ -654,6 +724,7 @@ export class DeviceManager {
         // Clear all timestamps and per-device state
         this.lastScanDate = null;
         this.resolveDeviceSequence.clear();
+        this.hydrationLastAttempt.clear();
 
         // Reset configured device states to unknown
         for (const entry of this.configuredDevices) {
@@ -978,7 +1049,7 @@ export class DeviceManager {
         this.emitDevicesChanged();
     }
 
-    private async resolveDevice(device: RokuDevice | { ip: string }, doSyntheticDelay = true, force = false): Promise<boolean> {
+    private async resolveDevice(device: RokuDevice | { ip: string; serialNumber?: string }, doSyntheticDelay = true, force = false): Promise<boolean> {
         // Extract serial from device if available (for proper state key management)
         const knownSerial = 'serialNumber' in device ? device.serialNumber : undefined;
 
@@ -1163,46 +1234,6 @@ export class DeviceManager {
         if (needsScan) {
             this.submitUnhealthyDeviceBroadcast();
         }
-    }
-
-    /**
-     * Health check devices that didn't respond to a scan.
-     * Called after scan-ended. Checks devices whose cache is older than STALE_DEVICE_AFTER_SCAN_MS.
-     * Iterates over both source arrays to ensure all devices are checked even when
-     * the same serial exists at multiple IPs.
-     */
-    private async healthCheckStaleDevices() {
-        const now = Date.now();
-
-        // Helper to check if a device with given serial is stale
-        const isStale = (serialNumber: string | undefined): boolean => {
-            if (!serialNumber) {
-                return true; // No serial = no cache, consider stale
-            }
-            const cached = this.globalStateManager.getCachedDevice(serialNumber);
-            if (!cached) {
-                return true;
-            }
-            const cacheAge = now - cached.createdAt;
-            return cacheAge > this.STALE_DEVICE_AFTER_SCAN_MS;
-        };
-
-        // Collect unique stale IPs from both source arrays
-        const staleIps = new Set([
-            ...this.configuredDevices
-                .filter(entry => entry.state !== 'offline' && isStale(entry.serialNumber))
-                .map(entry => entry.resolvedIp ?? entry.host),
-            ...this.discoveredDevices
-                .filter(entry => entry.state !== 'offline' && isStale(entry.serialNumber))
-                .map(entry => entry.ip)
-        ]);
-
-        if (staleIps.size === 0) {
-            return;
-        }
-
-        // Cooldown is handled by fetchDeviceInfo cache
-        await Promise.all([...staleIps].map(ip => this.resolveDevice({ ip: ip }, false)));
     }
 
     /**
@@ -1457,22 +1488,17 @@ export class DeviceManager {
     }
 
     /**
-     * Handle device-online event from RokuFinder.
-     * Health checks the device if focused and no cache, and shows notification if enabled.
+     * Handle device-online event from RokuFinder. Shows a notification if enabled.
+     * Does not eagerly device-info the device — lazy hydration on read handles that
+     * once a view actually asks for the device list (spec: Passive SSDP announcements).
      */
     private handleDeviceOnline(ip: string, serialNumber?: string): void {
-        // Use provided serial, fall back to IP→serial mapping if not provided
-        const actualSerial = serialNumber ?? this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
-
-        // Health check if VS Code is focused and device has no cache
-        const hasCache = actualSerial ? this.hasDeviceCache(actualSerial) : false;
-        if (vscode.window.state.focused && !hasCache) {
-            this.resolveUncachedDiscoveredDevices().catch(() => { });
-        }
-
         if (!this.showInfoMessages) {
             return;
         }
+
+        // Use provided serial, fall back to IP→serial mapping if not provided
+        const actualSerial = serialNumber ?? this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
 
         // Get cached device directly from globalStateManager
         const cachedDevice = actualSerial
@@ -1558,8 +1584,8 @@ export class DeviceManager {
 
         this.finder.on('scan-ended', () => {
             this.emitter.emit('scan-ended');
-            // Health check devices that didn't respond to the scan (stale cache)
-            this.healthCheckStaleDevices().catch(() => { });
+            //devices that didn't respond to the scan are NOT eagerly health-checked here —
+            //lazy hydration on read covers them the next time a view asks for the list
         });
     }
 
@@ -1603,27 +1629,6 @@ export class DeviceManager {
 
     private notifyFocusGained() {
         this.networkChangeMonitor.start();
-        // Resolve any discovered devices without cache that appeared while unfocused
-        this.resolveUncachedDiscoveredDevices().catch(() => { });
-    }
-
-    /**
-     * Health check discovered devices that don't have cached info.
-     * Called on focus gain to resolve devices that appeared while VS Code was unfocused.
-     */
-    private async resolveUncachedDiscoveredDevices(): Promise<void> {
-        const uncached = this.discoveredDevices.filter(entry => {
-            return !entry.serialNumber || !this.hasDeviceCache(entry.serialNumber);
-        });
-
-        if (uncached.length === 0) {
-            return;
-        }
-
-        // Health check each uncached device in parallel
-        await Promise.all(
-            uncached.map(entry => this.healthCheckDevice({ ip: entry.ip, serialNumber: entry.serialNumber }, false, false).catch(() => { }))
-        );
     }
 
     private notifyFocusLost() {
