@@ -21,7 +21,7 @@ import type { DeviceInfo } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
 import type { BrightScriptCommands } from './BrightScriptCommands';
 import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
-import type { ConfiguredDevice, DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
+import type { DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
 import type { CredentialStore } from './managers/CredentialStore';
 
 
@@ -134,29 +134,30 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result.stagingFolderPath = result.stagingDir;
 
             result = await this.sanitizeConfiguration(result, folder);
-            result = await this.processEnvFile(folder, result);
-            const [resultAfterHost, device] = await this.processHostParameter(result);
-            result = resultAfterHost;
-            result = await this.processPasswordParameter(config, result, device);
+            result = await this.processEnvVariables(folder, result);
+            result = await this.processHostParameter(result);
+            result = await this.processPasswordParameter(config, result);
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
             result = this.processDapLogFilePath(folder, result);
 
-            const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
-            statusbarItem.text = '$(sync~spin) Fetching device info';
-            statusbarItem.show();
-            try {
-                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true, timeout: 4000 });
-            } catch (e) {
-                // a failed deviceInfo request should NOT fail the launch
-                console.error(`Failed to fetch device info for ${result.host}`, e);
+            // `processHostParameter` attached the raw device-info it gathered while probing the host.
+            // Enhance a local copy here for the developer-mode check + telemetry (no request to the device).
+            if (result.deviceInfo) {
+                deviceInfo = rokuDeploy.enhanceDeviceInfo(result.deviceInfo);
             }
-            statusbarItem.dispose();
 
             if (deviceInfo && !deviceInfo.developerEnabled) {
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
             }
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
+
+            //advertise the optional features this client supports to the debug adapter. This is populated by the
+            //extension itself (not a user-facing setting) and gates optional roku-debug behavior like the
+            //`processStagingDir` reverse request.
+            result.clientCapabilities = {
+                supportsProcessStagingDir: true
+            };
 
             return result;
         } catch (e) {
@@ -414,12 +415,17 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Reads the manifest file and updates any config values that are mapped to it
+     * Resolves any `${env:*}` placeholders in the config using the process environment
+     * and (if present) the optional `.env` file, without mutating `process.env`.
      * @param folder current workspace folder
      * @param config current config object
      */
-    private async processEnvFile(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
-        //process .env file if present
+    private async processEnvVariables(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+        //start with a copy of the current process environment so we never mutate process.env
+        let environmentValues = { ...process.env };
+        let loadedEnvFile = false;
+
+        //layer any values from the .env file on top of the process environment (the .env file is optional)
         if (config.envFile) {
             let envFilePath = config.envFile;
             //resolve ${workspaceFolder} so we can actually load the .env file now
@@ -427,46 +433,52 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 envFilePath = config.envFile.replace('${workspaceFolder}', folder.uri.fsPath);
             }
             if (await this.util.fileExists(envFilePath) === false) {
-                throw new Error(`Cannot find .env file at "${envFilePath}`);
+                //the .env file is optional, so just warn instead of failing the debug session
+                console.warn(`Cannot find .env file at "${envFilePath}". Falling back to the process environment for '\${env:*}' values.`);
+            } else {
+                //parse the .env file, letting its values override the process environment
+                environmentValues = {
+                    ...environmentValues,
+                    ...dotenv.parse(await this.fsExtra.readFile(envFilePath))
+                };
+                loadedEnvFile = true;
             }
-            //parse the .env file
-            let envConfig = dotenv.parse(await this.fsExtra.readFile(envFilePath));
+        }
 
-            // temporarily convert entire config to string for any envConfig replacements.
-            let configString = JSON.stringify(config);
+        // temporarily convert entire config to string for any environment replacements.
+        let configString = JSON.stringify(config);
+        let match: RegExpMatchArray;
+        let regexp = /\$\{env:([\w\d_]*)\}/g;
+        let updatedConfigString = configString;
+
+        // apply any defined values to env placeholders
+        while ((match = regexp.exec(configString))) {
+            let environmentVariableName = match[1];
+            let environmentVariableValue = environmentValues[environmentVariableName];
+
+            if (environmentVariableValue) {
+                updatedConfigString = updatedConfigString.replace(match[0], environmentVariableValue);
+            }
+        }
+
+        config = JSON.parse(updatedConfigString);
+
+        let configDefaults = {
+            rootDir: config.rootDir,
+            ...this.configDefaults
+        };
+
+        // apply any default values to env placeholders
+        for (let key in config) {
+            let configValue = config[key];
             let match: RegExpMatchArray;
-            let regexp = /\$\{env:([\w\d_]*)\}/g;
-            let updatedConfigString = configString;
-
-            // apply any defined values to env placeholders
-            while ((match = regexp.exec(configString))) {
+            //replace all environment variable placeholders with their values
+            while ((match = regexp.exec(configValue))) {
                 let environmentVariableName = match[1];
-                let environmentVariableValue = envConfig[environmentVariableName];
-
-                if (environmentVariableValue) {
-                    updatedConfigString = updatedConfigString.replace(match[0], environmentVariableValue);
-                }
+                configValue = configDefaults[key];
+                console.log(`The configuration value for ${key} was not found in the environment variables${loadedEnvFile ? ' or env file' : ''} under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
             }
-
-            config = JSON.parse(updatedConfigString);
-
-            let configDefaults = {
-                rootDir: config.rootDir,
-                ...this.configDefaults
-            };
-
-            // apply any default values to env placeholders
-            for (let key in config) {
-                let configValue = config[key];
-                let match: RegExpMatchArray;
-                //replace all environment variable placeholders with their values
-                while ((match = regexp.exec(configValue))) {
-                    let environmentVariableName = match[1];
-                    configValue = configDefaults[key];
-                    console.log(`The configuration value for ${key} was not found in the env file under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
-                }
-                config[key] = configValue;
-            }
+            config[key] = configValue;
         }
         return config;
     }
@@ -476,13 +488,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * ${activeHost} is a deprecated alias for ${promptForHost}.
      * Both use the active device when it's set and passes a health check, otherwise fall back to the device picker.
      *
-     * Returns the updated config alongside the probed `RokuDevice` so downstream
-     * password resolution can look up credentials by serial number without
-     * re-fetching device info. Device is undefined when the resolved host is
-     * unreachable or not a developer-enabled Roku.
+     * Assigns the raw `device-info` gathered while probing the resolved host onto `config.deviceInfo`,
+     * so downstream password resolution and the debug session can reuse it without re-fetching.
+     * Throws if the device couldn't be reached (no device-info came back).
      * @param config  current config object
      */
-    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<[BrightScriptLaunchConfiguration, RokuDevice | undefined]> {
+    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         const trimmedHost = config.host.trim();
         const needsHostPrompt =
             trimmedHost === '' ||
@@ -490,12 +501,23 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             trimmedHost === '${activeHost}' ||
             config?.deepLinkUrl?.includes('${promptForHost}');
 
+        let device: RokuDevice | undefined;
+
         if (needsHostPrompt) {
-            const healthyActiveHost = await this.brightScriptCommands.getHealthyActiveHost();
-            if (healthyActiveHost) {
-                config.host = healthyActiveHost;
-            } else {
-                config.host = await this.userInputManager.promptForHost();
+            // both the active-host lookup and the picker probe + register the device in the device
+            // manager, so reuse it below instead of probing again
+            let resolved = await this.brightScriptCommands.getHealthyActiveHost();
+            if (!resolved) {
+                resolved = await this.userInputManager.promptForHost();
+                if (resolved?.host) {
+                    //the active device (if there was one) couldn't be located and the user picked a device
+                    //themselves, so forget the saved active device unless they picked that same device
+                    await this.deviceManager.forgetActiveDeviceIfDifferent(resolved.host);
+                }
+            }
+            config.host = resolved?.host;
+            if (resolved?.host) {
+                device = this.deviceManager.getDevice({ ip: resolved.host });
             }
         }
 
@@ -506,11 +528,19 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             await this.context.workspaceState.update('remoteHost', config.host);
         }
 
-        // Probe the resolved host so downstream password resolution has fresh SN/deviceInfo.
-        // Unreachable or filtered hosts yield no registered device; password resolution handles that.
-        const device = await this.deviceManager.validateAndAddDevice(config.host);
+        // If the host didn't come from the picker, probe it so we have fresh SN/deviceInfo.
+        device ??= await this.deviceManager.validateAndAddDevice(config.host);
 
-        return [config, device];
+        // A reachable developer device always returns device-info; its absence means we couldn't reach it.
+        if (!device?.deviceInfo || Object.keys(device.deviceInfo).length === 0) {
+            throw new Error(`Debug session terminated: unable to reach device at '${config.host}'.`);
+        }
+
+        // Attach the raw device-info so downstream password resolution and the debug session can reuse it
+        // without another request to the device.
+        config.deviceInfo = device.deviceInfo;
+
+        return config;
     }
 
     /**
@@ -525,17 +555,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * the user is prompted.
      *
      * @param config  the raw launch configuration as received from VS Code
-     * @param result  the merged/resolved config being built up
-     * @param device  the probed device from `processHostParameter`, or undefined
-     *                when the host is unreachable / not a developer Roku
+     * @param result  the merged/resolved config being built up. Its `deviceInfo` (set by
+     *                `processHostParameter`) supplies the serial number used to look up credentials.
      */
     private async processPasswordParameter(
         config: BrightScriptLaunchConfiguration,
-        result: BrightScriptLaunchConfiguration,
-        device: RokuDevice | undefined
+        result: BrightScriptLaunchConfiguration
     ): Promise<BrightScriptLaunchConfiguration> {
         const host = result.host;
-        const serialNumber = device?.serialNumber;
+        const serialNumber = result.deviceInfo?.['serial-number'];
 
         // Opportunistically drain any legacy IP-keyed password that still lives in
         // workspaceState from pre-refactor extension installs. Reads never consult
@@ -547,12 +575,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             const validation = await this.deviceManager.validateDevicePassword(host, legacyPassword);
             if (validation === 'ok') {
                 await this.clearLegacyIpKeyedPassword(host);
-                // A legacy entry is explicit historical opt-in: seed the cred store so
-                // acceptPassword's "refresh existing" branch persists it forward.
+                // A legacy entry is explicit historical opt-in: persist it to the cred store
+                // (unconditionally, unlike the normal "refresh existing only" gate) and the
+                // global fallback, then use it.
                 if (serialNumber) {
                     await this.credentialStore.setPassword(serialNumber, legacyPassword);
                 }
-                await this.acceptPassword(result, legacyPassword, serialNumber);
+                result.password = legacyPassword;
+                await this.context.workspaceState.update('remotePassword', legacyPassword);
                 return result;
             } else if (validation === 'bad-password') {
                 // Reads don't use the legacy store anymore, so a proven-wrong entry is dead weight.
@@ -562,136 +592,24 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             // fall through to the normal candidate flow, which will surface its own error.
         }
 
-        const candidates = await this.collectPasswordCandidates(config, result, serialNumber);
-
-        for (const candidate of candidates) {
-            const validation = await this.deviceManager.validateDevicePassword(host, candidate);
-            if (validation === 'ok') {
-                await this.acceptPassword(result, candidate, serialNumber);
-                return result;
-            }
-            if (validation === 'unreachable') {
-                throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
-            }
-            // 'bad-password' — fall through to the next candidate
+        // Resolve and validate the password against the device, trying the launch config's own
+        // `result.password`/`config.password` after the standard credential sources. The resolver
+        // prompts (and persists an accepted password) the same way it does for the other commands.
+        const resolution = await this.userInputManager.resolveDevicePassword({
+            host: host,
+            serialNumber: serialNumber,
+            extraCandidates: [result.password, config.password]
+        });
+        if (resolution.status === 'unreachable') {
+            throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
         }
-
-        // No stored / configured candidate was accepted. Prompt the user, and keep
-        // re-prompting after each bad-password attempt until they either enter a
-        // working one or cancel (empty / Esc). Cred-store persistence is gated
-        // inside acceptPassword by whether an entry already exists for this SN.
-        let placeholder = (candidates ?? []).length > 0 ? 'The password was rejected by the device. Try again, or press Esc to cancel.' : 'The Roku development webserver password.';
-        while (true) {
-            const value = await this.promptForPassword(placeholder);
-            if (!value) {
-                throw new Error('Debug session terminated: password is required.');
-            }
-            const validation = await this.deviceManager.validateDevicePassword(host, value);
-            if (validation === 'unreachable') {
-                throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
-            }
-            if (validation === 'ok') {
-                await this.acceptPassword(result, value, serialNumber);
-                return result;
-            }
-            // 'bad-password' — re-prompt with a hint so the user knows why their input came back.
-            placeholder = 'The password was rejected by the device. Try again, or press Esc to cancel.';
+        if (resolution.status === 'cancelled') {
+            throw new Error('Debug session terminated: password is required.');
         }
-    }
-
-    /**
-     * Password input dialog. Returns the typed value, or undefined on Esc / hide.
-     */
-    private async promptForPassword(placeholder: string): Promise<string | undefined> {
-        const input = vscode.window.createInputBox();
-        input.placeholder = placeholder;
-        try {
-            return await new Promise<string | undefined>(resolve => {
-                input.onDidAccept(() => {
-                    resolve(input.value);
-                    input.hide();
-                });
-                input.onDidHide(() => {
-                    resolve(undefined);
-                });
-                input.show();
-            });
-        } finally {
-            input.dispose();
-        }
-    }
-
-    /**
-     * Build the ordered, de-duplicated list of candidate passwords to try when
-     * resolving credentials for a launch. Variable placeholders and empty
-     * values are filtered out so the validation loop only sees real passwords.
-     */
-    private async collectPasswordCandidates(
-        config: BrightScriptLaunchConfiguration,
-        result: BrightScriptLaunchConfiguration,
-        serialNumber: string | undefined
-    ): Promise<string[]> {
-        const candidates: string[] = [];
-        const addCandidate = (value: string | undefined | null) => {
-            if (!value) {
-                return;
-            }
-            const trimmed = value.trim();
-            if (!trimmed) {
-                return;
-            }
-            if (trimmed === '${promptForPassword}' || trimmed === '${activeHostPassword}') {
-                return;
-            }
-            candidates.push(trimmed);
-        };
-
-        if (serialNumber) {
-            addCandidate(await this.credentialStore.getPassword(serialNumber));
-
-            const scanScope = (devices: ConfiguredDevice[] | undefined) => {
-                for (const entry of devices ?? []) {
-                    if (entry.serialNumber === serialNumber) {
-                        addCandidate(entry.password);
-                    }
-                }
-            };
-            const rootInspection = vscode.workspace.getConfiguration('brightscript').inspect<ConfiguredDevice[]>('devices');
-            scanScope(rootInspection?.globalValue);
-            scanScope(rootInspection?.workspaceValue);
-            for (const folder of vscode.workspace.workspaceFolders ?? []) {
-                const folderInspection = vscode.workspace.getConfiguration('brightscript', folder.uri).inspect<ConfiguredDevice[]>('devices');
-                scanScope(folderInspection?.workspaceFolderValue);
-            }
-        }
-
-        addCandidate(this.deviceManager.getDefaultPassword());
-        addCandidate(result.password);
-        addCandidate(config.password);
-
-        // Dedupe while preserving insertion order (Set iterates in insertion order),
-        // so a password referenced by multiple sources is still only validated once.
-        return Array.from(new Set(candidates));
-    }
-
-    /**
-     * Commit an accepted password: write it to the resolved config and update the
-     * global `remotePassword` fallback. When the cred store already has an entry
-     * for this serial, refresh it so future launches short-circuit on candidate #1.
-     * If no entry exists yet, the cred store is left alone, since persisting a
-     * password is an explicit user opt-in (via the `setDevicePassword` command,
-     * `brightscript.devices[].password` in settings, or legacy migration).
-     */
-    private async acceptPassword(
-        result: BrightScriptLaunchConfiguration,
-        password: string,
-        serialNumber: string | undefined
-    ): Promise<void> {
-        result.password = password;
-        if (serialNumber && (await this.credentialStore.getPassword(serialNumber)) !== undefined) {
-            await this.credentialStore.setPassword(serialNumber, password);
-        }
-        await this.context.workspaceState.update('remotePassword', password);
+        result.password = resolution.password;
+        // Keep the global password fallback in sync so later launches resolve without re-prompting.
+        await this.context.workspaceState.update('remotePassword', resolution.password);
+        return result;
     }
 
     private readonly legacyPasswordStoreKey = 'devicePasswords';

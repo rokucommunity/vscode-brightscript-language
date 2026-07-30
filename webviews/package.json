@@ -7,7 +7,7 @@
     "watch": "vite build --watch",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "audit": "npm audit"
+    "audit": "npm audit --audit-level=high"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.1.1",
@@ -18,6 +18,6 @@
     "svelte-codicons": "^0.21.0",
     "tslib": "^2.4.1",
     "typescript": "^5.5.4",
-    "vite": "^6.4.2"
+    "vite": "^6.4.3"
   }
 }

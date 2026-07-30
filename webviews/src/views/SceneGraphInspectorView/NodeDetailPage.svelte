@@ -231,9 +231,8 @@
             const element = elements[0]
             const id = element.id;
             if (element.checked === true || element.checked === false) {
+                // Assigning checked fires the checkbox's change event, which runs onBooleanFieldClick to push the reset value
                 element.checked = fields[id].value;
-                // If we dispatch the event like before the new value gets overwritten
-                onBooleanFieldClick.call(element);
             } else {
                 element.value = fields[id].value;
                 // Have to manually trigger the observer
@@ -454,7 +453,7 @@
                     appearance="icon"
                     class="inline"
                     title="Auto Refresh"
-                    on:click={onAutoRefreshClick} />
+                    on:change={onAutoRefreshClick} />
                 <vscode-button
                     appearance="icon"
                     title="Refresh"
@@ -560,7 +559,7 @@
                                 id={id}
                                 class="fieldValue"
                                 checked={field.value}
-                                on:click={onBooleanFieldClick} />
+                                on:change={onBooleanFieldClick} />
                         {:else if field.type === 'roFloat' || field.type === 'roInt'}
                             <NumberField
                                 title="Hold down shift to increment faster"
@@ -633,7 +632,7 @@
                                     <vscode-checkbox
                                         id="{id}.{collectionItemId}"
                                         checked={item}
-                                        on:click={onBooleanFieldClick} />
+                                        on:change={onBooleanFieldClick} />
                                 {:else}
                                     <vscode-text-field
                                         id="{id}.{collectionItemId}"
@@ -680,7 +679,7 @@
                                     <vscode-checkbox
                                         id="{id}.{collectionItemId}"
                                         checked={item}
-                                        on:click={onBooleanFieldClick} />
+                                        on:change={onBooleanFieldClick} />
                                 {:else if typeof item === 'object'}
                                     <vscode-text-area readonly cols="30" resize="both" value="{JSON.stringify(item)}" />
                                 {:else if typeof item === 'number'}
