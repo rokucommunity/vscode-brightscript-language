@@ -173,7 +173,7 @@ describe('DeviceManager', () => {
             const eventSpy = sinon.spy();
             manager.on('broadcast-ordered', eventSpy);
 
-            manager.submitBroadcast('network');
+            manager['submitBroadcast']('network');
 
             expect(eventSpy.calledOnce).to.be.true;
             expect(eventSpy.firstCall.args[0].reason).to.equal('network');
@@ -186,7 +186,7 @@ describe('DeviceManager', () => {
             const eventSpy = sinon.spy();
             manager.on('reconcile-ordered', eventSpy);
 
-            manager.submitReconcile('config-changed');
+            manager['submitReconcile']('config-changed');
 
             expect(eventSpy.calledOnce).to.be.true;
             expect(eventSpy.firstCall.args[0].reason).to.equal('config-changed');
@@ -196,9 +196,9 @@ describe('DeviceManager', () => {
         it('different reasons accumulate instead of replacing each other', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            manager.submitBroadcast('sleep');
-            manager.submitBroadcast('network');
-            manager.submitBroadcast('stale');
+            manager['submitBroadcast']('sleep');
+            manager['submitBroadcast']('network');
+            manager['submitBroadcast']('stale');
 
             expect(manager.getPendingBroadcastReasons()).to.have.members(['sleep', 'network', 'stale']);
         });
@@ -206,9 +206,9 @@ describe('DeviceManager', () => {
         it('the same reason never queues twice', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            manager.submitBroadcast('stale');
-            manager.submitBroadcast('stale');
-            manager.submitBroadcast('stale');
+            manager['submitBroadcast']('stale');
+            manager['submitBroadcast']('stale');
+            manager['submitBroadcast']('stale');
 
             expect(manager.getPendingBroadcastReasons()).to.eql(['stale']);
         });
@@ -216,8 +216,8 @@ describe('DeviceManager', () => {
         it('broadcast and reconcile pending sets are independent', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            manager.submitBroadcast('network');
-            manager.submitReconcile('config-changed');
+            manager['submitBroadcast']('network');
+            manager['submitReconcile']('config-changed');
 
             expect(manager.getPendingBroadcastReasons()).to.include('network');
             expect(manager.getPendingReconcileReasons()).to.include('config-changed');
@@ -240,7 +240,7 @@ describe('DeviceManager', () => {
 
         it('consumes and executes a pending broadcast, passing its reason through', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
-            manager.submitBroadcast('network');
+            manager['submitBroadcast']('network');
 
             const result = manager.fulfillPendingBroadcast();
 
@@ -251,8 +251,8 @@ describe('DeviceManager', () => {
 
         it('consumes all accumulated reasons in a single execution', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
-            manager.submitBroadcast('sleep');
-            manager.submitBroadcast('network');
+            manager['submitBroadcast']('sleep');
+            manager['submitBroadcast']('network');
 
             const result = manager.fulfillPendingBroadcast();
 
@@ -264,7 +264,7 @@ describe('DeviceManager', () => {
 
         it('passes a stale reason through (broadcast applies the staleness gate itself)', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(false);
-            manager.submitBroadcast('stale');
+            manager['submitBroadcast']('stale');
 
             manager.fulfillPendingBroadcast();
 
@@ -273,7 +273,7 @@ describe('DeviceManager', () => {
 
         it('leaves except-listed reasons QUEUED instead of consuming them', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
-            manager.submitBroadcast('stale');
+            manager['submitBroadcast']('stale');
 
             const result = manager.fulfillPendingBroadcast({ except: ['stale'] });
 
@@ -284,8 +284,8 @@ describe('DeviceManager', () => {
 
         it('when a real reason triggers execution, the whole set is cleared — excepted reasons included', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
-            manager.submitBroadcast('stale');
-            manager.submitBroadcast('network');
+            manager['submitBroadcast']('stale');
+            manager['submitBroadcast']('network');
 
             const result = manager.fulfillPendingBroadcast({ except: ['stale'] });
 
@@ -305,7 +305,7 @@ describe('DeviceManager', () => {
 
         it('is atomic: a second fulfillment finds the set empty', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
-            manager.submitBroadcast('network');
+            manager['submitBroadcast']('network');
 
             expect(manager.fulfillPendingBroadcast()).to.be.true;
             expect(manager.fulfillPendingBroadcast()).to.be.false;
@@ -315,19 +315,19 @@ describe('DeviceManager', () => {
         it('passes the reconcile reason through (reconcile decides cache bypass itself)', () => {
             const reconcileStub = sinon.stub(manager as any, 'reconcile');
 
-            manager.submitReconcile('config-changed');
+            manager['submitReconcile']('config-changed');
             expect(manager.fulfillPendingReconcile()).to.be.true;
             expect(reconcileStub.calledOnceWith(['config-changed'])).to.be.true;
 
             reconcileStub.resetHistory();
-            manager.submitReconcile('refresh-clicked');
+            manager['submitReconcile']('refresh-clicked');
             expect(manager.fulfillPendingReconcile()).to.be.true;
             expect(reconcileStub.calledOnceWith(['refresh-clicked'])).to.be.true;
         });
 
         it('leaves an except-listed reconcile queued', () => {
             const reconcileStub = sinon.stub(manager as any, 'reconcile');
-            manager.submitReconcile('stale');
+            manager['submitReconcile']('stale');
 
             expect(manager.fulfillPendingReconcile({ except: ['stale'] })).to.be.false;
             expect(reconcileStub.called).to.be.false;
@@ -351,8 +351,8 @@ describe('DeviceManager', () => {
         it('fulfillPendingOrders passes the except list to both order types', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
             const reconcileStub = sinon.stub(manager as any, 'reconcile');
-            manager.submitBroadcast('stale');
-            manager.submitReconcile('stale');
+            manager['submitBroadcast']('stale');
+            manager['submitReconcile']('stale');
 
             const result = manager.fulfillPendingOrders({ except: ['stale'] });
 
@@ -617,12 +617,12 @@ describe('DeviceManager', () => {
             const handler = sinon.spy();
             const unsubscribe = manager.on('broadcast-ordered', handler);
 
-            manager.submitBroadcast('network');
+            manager['submitBroadcast']('network');
             expect(handler.calledOnce).to.be.true;
 
             unsubscribe();
 
-            manager.submitBroadcast('network');
+            manager['submitBroadcast']('network');
             expect(handler.calledOnce).to.be.true; // Still just one call (unsubscribed)
         });
 

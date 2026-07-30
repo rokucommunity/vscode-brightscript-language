@@ -597,7 +597,7 @@ export class DeviceManager {
      * set when it opens. Reasons accumulate independently (e.g. `stale` and `sleep` can both
      * be pending) but the same reason never queues twice.
      */
-    public submitBroadcast(reason: BroadcastReason): void {
+    private submitBroadcast(reason: BroadcastReason): void {
         this.pendingBroadcastReasons.add(reason);
         const order: BroadcastOrder = { reason: reason, timestamp: Date.now() };
         this.emitter.emit('broadcast-ordered', order);
@@ -607,7 +607,7 @@ export class DeviceManager {
      * Submit a reconcile (health-check-all) order. Same set + event semantics as
      * {@link submitBroadcast}.
      */
-    public submitReconcile(reason: ReconcileReason): void {
+    private submitReconcile(reason: ReconcileReason): void {
         this.pendingReconcileReasons.add(reason);
         const order: ReconcileOrder = { reason: reason, timestamp: Date.now() };
         this.emitter.emit('reconcile-ordered', order);
@@ -680,9 +680,10 @@ export class DeviceManager {
     }
 
     /**
-     * The "user clicked refresh / scan" interaction (spec: Clicking refresh): always submits a
-     * broadcast order AND a reconcile order, regardless of how recently either ran. Views report
-     * the interaction; which order types it implies is the manager's business.
+     * The "user clicked refresh / scan" interaction (spec: Clicking refresh) — the only order
+     * submission views can make. Always submits a broadcast order AND a reconcile order,
+     * regardless of how recently either ran; the split into order types is internal, like every
+     * other trigger's.
      */
     public submitRefreshOrders(): void {
         this.submitBroadcast('refresh-clicked');
