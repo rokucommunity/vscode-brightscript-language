@@ -16,7 +16,9 @@ describe('RceFinder', () => {
             getToken: () => Promise.resolve(token),
             onTokenChanged: (handler: () => void) => {
                 tokenChangedHandlers.push(handler);
-                return () => { };
+                return () => {
+                    tokenChangedHandlers = tokenChangedHandlers.filter((existingHandler) => existingHandler !== handler);
+                };
             }
         } as unknown as RceManager;
     }
@@ -87,6 +89,44 @@ describe('RceFinder', () => {
         await new Promise(setImmediate);
 
         expect(events).to.eql([[]]);
+    });
+
+    it('a scan requested mid-flight resolves with a trailing scan instead of the in-flight results', async () => {
+        const resolvers: Array<(devices: DeviceOut[]) => void> = [];
+        let listDevicesCalls = 0;
+        client = {
+            listDevices: () => {
+                listDevicesCalls++;
+                return new Promise<DeviceOut[]>((resolve) => {
+                    resolvers.push(resolve);
+                });
+            }
+        };
+        const events: DeviceOut[][] = [];
+        finder.on('devices', (result: DeviceOut[]) => events.push(result));
+
+        const firstScan = finder.scan();
+        //let the first scan reach listDevices before the overlapping requests arrive
+        await new Promise(setImmediate);
+        const secondScan = finder.scan();
+        const thirdScan = finder.scan();
+
+        resolvers[0]([{ id: 1 }] as any);
+        await firstScan;
+        //the mid-flight callers share ONE trailing scan; let it reach listDevices
+        await new Promise(setImmediate);
+        resolvers[1]([{ id: 2 }] as any);
+        await secondScan;
+        await thirdScan;
+
+        expect(listDevicesCalls).to.equal(2);
+        expect(events).to.eql([[{ id: 1 }], [{ id: 2 }]] as any);
+    });
+
+    it('dispose releases the token-changed subscription', () => {
+        expect(tokenChangedHandlers).to.have.length(1);
+        finder.dispose();
+        expect(tokenChangedHandlers).to.have.length(0);
     });
 
     describe('getCachedToken', () => {

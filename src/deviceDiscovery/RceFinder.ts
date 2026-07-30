@@ -16,14 +16,18 @@ export class RceFinder extends EventEmitter {
     ) {
         super();
         //a token change means devices may have appeared or disappeared; re-poll right away
-        this.rceManager.onTokenChanged(() => {
+        this.unsubscribeFromTokenChanged = this.rceManager.onTokenChanged(() => {
             void this.scan();
         });
     }
 
+    private unsubscribeFromTokenChanged: () => void;
+
     private pollTimer: ReturnType<typeof setInterval> | undefined;
 
-    private isScanning = false;
+    private activeScan: Promise<void> | undefined;
+
+    private queuedScan: Promise<void> | undefined;
 
     //the token used for the most recent scan, set right where scan() resolves the client. Since a
     //token change re-triggers a scan (see the constructor), this stays in sync with whichever token
@@ -60,13 +64,26 @@ export class RceFinder extends EventEmitter {
 
     /**
      * One-shot poll of the management api. Resolves without emitting when no token is configured.
-     * Overlapping calls are coalesced (a scan already in flight makes this a no-op).
+     * A call that lands while a scan is mid-flight resolves with a single trailing scan (shared by
+     * every such caller) rather than the in-flight one, since the in-flight scan's results can
+     * predate the call - for example a token change during the poll, or a health check asking for
+     * the device's current status.
      */
-    public async scan(): Promise<void> {
-        if (this.isScanning) {
-            return;
+    public scan(): Promise<void> {
+        if (this.activeScan === undefined) {
+            this.activeScan = this.runScan().finally(() => {
+                this.activeScan = undefined;
+            });
+            return this.activeScan;
         }
-        this.isScanning = true;
+        this.queuedScan ??= this.activeScan.then(() => {
+            this.queuedScan = undefined;
+            return this.scan();
+        });
+        return this.queuedScan;
+    }
+
+    private async runScan(): Promise<void> {
         try {
             this.cachedToken = await this.rceManager.getToken();
             const client = await this.rceManager.getClient();
@@ -80,8 +97,6 @@ export class RceFinder extends EventEmitter {
         } catch (e) {
             this.log(`RCE device poll failed: ${(e as Error).message}`);
             this.emit('error', e);
-        } finally {
-            this.isScanning = false;
         }
     }
 
@@ -115,6 +130,7 @@ export class RceFinder extends EventEmitter {
 
     public dispose(): void {
         this.stop();
+        this.unsubscribeFromTokenChanged();
         this.removeAllListeners();
     }
 }

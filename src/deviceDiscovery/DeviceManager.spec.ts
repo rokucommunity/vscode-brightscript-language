@@ -1405,6 +1405,28 @@ describe('DeviceManager', () => {
             expect(manager.getDevice('rce:83')?.rce?.id).to.equal('83');
         });
 
+        it('health checks a cloud device through a finder rescan, including one with no esn yet', async () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            fakeFinder.getCachedToken = () => 'secret';
+            fakeFinder.scan = sinon.stub().resolves();
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            //a just-booted device that has not reported an esn yet (keyed rce:83)
+            manager['onRceDevices']([rceDevice({ serial_number: null })] as any);
+            const device = manager.getAllDevices().find(x => x.rce);
+            expect(device.key).to.equal('rce:83');
+
+            expect(await manager.healthCheckDevice(device)).to.be.true;
+            expect(fakeFinder.scan.called).to.be.true;
+
+            //the same check reports unhealthy once the rescan shows the device stopped
+            manager['onRceDevices']([rceDevice({ serial_number: null, status: 'shutdown', running_device: null })] as any);
+            expect(await manager.healthCheckDevice(device)).to.be.false;
+        });
+
         it('consumes the devices event from an injected RceFinder and replaces the list on every poll', () => {
             const fakeFinder = new EventEmitter() as any;
             fakeFinder.start = () => { };

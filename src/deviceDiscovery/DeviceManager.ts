@@ -737,10 +737,12 @@ export class DeviceManager {
             return false;
         }
 
-        //cloud emulator devices are refreshed through the management api, not a LAN probe
+        //cloud emulator devices are refreshed through the management api, not a LAN probe. The
+        //post-scan lookup uses the stable rce id: a just-booted device has no esn yet (so a
+        //serial lookup finds nothing), and the key itself changes once an esn appears
         if (device.rce) {
             await this.rceFinder?.scan();
-            return this.getDevice({ serialNumber: device.serialNumber })?.deviceState === 'online';
+            return this.getDevice(`rce:${device.rce.id}`)?.deviceState === 'online';
         }
 
         // Cooldown is handled by fetchDeviceInfo cache; force bypasses it
