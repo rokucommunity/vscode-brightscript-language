@@ -657,18 +657,17 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      *                         check ahead of time
      */
     private async processNonLocalDeviceParameter(config: BrightScriptLaunchConfiguration, pickedRceStatus?: DeviceStatus): Promise<BrightScriptLaunchConfiguration> {
-        //a non-local session must never leave a stale LAN ip active underneath it - clear both (the
-        //same empty-string convention the clearActiveDevice command uses), and track the device by
-        //its DeviceManager key instead, when it resolves to one we already know about (a
-        //device-registry name doesn't correspond to anything this class tracks)
+        //a non-local session must never leave the previous session's device active underneath it -
+        //clear the host fields (the same empty-string convention the clearActiveDevice command uses)
+        //and re-point the device key: the resolved device's key when the device manager already knows
+        //it, otherwise cleared (a device-registry name, or a cloud device the finder hasn't
+        //registered yet), so remote commands can't keep targeting the previously active device
         await this.context.workspaceState.update('remoteHost', '');
         await vscodeContextManager.set('activeHost', '');
-        if (typeof config.device === 'object') {
-            const activeDevice = this.deviceManager.getDeviceByDeviceConfig(config.device);
-            if (activeDevice) {
-                await this.context.workspaceState.update('activeDeviceKey', activeDevice.key);
-            }
-        }
+        const activeDevice = typeof config.device === 'object'
+            ? this.deviceManager.getDeviceByDeviceConfig(config.device)
+            : undefined;
+        await this.context.workspaceState.update('activeDeviceKey', activeDevice?.key ?? '');
 
         //Cloud Emulator api tokens come from SecretStorage (the RceManager active account) only - a
         //launch config can never supply its own, so any token already present here is config-supplied

@@ -574,6 +574,29 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(contextSetStub.calledWith('activeHost', '')).to.be.true;
             });
 
+            it('clears activeDeviceKey when a config-provided cloud emulator device is not known to the device manager', async () => {
+                const device = { esn: 'ESN123' };
+                //seed the previous session's active device - it must not survive underneath this one
+                await vscode.context.workspaceState.update('activeDeviceKey', 's:OLD-LAN-DEVICE');
+                sinon.stub(vscodeContextManager, 'set').resolves();
+                sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns(undefined);
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
+
+                await (configProvider as any).processHostParameter({ host: '', device: device });
+
+                expect(vscode.context.workspaceState.get('activeDeviceKey')).to.equal('');
+            });
+
+            it('clears activeDeviceKey for a device-registry name session', async () => {
+                await vscode.context.workspaceState.update('activeDeviceKey', 's:OLD-LAN-DEVICE');
+                sinon.stub(vscodeContextManager, 'set').resolves();
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
+
+                await (configProvider as any).processHostParameter({ host: '', device: 'my-registry-device' });
+
+                expect(vscode.context.workspaceState.get('activeDeviceKey')).to.equal('');
+            });
+
             it('clears remoteHost/activeHost for a cloud emulator pick from the picker, even when it is not running', async () => {
                 //no rceToken here - it's always injected from the active Cloud Emulator account
                 const device = { id: '84' };
