@@ -193,7 +193,6 @@ describe('BrightScriptFileUtils ', () => {
 
         beforeEach(() => {
             deviceManager = {
-                getDevice: sinon.stub(),
                 deviceEngaged: sinon.stub().resolves(true)
             };
             const localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
@@ -208,22 +207,10 @@ describe('BrightScriptFileUtils ', () => {
             (vscode.commands.registerCommand as any).restore();
         });
 
-        it('decodes the encoded tree key via getDevice before engaging the device', async () => {
-            const device = { ip: '192.168.1.100', serialNumber: 'ABC123', key: 's:ABC123' };
-            deviceManager.getDevice.returns(device);
-
+        it('engages the device by its encoded tree key (the manager resolves the key)', async () => {
             await capturedCommands['extension.brightscript.refreshDevice']({ key: 's:ABC123' });
 
-            assert.isTrue(deviceManager.getDevice.calledOnceWith('s:ABC123'));
-            assert.isTrue(deviceManager.deviceEngaged.calledOnceWith(device));
-        });
-
-        it('does nothing when the key does not resolve to a device', async () => {
-            deviceManager.getDevice.returns(undefined);
-
-            await capturedCommands['extension.brightscript.refreshDevice']({ key: 's:GONE' });
-
-            assert.isTrue(deviceManager.deviceEngaged.notCalled);
+            assert.isTrue(deviceManager.deviceEngaged.calledOnceWith('s:ABC123'));
         });
     });
 

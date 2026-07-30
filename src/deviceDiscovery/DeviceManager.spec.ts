@@ -393,6 +393,28 @@ describe('DeviceManager', () => {
             expect(isHealthy).to.be.true;
             expect(healthCheckStub.calledOnceWith(device, true, false)).to.be.true;
         });
+
+        it('resolves an encoded tree key itself', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['discoveredDevices'].push({ ip: '192.168.1.60', serialNumber: 'KEY60', state: 'online' } as any);
+            const resolveStub = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
+
+            const isHealthy = await manager.deviceEngaged('s:KEY60');
+
+            expect(isHealthy).to.be.true;
+            expect(resolveStub.calledOnce).to.be.true;
+            expect(resolveStub.firstCall.args[0]).to.include({ serialNumber: 'KEY60' });
+        });
+
+        it('reports an unknown key as unhealthy without hitting the network', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const resolveStub = sinon.stub(manager as any, 'resolveDevice');
+
+            const isHealthy = await manager.deviceEngaged('s:GONE');
+
+            expect(isHealthy).to.be.false;
+            expect(resolveStub.called).to.be.false;
+        });
     });
 
     describe('stale timers', () => {

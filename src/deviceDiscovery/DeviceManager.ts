@@ -700,10 +700,12 @@ export class DeviceManager {
      * picker, or is about to launch to it (spec: "explicit engagement with that specific
      * device"). Freshens the device now (bypassing its cache trust window) and reports whether
      * it responded. Fire-and-forget callers can ignore the result; callers that need to know
-     * (picker validation, pre-launch checks) await it.
+     * (picker validation, pre-launch checks) await it. Accepts anything {@link getDevice} can
+     * look up (encoded tree key, ip/serial lookup) or a device object; an unknown device is
+     * simply reported unhealthy.
      */
-    public async deviceEngaged(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }): Promise<boolean> {
-        return this.healthCheckDevice(deviceOrLookup, true, false);
+    public async deviceEngaged(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<boolean> {
+        return this.healthCheckDevice(deviceKeyOrLookup, true, false);
     }
 
     /**
@@ -790,11 +792,16 @@ export class DeviceManager {
         this.clearCurrentDeviceList();
     }
 
-    private async healthCheckDevice(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }, force = false, doSyntheticDelay = true): Promise<boolean> {
+    private async healthCheckDevice(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }, force = false, doSyntheticDelay = true): Promise<boolean> {
         // If already a device object with deviceState, use it directly; otherwise look it up
-        const device = 'deviceState' in deviceOrLookup
-            ? deviceOrLookup
-            : this.getDevice(deviceOrLookup);
+        let device: RokuDevice | undefined;
+        if (typeof deviceKeyOrLookup === 'string') {
+            device = this.getDevice(deviceKeyOrLookup);
+        } else if ('deviceState' in deviceKeyOrLookup) {
+            device = deviceKeyOrLookup;
+        } else {
+            device = this.getDevice(deviceKeyOrLookup);
+        }
 
         if (!device) {
             return false;

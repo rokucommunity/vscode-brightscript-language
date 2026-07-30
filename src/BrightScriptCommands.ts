@@ -70,12 +70,9 @@ export class BrightScriptCommands {
         });
 
         // Refresh a single device (inline button on hover in devices panel).
-        // item.key is the encoded tree key ("s:{serial}" or "i:{ip}") — decode it via getDevice
+        // item.key is the encoded tree key ("s:{serial}" or "i:{ip}")
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
-            const device = this.deviceManager.getDevice(item.key);
-            if (device) {
-                await this.deviceManager.deviceEngaged(device);
-            }
+            await this.deviceManager.deviceEngaged(item.key);
         });
 
         this.registerCommand('sendRemoteText', async () => {
