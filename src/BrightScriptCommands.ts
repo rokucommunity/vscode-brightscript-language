@@ -6,7 +6,6 @@ import { captureScreenshotCommand } from './commands/CaptureScreenshotCommand';
 import { rekeyAndPackageCommand } from './commands/RekeyAndPackageCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import { util } from './util';
-import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
 import type { ConfiguredDevice, DeviceManager, HostWithDeviceInfo, RokuDevice } from './deviceDiscovery/DeviceManager';
@@ -15,7 +14,6 @@ import type { UserInputManager } from './managers/UserInputManager';
 import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheCommand';
 import type { LocalPackageManager } from './managers/LocalPackageManager';
 import { profilingCommands } from './commands/ProfilingCommands';
-import { vscodeContextManager } from './managers/VscodeContextManager';
 import type { CredentialStore } from './managers/CredentialStore';
 import type { DeviceTargetManager } from './managers/DeviceTargetManager';
 import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
@@ -39,7 +37,6 @@ export class BrightScriptCommands {
     }
 
     private fileUtils: BrightScriptFileUtils;
-    public host: string;
     public password: string;
     public workspacePath: string;
     private keypressNotifiers = [] as ((key: string, literalCharacter: boolean) => void)[];
@@ -450,20 +447,14 @@ export class BrightScriptCommands {
                 throw new Error('Tried to set active device but failed.');
             }
 
-            //track the active device by its DeviceManager key, falling back to a synthesized
-            //ip-based key when the device manager doesn't know about this ip yet (a brand-new
-            //manual/typed entry)
+            //track the device by its DeviceManager key, falling back to a synthesized ip-based key
+            //when the device manager doesn't know about this ip yet (a brand-new manual/typed
+            //entry). Setting the active device also re-points the remote-control target (the fluid
+            //key that otherwise follows sideloads and remote picker picks) - but never the other
+            //way around: only this command writes activeDeviceKey
             const activeDeviceKey = device?.key ?? `i:${ip}`;
             await this.context.workspaceState.update('activeDeviceKey', activeDeviceKey);
-
-            if (device?.rce) {
-                //a cloud device has no ip; never leave a stale LAN ip active underneath it
-                await this.context.workspaceState.update('remoteHost', '');
-                await vscodeContextManager.set('activeHost', '');
-            } else {
-                await this.context.workspaceState.update('remoteHost', ip);
-                await vscodeContextManager.set('activeHost', ip);
-            }
+            await this.context.workspaceState.update('remoteDeviceKey', activeDeviceKey);
 
             const label = device ? this.deviceManager.getDeviceDisplayName(device, true) : ip;
             await util.showTimedNotification(`'${label}' set as active device`);
@@ -607,9 +598,8 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('clearActiveDevice', async () => {
-            await this.context.workspaceState.update('remoteHost', '');
-            await vscodeContextManager.set('activeHost', '');
             await this.context.workspaceState.update('activeDeviceKey', '');
+            await this.context.workspaceState.update('remoteDeviceKey', '');
             await util.showTimedNotification('Active device cleared');
         });
 
@@ -882,10 +872,15 @@ export class BrightScriptCommands {
      * - An explicit target wins outright: a host string, an already-resolved device config, or a
      *   Devices view tree element (`{key}`, resolved through the device manager; an unknown key
      *   falls through to the active device below).
-     * - Otherwise the active device (`activeDeviceKey` in workspace state) is resolved through the
-     *   device manager and its precomputed `.device` config is returned as-is - LAN or cloud, untouched.
-     * - Otherwise falls back to `getRemoteHost()`'s own resolution (workspace `remoteHost`, the
-     *   `brightscript.remoteControl` host setting, then the host picker), wrapped as a LAN device config.
+     * - Otherwise the remote-control device (`remoteDeviceKey` in workspace state - the fluid
+     *   target that follows the last sideload, the last remote pick, and Set as Active Device) is
+     *   resolved through the device manager and its precomputed `.device` config is returned as-is
+     *   - LAN or cloud, untouched.
+     * - Otherwise the `brightscript.remoteControl.host` setting, which by definition maps to a
+     *   local device (a `${promptForHost}` placeholder there means "ask", not a host).
+     * - Otherwise the shared device picker; the pick becomes the new remote-control device (LAN
+     *   and cloud alike), so the next command targets it without re-prompting. The pick never
+     *   touches `activeDeviceKey` - only Set as Active Device writes that.
      */
     private async resolveActiveDeviceConfig(target?: string | DeviceConfig | { key?: string }): Promise<DeviceConfig | undefined> {
         if (typeof target === 'string') {
@@ -898,49 +893,28 @@ export class BrightScriptCommands {
             return target as DeviceConfig;
         }
 
-        const activeDeviceKey = this.context.workspaceState.get<string>('activeDeviceKey');
-        const activeDevice = activeDeviceKey ? this.deviceManager.getDevice(activeDeviceKey) : undefined;
-        if (activeDevice) {
-            return activeDevice.device;
+        const remoteDeviceKey = this.context.workspaceState.get<string>('remoteDeviceKey');
+        const remoteDevice = remoteDeviceKey ? this.deviceManager.getDevice(remoteDeviceKey) : undefined;
+        if (remoteDevice) {
+            return remoteDevice.device;
         }
 
-        await this.getRemoteHost();
-        return this.host ? { host: this.host } : undefined;
-    }
+        const configuredHost = placeholderToUndefined(util.getConfiguration('brightscript.remoteControl').get<string>('host'));
+        if (configuredHost) {
+            return { host: configuredHost };
+        }
 
-    public async getRemoteHost(showPrompt = true) {
-        //if the active device is a Roku Cloud Emulator device, `remoteHost` (if anything is even
-        //stored there) is a stale LAN ip left over from a previous session - treat this exactly like
-        //no host being set, so the existing fallback (workspace setting, then the picker) resolves a
-        //real target instead of silently misfiring against the wrong device. `resolveActiveDeviceConfig`
-        //is the Phase B entry point that routes hand-rolled ECP commands through roku-deploy's `device`
-        //option (LAN or cloud); this method stays LAN-only for the many callers that just need a bare host.
-        const activeDeviceKey = this.context.workspaceState.get<string>('activeDeviceKey');
-        const activeDeviceIsCloud = !!(activeDeviceKey && this.deviceManager.getDevice(activeDeviceKey)?.rce);
-
-        this.host = activeDeviceIsCloud ? undefined : await this.context.workspaceState.get('remoteHost');
-        if (!this.host) {
-            let config = util.getConfiguration('brightscript.remoteControl');
-            this.host = config.get('host');
-            // eslint-disable-next-line no-template-curly-in-string
-            if ((!this.host || this.host === '${promptForHost}') && showPrompt) {
-                this.host = (await this.userInputManager.promptForHost())?.host;
-            }
+        const picked = await this.userInputManager.promptForHost();
+        if (!picked?.device && !picked?.host) {
+            return undefined;
         }
-        if (!this.host) {
-            throw new Error('Can\'t send command: host is required.');
-        } else {
-            await this.context.workspaceState.update('remoteHost', this.host);
+        //remember the pick so the next command targets it without re-prompting
+        const pickedDevice = picked.device ? this.deviceManager.getDeviceByDeviceConfig(picked.device) : undefined;
+        const pickedKey = pickedDevice?.key ?? (picked.host ? `i:${picked.host}` : undefined);
+        if (pickedKey) {
+            await this.context.workspaceState.update('remoteDeviceKey', pickedKey);
         }
-        if (this.host) {
-            //try resolving the hostname. (sometimes it fails for no reason, so just ignore the crash if it does)
-            try {
-                this.host = await rokuDebugUtil.dnsLookup(this.host);
-            } catch (e) {
-                console.error('Error doing dns lookup for host ', this.host, e);
-            }
-        }
-        return this.host;
+        return picked.device ?? { host: picked.host };
     }
 
     public async getRemotePassword(showPrompt = true) {
@@ -1068,9 +1042,7 @@ export class BrightScriptCommands {
      * the device-info is read back from there without an extra request.
      *
      * Resolves the active device by its DeviceManager key (`activeDeviceKey`), so this works for
-     * both LAN and Roku Cloud Emulator devices. Falls back to the legacy ip-only `activeHost` vscode
-     * context when no key is stored yet (pre-migration workspace state) - that fallback only ever
-     * applies to a LAN device, since `activeHost` was never set for anything else.
+     * both LAN and Roku Cloud Emulator devices.
      *
      * For a cloud device, "healthy" means the management-api reports it running; `healthCheckDevice`
      * already routes cloud devices through an RceFinder scan for that, so it's reused as-is. The
@@ -1079,16 +1051,7 @@ export class BrightScriptCommands {
      */
     public async getHealthyActiveHost(): Promise<HostWithDeviceInfo | undefined> {
         const activeDeviceKey = this.context.workspaceState.get<string>('activeDeviceKey');
-        let device: RokuDevice | undefined;
-        if (activeDeviceKey) {
-            device = this.deviceManager.getDevice(activeDeviceKey);
-        } else {
-            const legacyActiveHost = vscodeContextManager.get<string>('activeHost');
-            if (!legacyActiveHost) {
-                return undefined;
-            }
-            device = this.deviceManager.getDevice({ ip: legacyActiveHost });
-        }
+        const device = activeDeviceKey ? this.deviceManager.getDevice(activeDeviceKey) : undefined;
         if (!device) {
             return undefined;
         }
@@ -1263,4 +1226,13 @@ export class BrightScriptCommands {
     private async sendAsciiToDevice(character: string) {
         await this.sendRemoteCommand(character, undefined, true);
     }
+}
+
+/**
+ * A `${promptForHost}`/`${activeHost}` placeholder is never a usable host - treat it as unset so
+ * placeholder values from user settings fall through to the picker instead of being dialed literally.
+ */
+function placeholderToUndefined(value: string | undefined): string | undefined {
+    // eslint-disable-next-line no-template-curly-in-string
+    return (value === '${promptForHost}' || value === '${activeHost}') ? undefined : value;
 }

@@ -1663,7 +1663,12 @@ export type ConfigurationScope = 'user' | 'workspace';
  * device info without issuing another request to the device.
  */
 export interface HostWithDeviceInfo {
-    host: string;
+    /**
+     * The resolved LAN host. Undefined for a Roku Cloud Emulator pick, which has no LAN host -
+     * consumers must target those through `device` instead. (strictNullChecks is off, so this is
+     * documentation rather than compiler enforcement.)
+     */
+    host: string | undefined;
     deviceInfo: DeviceInfoRaw;
     /**
      * The resolved device's precomputed roku-deploy-compatible connection option, so callers (for

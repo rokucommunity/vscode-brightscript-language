@@ -170,6 +170,35 @@ describe('UserInputManager', () => {
             ]);
         });
 
+        const cloudDevice = {
+            serialNumber: 'XY020078HH5S',
+            key: 's:XY020078HH5S',
+            deviceState: 'online',
+            lastDeviceState: 'unknown',
+            isDiscovered: false,
+            isConfigured: false,
+            device: { id: '83', rceToken: 'secret' },
+            rce: { id: '83', status: 'running' },
+            deviceInfo: {
+                'user-device-name': 'Chris',
+                'serial-number': 'XY020078HH5S',
+                'model-number': '2910X',
+                'software-version': '15.2.4'
+            }
+        } as any;
+
+        it('keeps cloud devices (which have no ip) in the list when no last-used ip exists', () => {
+            const labels = userInputManager['createHostQuickPickList']([devices[0], cloudDevice], undefined).map(x => x.label);
+            expect(labels.some(itemLabel => itemLabel.includes('Chris'))).to.be.true;
+            expect(labels).to.include(label(devices[0]));
+        });
+
+        it('keeps cloud devices in the list alongside a last-used LAN device', () => {
+            const labels = userInputManager['createHostQuickPickList']([devices[0], devices[1], cloudDevice], devices[1].ip).map(x => x.label);
+            expect(labels.filter(itemLabel => itemLabel.includes('Chris'))).to.have.length(1);
+            expect(labels[0]).to.equal('last used');
+        });
+
         it('includes action items when "last used" and "other devices" separators are both present', () => {
             expect(
                 userInputManager['createHostQuickPickList'](devices, devices[1].ip).map(x => x.label)

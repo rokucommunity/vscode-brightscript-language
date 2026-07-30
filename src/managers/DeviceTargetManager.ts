@@ -54,22 +54,24 @@ export class DeviceTargetManager {
     }
 
     /**
-     * Resolve the device a command should target when it prefers the active device: an explicit
-     * reference wins, then the active device, then the legacy fallbacks (`remoteHost` workspace
-     * state, the `brightscript.remoteControl` host setting), then the shared device picker.
+     * Resolve the device a command should target when no explicit reference was given: an explicit
+     * reference wins, then the remote-control device (`remoteDeviceKey` - follows the last
+     * sideload, the last remote pick, and Set as Active Device), then the
+     * `brightscript.remoteControl` host setting (a local device by definition), then the shared
+     * device picker.
      *
      * Returns undefined when nothing was resolved (picker dismissed).
      */
     public async resolveActiveTargetDevice(reference?: string | { key?: string }): Promise<DeviceTarget | undefined> {
         if (!reference) {
-            const activeDeviceKey = this.context.workspaceState.get<string>('activeDeviceKey');
-            const activeDevice = activeDeviceKey ? this.deviceManager.getDevice(activeDeviceKey) : undefined;
-            if (activeDevice) {
-                return { device: activeDevice.device, serialNumber: activeDevice.serialNumber, label: this.deviceManager.getDeviceDisplayName(activeDevice, true) };
+            const remoteDeviceKey = this.context.workspaceState.get<string>('remoteDeviceKey');
+            const remoteDevice = remoteDeviceKey ? this.deviceManager.getDevice(remoteDeviceKey) : undefined;
+            if (remoteDevice) {
+                return { device: remoteDevice.device, serialNumber: remoteDevice.serialNumber, label: this.deviceManager.getDeviceDisplayName(remoteDevice, true) };
             }
             const configHost = util.getConfiguration('brightscript.remoteControl').get<string>('host');
             // eslint-disable-next-line no-template-curly-in-string
-            reference = this.context.workspaceState.get<string>('remoteHost') || (configHost !== '${promptForHost}' ? configHost : undefined);
+            reference = configHost !== '${promptForHost}' ? configHost : undefined;
         }
         return this.resolveTargetDevice(reference);
     }

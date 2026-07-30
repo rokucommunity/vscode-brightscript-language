@@ -473,8 +473,12 @@ export class UserInputManager {
 
         //find the lastUsedDevice from the devices list
         const lastUsedDevice = lastUsedDeviceIp ? devices.find(x => x.ip === lastUsedDeviceIp) : undefined;
-        //remove the lastUsedDevice from the devices list so we can more easily reason with the rest of the list
-        devices = devices.filter(x => x.ip !== lastUsedDeviceIp);
+        //remove the lastUsedDevice from the devices list so we can more easily reason with the rest
+        //of the list. Only when one exists: a blanket `x.ip !== lastUsedDeviceIp` comparison with no
+        //last-used ip would drop every cloud device, since those have no ip at all
+        if (lastUsedDevice) {
+            devices = devices.filter(x => x !== lastUsedDevice);
+        }
 
         // Ensure the most recently used device is at the top of the list
         if (lastUsedDevice) {

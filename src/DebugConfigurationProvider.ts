@@ -25,7 +25,6 @@ import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import type { RokuDevice } from './deviceDiscovery/DeviceManager';
 import type { CredentialStore } from './managers/CredentialStore';
 import type { RceManager } from './managers/RceManager';
-import { vscodeContextManager } from './managers/VscodeContextManager';
 
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
@@ -600,16 +599,17 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
         }
 
-        //check the host and throw error if not provided or update the workspace to set last host
+        //check the host and throw error if not provided, or remember the device as the
+        //remote-control target
         if (!config.host) {
             throw new Error('Debug session terminated: host is required.');
         } else {
-            await this.context.workspaceState.update('remoteHost', config.host);
-            //track the active device by its DeviceManager key too (LAN and cloud sessions share
-            //this identity), falling back to a synthesized ip-based key for a brand-new host the
-            //device manager doesn't know about yet
-            const activeDeviceKey = this.deviceManager.getDevice({ ip: config.host })?.key ?? `i:${config.host}`;
-            await this.context.workspaceState.update('activeDeviceKey', activeDeviceKey);
+            //a sideload re-points the remote-control device (by DeviceManager key, LAN and cloud
+            //alike; a synthesized ip-based key covers a brand-new host the device manager doesn't
+            //know yet). It deliberately does NOT touch activeDeviceKey - the active device is the
+            //user's explicit pick and only Set as Active Device writes it
+            const remoteDeviceKey = this.deviceManager.getDevice({ ip: config.host })?.key ?? `i:${config.host}`;
+            await this.context.workspaceState.update('remoteDeviceKey', remoteDeviceKey);
         }
 
         // If the host didn't come from the picker, probe it so we have fresh SN/deviceInfo.
@@ -657,17 +657,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      *                         check ahead of time
      */
     private async processNonLocalDeviceParameter(config: BrightScriptLaunchConfiguration, pickedRceStatus?: DeviceStatus): Promise<BrightScriptLaunchConfiguration> {
-        //a non-local session must never leave the previous session's device active underneath it -
-        //clear the host fields (the same empty-string convention the clearActiveDevice command uses)
-        //and re-point the device key: the resolved device's key when the device manager already knows
-        //it, otherwise cleared (a device-registry name, or a cloud device the finder hasn't
-        //registered yet), so remote commands can't keep targeting the previously active device
-        await this.context.workspaceState.update('remoteHost', '');
-        await vscodeContextManager.set('activeHost', '');
-        const activeDevice = typeof config.device === 'object'
+        //a non-local sideload must never leave the previous session's device as the remote-control
+        //target - re-point the remote device key: the resolved device's key when the device manager
+        //already knows it, otherwise cleared (a device-registry name, or a cloud device the finder
+        //hasn't registered yet), so remote commands can't keep targeting the previous device
+        const sideloadedDevice = typeof config.device === 'object'
             ? this.deviceManager.getDeviceByDeviceConfig(config.device)
             : undefined;
-        await this.context.workspaceState.update('activeDeviceKey', activeDevice?.key ?? '');
+        await this.context.workspaceState.update('remoteDeviceKey', sideloadedDevice?.key ?? '');
 
         //Cloud Emulator api tokens come from SecretStorage (the RceManager active account) only - a
         //launch config can never supply its own, so any token already present here is config-supplied

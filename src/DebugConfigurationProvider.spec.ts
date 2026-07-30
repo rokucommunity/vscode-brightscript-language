@@ -547,61 +547,57 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(result.device).to.eql({ host: '1.2.3.4' });
             });
 
-            it('sets activeDeviceKey (and remoteHost as before) for a resolved LAN host', async () => {
+            it('sets remoteDeviceKey for a resolved LAN host, leaving the active device alone', async () => {
                 const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: { 'serial-number': 'abc123' }, key: 's:abc123' } as any;
                 sinon.stub(deviceManager, 'getDevice').returns(device);
                 sinon.stub(deviceManager, 'validateAndAddDevice').resolves(device);
+                //the user's explicit active device must not move on a sideload
+                await vscode.context.workspaceState.update('activeDeviceKey', 's:USER-PICK');
 
                 await (configProvider as any).processHostParameter({ host: '1.2.3.4' });
 
-                expect(vscode.context.workspaceState.get('remoteHost')).to.equal('1.2.3.4');
-                expect(vscode.context.workspaceState.get('activeDeviceKey')).to.equal('s:abc123');
+                expect(vscode.context.workspaceState.get('remoteDeviceKey')).to.equal('s:abc123');
+                expect(vscode.context.workspaceState.get('activeDeviceKey')).to.equal('s:USER-PICK');
             });
 
-            it('sets activeDeviceKey and clears remoteHost/activeHost for a config-provided cloud emulator device', async () => {
+            it('sets remoteDeviceKey for a config-provided cloud emulator device', async () => {
                 //no rceToken here - it's always injected from the active Cloud Emulator account, never
                 //config-supplied (see the dedicated rceToken-injection tests below)
                 const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc' };
-                //seed stale LAN active-device state from a previous session
-                await vscode.context.workspaceState.update('remoteHost', '10.0.0.5');
-                const contextSetStub = sinon.stub(vscodeContextManager, 'set').resolves();
+                //seed the previous session's remote-control device
+                await vscode.context.workspaceState.update('remoteDeviceKey', 's:OLD-LAN-DEVICE');
                 sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns({ key: 'rce:83', rce: { id: '83', status: 'running' } } as any);
 
                 await (configProvider as any).processHostParameter({ host: '', device: device });
 
-                expect(vscode.context.workspaceState.get('remoteHost')).to.equal('');
-                expect(vscode.context.workspaceState.get('activeDeviceKey')).to.equal('rce:83');
-                expect(contextSetStub.calledWith('activeHost', '')).to.be.true;
+                expect(vscode.context.workspaceState.get('remoteDeviceKey')).to.equal('rce:83');
             });
 
-            it('clears activeDeviceKey when a config-provided cloud emulator device is not known to the device manager', async () => {
+            it('clears remoteDeviceKey when a config-provided cloud emulator device is not known to the device manager', async () => {
                 const device = { esn: 'ESN123' };
-                //seed the previous session's active device - it must not survive underneath this one
-                await vscode.context.workspaceState.update('activeDeviceKey', 's:OLD-LAN-DEVICE');
-                sinon.stub(vscodeContextManager, 'set').resolves();
+                //seed the previous session's remote-control device - it must not survive underneath this one
+                await vscode.context.workspaceState.update('remoteDeviceKey', 's:OLD-LAN-DEVICE');
                 sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns(undefined);
                 (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
 
                 await (configProvider as any).processHostParameter({ host: '', device: device });
 
-                expect(vscode.context.workspaceState.get('activeDeviceKey')).to.equal('');
+                expect(vscode.context.workspaceState.get('remoteDeviceKey')).to.equal('');
             });
 
-            it('clears activeDeviceKey for a device-registry name session', async () => {
-                await vscode.context.workspaceState.update('activeDeviceKey', 's:OLD-LAN-DEVICE');
-                sinon.stub(vscodeContextManager, 'set').resolves();
+            it('clears remoteDeviceKey for a device-registry name session', async () => {
+                await vscode.context.workspaceState.update('remoteDeviceKey', 's:OLD-LAN-DEVICE');
                 (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
 
                 await (configProvider as any).processHostParameter({ host: '', device: 'my-registry-device' });
 
-                expect(vscode.context.workspaceState.get('activeDeviceKey')).to.equal('');
+                expect(vscode.context.workspaceState.get('remoteDeviceKey')).to.equal('');
             });
 
-            it('clears remoteHost/activeHost for a cloud emulator pick from the picker, even when it is not running', async () => {
+            it('sets remoteDeviceKey for a cloud emulator pick from the picker, even when it is not running', async () => {
                 //no rceToken here - it's always injected from the active Cloud Emulator account
                 const device = { id: '84' };
-                await vscode.context.workspaceState.update('remoteHost', '10.0.0.5');
-                const contextSetStub = sinon.stub(vscodeContextManager, 'set').resolves();
+                await vscode.context.workspaceState.update('remoteDeviceKey', 's:OLD-LAN-DEVICE');
                 (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
                 sinon.stub(userInputManager, 'promptForHost').resolves({
                     host: undefined,
@@ -617,9 +613,7 @@ describe('BrightScriptConfigurationProvider', () => {
                     // the friendly not-running error is expected; this test only cares about the identity writes
                 }
 
-                expect(vscode.context.workspaceState.get('remoteHost')).to.equal('');
-                expect(vscode.context.workspaceState.get('activeDeviceKey')).to.equal('rce:84');
-                expect(contextSetStub.calledWith('activeHost', '')).to.be.true;
+                expect(vscode.context.workspaceState.get('remoteDeviceKey')).to.equal('rce:84');
             });
         });
 
