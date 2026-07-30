@@ -55,6 +55,20 @@ export class RceStreamSession {
     private pendingPollDelayMs = 5000;
     private pendingPollLimit = 36;
 
+    /**
+     * Guard against a reconnect cycle that never actually holds. A network that passes signaling
+     * but blocks the media path (UDP/TURN) drops every stream right after its "successful"
+     * negotiation - and since each negotiation ends the retry loop, every such cycle gets a fresh
+     * attempt budget and mints another Janus session, forever. A stream that drops within
+     * quickDropThresholdMs of posting its offer counts as a quick drop; quickDropCycleLimit
+     * consecutive ones end the session with the error banner (whose Retry action starts fresh)
+     * instead of reconnecting again, while a stream that held longer resets the count.
+     * Instance-level so tests can adjust them.
+     */
+    private quickDropThresholdMs = 30000;
+    private quickDropCycleLimit = 3;
+    private consecutiveQuickDrops = 0;
+
     public get isActive(): boolean {
         return this.activeStream !== undefined || this.reconnectState !== undefined;
     }
@@ -179,6 +193,7 @@ export class RceStreamSession {
         try {
             const { offer, iceServers } = await client.connect();
             session.offerPosted = true;
+            session.establishedAt = Date.now();
             //if the webview was already ready by the time the offer is ready to post, this post goes
             //straight to it rather than being queued, so it is already delivered - see handleViewReady
             if (this.host.isViewReady()) {
@@ -216,6 +231,23 @@ export class RceStreamSession {
         droppedStream.client.stop();
         if (this.activeStream === droppedStream) {
             this.activeStream = undefined;
+        }
+        //a drop right after negotiation is the signature of a blocked media path (signaling works,
+        //so every cycle "connects" and then drops again); give up once that repeats instead of
+        //looping forever - see the quickDrop fields' doc
+        if (Date.now() - (droppedStream.establishedAt ?? 0) < this.quickDropThresholdMs) {
+            this.consecutiveQuickDrops += 1;
+            if (this.consecutiveQuickDrops >= this.quickDropCycleLimit) {
+                this.host.onActiveChanged?.(false);
+                this.postError(
+                    `The video stream for device '${droppedStream.deviceName}' dropped right after connecting ${this.consecutiveQuickDrops} times in a row; the network may be blocking the stream's media connection (UDP/TURN)`,
+                    droppedStream.deviceId,
+                    droppedStream.deviceName
+                );
+                return;
+            }
+        } else {
+            this.consecutiveQuickDrops = 0;
         }
         const state: RceStreamRetryState = {
             deviceId: droppedStream.deviceId,
@@ -460,6 +492,9 @@ export class RceStreamSession {
     public stop(): void {
         const wasActive = this.isActive;
         this.stoppedDevice = undefined;
+        //an explicit stop (or the stop() inside a fresh start(), e.g. the error banner's Retry)
+        //starts the quick-drop accounting over
+        this.consecutiveQuickDrops = 0;
         if (this.reconnectState) {
             this.reconnectState.cancelled = true;
             clearTimeout(this.reconnectState.delayTimer);
@@ -610,6 +645,11 @@ interface ActiveRceStream {
      * Whether this session's onRceStreamOffer has been posted (immediately or queued) at all.
      */
     offerPosted: boolean;
+    /**
+     * When this session's negotiation completed (its offer posted), for the quick-drop accounting
+     * in beginReconnect. Unset until offerPosted.
+     */
+    establishedAt?: number;
     /**
      * Whether this session's offer has actually reached a live webview: either it was posted while
      * the view was already ready, or a later ready report saw it queued and is about to flush it.

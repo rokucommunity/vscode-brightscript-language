@@ -414,6 +414,47 @@ describe('RokuDeviceViewViewProvider', () => {
             expect(provider.createdClients).to.have.length(2);
         });
 
+        it('gives up with the error banner after consecutive quick drops (a blocked media path)', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            shrinkReconnectDelays([0]);
+            provider['rceStreamSession']['quickDropCycleLimit'] = 2;
+
+            //cycle 1: the stream drops right after connecting; the reconnect negotiates a new one
+            client.emit('close');
+            await sleep(10);
+            expect(provider.createdClients).to.have.length(2);
+
+            //cycle 2: the fresh stream drops right away too - the limit is hit
+            provider.createdClients[1].emit('close');
+            await sleep(10);
+
+            //no third negotiation; the error banner (with its Retry action) reports the pattern
+            expect(provider.createdClients).to.have.length(2);
+            const errorMessages = findEventMessages(ViewProviderEvent.onRceStreamError);
+            expect(errorMessages).to.have.length(1);
+            expect(errorMessages[0].context.message).to.contain('dropped right after connecting');
+            expect(provider['rceStreamSession'].isActive).to.be.false;
+        });
+
+        it('a stream that held for a while resets the quick-drop count', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            shrinkReconnectDelays([0]);
+            //a single quick drop would give up immediately...
+            provider['rceStreamSession']['quickDropCycleLimit'] = 1;
+            //...but a zero threshold classifies every stream as long-lived, so each drop resets
+            provider['rceStreamSession']['quickDropThresholdMs'] = 0;
+
+            client.emit('close');
+            await sleep(10);
+            provider.createdClients[1].emit('close');
+            await sleep(10);
+
+            expect(provider.createdClients).to.have.length(3);
+            expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
+        });
+
         it('posts onRceStreamDeviceStopped instead of retrying when the device is not running anymore', async () => {
             createProvider();
             const client = await startFirstSession();
