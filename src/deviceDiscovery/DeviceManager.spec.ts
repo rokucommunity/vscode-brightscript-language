@@ -1786,6 +1786,51 @@ describe('DeviceManager', () => {
         });
     });
 
+    describe('scan responder hydration (spec: "responds to an M-SEARCH — hydrate it immediately", via read)', () => {
+        function flush(): Promise<void> {
+            return new Promise(resolve => {
+                setTimeout(resolve, 5);
+            });
+        }
+
+        it('an unknown responder with cache in the 5min–8h dead zone hydrates on the next read', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const resolveStub = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
+
+            //cache aged past the 5-min freshness check (so the responder lands `unknown`) but
+            //younger than the 8-hour hydration threshold — the exact gap that used to strand
+            //the device grey forever
+            mockGlobalStateManager.setCachedDevice('SCAN70', {
+                serialNumber: 'SCAN70',
+                deviceInfo: { 'serial-number': 'SCAN70' },
+                createdAt: Date.now() - (10 * 60 * 1_000)
+            });
+            manager['finder'].emit('found', '192.168.1.70', { serialNumber: 'SCAN70' });
+            expect(manager.getDevice({ ip: '192.168.1.70' }).deviceState).to.equal('unknown');
+
+            //the emit above makes a visible view re-read; simulate that read
+            manager.getAllDevices();
+            await flush();
+
+            expect(resolveStub.calledOnce).to.be.true;
+            expect(resolveStub.firstCall.args[0]).to.include({ ip: '192.168.1.70' });
+        });
+
+        it('repeated M-SEARCH answers do not double-hydrate (in-flight + cooldown guards)', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const resolveStub = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
+
+            manager['finder'].emit('found', '192.168.1.70', { serialNumber: 'SCAN70' });
+            manager.getAllDevices();
+            await flush();
+            manager['finder'].emit('found', '192.168.1.70', { serialNumber: 'SCAN70' });
+            manager.getAllDevices();
+            await flush();
+
+            expect(resolveStub.calledOnce).to.be.true;
+        });
+    });
+
     describe('lazy hydration on read', () => {
         function flush(): Promise<void> {
             return new Promise(resolve => {
@@ -3014,14 +3059,18 @@ describe('DeviceManager', () => {
             });
 
             describe('scan state handling', () => {
-                it('calls finder.stop() to handle any in-progress scan', () => {
+                it('ends any in-progress scan WITHOUT stopping the passive SSDP listener', () => {
                     manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-                    const finderStopSpy = sinon.spy(manager['finder'], 'stop');
+                    const stopScanSpy = sinon.spy(manager['finder'], 'stopScan');
+                    const stopSpy = sinon.spy(manager['finder'], 'stop');
 
                     manager.clearAllCache();
 
-                    expect(finderStopSpy.calledOnce).to.be.true;
+                    expect(stopScanSpy.calledOnce).to.be.true;
+                    //stopping the listener would leave the device list empty until the next
+                    //explicit scan — alive/byebye announcements must keep flowing after a clear
+                    expect(stopSpy.called).to.be.false;
                 });
             });
 

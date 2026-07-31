@@ -269,7 +269,10 @@ export class DeviceManager {
 
     /**
      * Does this device need a background device-info refresh? (spec: Lazy hydration on read)
-     * - never resolved (`unknown` with no cached deviceInfo), or
+     * - state `unknown` — never confirmed this session (e.g. folded in from a scan response,
+     *   ssdp:alive, or the last-seen cache with info older than the 5-min freshness check).
+     *   Cache age doesn't matter here: cached info can render the row, but only a resolve can
+     *   confirm the device is actually there.
      * - cached info older than {@link HYDRATION_MAX_CACHE_AGE_MS} (regardless of state)
      */
     private needsHydration(device: RokuDevice): boolean {
@@ -278,9 +281,12 @@ export class DeviceManager {
         if (device.deviceState === 'pending') {
             return false;
         }
+        if (device.deviceState === 'unknown') {
+            return true;
+        }
         const cached = device.serialNumber ? this.globalStateManager.getCachedDevice(device.serialNumber) : undefined;
         if (!cached) {
-            return device.deviceState === 'unknown';
+            return false;
         }
         return Date.now() - cached.createdAt > this.HYDRATION_MAX_CACHE_AGE_MS;
     }
@@ -639,6 +645,8 @@ export class DeviceManager {
     public fulfillPendingBroadcast(options?: { except?: BroadcastReason[] }): boolean {
         const triggers = this.getPendingBroadcastReasons().filter(x => !options?.except?.includes(x));
         if (triggers.length === 0) {
+            if (this.pendingBroadcastReasons.size > 0) {
+            }
             return false;
         }
         const reasons = this.getPendingBroadcastReasons();
@@ -655,6 +663,8 @@ export class DeviceManager {
     public fulfillPendingReconcile(options?: { except?: ReconcileReason[] }): boolean {
         const triggers = this.getPendingReconcileReasons().filter(x => !options?.except?.includes(x));
         if (triggers.length === 0) {
+            if (this.pendingReconcileReasons.size > 0) {
+            }
             return false;
         }
         const reasons = this.getPendingReconcileReasons();
@@ -788,13 +798,17 @@ export class DeviceManager {
     }
 
     public clearAllCache() {
-        // Stop any in-progress scan (finder.stop() emits scan-ended if scanning)
-        this.finder.stop();
+
+        // End any in-progress scan (emits scan-ended) so late responses don't instantly
+        // repopulate the just-cleared state — but keep the passive SSDP listener running,
+        // otherwise the device list stays empty until the next explicit scan
+        this.finder.stopScan();
 
         // Clear persisted global state
         this.globalStateManager.clearLastSeenDevices();
         this.globalStateManager.clearDeviceCache();
         this.globalStateManager.clearSerialNumberByIpForNetwork();
+
 
         // Clear all timestamps and per-device state
         this.lastScanDate = null;
@@ -1319,6 +1333,7 @@ export class DeviceManager {
                 this.inFlightDeviceInfo.delete(key);
             });
             this.inFlightDeviceInfo.set(key, inFlight);
+        } else {
         }
         return inFlight;
     }
@@ -1613,6 +1628,10 @@ export class DeviceManager {
         this.finder.removeAllListeners();
         this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
             this.setDiscoveredDevice(ip, options?.serialNumber);
+            //no eager resolve here: this emit makes any visible view re-read the list, and a
+            //responder whose cache missed the 5-min freshness check lands in `unknown` — which
+            //lazy hydration on read always resolves (spec: "hydrate it immediately", routed
+            //through the views-as-the-gate read path)
             this.emitDevicesChanged();
         });
 

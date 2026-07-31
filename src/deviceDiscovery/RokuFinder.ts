@@ -154,6 +154,16 @@ export class RokuFinder extends EventEmitter {
     }
 
     /**
+     * End any in-progress scan (emitting scan-ended) WITHOUT stopping the passive SSDP
+     * listener — alive/byebye announcements keep flowing.
+     */
+    public stopScan(): void {
+        if (this.isScanning) {
+            this.endScan();
+        }
+    }
+
+    /**
      * Stop listening for SSDP advertisements.
      * Also ends any in-progress scan (emitting scan-ended).
      */
