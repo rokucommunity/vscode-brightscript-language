@@ -103,7 +103,8 @@ export class RceStreamSession {
 
         this.postEvent(ViewProviderEvent.onRceStreamConnecting, {
             deviceId: streamRequest.deviceId,
-            deviceName: streamRequest.deviceName
+            deviceName: streamRequest.deviceName,
+            deviceType: streamRequest.deviceType
         });
 
         const apiToken = await this.host.getApiToken();
@@ -202,6 +203,7 @@ export class RceStreamSession {
             this.postEvent(ViewProviderEvent.onRceStreamOffer, {
                 deviceId: streamRequest.deviceId,
                 deviceName: streamRequest.deviceName,
+                deviceType: streamRequest.deviceType,
                 offer: offer,
                 iceServers: iceServers
             });

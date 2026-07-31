@@ -256,6 +256,7 @@ describe('RceManager', () => {
             manager.devices = [{
                 id: 5,
                 name: 'my-device',
+                device_type: 'tv',
                 status: 'running',
                 running_device: {
                     janus_websocket_url: 'wss://device.rce.roku.com/instance/abc/janus',
@@ -271,6 +272,7 @@ describe('RceManager', () => {
             expect(streamRequest).to.eql({
                 deviceId: 5,
                 deviceName: 'my-device',
+                deviceType: 'tv',
                 websocketUrl: 'wss://device.rce.roku.com/instance/abc/janus',
                 streamId: 0,
                 pin: '1234',

@@ -1,5 +1,6 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
+    import { Close, DebugStop, Mute, Plug, Unmute } from 'svelte-codicons';
     import { intermediary } from '../ExtensionIntermediary';
     import { ViewProviderEvent } from '../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../src/viewProviders/ViewProviderCommand';
@@ -17,6 +18,7 @@
 
     let rceStreamDeviceId: number | undefined = undefined;
     let rceStreamDeviceName: string | undefined = undefined;
+    let rceStreamDeviceType: string | undefined = undefined;
     let rceStreamPeer: RceStreamPeer | undefined = undefined;
     let rceStreamStatus: 'connecting' | 'reconnecting' | 'waiting' | 'streaming' | 'stopped' = 'connecting';
     let rceStreamError: string | undefined = undefined;
@@ -48,7 +50,7 @@
     intermediary.observeEvent(ViewProviderEvent.onRceStreamConnecting, (message) => {
         const isRetry = message.context.reconnectAttempt !== undefined || message.context.waitingForDevice === true;
         //a retry keeps the user's mute choice; a fresh watch starts muted again
-        enterRceStreamMode(message.context.deviceId, message.context.deviceName, { preserveMute: isRetry });
+        enterRceStreamMode(message.context.deviceId, message.context.deviceName, { preserveMute: isRetry, deviceType: message.context.deviceType });
         if (message.context.waitingForDevice) {
             //the device is still starting; the extension host is polling its status and will
             //connect once it reaches running
@@ -102,9 +104,12 @@
 
     //enters (or re-enters) stream mode: tears down any previous peer connection, shows the header for
     //the given device, and clears any previous error so a fresh attempt starts from a clean banner
-    function enterRceStreamMode(deviceId: number | undefined, deviceName: string, options: { preserveMute?: boolean } = {}) {
+    function enterRceStreamMode(deviceId: number | undefined, deviceName: string, options: { preserveMute?: boolean; deviceType?: string } = {}) {
         teardownRceStreamPeer();
 
+        //events on paths that don't carry the device type (a reconnect, the device-stopped state)
+        //keep the type already known for this device; a different device starts unknown again
+        rceStreamDeviceType = options.deviceType ?? (deviceId !== undefined && deviceId === rceStreamDeviceId ? rceStreamDeviceType : undefined);
         rceStreamDeviceId = deviceId;
         rceStreamDeviceName = deviceName;
         rceStreamStatus = 'connecting';
@@ -117,11 +122,11 @@
         }
     }
 
-    function startRceStreamPeer(offer: { deviceId: number; deviceName: string; offer: RceStreamJsep; iceServers: IceServer[] }) {
+    function startRceStreamPeer(offer: { deviceId: number; deviceName: string; deviceType?: string; offer: RceStreamJsep; iceServers: IceServer[] }) {
         //a new offer while already streaming tears down the old peer connection first. The mute
         //choice is preserved here because the preceding onRceStreamConnecting already reset it when
         //this negotiation was a fresh watch rather than a reconnect.
-        enterRceStreamMode(offer.deviceId, offer.deviceName, { preserveMute: true });
+        enterRceStreamMode(offer.deviceId, offer.deviceName, { preserveMute: true, deviceType: offer.deviceType });
 
         const peer = new RceStreamPeer();
         rceStreamPeer = peer;
@@ -172,6 +177,26 @@
 
     function toggleRceStreamMute() {
         rceStreamMuted = !rceStreamMuted;
+    }
+
+    let powerKeyInFlight = false;
+
+    //presses the Power key on the streamed device (toggles the emulated display; the stream itself
+    //keeps running either way)
+    async function pressRceStreamPower() {
+        if (rceStreamDeviceId === undefined || powerKeyInFlight) {
+            return;
+        }
+        powerKeyInFlight = true;
+        try {
+            await intermediary.sendCommand(ViewProviderCommand.pressRceDevicePowerButton, {
+                deviceId: rceStreamDeviceId
+            });
+        } catch (error) {
+            rceStreamError = error.message;
+        } finally {
+            powerKeyInFlight = false;
+        }
     }
 </script>
 
@@ -239,15 +264,28 @@
             <span id="rceStreamDeviceName">{rceStreamDeviceName}</span>
             <span id="rceStreamStatusLabel">{rceStreamStatusLabel}</span>
             {#if rceStreamStatus !== 'stopped'}
-                <vscode-button appearance="secondary" on:click={toggleRceStreamMute}>
-                    {rceStreamMuted ? 'Unmute' : 'Mute'}
+                {#if rceStreamDeviceType === 'tv'}
+                    <vscode-button appearance="icon" title="Press the Power button on the device" disabled={powerKeyInFlight} on:click={pressRceStreamPower}>
+                        <Plug />
+                    </vscode-button>
+                {/if}
+                <vscode-button appearance="icon" title={rceStreamMuted ? 'Unmute' : 'Mute'} on:click={toggleRceStreamMute}>
+                    {#if rceStreamMuted}
+                        <Mute />
+                    {:else}
+                        <Unmute />
+                    {/if}
                 </vscode-button>
             {/if}
             <!-- with nothing streaming there is nothing to "stop", but this is still the only
                 in-view exit (the Device View leaves stream mode, a video tab closes), so it stays
-                with a label matching what it does -->
-            <vscode-button appearance="secondary" on:click={stopRceStream}>
-                {rceStreamStatus === 'stopped' ? 'Close' : 'Stop'}
+                with a tooltip matching what it does -->
+            <vscode-button appearance="icon" title={rceStreamStatus === 'stopped' ? 'Close' : 'Stop'} on:click={stopRceStream}>
+                {#if rceStreamStatus === 'stopped'}
+                    <Close />
+                {:else}
+                    <DebugStop />
+                {/if}
             </vscode-button>
         </div>
         {#if rceStreamError}

@@ -3,7 +3,6 @@ export enum ViewProviderCommand {
     createRceSnapshot = 'createRceSnapshot',
     deleteRceSnapshot = 'deleteRceSnapshot',
     deleteRokuFile = 'deleteRokuFile',
-    disableRceLimitedEcp = 'disableRceLimitedEcp',
     enableRceDevMode = 'enableRceDevMode',
     getAppUI = 'getAppUI',
     getRceDeviceDetails = 'getRceDeviceDetails',
@@ -15,6 +14,7 @@ export enum ViewProviderCommand {
     getWorkspaceState = 'getWorkspaceState',
     loadRokuAppOverlaysThumbnails = 'loadRokuAppOverlaysThumbnails',
     openRokuFile = 'openRokuFile',
+    pressRceDevicePowerButton = 'pressRceDevicePowerButton',
     reportRceStreamFailure = 'reportRceStreamFailure',
     runRceAccountCommand = 'runRceAccountCommand',
     runRokuAutomationConfig = 'runRokuAutomationConfig',
@@ -36,6 +36,5 @@ export enum ViewProviderCommand {
     updateRceDevice = 'updateRceDevice',
     updateWorkspaceState = 'updateWorkspaceState',
     viewReady = 'viewReady',
-    wakeRceDevice = 'wakeRceDevice',
     watchRceDevice = 'watchRceDevice'
 }

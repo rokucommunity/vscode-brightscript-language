@@ -238,6 +238,10 @@ export class BrightScriptCommands {
             }
         });
 
+        this.registerCommand('pressPower', async () => {
+            await this.sendRemoteCommand('Power');
+        });
+
         this.registerCommand('pressPowerOff', async () => {
             await this.sendRemoteCommand('PowerOff');
         });
@@ -272,6 +276,10 @@ export class BrightScriptCommands {
 
         this.registerCommand('pressExit', async () => {
             await this.sendRemoteCommand('Exit');
+        });
+
+        this.registerCommand('pressGuide', async () => {
+            await this.sendRemoteCommand('Guide');
         });
 
         this.registerCommand('changeTvInput', async (reference?: string | { key?: string }) => {

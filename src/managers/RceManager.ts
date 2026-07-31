@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { EventEmitter } from 'eventemitter3';
 import { RceManagementClient } from 'roku-deploy';
-import type { IceServer, UserOut } from 'roku-deploy';
+import type { DeviceType, IceServer, UserOut } from 'roku-deploy';
 
 /**
  * Owns the Roku Cloud Emulator (RCE) accounts and the shared management-api client.
@@ -235,6 +235,7 @@ export class RceManager {
         return {
             deviceId: device.id,
             deviceName: device.name,
+            deviceType: device.device_type,
             websocketUrl: runningDevice.janus_websocket_url,
             streamId: runningDevice.janus_id,
             pin: runningDevice.janus_pin ?? undefined,
@@ -383,6 +384,7 @@ export interface RceAccount {
 export interface RceStreamRequestConfig {
     deviceId: number;
     deviceName: string;
+    deviceType: DeviceType;
     websocketUrl: string;
     streamId: number;
     pin?: string;

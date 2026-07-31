@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { ChannelPublishedEvent } from 'roku-debug';
 import type { DeviceConfig, DeviceOut, RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
-import { isRceDeviceConfig, RceVideoSignalingClient } from 'roku-deploy';
+import { isRceDeviceConfig, RceVideoSignalingClient, rokuDeploy } from 'roku-deploy';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import type { RceStreamRequestConfig } from '../managers/RceManager';
@@ -102,6 +102,15 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         this.addMessageCommandCallback(ViewProviderCommand.stopRceStream, (message) => {
             this.rceStreamSession.stop();
             return Promise.resolve(true);
+        });
+
+        //the stream header's power button: presses the Power key on the streamed device (toggles the
+        //emulated display; the stream itself keeps running either way)
+        this.addMessageCommandCallback(ViewProviderCommand.pressRceDevicePowerButton, async (message) => {
+            const rceToken = await this.dependencies.rceManager.getToken();
+            await rokuDeploy.keyPress({ device: { id: String(message.context.deviceId), rceToken: rceToken }, key: 'Power' });
+            this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
+            return true;
         });
 
         //the webview's peer connection failed (for example the ICE connection dropped); the session

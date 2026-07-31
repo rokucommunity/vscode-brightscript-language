@@ -3909,6 +3909,11 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.pressPower",
+                "title": "Press the Power button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.pressPowerOff",
                 "title": "Press the PowerOff button on the Roku remote",
                 "category": "Brightscript"
@@ -3951,6 +3956,11 @@
             {
                 "command": "extension.brightscript.pressExit",
                 "title": "Press the Exit button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressGuide",
+                "title": "Press the Guide button on the Roku remote",
                 "category": "Brightscript"
             },
             {

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import type { RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
-import { RceVideoSignalingClient } from 'roku-deploy';
+import { RceVideoSignalingClient, rokuDeploy } from 'roku-deploy';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { ViewProviderCommand } from '../viewProviders/ViewProviderCommand';
 import { RceStreamSession } from '../viewProviders/RceStreamSession';
@@ -316,6 +316,12 @@ class RceVideoEditorPanel implements vscode.Disposable {
             this.panel.dispose();
         } else if (command === ViewProviderCommand.watchRceDevice) {
             await this.watch();
+        } else if (command === ViewProviderCommand.pressRceDevicePowerButton) {
+            //the stream header's power button: presses the Power key on this tab's device (toggles
+            //the emulated display; the stream itself keeps running either way)
+            const rceToken = await this.rceManager.getToken();
+            await rokuDeploy.keyPress({ device: { id: String(this.deviceId), rceToken: rceToken }, key: 'Power' });
+            this.postOrQueueMessage({ ...message, response: { success: true } });
         } else {
             console.warn('Did not handle rce video editor message', message);
         }

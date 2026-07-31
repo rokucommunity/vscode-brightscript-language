@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import * as sinonImport from 'sinon';
 import { EventEmitter } from 'eventemitter3';
 import type { RceVideoSignalingClient, RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
+import { rokuDeploy } from 'roku-deploy';
 import { RtaManager } from '../managers/RtaManager';
 import { vscode } from '../mockVscode.spec';
 import { RokuDeviceViewViewProvider } from './RokuDeviceViewViewProvider';
@@ -94,6 +95,7 @@ function createStreamRequest(overrides: Partial<RceStreamRequestConfig> = {}): R
     return {
         deviceId: 5,
         deviceName: 'my-device',
+        deviceType: 'tv',
         websocketUrl: 'wss://device.rce.roku.com/instance/abc/janus',
         streamId: 7,
         pin: '1234',
@@ -213,7 +215,7 @@ describe('RokuDeviceViewViewProvider', () => {
             //it has entered stream mode, which onRceStreamConnecting is what triggers
             let connectingMessages = findEventMessages(ViewProviderEvent.onRceStreamConnecting);
             expect(connectingMessages).to.have.length(1);
-            expect(connectingMessages[0].context).to.eql({ deviceId: 5, deviceName: 'my-device' });
+            expect(connectingMessages[0].context).to.eql({ deviceId: 5, deviceName: 'my-device', deviceType: 'tv' });
 
             await startPromise;
 
@@ -249,6 +251,7 @@ describe('RokuDeviceViewViewProvider', () => {
             expect(offerMessages[0].context).to.eql({
                 deviceId: 5,
                 deviceName: 'my-device',
+                deviceType: 'tv',
                 offer: defaultFakeOffer,
                 iceServers: streamRequest.iceServers
             });
@@ -753,6 +756,20 @@ describe('RokuDeviceViewViewProvider', () => {
             expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
             //the waiting loop's own status poll (which resolves running here) reconnected the stream
             expect(findEventMessages(ViewProviderEvent.onRceStreamOffer)).to.have.length(2);
+        });
+    });
+
+    describe('pressRceDevicePowerButton command', () => {
+        it('presses Power on the device with the management token and responds with success', async () => {
+            const keyPress = sinon.stub(rokuDeploy, 'keyPress').resolves({} as any);
+            createProvider();
+
+            const message = { command: ViewProviderCommand.pressRceDevicePowerButton, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.pressRceDevicePowerButton](message);
+
+            expect(keyPress.getCall(0).args[0]).to.eql({ device: { id: '5', rceToken: 'management-api-token' }, key: 'Power' });
+            const response = postOrQueueMessage.getCalls().map((call) => call.args[0]).find((posted) => posted.command === ViewProviderCommand.pressRceDevicePowerButton);
+            expect(response?.response).to.eql({ success: true });
         });
     });
 

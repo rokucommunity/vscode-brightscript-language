@@ -3,6 +3,7 @@ import * as sinonImport from 'sinon';
 import { EventEmitter } from 'eventemitter3';
 import type * as vscodeType from 'vscode';
 import type { RceVideoSignalingClient, RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
+import { rokuDeploy } from 'roku-deploy';
 import { vscode } from '../mockVscode.spec';
 import { RceVideoEditorManager } from './RceVideoEditorManager';
 import { RceDeviceNotRunningError } from './RceManager';
@@ -117,6 +118,7 @@ describe('RceVideoEditorManager', () => {
         resolveStreamRequest = sinon.stub().resolves({
             deviceId: 5,
             deviceName: 'my-device',
+            deviceType: 'tv',
             websocketUrl: 'wss://device.rce.roku.com/instance/abc/janus',
             streamId: 7,
             pin: '1234',
@@ -233,6 +235,33 @@ describe('RceVideoEditorManager', () => {
         expect(resolveStreamRequest.calledTwice).to.be.true;
         expect(manager.createdClients.length).to.equal(2);
         expect(manager.createdClients[0].stop.called).to.be.true;
+    });
+
+    it('presses Power on the tab device when the webview sends pressRceDevicePowerButton', async () => {
+        const keyPress = sinon.stub(rokuDeploy, 'keyPress').resolves({} as any);
+        createManager();
+        await manager.open(5, 'my-device');
+        const fakePanel = manager.createdPanels[0];
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.pressRceDevicePowerButton, context: {} });
+
+        expect(keyPress.getCall(0).args[0]).to.eql({ device: { id: '5', rceToken: 'management-api-token' }, key: 'Power' });
+        const response = fakePanel.postedMessages.find((posted) => posted.command === ViewProviderCommand.pressRceDevicePowerButton);
+        expect(response?.response).to.eql({ success: true });
+    });
+
+    it('relays a Power key failure back to the webview as an error response', async () => {
+        sinon.stub(rokuDeploy, 'keyPress').rejects(new Error(`Device 5 is not running (status 'shutdown')`));
+        createManager();
+        await manager.open(5, 'my-device');
+        const fakePanel = manager.createdPanels[0];
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.pressRceDevicePowerButton, context: {} });
+
+        const response = fakePanel.postedMessages.find((posted) => posted.command === ViewProviderCommand.pressRceDevicePowerButton);
+        expect(response?.error?.message).to.contain('is not running');
     });
 
     it('negotiates a fresh session when a reloaded webview reports ready after the offer was delivered (tab moved to another window)', async () => {

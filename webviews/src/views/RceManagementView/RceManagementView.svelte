@@ -75,9 +75,7 @@
     let deletingSnapshotId: number | undefined = undefined;
 
     let enablingDevModeInFlight: Record<number, boolean> = {};
-    let disablingLimitedEcpInFlight: Record<number, boolean> = {};
     let watchingDeviceInFlight: Record<number, boolean> = {};
-    let wakingDeviceInFlight: Record<number, boolean> = {};
 
     //the running-device snapshot form; only one device's form is open at a time
     let snapshotFormDeviceId: number | undefined = undefined;
@@ -308,10 +306,10 @@
         if (expandedDeviceId === device.id) {
             expandedDeviceId = undefined;
             //collapsing dismisses the action hints so they do not linger forever
-            if (deviceDetailsByDeviceId[device.id]?.devModeEnabledHintVisible || deviceDetailsByDeviceId[device.id]?.limitedEcpDisabledHintVisible) {
+            if (deviceDetailsByDeviceId[device.id]?.devModeEnabledHintVisible) {
                 deviceDetailsByDeviceId = {
                     ...deviceDetailsByDeviceId,
-                    [device.id]: { ...deviceDetailsByDeviceId[device.id], devModeEnabledHintVisible: false, limitedEcpDisabledHintVisible: false }
+                    [device.id]: { ...deviceDetailsByDeviceId[device.id], devModeEnabledHintVisible: false }
                 };
             }
             return;
@@ -363,11 +361,10 @@
         //the user ever sees it. It is cleared explicitly instead, when the device is collapsed or
         //stops running (see toggleDeviceExpanded and the {#if device.status === 'running'} guard).
         const existingDevModeEnabledHintVisible = deviceDetailsByDeviceId[deviceId]?.devModeEnabledHintVisible ?? false;
-        const existingLimitedEcpDisabledHintVisible = deviceDetailsByDeviceId[deviceId]?.limitedEcpDisabledHintVisible ?? false;
         deviceDetailsByDeviceId = {
             ...deviceDetailsByDeviceId,
             [deviceId]: {
-                ...(deviceDetailsByDeviceId[deviceId] ?? { snapshots: undefined, runs: undefined, lastUsedSnapshotId: undefined, error: undefined, selectedSnapshotId: undefined, userPickedSnapshotId: false, devModeEnabledHintVisible: false, limitedEcpDisabledHintVisible: false }),
+                ...(deviceDetailsByDeviceId[deviceId] ?? { snapshots: undefined, runs: undefined, lastUsedSnapshotId: undefined, error: undefined, selectedSnapshotId: undefined, userPickedSnapshotId: false, devModeEnabledHintVisible: false }),
                 loading: true
             }
         };
@@ -392,8 +389,7 @@
                 error: details.error,
                 selectedSnapshotId: resolvedSnapshotId,
                 userPickedSnapshotId: pickSurvived,
-                devModeEnabledHintVisible: existingDevModeEnabledHintVisible,
-                limitedEcpDisabledHintVisible: existingLimitedEcpDisabledHintVisible
+                devModeEnabledHintVisible: existingDevModeEnabledHintVisible
             }
         };
     }
@@ -495,29 +491,6 @@
         }
     }
 
-    //sends the remote-key walk that flips Control-by-mobile-apps network access off Limited mode.
-    //It rides the ECP2 auth-proxy socket extension-side, which is why it works at all while the
-    //device's plain ECP is limited. The walk is blind (it assumes the device is showing the home
-    //screen), so the hint asks the user to verify on screen.
-    async function disableLimitedEcp(device: RceStateDevice) {
-        deviceActionError = undefined;
-        disablingLimitedEcpInFlight = { ...disablingLimitedEcpInFlight, [device.id]: true };
-        try {
-            await intermediary.sendCommand(ViewProviderCommand.disableRceLimitedEcp, {
-                deviceId: device.id
-            });
-            //surfaced until the details are refetched (loadDeviceDetails always clears it)
-            deviceDetailsByDeviceId = {
-                ...deviceDetailsByDeviceId,
-                [device.id]: { ...deviceDetailsByDeviceId[device.id], limitedEcpDisabledHintVisible: true }
-            };
-        } catch (error) {
-            deviceActionError = error.message;
-        } finally {
-            disablingLimitedEcpInFlight = { ...disablingLimitedEcpInFlight, [device.id]: false };
-        }
-    }
-
     function toggleSnapshotForm(device: RceStateDevice) {
         if (snapshotFormDeviceId === device.id) {
             snapshotFormDeviceId = undefined;
@@ -548,20 +521,6 @@
             createSnapshotError = error.message;
         } finally {
             creatingSnapshot = false;
-        }
-    }
-
-    async function wakeDevice(device: RceStateDevice) {
-        deviceActionError = undefined;
-        wakingDeviceInFlight = { ...wakingDeviceInFlight, [device.id]: true };
-        try {
-            await intermediary.sendCommand(ViewProviderCommand.wakeRceDevice, {
-                deviceId: device.id
-            });
-        } catch (error) {
-            deviceActionError = error.message;
-        } finally {
-            wakingDeviceInFlight = { ...wakingDeviceInFlight, [device.id]: false };
         }
     }
 
@@ -601,7 +560,6 @@
         userPickedSnapshotId: boolean;
         /** Shown after a successful enableRceDevMode call, until the details are next refetched */
         devModeEnabledHintVisible: boolean;
-        limitedEcpDisabledHintVisible: boolean;
     }
 </script>
 
@@ -961,11 +919,6 @@
                                 <vscode-button appearance={snapshotFormDeviceId === device.id ? 'secondary' : undefined} on:click={() => toggleSnapshotForm(device)}>
                                     {snapshotFormDeviceId === device.id ? 'Cancel' : 'Snapshot'}
                                 </vscode-button>
-                                <vscode-button
-                                    disabled={wakingDeviceInFlight[device.id]}
-                                    on:click={() => wakeDevice(device)}>
-                                    Wake
-                                </vscode-button>
                             {/if}
                             <vscode-button
                                 appearance="icon"
@@ -1018,19 +971,9 @@
                                             on:click={() => enableDevMode(device)}>
                                             Enable Dev Mode
                                         </vscode-button>
-                                        <vscode-button
-                                            appearance="secondary"
-                                            title="Walks the on-screen settings (over the authenticated ECP2 socket) to turn Control-by-mobile-apps network access back off Limited mode"
-                                            disabled={disablingLimitedEcpInFlight[device.id]}
-                                            on:click={() => disableLimitedEcp(device)}>
-                                            Disable Limited ECP
-                                        </vscode-button>
                                     </div>
                                     {#if detailsState.devModeEnabledHintVisible}
                                         <span class="mutedNote">Developer settings opened on the device. Complete the setup on screen.</span>
-                                    {/if}
-                                    {#if detailsState.limitedEcpDisabledHintVisible}
-                                        <span class="mutedNote">Key sequence sent. The walk assumes the device was on the home screen; verify on screen that network access is no longer Limited.</span>
                                     {/if}
                                 {/if}
 

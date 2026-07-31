@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { DeviceOut, DeviceRun, DeviceStatus, DeviceType, RceDeviceConfig, RceManagementClient, SnapshotOut } from 'roku-deploy';
-import { RceDevice, rokuDeploy } from 'roku-deploy';
+import { rokuDeploy } from 'roku-deploy';
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
@@ -65,9 +65,11 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                 const { name, deviceType, note } = message.context;
                 /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
                 const createdDevice = await managementClient.createDevice({
-                    name: name,
-                    device_type: deviceType,
-                    note: note
+                    device: {
+                        name: name,
+                        device_type: deviceType,
+                        note: note
+                    }
                 });
                 /* eslint-enable camelcase */
                 this.postOrQueueMessage(this.createResponseMessage(message, { device: createdDevice }));
@@ -100,7 +102,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                 }
 
                 //the chosen snapshot's firmware id is looked up from the device's snapshot list
-                const snapshots = await managementClient.listSnapshots(deviceId);
+                const snapshots = await managementClient.listSnapshots({ deviceId: deviceId });
                 const chosenSnapshot = snapshots.find((snapshot) => snapshot.id === snapshotId);
 
                 let firmwareVersionId = chosenSnapshot?.firmware_version_id ?? device.firmware_version_id;
@@ -113,10 +115,13 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                 }
 
                 /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-                const startedDevice = await managementClient.startDevice(deviceId, {
-                    snapshot_id: snapshotId,
-                    firmware_version_id: firmwareVersionId,
-                    max_runtime: maxRuntimeSeconds
+                const startedDevice = await managementClient.startDevice({
+                    deviceId: deviceId,
+                    start: {
+                        snapshot_id: snapshotId,
+                        firmware_version_id: firmwareVersionId,
+                        max_runtime: maxRuntimeSeconds
+                    }
                 });
                 /* eslint-enable camelcase */
                 //every start records its snapshot as the device's last-used pick, which the picker
@@ -138,7 +143,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                     throw new Error('No active Cloud Emulator account is configured');
                 }
                 const deviceId = message.context.deviceId;
-                const stoppedDevice = await managementClient.stopDevice(deviceId);
+                const stoppedDevice = await managementClient.stopDevice({ deviceId: deviceId });
                 this.postOrQueueMessage(this.createResponseMessage(message, { device: stoppedDevice }));
                 this.startTransitionWatch();
             } catch (error) {
@@ -162,9 +167,12 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                     throw new Error('No active Cloud Emulator account is configured');
                 }
                 const { deviceId, name, note } = message.context;
-                const updatedDevice = await managementClient.updateDevice(deviceId, {
-                    name: name,
-                    note: note
+                const updatedDevice = await managementClient.updateDevice({
+                    deviceId: deviceId,
+                    update: {
+                        name: name,
+                        note: note
+                    }
                 });
                 this.postOrQueueMessage(this.createResponseMessage(message, { device: updatedDevice }));
             } catch (error) {
@@ -184,7 +192,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
 
                 //the delete endpoint documents no business-rule error for the live/base snapshots, so
                 //those have to be refused here rather than relying on the server to reject the request
-                const snapshots = await managementClient.listSnapshots(deviceId);
+                const snapshots = await managementClient.listSnapshots({ deviceId: deviceId });
                 const snapshot = snapshots.find((candidateSnapshot) => candidateSnapshot.id === snapshotId);
                 if (!snapshot) {
                     throw new Error(`Snapshot '${snapshotName}' no longer exists`);
@@ -211,7 +219,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                     return true;
                 }
 
-                await managementClient.deleteSnapshot(deviceId, snapshotId);
+                await managementClient.deleteSnapshot({ deviceId: deviceId, snapshotId: snapshotId });
                 this.postOrQueueMessage(this.createResponseMessage(message, { deleted: true }));
             } catch (error) {
                 this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
@@ -227,9 +235,12 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                     throw new Error('No active Cloud Emulator account is configured');
                 }
                 const { deviceId, name, note } = message.context;
-                const createdSnapshot = await managementClient.createSnapshot(deviceId, {
-                    name: name,
-                    note: note
+                const createdSnapshot = await managementClient.createSnapshot({
+                    deviceId: deviceId,
+                    snapshot: {
+                        name: name,
+                        note: note
+                    }
                 });
                 this.postOrQueueMessage(this.createResponseMessage(message, { snapshot: createdSnapshot }));
             } catch (error) {
@@ -242,42 +253,11 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         this.addMessageCommandCallback(ViewProviderCommand.enableRceDevMode, async (message) => {
             try {
                 const deviceConfig = await this.getRunningRceDeviceConfig(message.context.deviceId, 'enable dev mode');
-                await this.createRceDevice(deviceConfig).sendDeveloperSettingsCombo();
+                await rokuDeploy.sendDeveloperSettingsCombo({ device: deviceConfig });
                 this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
             } catch (error) {
                 this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
             }
-            await this.pushState();
-            return true;
-        });
-
-        this.addMessageCommandCallback(ViewProviderCommand.disableRceLimitedEcp, async (message) => {
-            try {
-                const deviceConfig = await this.getRunningRceDeviceConfig(message.context.deviceId, 'change its ECP mode');
-                //walks the on-screen settings to flip Control-by-mobile-apps network access off
-                //Limited. Sent over the ECP2 auth-proxy socket (not the /ecp1 proxy) because
-                //limited mode is exactly the state that 403s plain ECP keypresses.
-                await this.createRceDevice(deviceConfig).sendKeySequence(RceManagementViewProvider.disableLimitedEcpKeySequence);
-                this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
-            } catch (error) {
-                this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
-            }
-            await this.pushState();
-            return true;
-        });
-
-        this.addMessageCommandCallback(ViewProviderCommand.wakeRceDevice, async (message) => {
-            try {
-                const deviceConfig = await this.getRunningRceDeviceConfig(message.context.deviceId, 'wake it');
-                //how the web app wakes a device: a guide keypress (wakes the display) followed by home
-                await rokuDeploy.keyPress({ device: deviceConfig, key: 'Guide' });
-                await rokuDeploy.keyPress({ device: deviceConfig, key: 'Home' });
-                this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
-            } catch (error) {
-                this.postOrQueueMessage(this.createResponseMessage(message, undefined, { message: (error as Error).message }));
-            }
-            //waking changes nothing the state payload carries, but pushing keeps the handler shape
-            //consistent and refreshes the running_device block's freshness either way
             await this.pushState();
             return true;
         });
@@ -331,14 +311,6 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         return { instanceUrl: instanceApiUrl, rceToken: token };
     }
 
-    /**
-     * Builds the RceDevice used to talk to a running instance's api. Split out so tests can
-     * substitute a fake, the same pattern as RceManager's createClient.
-     */
-    protected createRceDevice(config: RceDeviceConfig): RceDevice {
-        return new RceDevice(config);
-    }
-
     private rceManager: RceManager;
     private rceFinder: RceFinder;
     private unsubscribeFromTokenChanged: () => void;
@@ -347,14 +319,6 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
     private transitionWatchTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     private static readonly allowedAccountCommands = ['addAccount', 'switchAccount', 'removeAccount'];
-
-    /**
-     * The remote-key walk through the on-screen settings that flips Control-by-mobile-apps network
-     * access off Limited mode ('Select' is the remote's OK button)
-     */
-    private static readonly disableLimitedEcpKeySequence = [
-        'Home', 'Up', 'Right', 'Up', 'Right', 'Up', 'Right', 'Up', 'Right', 'Right', 'Down', 'Select', 'Up', 'Select'
-    ];
 
     /**
      * Max runtime used when the webview does not send one (one hour, matching the runtime
@@ -527,8 +491,8 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                 throw new Error('No active Cloud Emulator account is configured');
             }
             const [snapshots, runs] = await Promise.all([
-                managementClient.listSnapshots(deviceId),
-                managementClient.getDeviceRuns(deviceId)
+                managementClient.listSnapshots({ deviceId: deviceId }),
+                managementClient.getDeviceRuns({ deviceId: deviceId })
             ]);
             details.snapshots = snapshots;
             details.runs = runs;
