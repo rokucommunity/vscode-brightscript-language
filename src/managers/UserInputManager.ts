@@ -245,7 +245,7 @@ export class UserInputManager {
         // `stale` orders are deliberately left alone — routine freshness is the 7s
         // fallback's job (below), so opening the picker never scans the network by itself.
         // (spec's quick-pick table: "on open, fulfills pending orders for any reason except stale")
-        let hasScanned = this.deviceManager.fulfillOrders({ except: ['stale'] }).scanStarted;
+        let hasScanned = this.deviceManager.fulfillOrders({ types: ['broadcast', 'reconcile'], except: ['stale'] }).scanStarted;
 
         this.deviceManager.on('order-submitted', (order) => {
             if (order.type === 'broadcast' && order.reason !== 'stale') {

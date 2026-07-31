@@ -357,7 +357,7 @@ describe('DeviceManager', () => {
             const reconcileStub = sinon.stub(manager as any, 'reconcile');
             manager.submitOrders([{ type: 'broadcast', reason: 'refresh-clicked' }, { type: 'reconcile', reason: 'refresh-clicked' }]);
 
-            const result = manager.fulfillOrders();
+            const result = manager.fulfillOrders({ types: ['broadcast', 'reconcile'] });
 
             expect(result).to.eql({ scanStarted: true, reconciled: true });
             expect(broadcastStub.calledOnceWith(['refresh-clicked'])).to.be.true;
@@ -372,7 +372,7 @@ describe('DeviceManager', () => {
             manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
             manager.submitOrders([{ type: 'reconcile', reason: 'stale' }]);
 
-            const result = manager.fulfillOrders({ except: ['stale'] });
+            const result = manager.fulfillOrders({ types: ['broadcast', 'reconcile'], except: ['stale'] });
 
             expect(result).to.eql({ scanStarted: false, reconciled: false });
             expect(broadcastStub.called).to.be.false;

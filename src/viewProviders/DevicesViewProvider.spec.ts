@@ -110,11 +110,11 @@ describe('DevicesViewProvider', () => {
             },
             getPendingBroadcastReasons: () => [...pendingBroadcastReasons],
             getPendingReconcileReasons: () => [...pendingReconcileReasons],
-            fulfillOrders: (fulfillOptions?: { types?: string[]; except?: string[] }) => {
-                const types = fulfillOptions?.types ?? ['broadcast', 'reconcile'];
+            fulfillOrders: (fulfillOptions: { types: string[]; except?: string[] }) => {
+                const types = fulfillOptions.types;
                 const result = { scanStarted: false, reconciled: false };
                 if (types.includes('broadcast')) {
-                    const triggers = [...pendingBroadcastReasons].filter(x => !fulfillOptions?.except?.includes(x));
+                    const triggers = [...pendingBroadcastReasons].filter(x => !fulfillOptions.except?.includes(x));
                     if (triggers.length > 0) {
                         const reasons = [...pendingBroadcastReasons];
                         pendingBroadcastReasons.clear();
@@ -122,7 +122,7 @@ describe('DevicesViewProvider', () => {
                     }
                 }
                 if (types.includes('reconcile')) {
-                    const triggers = [...pendingReconcileReasons].filter(x => !fulfillOptions?.except?.includes(x));
+                    const triggers = [...pendingReconcileReasons].filter(x => !fulfillOptions.except?.includes(x));
                     if (triggers.length > 0) {
                         const reasons = [...pendingReconcileReasons];
                         pendingReconcileReasons.clear();

@@ -105,7 +105,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (!this.visible) {
                 return;
             }
-            this.deviceManager.fulfillOrders();
+            this.deviceManager.fulfillOrders({ types: ['broadcast', 'reconcile'] });
             // Re-render if the device list changed while hidden (getChildren consumes the flag)
             if (this.devicesDirty) {
                 this._onDidChangeTreeData.fire(null);
@@ -116,7 +116,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         // extension activates, sync the flag now and consume any queued (startup) orders
         this.visible = treeView.visible;
         if (this.visible) {
-            this.deviceManager.fulfillOrders();
+            this.deviceManager.fulfillOrders({ types: ['broadcast', 'reconcile'] });
         }
 
         // Expanding a device reveals its Device Info section — fetch it fresh. The result

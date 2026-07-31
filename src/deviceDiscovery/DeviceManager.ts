@@ -634,23 +634,23 @@ export class DeviceManager {
      * execution: broadcast reasons by one scan (staleness-gated when stale-only), reconcile
      * reasons by one health-check sweep (cache bypassed when `refresh-clicked` is among them).
      *
-     * @param options.types - which order types to fulfill; defaults to BOTH. Views with
-     *   per-type policy (e.g. the quick pick's 7s fallback only wants broadcasts) narrow it.
+     * @param options.types - which order types to fulfill. Callers state their policy
+     *   explicitly — e.g. the tree view fulfills both, the quick pick's 7s fallback only wants
+     *   broadcasts, live handlers pass the submitted order's type.
      * @param options.except - reasons that do not TRIGGER fulfillment on their own, e.g.
      *   `{ except: ['stale'] }` — see {@link Orders.take} for the full semantics.
      */
-    public fulfillOrders(options?: { types?: OrderType[]; except?: Array<BroadcastReason | ReconcileReason> }): { scanStarted: boolean; reconciled: boolean } {
-        const types = options?.types ?? ['broadcast', 'reconcile'];
+    public fulfillOrders(options: { types: OrderType[]; except?: Array<BroadcastReason | ReconcileReason> }): { scanStarted: boolean; reconciled: boolean } {
         const result = { scanStarted: false, reconciled: false };
 
-        if (types.includes('broadcast')) {
-            const reasons = this.orders.take('broadcast', options?.except as BroadcastReason[]);
+        if (options.types.includes('broadcast')) {
+            const reasons = this.orders.take('broadcast', options.except as BroadcastReason[]);
             if (reasons) {
                 result.scanStarted = this.broadcast(reasons);
             }
         }
-        if (types.includes('reconcile')) {
-            const reasons = this.orders.take('reconcile', options?.except as ReconcileReason[]);
+        if (options.types.includes('reconcile')) {
+            const reasons = this.orders.take('reconcile', options.except as ReconcileReason[]);
             if (reasons) {
                 this.reconcile(reasons);
                 result.reconciled = true;
