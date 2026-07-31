@@ -86,27 +86,21 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                     throw new Error('No active Cloud Emulator account is configured');
                 }
                 const deviceId = message.context.deviceId;
-                const explicitSnapshotId = message.context.snapshotId;
+                //the webview's picker is the single source of truth for which snapshot to start from;
+                //nothing is resolved here (the picker disables Start until it has a selection)
+                const snapshotId = message.context.snapshotId;
                 const maxRuntimeSeconds = message.context.maxRuntimeSeconds ?? RceManagementViewProvider.defaultMaxRuntimeSeconds;
                 const devices = await managementClient.listDevices();
                 const device = devices.find((candidateDevice) => candidateDevice.id === deviceId);
                 if (!device) {
                     throw new Error(`Device ${deviceId} was not found`);
                 }
-
-                //fetched up front: the live snapshot participates in resolving which snapshot to start from,
-                //and the chosen snapshot's firmware id is looked up from this same list further down
-                const snapshots = await managementClient.listSnapshots(deviceId);
-
-                const rememberedSnapshotId = this.getRememberedSnapshotId(deviceId);
-                const rememberedSnapshotStillExists = rememberedSnapshotId !== undefined && (device.snapshots ?? []).includes(rememberedSnapshotId);
-                const liveSnapshotId = snapshots.find((snapshot) => snapshot.live)?.id;
-                const rememberedOrLiveOrLastSnapshotId = (rememberedSnapshotStillExists ? rememberedSnapshotId : undefined) ?? liveSnapshotId ?? device.last_snapshot_id ?? undefined;
-                const snapshotId = explicitSnapshotId ?? rememberedOrLiveOrLastSnapshotId;
                 if (!snapshotId) {
                     throw new Error(`Device '${device.name}' has no snapshot to start from; create a snapshot before starting it`);
                 }
 
+                //the chosen snapshot's firmware id is looked up from the device's snapshot list
+                const snapshots = await managementClient.listSnapshots(deviceId);
                 const chosenSnapshot = snapshots.find((snapshot) => snapshot.id === snapshotId);
 
                 let firmwareVersionId = chosenSnapshot?.firmware_version_id ?? device.firmware_version_id;
@@ -125,11 +119,9 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                     max_runtime: maxRuntimeSeconds
                 });
                 /* eslint-enable camelcase */
-                //only remember an explicit user pick; a resolved default (remembered/live/last) must not
-                //get written back, or the default would silently harden into "remembered" and stop tracking live
-                if (explicitSnapshotId !== undefined) {
-                    await this.rememberSnapshotId(deviceId, snapshotId);
-                }
+                //every start records its snapshot as the device's last-used pick, which the picker
+                //pre-selects next time, ahead of the live snapshot
+                await this.rememberSnapshotId(deviceId, snapshotId);
                 this.postOrQueueMessage(this.createResponseMessage(message, { device: startedDevice }));
                 this.startTransitionWatch();
             } catch (error) {
@@ -548,8 +540,9 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
     }
 
     /**
-     * The snapshot id last used to start this device, remembered per workspace so the picker
-     * pre-selects it (and the collapsed-row Start button can reuse it) across VS Code reloads
+     * The snapshot id this device was last started with, remembered per workspace so the picker
+     * pre-selects it across VS Code reloads. This is the extension's own record; the api's
+     * last_snapshot_id is deliberately not consulted anywhere.
      */
     private getRememberedSnapshotId(deviceId: number): number | undefined {
         const remembered = this.extensionContext.workspaceState.get<Record<number, number>>(WorkspaceStateKey.rceLastSnapshotByDevice) ?? {};

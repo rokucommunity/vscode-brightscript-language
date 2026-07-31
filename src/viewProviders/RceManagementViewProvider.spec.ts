@@ -261,12 +261,20 @@ describe('RceManagementViewProvider', () => {
     });
 
     describe('startRceDevice', () => {
-        it('responds with an error and does not start the device when it has no snapshot', async () => {
+        it('responds with an error when no snapshotId is sent, without resolving a fallback snapshot itself', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
+            //a remembered pick, a live snapshot, and last_snapshot_id all exist, but the picker
+            //is the single source of truth, so none of them get resolved here
+            await vscode.context.workspaceState.update(WorkspaceStateKey.rceLastSnapshotByDevice, { 5: 20 });
             /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: null }
+                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10, 20, 30], firmware_version_id: 'rce-fw:1' }
+            ]);
+            rceManager.fakeManagementClient.listSnapshots.resolves([
+                { id: 10, created_at: '2026-01-01', firmware_version_id: 'rce-fw:1', live: false },
+                { id: 20, created_at: '2026-01-02', firmware_version_id: 'rce-fw:2', live: false },
+                { id: 30, created_at: '2026-01-03', firmware_version_id: 'rce-fw:3', live: true }
             ]);
             /* eslint-enable camelcase */
 
@@ -280,7 +288,7 @@ describe('RceManagementViewProvider', () => {
             expect(rceManager.fakeManagementClient.startDevice.called).to.be.false;
         });
 
-        it('starts the device with an explicit snapshotId and remembers it for the device', async () => {
+        it('starts the device with the picker-sent snapshotId and remembers it as the device\'s last-used pick', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
             /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
@@ -308,60 +316,6 @@ describe('RceManagementViewProvider', () => {
             expect(remembered[5]).to.equal(20);
         });
 
-        it('prefers the remembered snapshot over the live snapshot and last_snapshot_id when no explicit snapshotId is given', async () => {
-            rceManager = new TestRceManager(vscode.context as any);
-            await rceManager.addAccount('work', 'token-work');
-            await vscode.context.workspaceState.update(WorkspaceStateKey.rceLastSnapshotByDevice, { 5: 20 });
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-            rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10, 20, 30], firmware_version_id: 'rce-fw:1' }
-            ]);
-            rceManager.fakeManagementClient.listSnapshots.resolves([
-                { id: 10, created_at: '2026-01-01', firmware_version_id: 'rce-fw:1', live: false },
-                { id: 20, created_at: '2026-01-02', firmware_version_id: 'rce-fw:2', live: false },
-                { id: 30, created_at: '2026-01-03', firmware_version_id: 'rce-fw:3', live: true }
-            ]);
-            /* eslint-enable camelcase */
-            rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
-
-            createProvider();
-
-            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5 } };
-            await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
-
-            const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
-            expect(startDeviceArgs[1].snapshot_id).to.equal(20);
-
-            //a resolved default (even one that happens to match a prior remembered pick) is not re-persisted here;
-            //the remembered value simply stays what it already was
-            const remembered = vscode.context.workspaceState.get(WorkspaceStateKey.rceLastSnapshotByDevice) ?? {};
-            expect(remembered[5]).to.equal(20);
-        });
-
-        it('starts from the live snapshot when there is no explicit snapshotId and no remembered pick, even when last_snapshot_id points elsewhere', async () => {
-            rceManager = new TestRceManager(vscode.context as any);
-            await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-            rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10, 30], firmware_version_id: 'rce-fw:1' }
-            ]);
-            rceManager.fakeManagementClient.listSnapshots.resolves([
-                { id: 10, created_at: '2026-01-01', firmware_version_id: 'rce-fw:1', live: false },
-                { id: 30, created_at: '2026-01-03', firmware_version_id: 'rce-fw:3', live: true }
-            ]);
-            /* eslint-enable camelcase */
-            rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
-
-            createProvider();
-
-            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5 } };
-            await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
-
-            const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
-            expect(startDeviceArgs[1].snapshot_id).to.equal(30);
-            expect(startDeviceArgs[1].firmware_version_id).to.equal('rce-fw:3');
-        });
-
         it('passes the webview-selected max runtime through to startDevice', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
@@ -377,7 +331,7 @@ describe('RceManagementViewProvider', () => {
 
             createProvider();
 
-            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5, maxRuntimeSeconds: 8 * 3600 } };
+            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5, snapshotId: 10, maxRuntimeSeconds: 8 * 3600 } };
             await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
 
             const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
@@ -399,34 +353,11 @@ describe('RceManagementViewProvider', () => {
 
             createProvider();
 
-            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5 } };
+            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5, snapshotId: 10 } };
             await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
 
             const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
             expect(startDeviceArgs[1].max_runtime).to.equal(3600);
-        });
-
-        it('does not persist rceLastSnapshotByDevice when the start resolved a default snapshot rather than an explicit pick', async () => {
-            rceManager = new TestRceManager(vscode.context as any);
-            await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-            rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10, 30], firmware_version_id: 'rce-fw:1' }
-            ]);
-            rceManager.fakeManagementClient.listSnapshots.resolves([
-                { id: 10, created_at: '2026-01-01', firmware_version_id: 'rce-fw:1', live: false },
-                { id: 30, created_at: '2026-01-03', firmware_version_id: 'rce-fw:3', live: true }
-            ]);
-            /* eslint-enable camelcase */
-            rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
-
-            createProvider();
-
-            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5 } };
-            await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
-
-            const remembered = vscode.context.workspaceState.get(WorkspaceStateKey.rceLastSnapshotByDevice) ?? {};
-            expect(remembered[5]).to.be.undefined;
         });
     });
 
@@ -1001,7 +932,7 @@ describe('RceManagementViewProvider', () => {
 
                 createProvider();
 
-                const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5 } };
+                const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5, snapshotId: 10 } };
                 await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
 
                 expect(rceFinder.scan.called).to.be.false;

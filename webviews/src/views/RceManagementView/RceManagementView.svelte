@@ -7,6 +7,7 @@
     import { Refresh, Edit, Check, Close, Trash, Play, DebugStop } from 'svelte-codicons';
     import { intermediary } from '../../ExtensionIntermediary';
     import Loader from '../../shared/Loader.svelte';
+    import VscodeDropdown from '../../shared/vscode-ui-toolkit/VscodeDropdown.svelte';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
 
@@ -62,6 +63,7 @@
 
     let expandedDeviceId: number | undefined = undefined;
     let deviceDetailsByDeviceId: Record<number, DeviceDetailsState> = {};
+    let snapshotDropdownsByDeviceId: Record<number, VscodeDropdown | null> = {};
 
     let editingDeviceId: number | undefined = undefined;
     let editName = '';
@@ -306,22 +308,30 @@
     }
 
     /**
-     * Resolves which snapshot the Start picker should have selected: the preserved selection when it
-     * still exists in the refreshed list, otherwise the user's remembered pick, otherwise the device's
-     * live snapshot, otherwise its last_snapshot_id, otherwise the first ready snapshot, otherwise
-     * undefined. This keeps the selection from going stale after a snapshot is deleted (elsewhere, or
-     * via this same view), and defaults an untouched picker to the live snapshot rather than whatever
-     * happens to be last_snapshot_id.
+     * Resolves which snapshot the Start picker should have selected: the user's own in-session pick
+     * when it still exists in the refreshed list, otherwise the snapshot the device's most recent run
+     * actually started from (the run history is the authoritative cross-window record of "last one
+     * used"), otherwise the extension's own remembered last-start (covers a missing or lagging run
+     * record), otherwise the device's live snapshot, otherwise the first ready snapshot, otherwise
+     * undefined. The api's last_snapshot_id (last CREATED, not last used) is deliberately not
+     * consulted. Whatever this lands on is exactly what Start sends: the picker is the single source
+     * of truth, the provider never resolves a snapshot itself.
+     *
+     * Only a deliberate pick may ride through as preferredSnapshotId. A stop rewrites the snapshot
+     * list (the live flag moves to the just-saved state) across several transition-watch refetches,
+     * and if a resolved default were fed back in as the preferred candidate, one mid-transition
+     * resolution landing on live would stick there forever instead of returning to the last-started
+     * snapshot once the list settles.
      */
     function resolveSelectedSnapshotId(
         snapshots: SnapshotOut[] | undefined,
         preferredSnapshotId: number | undefined,
-        lastUsedSnapshotId: number | undefined,
-        deviceLastSnapshotId: number | null | undefined
+        latestRunSnapshotId: number | undefined,
+        rememberedSnapshotId: number | undefined
     ): number | undefined {
         const availableSnapshotIds = new Set((snapshots ?? []).map((snapshot) => snapshot.id));
         const liveSnapshotId = (snapshots ?? []).find((snapshot) => snapshot.live)?.id;
-        const candidateSnapshotIds = [preferredSnapshotId, lastUsedSnapshotId, liveSnapshotId, deviceLastSnapshotId ?? undefined];
+        const candidateSnapshotIds = [preferredSnapshotId, latestRunSnapshotId, rememberedSnapshotId, liveSnapshotId];
         for (const candidateSnapshotId of candidateSnapshotIds) {
             if (candidateSnapshotId !== undefined && availableSnapshotIds.has(candidateSnapshotId)) {
                 return candidateSnapshotId;
@@ -351,11 +361,11 @@
             deviceId: deviceId
         });
 
-        const device = devices?.find((candidateDevice) => candidateDevice.id === deviceId);
-        const resolvedSnapshotId = resolveSelectedSnapshotId(details.snapshots, existingSelection, details.lastUsedSnapshotId, device?.last_snapshot_id);
-        //the "user picked" flag only survives when the preserved selection is what actually won; any other
-        //outcome means the picker landed on a freshly-resolved default, not something the user chose
-        const preservedSelectionSurvived = existingSelection !== undefined && resolvedSnapshotId === existingSelection;
+        const preferredSnapshotId = existingUserPickedSnapshotId ? existingSelection : undefined;
+        const latestRunSnapshotId = sortedRuns(details.runs)[0]?.snapshot_id;
+        const resolvedSnapshotId = resolveSelectedSnapshotId(details.snapshots, preferredSnapshotId, latestRunSnapshotId, details.lastUsedSnapshotId);
+        //the pick flag only survives while the picked snapshot is what actually stays selected
+        const pickSurvived = preferredSnapshotId !== undefined && resolvedSnapshotId === preferredSnapshotId;
 
         deviceDetailsByDeviceId = {
             ...deviceDetailsByDeviceId,
@@ -366,7 +376,7 @@
                 lastUsedSnapshotId: details.lastUsedSnapshotId,
                 error: details.error,
                 selectedSnapshotId: resolvedSnapshotId,
-                userPickedSnapshotId: preservedSelectionSurvived ? existingUserPickedSnapshotId : false,
+                userPickedSnapshotId: pickSurvived,
                 devModeEnabledHintVisible: existingDevModeEnabledHintVisible,
                 limitedEcpDisabledHintVisible: existingLimitedEcpDisabledHintVisible
             }
@@ -382,19 +392,28 @@
         return !detailsState || (detailsState.loading && detailsState.snapshots === undefined && detailsState.error === undefined);
     }
 
-    /**
-     * The dropdown's change handler: any change here is a deliberate user pick, even one that lands back
-     * on the value that was already selected, so the flag is always set unconditionally.
-     */
     function updateSelectedRuntimeHours(deviceId: number, rawHours: string) {
         selectedRuntimeHoursByDeviceId = { ...selectedRuntimeHoursByDeviceId, [deviceId]: Number(rawHours) };
+    }
+
+    /**
+     * The snapshot Start actually uses: read from the dropdown itself at click time, so what starts
+     * is exactly what the user sees, even if the element's internal selection ever drifts from our
+     * state mirror. The state mirror is only the fallback for a dropdown with no readable value.
+     */
+    function readDisplayedSnapshotId(deviceId: number): number | undefined {
+        const rawValue = snapshotDropdownsByDeviceId[deviceId]?.readDisplayedValue();
+        if (rawValue) {
+            return Number(rawValue);
+        }
+        return deviceDetailsByDeviceId[deviceId]?.selectedSnapshotId;
     }
 
     function updateSelectedSnapshot(deviceId: number, rawSnapshotId: string) {
         const snapshotId = rawSnapshotId ? Number(rawSnapshotId) : undefined;
         deviceDetailsByDeviceId = {
             ...deviceDetailsByDeviceId,
-            [deviceId]: { ...deviceDetailsByDeviceId[deviceId], selectedSnapshotId: snapshotId, userPickedSnapshotId: true }
+            [deviceId]: { ...deviceDetailsByDeviceId[deviceId], selectedSnapshotId: snapshotId, userPickedSnapshotId: snapshotId !== undefined }
         };
     }
 
@@ -557,8 +576,13 @@
         runs: DeviceRun[] | undefined;
         lastUsedSnapshotId: number | undefined;
         error: string | undefined;
+        /** What the Start picker shows, and therefore exactly what Start will send */
         selectedSnapshotId: number | undefined;
-        /** Whether selectedSnapshotId reflects a deliberate dropdown pick rather than a resolved default */
+        /**
+         * Whether selectedSnapshotId is a deliberate in-session dropdown pick. Gates whether the
+         * selection is fed back into resolveSelectedSnapshotId as the preferred candidate on the
+         * next refetch; never sent to the provider (Start always sends selectedSnapshotId as-is)
+         */
         userPickedSnapshotId: boolean;
         /** Shown after a successful enableRceDevMode call, until the details are next refetched */
         devModeEnabledHintVisible: boolean;
@@ -828,10 +852,11 @@
                         </div>
                         {#if device.status === 'shutdown'}
                             <div class="startControl">
-                                <vscode-dropdown
+                                <VscodeDropdown
+                                    bind:this={snapshotDropdownsByDeviceId[device.id]}
                                     disabled={isFirstDetailsLoad(detailsState)}
-                                    value={detailsState?.selectedSnapshotId !== undefined ? String(detailsState.selectedSnapshotId) : ''}
-                                    on:change={(event) => updateSelectedSnapshot(device.id, event.target.value)}>
+                                    value={detailsState?.selectedSnapshotId !== undefined ? String(detailsState.selectedSnapshotId) : undefined}
+                                    on:change={(event) => updateSelectedSnapshot(device.id, (event.target as HTMLElement & { value: string }).value)}>
                                     {#if isFirstDetailsLoad(detailsState)}
                                         <vscode-option value="">Loading...</vscode-option>
                                     {:else if (detailsState?.snapshots ?? []).length === 0}
@@ -843,7 +868,7 @@
                                             </vscode-option>
                                         {/each}
                                     {/if}
-                                </vscode-dropdown>
+                                </VscodeDropdown>
                                 <vscode-dropdown
                                     class="runtimeDropdown"
                                     title="Maximum runtime"
@@ -856,8 +881,8 @@
                                 <vscode-button
                                     appearance="icon"
                                     title="Start device"
-                                    disabled={deviceActionsInFlight[device.id] || (detailsState && !detailsState.loading && !detailsState.selectedSnapshotId)}
-                                    on:click={() => startDevice(device, detailsState?.userPickedSnapshotId ? detailsState.selectedSnapshotId : undefined)}>
+                                    disabled={deviceActionsInFlight[device.id] || !detailsState?.selectedSnapshotId}
+                                    on:click={() => startDevice(device, readDisplayedSnapshotId(device.id))}>
                                     <Play />
                                 </vscode-button>
                             </div>
