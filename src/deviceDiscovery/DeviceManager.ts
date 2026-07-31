@@ -1114,6 +1114,11 @@ export class DeviceManager {
     }
 
     private async healthCheckAllDevices(force = false, doSyntheticDelay = true): Promise<void> {
+        //cloud emulator devices are refreshed through the management api rather than a LAN probe
+        //(the same route as healthCheckDevice's cloud branch); scan() resolves without emitting
+        //when no account is configured, so this is safe to kick unconditionally
+        const rceScan = this.rceFinder?.scan();
+
         // Collect all unique IPs from both sources (same serial at different IPs = different entries to check)
         const discoveredIpSet = new Set(this.discoveredDevices.map(entry => entry.ip));
         const allIps = new Set([
@@ -1122,6 +1127,7 @@ export class DeviceManager {
         ]);
 
         if (allIps.size === 0) {
+            await rceScan;
             return;
         }
 
@@ -1139,6 +1145,7 @@ export class DeviceManager {
                 needsScan = true;
             }
         }));
+        await rceScan;
 
         if (needsScan) {
             this.discoverAll(this.deviceDiscoveryEnabled);

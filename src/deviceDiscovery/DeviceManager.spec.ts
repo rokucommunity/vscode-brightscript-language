@@ -1516,6 +1516,31 @@ describe('DeviceManager', () => {
             expect(getDeviceInfoStub.getCalls().some(call => 'host' in (call.args[0].device as any))).to.be.false;
         });
 
+        it('refreshes rce devices when health checking all devices, including with no LAN devices at all', async () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            let scanCount = 0;
+            fakeFinder.scan = () => {
+                scanCount++;
+                return Promise.resolve();
+            };
+            fakeFinder.getCachedToken = () => 'secret';
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+            manager['onRceDevices']([rceDevice()] as any);
+            sinon.stub(manager as any, 'resolveDevice').resolves(true);
+
+            //no configured or discovered LAN devices: the no-LAN-ips early return must still scan
+            await manager['healthCheckAllDevices'](false, false);
+            expect(scanCount).to.equal(1);
+
+            //with LAN devices present the scan rides alongside the LAN probes
+            addDevice(createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' }));
+            await manager['healthCheckAllDevices'](false, false);
+            expect(scanCount).to.equal(2);
+        });
+
         it('resolveDevice never probes rce devices and reports their management-api state', async () => {
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
