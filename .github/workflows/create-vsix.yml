@@ -139,10 +139,9 @@ jobs:
             const prod = artifacts.find(a => a.name.startsWith('brightscript-') && a !== temp);
 
             let body = 'Hey there! I just built a new version of the vscode extension based on [' + sha.substring(0, 7) + '](https://github.com/' + '${{ steps.info.outputs.prOwner }}' + '/' + '${{ steps.info.outputs.prRepo }}' + '/commit/' + sha + ').\n\n';
-            body += 'Download:\n';
-            body += '- [brightscript (replaces store version)](' + prod.url + ')\n';
-            body += '- [brightscript-temp (side-by-side install)](' + temp.url + ')\n';
-            body += '\n[Install instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html).';
+            body += '### 📦 [Download the .vsix](' + prod.url + ')\n';
+            body += 'See the [install instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html) if you need them. This replaces your marketplace version of the extension until you reinstall it.\n\n';
+            body += '<sub>_Prefer to keep the marketplace version installed? There\'s also a [side-by-side build](' + temp.url + ') that installs as a separate extension. Be sure to disable the marketplace version while testing it, otherwise the two will conflict._</sub>';
 
             await github.rest.issues.createComment({
               owner: '${{ steps.info.outputs.prOwner }}',
