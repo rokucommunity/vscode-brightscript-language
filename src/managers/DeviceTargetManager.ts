@@ -27,7 +27,8 @@ export class DeviceTargetManager {
      * - nothing shows the shared device picker, where a cloud pick resolves back to a RokuDevice
      *   via its precomputed device option
      *
-     * Both fields are undefined when nothing was resolved (unknown key, or picker dismissed).
+     * An unknown key does not resolve to undefined - it falls through to the picker the same way
+     * an empty reference does. Both fields are undefined only when the picker was dismissed.
      */
     public async resolveDeviceReference(reference?: string | { key?: string }): Promise<{ device: RokuDevice | undefined; host: string | undefined }> {
         let device: RokuDevice | undefined;

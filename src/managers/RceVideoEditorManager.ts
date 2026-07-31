@@ -233,9 +233,9 @@ class RceVideoEditorPanel implements vscode.Disposable {
 
     /**
      * Resolve the device's current stream details and start (or restart) the session. A stopped
-     * device renders as the tab's device-stopped state (with its Watch Again action); other
-     * failures (account trouble, a dead gateway) render in the stream error banner, whose Retry
-     * action comes back through here.
+     * device renders as the tab's device-stopped state (which resumes on its own when the device
+     * is started again); other failures (account trouble, a dead gateway) render in the stream
+     * error banner, whose Retry action comes back through here.
      */
     public async watch(): Promise<void> {
         try {

@@ -61,7 +61,7 @@
     });
 
     //the device is not running anymore (stopped by the user or its runtime limit); rendered as a
-    //neutral device-stopped state with a Watch Again action rather than an error banner
+    //neutral device-stopped state (with its resumes-automatically hint) rather than an error banner
     intermediary.observeEvent(ViewProviderEvent.onRceStreamDeviceStopped, (message) => {
         if (rceStreamDeviceName === undefined) {
             enterRceStreamMode(message.context.deviceId, message.context.deviceName ?? 'Cloud Emulator device');

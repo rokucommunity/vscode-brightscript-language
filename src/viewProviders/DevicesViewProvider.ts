@@ -398,8 +398,10 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      */
     private async buildDeviceContextValue(device: RokuDevice): Promise<string> {
         const tokens = ['device'];
-        //settings entries are LAN host entries, and tv-input/restart/update commands are still
-        //ip-routed, so cloud devices omit those capability tokens entirely
+        //cloud vs local gates the menu entries that only make sense for one device kind. The
+        //configuredIn tokens are LAN-only because `brightscript.devices` settings entries are host
+        //entries a cloud device can never appear in; every other capability token applies to both
+        //kinds, since their commands resolve the device by key rather than by ip
         tokens.push(device.rce ? 'cloud' : 'local');
         if (!device.rce) {
             tokens.push(device.configuredIn?.includes('user') ? 'inUser' : 'notInUser');
