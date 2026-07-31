@@ -4,7 +4,7 @@
     import { onDestroy } from 'svelte';
     import type { DeviceRun, SnapshotOut } from 'roku-deploy';
     import type { RceStateDevice } from '../../../../src/viewProviders/RceManagementViewProvider';
-    import { Refresh, Edit, Check, Close, Trash, Play, DebugStop } from 'svelte-codicons';
+    import { Refresh, Edit, Check, Close, Trash, Play, DebugStop, ChevronRight, ChevronDown } from 'svelte-codicons';
     import { intermediary } from '../../ExtensionIntermediary';
     import Loader from '../../shared/Loader.svelte';
     import VscodeDropdown from '../../shared/vscode-ui-toolkit/VscodeDropdown.svelte';
@@ -64,6 +64,7 @@
     let expandedDeviceId: number | undefined = undefined;
     let deviceDetailsByDeviceId: Record<number, DeviceDetailsState> = {};
     let snapshotDropdownsByDeviceId: Record<number, VscodeDropdown | null> = {};
+    let historyExpandedByDeviceId: Record<number, boolean> = {};
 
     let editingDeviceId: number | undefined = undefined;
     let editName = '';
@@ -287,6 +288,20 @@
             const secondTimestamp = secondRun.started_at ? new Date(secondRun.started_at as string).getTime() : 0;
             return secondTimestamp - firstTimestamp;
         });
+    }
+
+    function statusDotClass(status: string | undefined): string {
+        if (status === 'running') {
+            return 'statusRunning';
+        }
+        if (status === 'pending') {
+            return 'statusPending';
+        }
+        return 'statusStopped';
+    }
+
+    function toggleHistoryExpanded(deviceId: number) {
+        historyExpandedByDeviceId = { ...historyExpandedByDeviceId, [deviceId]: !historyExpandedByDeviceId[deviceId] };
     }
 
     async function toggleDeviceExpanded(device: RceStateDevice) {
@@ -666,6 +681,52 @@
     .deviceName {
         font-weight: bold;
         overflow-wrap: anywhere;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .expandCaret {
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .expandCaret :global(svg) {
+        width: 14px;
+        height: 14px;
+    }
+
+    .expandableSectionTitle {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .statusDot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-right: 2px;
+    }
+
+    .statusDot.statusRunning {
+        background-color: var(--vscode-testing-iconPassed);
+    }
+
+    .statusDot.statusPending {
+        background-color: var(--vscode-charts-yellow);
+    }
+
+    .statusDot.statusStopped {
+        background-color: var(--vscode-disabledForeground);
+    }
+
+    .indented {
+        margin-left: 20px;
     }
 
     .deviceMeta {
@@ -683,9 +744,11 @@
         margin-top: 2px;
         width: 100%;
         max-width: 160px;
-        height: 2px;
-        background-color: var(--vscode-sideBar-background);
-        border-radius: 1px;
+        height: 3px;
+        /* the details panel behind this bar is sideBar-background, so the track needs a
+           contrasting color of its own or the fill has nothing to read against */
+        background-color: var(--vscode-scrollbarSlider-background);
+        border-radius: 2px;
         overflow: hidden;
     }
 
@@ -753,6 +816,7 @@
         gap: 6px;
         font-size: 0.9em;
         padding: 3px 0;
+        margin-left: 20px;
     }
 
     .snapshotInfo, .historyInfo {
@@ -794,7 +858,7 @@
                         <vscode-option value={accountName}>{accountName}</vscode-option>
                     {/each}
                 </vscode-dropdown>
-                <vscode-button appearance="secondary" on:click={() => runAccountCommand('addAccount')}>Add Account</vscode-button>
+                <vscode-button on:click={() => runAccountCommand('addAccount')}>Add Account</vscode-button>
                 <vscode-button appearance="secondary" on:click={() => runAccountCommand('removeAccount')}>Remove Account</vscode-button>
             </div>
 
@@ -813,7 +877,7 @@
                 <vscode-button appearance="icon" title="Refresh" on:click={loadState}>
                     <Refresh />
                 </vscode-button>
-                <vscode-button appearance="secondary" on:click={toggleCreateDeviceForm}>
+                <vscode-button appearance={showCreateDeviceForm ? 'secondary' : undefined} on:click={toggleCreateDeviceForm}>
                     {showCreateDeviceForm ? 'Cancel' : 'Create Device'}
                 </vscode-button>
             </div>
@@ -841,7 +905,13 @@
                     {@const detailsState = deviceDetailsByDeviceId[device.id]}
                     <div class="deviceRow">
                         <div class="deviceInfo" on:click={() => toggleDeviceExpanded(device)}>
-                            <span class="deviceName">{device.name}</span>
+                            <span class="deviceName">
+                                <span class="expandCaret">
+                                    {#if expandedDeviceId === device.id}<ChevronDown />{:else}<ChevronRight />{/if}
+                                </span>
+                                <span class="statusDot {statusDotClass(device.status)}" title={device.status ?? 'unknown'}></span>
+                                {device.name}
+                            </span>
                             <span class="deviceMeta">{device.device_type} &middot; {device.status ?? 'unknown'} &middot; {device.last_snapshot_name ?? 'no snapshot'}</span>
                             {#if runtime}
                                 <span class="deviceRuntime">{runtime.label}</span>
@@ -888,11 +958,10 @@
                             </div>
                         {:else if device.status === 'running' || device.status === 'pending'}
                             {#if device.status === 'running'}
-                                <vscode-button appearance="secondary" on:click={() => toggleSnapshotForm(device)}>
+                                <vscode-button appearance={snapshotFormDeviceId === device.id ? 'secondary' : undefined} on:click={() => toggleSnapshotForm(device)}>
                                     {snapshotFormDeviceId === device.id ? 'Cancel' : 'Snapshot'}
                                 </vscode-button>
                                 <vscode-button
-                                    appearance="secondary"
                                     disabled={wakingDeviceInFlight[device.id]}
                                     on:click={() => wakeDevice(device)}>
                                     Wake
@@ -939,7 +1008,6 @@
                                 {#if device.status === 'running'}
                                     <div class="editRow">
                                         <vscode-button
-                                            appearance="secondary"
                                             disabled={watchingDeviceInFlight[device.id]}
                                             on:click={() => watchDevice(device)}>
                                             Watch
@@ -994,7 +1062,7 @@
                                 <div>
                                     <div class="detailsSectionTitle">Snapshots</div>
                                     {#if (detailsState.snapshots ?? []).length === 0}
-                                        <span class="mutedNote">No snapshots yet.</span>
+                                        <span class="mutedNote indented">No snapshots yet.</span>
                                     {:else}
                                         {#each detailsState.snapshots as snapshot (snapshot.id)}
                                             <div class="snapshotRow">
@@ -1033,20 +1101,27 @@
                                 </div>
 
                                 <div>
-                                    <div class="detailsSectionTitle">History</div>
-                                    {#if sortedRuns(detailsState.runs).length === 0}
-                                        <span class="mutedNote">No run history yet.</span>
-                                    {:else}
-                                        {#each sortedRuns(detailsState.runs).slice(0, 10) as run}
-                                            <div class="historyRow">
-                                                <div class="historyInfo">
-                                                    <span>{run.creator_username ?? 'Unknown user'} &middot; {run.snapshot_name ?? 'Unknown snapshot'}</span>
-                                                    <span class="historyMeta">{formatDateTime(run.started_at as string)} &middot; {runDuration(run)}</span>
+                                    <div class="detailsSectionTitle expandableSectionTitle" on:click={() => toggleHistoryExpanded(device.id)}>
+                                        <span class="expandCaret">
+                                            {#if historyExpandedByDeviceId[device.id]}<ChevronDown />{:else}<ChevronRight />{/if}
+                                        </span>
+                                        History
+                                    </div>
+                                    {#if historyExpandedByDeviceId[device.id]}
+                                        {#if sortedRuns(detailsState.runs).length === 0}
+                                            <span class="mutedNote indented">No run history yet.</span>
+                                        {:else}
+                                            {#each sortedRuns(detailsState.runs).slice(0, 10) as run}
+                                                <div class="historyRow">
+                                                    <div class="historyInfo">
+                                                        <span>{run.creator_username ?? 'Unknown user'} &middot; {run.snapshot_name ?? 'Unknown snapshot'}</span>
+                                                        <span class="historyMeta">{formatDateTime(run.started_at as string)} &middot; {runDuration(run)}</span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        {/each}
-                                        {#if sortedRuns(detailsState.runs).length > 10}
-                                            <span class="mutedNote">+{sortedRuns(detailsState.runs).length - 10} more</span>
+                                            {/each}
+                                            {#if sortedRuns(detailsState.runs).length > 10}
+                                                <span class="mutedNote indented">+{sortedRuns(detailsState.runs).length - 10} more</span>
+                                            {/if}
                                         {/if}
                                     {/if}
                                 </div>
