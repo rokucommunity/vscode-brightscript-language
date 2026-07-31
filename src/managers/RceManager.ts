@@ -10,6 +10,11 @@ import type { IceServer, UserOut } from 'roku-deploy';
  * can work against different RCE accounts at the same time. The `ROKU_RCE_TOKEN` environment
  * variable acts as a fallback when no accounts exist (headless/CI use).
  * Consumers (the RceFinder, device lifecycle actions, the launch flow) get the client from here.
+ *
+ * Account mutations are serialized within a window (see `enqueueAccountWrite`), and a
+ * SecretStorage change subscription (see `register`) keeps every window's view fresh when another
+ * window mutates the list. Truly concurrent writes from two windows remain last-writer-wins:
+ * SecretStorage has no compare-and-swap, and account edits are rare interactive actions.
  */
 export class RceManager {
     constructor(
@@ -36,8 +41,32 @@ export class RceManager {
             }),
             vscode.commands.registerCommand('extension.brightscript.rce.removeAccount', async () => {
                 await this.promptRemoveAccount();
+            }),
+            //SecretStorage is shared across every VS Code window and fires this event in all of
+            //them: when another window mutates the account list, drop the cached client and
+            //re-announce so this window's finder and panels refresh instead of going stale. This
+            //window's own saveAccounts lands here too, making a harmless duplicate emission (the
+            //finder coalesces scans and the client rebuild is lazy)
+            context.secrets.onDidChange((event) => {
+                if (event.key === RceManager.accountsSecretKey) {
+                    this.client = undefined;
+                    this.emitter.emit('token-changed');
+                }
             })
         );
+    }
+
+    /**
+     * Serializes account mutations so overlapping calls in this window can't interleave their
+     * read-modify-write over the shared secret. Writes from other windows are not covered (see
+     * the class doc); a failed operation still rejects to its caller without wedging the queue.
+     */
+    private accountWriteQueue: Promise<unknown> = Promise.resolve();
+
+    private enqueueAccountWrite<T>(operation: () => Promise<T>): Promise<T> {
+        const queuedOperation = this.accountWriteQueue.then(operation);
+        this.accountWriteQueue = queuedOperation.catch(() => { });
+        return queuedOperation;
     }
 
     /**
@@ -52,8 +81,7 @@ export class RceManager {
     }
 
     /**
-     * Get every stored account. Also migrates the legacy single-token secret into a
-     * `default` account the first time it is seen.
+     * Get every stored account
      */
     public async getAccounts(): Promise<RceAccount[]> {
         const raw = await this.context.secrets.get(RceManager.accountsSecretKey);
@@ -65,17 +93,6 @@ export class RceManager {
                 accounts = [];
             }
         }
-
-        //migrate the legacy single-token secret into a named account
-        const legacyToken = await this.context.secrets.get(RceManager.legacyTokenSecretKey);
-        if (legacyToken) {
-            await this.context.secrets.delete(RceManager.legacyTokenSecretKey);
-            if (!accounts.some(account => account.token === legacyToken)) {
-                accounts.push({ name: 'default', token: legacyToken });
-                await this.saveAccounts(accounts);
-            }
-        }
-
         return accounts;
     }
 
@@ -103,14 +120,16 @@ export class RceManager {
      * Add an account (or update the token of an existing one) and make it this workspace's active account
      */
     public async addAccount(name: string, token: string): Promise<void> {
-        const accounts = await this.getAccounts();
-        const existing = accounts.find(account => account.name === name);
-        if (existing) {
-            existing.token = token;
-        } else {
-            accounts.push({ name: name, token: token });
-        }
-        await this.saveAccounts(accounts);
+        await this.enqueueAccountWrite(async () => {
+            const accounts = await this.getAccounts();
+            const existing = accounts.find(account => account.name === name);
+            if (existing) {
+                existing.token = token;
+            } else {
+                accounts.push({ name: name, token: token });
+            }
+            await this.saveAccounts(accounts);
+        });
         await this.setActiveAccount(name);
     }
 
@@ -119,8 +138,10 @@ export class RceManager {
      * (the first remaining account becomes the effective one).
      */
     public async removeAccount(name: string): Promise<void> {
-        const accounts = await this.getAccounts();
-        await this.saveAccounts(accounts.filter(account => account.name !== name));
+        await this.enqueueAccountWrite(async () => {
+            const accounts = await this.getAccounts();
+            await this.saveAccounts(accounts.filter(account => account.name !== name));
+        });
         if (this.getActiveAccountName() === name) {
             await this.context.workspaceState.update(RceManager.activeAccountStateKey, undefined);
         }
@@ -323,11 +344,6 @@ export class RceManager {
     }
 
     public static readonly accountsSecretKey = 'brightscript.rce.accounts';
-
-    /**
-     * The pre-account single-token secret; migrated into a `default` account on first read
-     */
-    public static readonly legacyTokenSecretKey = 'brightscript.rce.token';
 
     private static readonly activeAccountStateKey = 'brightscript.rce.activeAccount';
 }

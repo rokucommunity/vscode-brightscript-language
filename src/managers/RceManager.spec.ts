@@ -101,13 +101,37 @@ describe('RceManager', () => {
         expect(await manager.getToken()).to.equal('account-token');
     });
 
-    it('migrates the legacy single-token secret into a default account', async () => {
-        await vscode.context.secrets.store(RceManager.legacyTokenSecretKey, 'legacy-token');
+    it('serializes overlapping account mutations so neither write is lost', async () => {
+        //no awaits between the calls: both would read the same empty list and the second
+        //write would clobber the first if the mutations were not queued
+        await Promise.all([
+            manager.addAccount('work', 'token-work'),
+            manager.addAccount('personal', 'token-personal')
+        ]);
 
-        expect(await manager.getAccounts()).to.eql([{ name: 'default', token: 'legacy-token' }]);
-        expect(await manager.getToken()).to.equal('legacy-token');
-        //the legacy secret is gone after migration
-        expect(await vscode.context.secrets.get(RceManager.legacyTokenSecretKey)).to.be.undefined;
+        expect(await manager.getAccounts()).to.eql([
+            { name: 'work', token: 'token-work' },
+            { name: 'personal', token: 'token-personal' }
+        ]);
+    });
+
+    it('refreshes when another window changes the stored accounts', async () => {
+        manager.register(vscode.context as any);
+        await manager.addAccount('work', 'token-work');
+        const client1 = await manager.getClient();
+
+        let tokenChangedCount = 0;
+        manager.onTokenChanged(() => tokenChangedCount++);
+
+        //another window's write lands as a bare SecretStorage change (no local emit path)
+        await vscode.context.secrets.store(RceManager.accountsSecretKey, JSON.stringify([{ name: 'work', token: 'token-work' }]));
+        expect(tokenChangedCount).to.equal(1);
+        //the cached client was dropped, so the next getClient builds a fresh one
+        expect(await manager.getClient()).to.not.equal(client1);
+
+        //changes to unrelated secrets are ignored
+        await vscode.context.secrets.store('some.other.secret', 'value');
+        expect(tokenChangedCount).to.equal(1);
     });
 
     it('caches the client and rebuilds it when the effective token changes', async () => {
