@@ -249,6 +249,30 @@ describe('BrightScriptConfigurationProvider', () => {
                 }
             });
 
+            it('names the cloud device instead of an undefined host when the secondary dev-mode check throws', async () => {
+                sinon.stub(configProvider, 'getBsConfig').returns({});
+                const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc' };
+                //no developer-enabled field at all: the non-local flow's own dev-mode check (which
+                //only fires on the literal string 'false') passes, so the secondary check against
+                //the enhanced device-info is the one that throws - and cloud sessions have no host
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'serial-number': 'SN-TEST' });
+
+                let threw: Error | undefined;
+                try {
+                    await configProvider.resolveDebugConfiguration(folder, <any>{
+                        type: 'brightscript',
+                        device: device,
+                        password: 'aaaa'
+                    });
+                } catch (e) {
+                    threw = e as Error;
+                }
+
+                expect(threw?.message).to.contain('developer mode is disabled');
+                expect(threw?.message).to.contain(device.instanceUrl);
+                expect(threw?.message).to.not.contain('undefined');
+            });
+
             it('throws when the probed device returns no device info', async () => {
                 sinon.stub(configProvider, 'getBsConfig').returns({});
                 sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '1.2.3.4', deviceInfo: {} } as any);

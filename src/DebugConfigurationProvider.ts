@@ -151,7 +151,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
 
             if (deviceInfo && !deviceInfo.developerEnabled) {
-                throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
+                //`processHostParameter` normalized `result.device` above, so it names the target
+                //for every session kind - the top-level `host` is unset or unresolved for cloud
+                //and device-registry sessions
+                throw new Error(`Cannot deploy: developer mode is disabled on '${this.describeDevice(result.device)}'`);
             }
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
 
@@ -511,13 +514,18 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Describe a non-local device option (a roku-deploy device-registry name, or a Roku Cloud
-     * Emulator config addressed by esn/id/instanceUrl) by whichever address field it has, for error
-     * messages. Only ever called on a device that `isNonLocalDevice` already confirmed isn't local.
+     * Describe a device option (a local `{host}` config, a roku-deploy device-registry name, or a
+     * Roku Cloud Emulator config addressed by esn/id/instanceUrl) by whichever address field it
+     * has, for error messages. `processHostParameter` always normalizes `config.device`, so once
+     * it has run this is the authoritative way to name the target device - unlike the top-level
+     * `host`, which non-local sessions leave unset or unresolved.
      */
-    private describeNonLocalDevice(device: DeviceOption | undefined): string {
+    private describeDevice(device: DeviceOption | undefined): string {
         if (typeof device === 'string') {
             return device;
+        }
+        if (device && isLocalDeviceConfig(device)) {
+            return device.host;
         }
         if (device && 'instanceUrl' in device) {
             return device.instanceUrl;
@@ -687,7 +695,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             throw new Error('Debug session terminated: start the cloud emulator device from the Cloud Emulator panel first.');
         }
 
-        const deviceLabel = this.describeNonLocalDevice(config.device);
+        const deviceLabel = this.describeDevice(config.device);
         try {
             config.deviceInfo = await rokuDeploy.getDeviceInfo({
                 device: config.device,
@@ -735,7 +743,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (typeof device !== 'object') {
             return result;
         }
-        const host = isLocalDeviceConfig(device) ? device.host : undefined;
         const serialNumber = result.deviceInfo?.['serial-number'];
 
         // Opportunistically drain any legacy IP-keyed password that still lives in
@@ -775,7 +782,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             extraCandidates: [result.password, config.password]
         });
         if (resolution.status === 'unreachable') {
-            throw new Error(`Debug session terminated: device '${host ?? this.describeNonLocalDevice(device)}' is unreachable.`);
+            throw new Error(`Debug session terminated: device '${this.describeDevice(device)}' is unreachable.`);
         }
         if (resolution.status === 'cancelled') {
             throw new Error('Debug session terminated: password is required.');
