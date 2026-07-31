@@ -138,7 +138,10 @@ async function findOpenPr(repoName: string, owner: string, branch: string) {
     if (process.env.GITHUB_TOKEN) {
         headers.authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
     }
-    const response = await fetch(url, { headers });
+    //minutes of npm installs/builds pass between calls, and GitHub closes idle keep-alive sockets
+    //long before then. `connection: close` avoids undici reusing a socket the server already dropped
+    //(which surfaces as `TypeError: fetch failed` / UND_ERR_SOCKET "other side closed")
+    const response = await fetch(url, { headers: { ...headers, connection: 'close' } });
     if (!response.ok) {
         log(`Warning: could not look up open PRs for ${owner}:${branch} on ${repoName} (HTTP ${response.status})`);
         return undefined;
