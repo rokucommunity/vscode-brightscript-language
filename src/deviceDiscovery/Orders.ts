@@ -32,6 +32,11 @@ export type Order =
     | { type: 'reconcile'; reason: ReconcileReason };
 
 /**
+ * Payload of the `order-submitted` event: the order plus when it was submitted (ms epoch).
+ */
+export type SubmittedOrder = Order & { timestamp: number };
+
+/**
  * The pending-orders store (docs/device-discovery.md "Orders"): one set of reasons per order
  * type. The work is idempotent (one scan satisfies every queued "please scan"), so reasons
  * accumulate — different reasons coexist, the same reason never queues twice — and a take

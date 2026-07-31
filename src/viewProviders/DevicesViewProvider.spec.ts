@@ -105,35 +105,32 @@ describe('DevicesViewProvider', () => {
             submitOrders: (orders: Array<{ type: string; reason: string }>) => {
                 for (const order of orders) {
                     (order.type === 'broadcast' ? pendingBroadcastReasons : pendingReconcileReasons).add(order.reason);
-                    emitter.emit(`${order.type}-ordered`, { reason: order.reason, timestamp: Date.now() });
+                    emitter.emit('order-submitted', { ...order, timestamp: Date.now() });
                 }
             },
             getPendingBroadcastReasons: () => [...pendingBroadcastReasons],
             getPendingReconcileReasons: () => [...pendingReconcileReasons],
-            fulfillPendingBroadcast: (fulfillOptions?: { except?: string[] }) => {
-                const triggers = [...pendingBroadcastReasons].filter(x => !fulfillOptions?.except?.includes(x));
-                if (triggers.length === 0) {
-                    return false;
+            fulfillOrders: (fulfillOptions?: { types?: string[]; except?: string[] }) => {
+                const types = fulfillOptions?.types ?? ['broadcast', 'reconcile'];
+                const result = { scanStarted: false, reconciled: false };
+                if (types.includes('broadcast')) {
+                    const triggers = [...pendingBroadcastReasons].filter(x => !fulfillOptions?.except?.includes(x));
+                    if (triggers.length > 0) {
+                        const reasons = [...pendingBroadcastReasons];
+                        pendingBroadcastReasons.clear();
+                        result.scanStarted = deviceManager.broadcast(reasons);
+                    }
                 }
-                const reasons = [...pendingBroadcastReasons];
-                pendingBroadcastReasons.clear();
-                return deviceManager.broadcast(reasons);
-            },
-            fulfillPendingReconcile: (fulfillOptions?: { except?: string[] }) => {
-                const triggers = [...pendingReconcileReasons].filter(x => !fulfillOptions?.except?.includes(x));
-                if (triggers.length === 0) {
-                    return false;
+                if (types.includes('reconcile')) {
+                    const triggers = [...pendingReconcileReasons].filter(x => !fulfillOptions?.except?.includes(x));
+                    if (triggers.length > 0) {
+                        const reasons = [...pendingReconcileReasons];
+                        pendingReconcileReasons.clear();
+                        deviceManager.reconcile(reasons);
+                        result.reconciled = true;
+                    }
                 }
-                const reasons = [...pendingReconcileReasons];
-                pendingReconcileReasons.clear();
-                deviceManager.reconcile(reasons);
-                return true;
-            },
-            fulfillPendingOrders: (fulfillOptions?: { except?: string[] }) => {
-                return {
-                    scanStarted: deviceManager.fulfillPendingBroadcast(fulfillOptions),
-                    reconciled: deviceManager.fulfillPendingReconcile(fulfillOptions)
-                };
+                return result;
             }
         };
         const credentialStore: any = {

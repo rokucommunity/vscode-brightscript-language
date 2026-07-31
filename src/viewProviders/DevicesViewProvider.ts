@@ -71,21 +71,15 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         });
         this.context.subscriptions.push({ dispose: unsubscribeContextChange });
 
-        // While the panel is visible, fulfill live broadcast/reconcile orders as they arrive,
-        // except timer-driven `stale` ones (avoid surprise scans while the user is looking).
-        // Fulfillment is atomic — if another visible consumer (e.g. the device picker) already
-        // fulfilled this order, the pending set is empty and the call is a no-op.
-        this.deviceManager.on('broadcast-ordered', () => {
+        // While the panel is visible, fulfill live orders as they arrive, except timer-driven
+        // `stale` ones (avoid surprise scans while the user is looking). Fulfillment is
+        // atomic — if another visible consumer (e.g. the device picker) already fulfilled this
+        // order, the pending set is empty and the call is a no-op.
+        this.deviceManager.on('order-submitted', (order) => {
             if (!this.visible) {
                 return;
             }
-            this.deviceManager.fulfillPendingBroadcast({ except: ['stale'] });
-        });
-        this.deviceManager.on('reconcile-ordered', () => {
-            if (!this.visible) {
-                return;
-            }
-            this.deviceManager.fulfillPendingReconcile({ except: ['stale'] });
+            this.deviceManager.fulfillOrders({ types: [order.type], except: ['stale'] });
         });
 
         // Re-render when a device's stored password changes so the Clear item appears/disappears
@@ -111,7 +105,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (!this.visible) {
                 return;
             }
-            this.deviceManager.fulfillPendingOrders();
+            this.deviceManager.fulfillOrders();
             // Re-render if the device list changed while hidden (getChildren consumes the flag)
             if (this.devicesDirty) {
                 this._onDidChangeTreeData.fire(null);
@@ -122,7 +116,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         // extension activates, sync the flag now and consume any queued (startup) orders
         this.visible = treeView.visible;
         if (this.visible) {
-            this.deviceManager.fulfillPendingOrders();
+            this.deviceManager.fulfillOrders();
         }
 
         // Expanding a device reveals its Device Info section — fetch it fresh. The result

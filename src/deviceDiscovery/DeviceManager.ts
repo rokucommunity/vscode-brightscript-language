@@ -7,7 +7,7 @@ import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
 import { Orders } from './Orders';
-import type { Order, BroadcastReason, ReconcileReason } from './Orders';
+import type { Order, OrderType, SubmittedOrder, BroadcastReason, ReconcileReason } from './Orders';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
@@ -42,7 +42,10 @@ export class DeviceManager {
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
                 if (this.deviceDiscoveryEnabled) {
                     //order a broadcast + reconcile so the views discover/health-check once enabled
-                    this.submitOrders([{ type: 'broadcast', reason: 'startup' }, { type: 'reconcile', reason: 'startup' }]);
+                    this.submitOrders([
+                        { type: 'broadcast', reason: 'startup' },
+                        { type: 'reconcile', reason: 'startup' }
+                    ]);
                     this.systemSleepMonitor.start();
                     void this.activateMonitoring();
                 } else {
@@ -89,7 +92,10 @@ export class DeviceManager {
     private setupMonitors() {
         this.systemSleepMonitor = new SystemSleepMonitor(() => {
             //order a broadcast + reconcile so the views rescan/health-check on wake
-            this.submitOrders([{ type: 'broadcast', reason: 'sleep' }, { type: 'reconcile', reason: 'sleep' }]);
+            this.submitOrders([
+                { type: 'broadcast', reason: 'sleep' },
+                { type: 'reconcile', reason: 'sleep' }
+            ]);
         });
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
@@ -111,7 +117,10 @@ export class DeviceManager {
             this.restartRokuFinder();
 
             //order a broadcast + reconcile so the views rescan/health-check on the new network
-            this.submitOrders([{ type: 'broadcast', reason: 'network' }, { type: 'reconcile', reason: 'network' }]);
+            this.submitOrders([
+                { type: 'broadcast', reason: 'network' },
+                { type: 'reconcile', reason: 'network' }
+            ]);
         });
     }
 
@@ -136,7 +145,10 @@ export class DeviceManager {
             //order a broadcast + reconcile for the views to fulfill when they open.
             //No proactive scan here even on a cold cache — per the design doc, no network
             //traffic happens until a view is actually visible to consume these orders.
-            this.submitOrders([{ type: 'broadcast', reason: 'startup' }, { type: 'reconcile', reason: 'startup' }]);
+            this.submitOrders([
+                { type: 'broadcast', reason: 'startup' },
+                { type: 'reconcile', reason: 'startup' }
+            ]);
 
             this.activateMonitoring().catch((e) => {
                 console.error(e);
@@ -155,7 +167,7 @@ export class DeviceManager {
     // fulfilled by visible views. Each submitted order is announced on the emitter so live
     // views can fulfill immediately; hidden views drain the pending sets when they open.
     private orders = new Orders((order, timestamp) => {
-        this.emitter.emit(`${order.type}-ordered`, { reason: order.reason, timestamp: timestamp });
+        this.emitter.emit('order-submitted', { ...order, timestamp: timestamp });
     });
     private broadcastStaleTimer: ReturnType<typeof setInterval> | undefined;
     private reconcileStaleTimer: ReturnType<typeof setInterval> | undefined;
@@ -194,8 +206,7 @@ export class DeviceManager {
     public on(eventName: 'devices-changed', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'scan-started', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'scan-ended', handler: () => void, disposables?: Disposable[]): () => void;
-    public on(eventName: 'broadcast-ordered', handler: (order: BroadcastOrder) => void, disposables?: Disposable[]): () => void;
-    public on(eventName: 'reconcile-ordered', handler: (order: ReconcileOrder) => void, disposables?: Disposable[]): () => void;
+    public on(eventName: 'order-submitted', handler: (order: SubmittedOrder) => void, disposables?: Disposable[]): () => void;
     public on(eventName: string, handler: (payload: any) => void, disposables?: Disposable[]): () => void {
         this.emitter.on(eventName, handler);
         const unsubscribe = () => {
@@ -599,9 +610,8 @@ export class DeviceManager {
      * Submit orders. Each caller states exactly which order types its trigger implies — e.g.
      * a refresh click submits both types, a config change submits only a reconcile (an edit
      * can't add network devices), an unhealthy device submits only a broadcast (rescan, don't
-     * hammer every device). Every submitted order is announced
-     * (`broadcast-ordered`/`reconcile-ordered`) so a visible view fulfills it live; hidden
-     * views drain the pending sets when they open.
+     * hammer every device). Every submitted order is announced (`order-submitted`) so a
+     * visible view fulfills it live; hidden views drain the pending sets when they open.
      */
     public submitOrders(orders: Order[]): void {
         this.orders.submit(orders);
@@ -619,49 +629,34 @@ export class DeviceManager {
     }
 
     /**
-     * Atomically consume AND execute pending broadcast orders. The one-call fulfillment API
-     * for views: take + broadcast in a single step. The work is idempotent, so all taken
-     * reasons are satisfied by a single scan; the reasons travel into {@link broadcast}, which
-     * decides the urgency internally (only-`stale` stays staleness-gated; any real trigger
-     * scans now).
+     * Atomically consume AND execute pending orders — the one-call fulfillment API for views.
+     * The work is idempotent per order type, so all taken reasons are satisfied by a single
+     * execution: broadcast reasons by one scan (staleness-gated when stale-only), reconcile
+     * reasons by one health-check sweep (cache bypassed when `refresh-clicked` is among them).
      *
+     * @param options.types - which order types to fulfill; defaults to BOTH. Views with
+     *   per-type policy (e.g. the quick pick's 7s fallback only wants broadcasts) narrow it.
      * @param options.except - reasons that do not TRIGGER fulfillment on their own, e.g.
      *   `{ except: ['stale'] }` — see {@link Orders.take} for the full semantics.
-     * @returns true if orders were consumed and a scan actually started
      */
-    public fulfillPendingBroadcast(options?: { except?: BroadcastReason[] }): boolean {
-        const reasons = this.orders.take('broadcast', options?.except);
-        if (!reasons) {
-            return false;
-        }
-        return this.broadcast(reasons);
-    }
+    public fulfillOrders(options?: { types?: OrderType[]; except?: Array<BroadcastReason | ReconcileReason> }): { scanStarted: boolean; reconciled: boolean } {
+        const types = options?.types ?? ['broadcast', 'reconcile'];
+        const result = { scanStarted: false, reconciled: false };
 
-    /**
-     * Atomically consume AND execute pending reconcile orders. One-call twin of
-     * {@link fulfillPendingBroadcast}; the reasons travel into {@link reconcile}, which decides
-     * internally whether the per-device cache trust window is bypassed (only when
-     * `refresh-clicked` is among them — an explicit "I want fresh data now" from the user).
-     */
-    public fulfillPendingReconcile(options?: { except?: ReconcileReason[] }): boolean {
-        const reasons = this.orders.take('reconcile', options?.except);
-        if (!reasons) {
-            return false;
+        if (types.includes('broadcast')) {
+            const reasons = this.orders.take('broadcast', options?.except as BroadcastReason[]);
+            if (reasons) {
+                result.scanStarted = this.broadcast(reasons);
+            }
         }
-        this.reconcile(reasons);
-        return true;
-    }
-
-    /**
-     * Fulfill both pending order types in one call — the common case for views (on open, on
-     * becoming visible). Views that need per-order-type policy (e.g. the quick pick's 7s
-     * fallback only wants broadcasts) can still call the specific fulfillments directly.
-     */
-    public fulfillPendingOrders(options?: { except?: Array<BroadcastReason | ReconcileReason> }): { scanStarted: boolean; reconciled: boolean } {
-        return {
-            scanStarted: this.fulfillPendingBroadcast({ except: options?.except as BroadcastReason[] }),
-            reconciled: this.fulfillPendingReconcile({ except: options?.except as ReconcileReason[] })
-        };
+        if (types.includes('reconcile')) {
+            const reasons = this.orders.take('reconcile', options?.except as ReconcileReason[]);
+            if (reasons) {
+                this.reconcile(reasons);
+                result.reconciled = true;
+            }
+        }
+        return result;
     }
     // #endregion
 
@@ -1696,24 +1691,7 @@ export class DeviceManager {
 export type DeviceState = 'offline' | 'unknown' | 'pending' | 'online';
 
 //order types live with the Orders class; re-exported here so consumers keep one import site
-export type { Order, OrderType, BroadcastReason, ReconcileReason } from './Orders';
-
-/**
- * Payload of the `broadcast-ordered` event: the submitted order's reason plus when it was
- * submitted (ms epoch).
- */
-export interface BroadcastOrder {
-    reason: BroadcastReason;
-    timestamp: number;
-}
-
-/**
- * Payload of the `reconcile-ordered` event.
- */
-export interface ReconcileOrder {
-    reason: ReconcileReason;
-    timestamp: number;
-}
+export type { Order, OrderType, SubmittedOrder, BroadcastReason, ReconcileReason } from './Orders';
 
 export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
 

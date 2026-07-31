@@ -245,36 +245,31 @@ export class UserInputManager {
         // `stale` orders are deliberately left alone — routine freshness is the 7s
         // fallback's job (below), so opening the picker never scans the network by itself.
         // (spec's quick-pick table: "on open, fulfills pending orders for any reason except stale")
-        let hasScanned = this.deviceManager.fulfillPendingOrders({ except: ['stale'] }).scanStarted;
+        let hasScanned = this.deviceManager.fulfillOrders({ except: ['stale'] }).scanStarted;
 
-        this.deviceManager.on('broadcast-ordered', (order) => {
-            if (order.reason === 'stale') {
-                return;
+        this.deviceManager.on('order-submitted', (order) => {
+            if (order.type === 'broadcast' && order.reason !== 'stale') {
+                // Suppress the 7s fallback even if another visible consumer fulfills this
+                // order — a scan is happening either way
+                hasScanned = true;
+                if (scanTimeoutId) {
+                    clearTimeout(scanTimeoutId);
+                    scanTimeoutId = null;
+                }
             }
-            // Suppress the 7s fallback even if another visible consumer fulfills this order —
-            // a scan is happening either way
-            hasScanned = true;
-            if (scanTimeoutId) {
-                clearTimeout(scanTimeoutId);
-                scanTimeoutId = null;
-            }
-            this.deviceManager.fulfillPendingBroadcast({ except: ['stale'] });
-        }, disposables);
-
-        this.deviceManager.on('reconcile-ordered', () => {
-            this.deviceManager.fulfillPendingReconcile({ except: ['stale'] });
+            this.deviceManager.fulfillOrders({ types: [order.type], except: ['stale'] });
         }, disposables);
 
         scanTimeoutId = setTimeout(() => {
             if (hasScanned) {
                 return;
             }
-            // Nothing scanned since the picker opened — fulfill whatever's pending with no
+            // Nothing scanned since the picker opened — fulfill any pending broadcast with no
             // exceptions. When the system is genuinely stale, the 30-minute timer has already
             // queued a `stale` order (visible views ignore it live, so it waits here); its
             // fulfillment is staleness-gated, so this never over-scans. If nothing is pending,
             // nothing happens.
-            this.deviceManager.fulfillPendingBroadcast();
+            this.deviceManager.fulfillOrders({ types: ['broadcast'] });
         }, this.scanTimeoutMs);
 
         function dispose() {
@@ -299,7 +294,10 @@ export class UserInputManager {
                     } else if (selectedDevice.label === scanForDevicesLabel) {
                         //an explicit "scan" click is the refresh-clicked trigger — submit orders;
                         //this picker (or another visible view) fulfills them immediately
-                        this.deviceManager.submitOrders([{ type: 'broadcast', reason: 'refresh-clicked' }, { type: 'reconcile', reason: 'refresh-clicked' }]);
+                        this.deviceManager.submitOrders([
+                            { type: 'broadcast', reason: 'refresh-clicked' },
+                            { type: 'reconcile', reason: 'refresh-clicked' }
+                        ]);
                         return;
                     } else {
                         const device = (selectedDevice as any).device as RokuDevice;
@@ -451,7 +449,10 @@ export class UserInputManager {
             if (button.tooltip === SCAN_FOR_DEVICES) {
                 //an explicit "scan" click is the refresh-clicked trigger — submit orders;
                 //this picker (or another visible view) fulfills them immediately
-                this.deviceManager.submitOrders([{ type: 'broadcast', reason: 'refresh-clicked' }, { type: 'reconcile', reason: 'refresh-clicked' }]);
+                this.deviceManager.submitOrders([
+                    { type: 'broadcast', reason: 'refresh-clicked' },
+                    { type: 'reconcile', reason: 'refresh-clicked' }
+                ]);
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
                 this.deviceManager.clearCurrentDeviceList();
                 void util.showTimedNotification('Clearing device list');

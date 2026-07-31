@@ -167,11 +167,11 @@ describe('DeviceManager', () => {
     });
 
     describe('orders (submit + pending sets)', () => {
-        it('a broadcast order lands in the pending set and emits broadcast-ordered with the reason', () => {
+        it('a broadcast order lands in the pending set and emits order-submitted with type + reason', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const eventSpy = sinon.spy();
-            manager.on('broadcast-ordered', eventSpy);
+            manager.on('order-submitted', eventSpy);
 
             manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
 
@@ -180,11 +180,11 @@ describe('DeviceManager', () => {
             expect(manager.getPendingBroadcastReasons()).to.include('network');
         });
 
-        it('a reconcile order lands in the pending set and emits reconcile-ordered with the reason', () => {
+        it('a reconcile order lands in the pending set and emits order-submitted with type + reason', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const eventSpy = sinon.spy();
-            manager.on('reconcile-ordered', eventSpy);
+            manager.on('order-submitted', eventSpy);
 
             manager.submitOrders([{ type: 'reconcile', reason: 'config-changed' }]);
 
@@ -251,7 +251,7 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('fulfillPendingBroadcast / fulfillPendingReconcile', () => {
+    describe('fulfillOrders', () => {
         beforeEach(() => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
         });
@@ -260,7 +260,7 @@ describe('DeviceManager', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
             manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
 
-            const result = manager.fulfillPendingBroadcast();
+            const result = manager.fulfillOrders({ types: ['broadcast'] }).scanStarted;
 
             expect(result).to.be.true;
             expect(broadcastStub.calledOnceWith(['network'])).to.be.true;
@@ -272,7 +272,7 @@ describe('DeviceManager', () => {
             manager.submitOrders([{ type: 'broadcast', reason: 'sleep' }]);
             manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
 
-            const result = manager.fulfillPendingBroadcast();
+            const result = manager.fulfillOrders({ types: ['broadcast'] }).scanStarted;
 
             expect(result).to.be.true;
             expect(broadcastStub.calledOnce).to.be.true;
@@ -284,7 +284,7 @@ describe('DeviceManager', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(false);
             manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
 
-            manager.fulfillPendingBroadcast();
+            manager.fulfillOrders({ types: ['broadcast'] });
 
             expect(broadcastStub.calledOnceWith(['stale'])).to.be.true;
         });
@@ -293,7 +293,7 @@ describe('DeviceManager', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
             manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
 
-            const result = manager.fulfillPendingBroadcast({ except: ['stale'] });
+            const result = manager.fulfillOrders({ types: ['broadcast'], except: ['stale'] }).scanStarted;
 
             expect(result).to.be.false;
             expect(broadcastStub.called).to.be.false;
@@ -305,7 +305,7 @@ describe('DeviceManager', () => {
             manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
             manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
 
-            const result = manager.fulfillPendingBroadcast({ except: ['stale'] });
+            const result = manager.fulfillOrders({ types: ['broadcast'], except: ['stale'] }).scanStarted;
 
             //the scan satisfies the stale want too, so it rides along instead of staying queued
             expect(result).to.be.true;
@@ -317,7 +317,7 @@ describe('DeviceManager', () => {
         it('returns false and does nothing when no order is pending', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
 
-            expect(manager.fulfillPendingBroadcast()).to.be.false;
+            expect(manager.fulfillOrders({ types: ['broadcast'] }).scanStarted).to.be.false;
             expect(broadcastStub.called).to.be.false;
         });
 
@@ -325,8 +325,8 @@ describe('DeviceManager', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
             manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
 
-            expect(manager.fulfillPendingBroadcast()).to.be.true;
-            expect(manager.fulfillPendingBroadcast()).to.be.false;
+            expect(manager.fulfillOrders({ types: ['broadcast'] }).scanStarted).to.be.true;
+            expect(manager.fulfillOrders({ types: ['broadcast'] }).scanStarted).to.be.false;
             expect(broadcastStub.calledOnce).to.be.true;
         });
 
@@ -334,12 +334,12 @@ describe('DeviceManager', () => {
             const reconcileStub = sinon.stub(manager as any, 'reconcile');
 
             manager.submitOrders([{ type: 'reconcile', reason: 'config-changed' }]);
-            expect(manager.fulfillPendingReconcile()).to.be.true;
+            expect(manager.fulfillOrders({ types: ['reconcile'] }).reconciled).to.be.true;
             expect(reconcileStub.calledOnceWith(['config-changed'])).to.be.true;
 
             reconcileStub.resetHistory();
             manager.submitOrders([{ type: 'reconcile', reason: 'refresh-clicked' }]);
-            expect(manager.fulfillPendingReconcile()).to.be.true;
+            expect(manager.fulfillOrders({ types: ['reconcile'] }).reconciled).to.be.true;
             expect(reconcileStub.calledOnceWith(['refresh-clicked'])).to.be.true;
         });
 
@@ -347,17 +347,17 @@ describe('DeviceManager', () => {
             const reconcileStub = sinon.stub(manager as any, 'reconcile');
             manager.submitOrders([{ type: 'reconcile', reason: 'stale' }]);
 
-            expect(manager.fulfillPendingReconcile({ except: ['stale'] })).to.be.false;
+            expect(manager.fulfillOrders({ types: ['reconcile'], except: ['stale'] }).reconciled).to.be.false;
             expect(reconcileStub.called).to.be.false;
             expect(manager.getPendingReconcileReasons()).to.include('stale');
         });
 
-        it('fulfillPendingOrders fulfills both order types in one call', () => {
+        it('fulfills both order types in one call by default', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
             const reconcileStub = sinon.stub(manager as any, 'reconcile');
             manager.submitOrders([{ type: 'broadcast', reason: 'refresh-clicked' }, { type: 'reconcile', reason: 'refresh-clicked' }]);
 
-            const result = manager.fulfillPendingOrders();
+            const result = manager.fulfillOrders();
 
             expect(result).to.eql({ scanStarted: true, reconciled: true });
             expect(broadcastStub.calledOnceWith(['refresh-clicked'])).to.be.true;
@@ -366,13 +366,13 @@ describe('DeviceManager', () => {
             expect(manager.getPendingReconcileReasons()).to.be.empty;
         });
 
-        it('fulfillPendingOrders passes the except list to both order types', () => {
+        it('passes the except list to both order types', () => {
             const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
             const reconcileStub = sinon.stub(manager as any, 'reconcile');
             manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
             manager.submitOrders([{ type: 'reconcile', reason: 'stale' }]);
 
-            const result = manager.fulfillPendingOrders({ except: ['stale'] });
+            const result = manager.fulfillOrders({ except: ['stale'] });
 
             expect(result).to.eql({ scanStarted: false, reconciled: false });
             expect(broadcastStub.called).to.be.false;
@@ -685,7 +685,7 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const handler = sinon.spy();
-            const unsubscribe = manager.on('broadcast-ordered', handler);
+            const unsubscribe = manager.on('order-submitted', handler);
 
             manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
             expect(handler.calledOnce).to.be.true;
@@ -700,7 +700,7 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const disposables: any[] = [];
-            manager.on('broadcast-ordered', () => { }, disposables);
+            manager.on('order-submitted', () => { }, disposables);
 
             expect(disposables.length).to.equal(1);
             expect(disposables[0]).to.have.property('dispose');
