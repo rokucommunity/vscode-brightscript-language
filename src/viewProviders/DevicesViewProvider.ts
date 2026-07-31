@@ -125,14 +125,16 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             this.deviceManager.fulfillPendingOrders();
         }
 
-        // Expanding a device is explicit engagement with it — the manager freshens it
-        // (not on every getChildren/devices-changed)
+        // Expanding a device reveals its Device Info section — fetch it fresh. The result
+        // itself isn't needed here: the fetch updates the manager's cache and fires
+        // devices-changed, and the re-render reads it back. (Not on every
+        // getChildren/devices-changed.)
         treeView.onDidExpandElement(e => {
             const element = e.element;
             if (element instanceof DeviceTreeItem && element.key) {
                 const device = this.deviceManager.getDevice(element.key);
                 if (device) {
-                    this.deviceManager.deviceEngaged(device).catch(() => { });
+                    this.deviceManager.getDeviceInfo(device).catch(() => { });
                 }
             }
         });

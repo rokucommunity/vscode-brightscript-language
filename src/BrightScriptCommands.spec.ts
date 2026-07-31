@@ -193,7 +193,7 @@ describe('BrightScriptFileUtils ', () => {
 
         beforeEach(() => {
             deviceManager = {
-                deviceEngaged: sinon.stub().resolves(true)
+                healthCheckDevice: sinon.stub().resolves(true)
             };
             const localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
             capturedCommands = {};
@@ -210,7 +210,7 @@ describe('BrightScriptFileUtils ', () => {
         it('engages the device by its encoded tree key (the manager resolves the key)', async () => {
             await capturedCommands['extension.brightscript.refreshDevice']({ key: 's:ABC123' });
 
-            assert.isTrue(deviceManager.deviceEngaged.calledOnceWith('s:ABC123'));
+            assert.isTrue(deviceManager.healthCheckDevice.calledOnceWith('s:ABC123'));
         });
     });
 
@@ -516,8 +516,7 @@ describe('BrightScriptFileUtils ', () => {
         beforeEach(() => {
             sandbox = sinon.createSandbox();
             deviceManager = {
-                deviceEngaged: sandbox.stub().resolves(true),
-                getDevice: sandbox.stub().returns({ ip: '1.2.3.4', deviceInfo: { 'serial-number': 'SN123' } })
+                getDeviceInfo: sandbox.stub().resolves({ 'serial-number': 'SN123' })
             };
             localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
             sandbox.stub(vscodeContextManager, 'get').returns('1.2.3.4');
@@ -527,9 +526,10 @@ describe('BrightScriptFileUtils ', () => {
             sandbox.restore();
         });
 
-        it('returns the host with its device info when the active host is healthy', async () => {
+        it('returns the host with its freshly-fetched device info when the active host is reachable', async () => {
             const result = await localCommands.getHealthyActiveHost();
             assert.deepEqual(result, { host: '1.2.3.4', deviceInfo: { 'serial-number': 'SN123' } });
+            assert.isTrue(deviceManager.getDeviceInfo.calledOnceWith({ ip: '1.2.3.4' }));
         });
 
         it('returns undefined when no active host is set', async () => {
@@ -538,14 +538,8 @@ describe('BrightScriptFileUtils ', () => {
             assert.isUndefined(result);
         });
 
-        it('returns undefined when the active host fails the health check', async () => {
-            deviceManager.deviceEngaged.resolves(false);
-            const result = await localCommands.getHealthyActiveHost();
-            assert.isUndefined(result);
-        });
-
-        it('returns undefined when no device info could be read back', async () => {
-            deviceManager.getDevice.returns(undefined);
+        it('returns undefined when the active host is unreachable or unknown', async () => {
+            deviceManager.getDeviceInfo.resolves(undefined);
             const result = await localCommands.getHealthyActiveHost();
             assert.isUndefined(result);
         });

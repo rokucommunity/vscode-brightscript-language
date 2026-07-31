@@ -305,7 +305,7 @@ export class UserInputManager {
                         const device = (selectedDevice as any).device as RokuDevice;
                         // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
                         setBusy(true);
-                        const isHealthy = await this.deviceManager.deviceEngaged(device);
+                        const isHealthy = await this.deviceManager.healthCheckDevice(device);
                         setBusy(false);
                         if (!isHealthy) {
                             await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);

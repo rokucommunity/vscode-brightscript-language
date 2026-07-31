@@ -99,7 +99,7 @@ describe('DevicesViewProvider', () => {
             getDeviceDisplayName: (device: any) => device.key,
             getIconPath: () => undefined,
             hasDeviceCache: () => false,
-            deviceEngaged: () => Promise.resolve(true),
+            getDeviceInfo: () => Promise.resolve({}),
             broadcast: sinon.stub().returns(true),
             reconcile: sinon.stub(),
             submitBroadcast: (reason: string) => {

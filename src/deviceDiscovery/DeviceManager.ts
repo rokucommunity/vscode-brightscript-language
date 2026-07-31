@@ -706,15 +706,32 @@ export class DeviceManager {
     // #endregion
 
     /**
-     * The user engaged with a specific device — clicked it, expanded it, selected it in the
-     * picker, or is about to launch to it (spec: "explicit engagement with that specific
-     * device"). Freshens the device now (bypassing its cache trust window) and reports whether
-     * it responded. Fire-and-forget callers can ignore the result; callers that need to know
-     * (picker validation, pre-launch checks) await it. Accepts anything {@link getDevice} can
-     * look up (encoded tree key, ip/serial lookup) or a device object; an unknown device is
-     * simply reported unhealthy.
+     * Health-check a single device NOW: bypass its cache trust window, fetch fresh device
+     * info from the network, update the cache (so every view renders the freshest data), and
+     * report whether it responded. Fire-and-forget callers can ignore the result — the cache
+     * update is the point. Accepts anything {@link getDevice} can look up (encoded tree key,
+     * ip/serial lookup) or a device object; an unknown device is simply reported unhealthy.
      */
-    public async deviceEngaged(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<boolean> {
+    public async healthCheckDevice(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<boolean> {
+        return (await this.fetchFreshDevice(deviceKeyOrLookup)) !== undefined;
+    }
+
+    /**
+     * Fetch a single device's info fresh from the network NOW. Same work as
+     * {@link healthCheckDevice} (bypass cache trust window, fetch, update cache) — this variant
+     * returns the resulting device info for callers that need it (e.g. pre-launch host
+     * resolution). Returns undefined when the device is unknown or unreachable.
+     */
+    public async getDeviceInfo(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<Record<string, any> | undefined> {
+        return (await this.fetchFreshDevice(deviceKeyOrLookup))?.deviceInfo;
+    }
+
+    /**
+     * The shared engine behind {@link healthCheckDevice} and {@link getDeviceInfo}: resolve
+     * the device with the cache trust window bypassed and no synthetic delay, then return the
+     * freshly-merged device (or undefined when unknown/unreachable).
+     */
+    private async fetchFreshDevice(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<RokuDevice | undefined> {
         // If already a device object with deviceState, use it directly; otherwise look it up
         let device: RokuDevice | undefined;
         if (typeof deviceKeyOrLookup === 'string') {
@@ -726,16 +743,20 @@ export class DeviceManager {
         }
 
         if (!device) {
-            return false;
+            return undefined;
         }
 
-        // Engagement wants a real answer now: bypass the cache trust window, no synthetic delay
+        // The caller wants a real answer now: bypass the cache trust window, no synthetic delay
         const isHealthy = await this.resolveDevice(device, { bypassCache: true, syntheticDelay: false });
-        if (!isHealthy && device.isDiscovered) {
-            // a discovered device went dark — order a rescan for the views to fulfill
-            this.submitUnhealthyDeviceBroadcast();
+        if (!isHealthy) {
+            if (device.isDiscovered) {
+                // a discovered device went dark — order a rescan for the views to fulfill
+                this.submitUnhealthyDeviceBroadcast();
+            }
+            return undefined;
         }
-        return isHealthy;
+        // re-read so the returned device carries the just-fetched info
+        return this.getDevice({ ip: device.ip, serialNumber: device.serialNumber });
     }
 
     /**

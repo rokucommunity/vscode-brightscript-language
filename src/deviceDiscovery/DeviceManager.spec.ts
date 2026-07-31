@@ -382,13 +382,13 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('deviceEngaged', () => {
+    describe('healthCheckDevice / getDeviceInfo', () => {
         it('freshens the device with the cache trust window bypassed and reports health', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             manager['discoveredDevices'].push({ ip: '192.168.1.50', serialNumber: 'ENG50', state: 'online' } as any);
             const resolveStub = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
 
-            const isHealthy = await manager.deviceEngaged({ ip: '192.168.1.50' });
+            const isHealthy = await manager.healthCheckDevice({ ip: '192.168.1.50' });
 
             expect(isHealthy).to.be.true;
             //engagement policy: no synthetic delay, cache trust window bypassed
@@ -401,7 +401,7 @@ describe('DeviceManager', () => {
             manager['discoveredDevices'].push({ ip: '192.168.1.60', serialNumber: 'KEY60', state: 'online' } as any);
             const resolveStub = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
 
-            const isHealthy = await manager.deviceEngaged('s:KEY60');
+            const isHealthy = await manager.healthCheckDevice('s:KEY60');
 
             expect(isHealthy).to.be.true;
             expect(resolveStub.calledOnce).to.be.true;
@@ -412,10 +412,38 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             const resolveStub = sinon.stub(manager as any, 'resolveDevice');
 
-            const isHealthy = await manager.deviceEngaged('s:GONE');
+            const isHealthy = await manager.healthCheckDevice('s:GONE');
 
             expect(isHealthy).to.be.false;
             expect(resolveStub.called).to.be.false;
+        });
+
+        it('getDeviceInfo does the same fetch but returns the freshly-cached device info', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['discoveredDevices'].push({ ip: '192.168.1.50', serialNumber: 'ENG50', state: 'online' } as any);
+            mockGlobalStateManager.setCachedDevice('ENG50', {
+                serialNumber: 'ENG50',
+                deviceInfo: { 'serial-number': 'ENG50', 'user-device-name': 'living room' },
+                createdAt: Date.now()
+            });
+            const resolveStub = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
+
+            const deviceInfo = await manager.getDeviceInfo({ ip: '192.168.1.50' });
+
+            expect(resolveStub.calledOnce).to.be.true;
+            expect(resolveStub.firstCall.args[1]).to.eql({ bypassCache: true, syntheticDelay: false });
+            expect(deviceInfo).to.include({ 'user-device-name': 'living room' });
+        });
+
+        it('getDeviceInfo returns undefined for an unreachable device', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['discoveredDevices'].push({ ip: '192.168.1.50', serialNumber: 'ENG50', state: 'online' } as any);
+            sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(false) as any);
+            sinon.stub(manager as any, 'submitUnhealthyDeviceBroadcast');
+
+            const deviceInfo = await manager.getDeviceInfo({ ip: '192.168.1.50' });
+
+            expect(deviceInfo).to.be.undefined;
         });
     });
 
@@ -991,7 +1019,7 @@ describe('DeviceManager', () => {
             }
         });
 
-        it('deviceEngaged always fetches regardless of cooldown (engagement bypasses the cache)', async () => {
+        it('healthCheckDevice always fetches regardless of cooldown (single-device checks bypass the cache)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const device = createMockDevice();
@@ -1007,11 +1035,11 @@ describe('DeviceManager', () => {
             sinon.stub(manager as any, 'randomDelay').resolves();
 
             // First engagement
-            await manager.deviceEngaged(device);
+            await manager.healthCheckDevice(device);
             expect(getDeviceInfoStub.calledOnce).to.be.true;
 
             // Second engagement immediately - should still fetch
-            await manager.deviceEngaged(device);
+            await manager.healthCheckDevice(device);
             expect(getDeviceInfoStub.calledTwice).to.be.true;
         });
     });
@@ -1187,7 +1215,7 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('deviceEngaged (single-device check)', () => {
+    describe('healthCheckDevice (single-device check)', () => {
         it('sets device to pending during health check', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             (vscode.window as any).state = { focused: true };
@@ -1202,7 +1230,7 @@ describe('DeviceManager', () => {
             });
             sinon.stub(rokuDeploy, 'getDeviceInfo').returns(healthPromise);
 
-            const checkPromise = manager.deviceEngaged(device);
+            const checkPromise = manager.healthCheckDevice(device);
 
             // Device should be pending during check
             expect(manager.getAllDevices()[0].deviceState).to.equal('pending');
@@ -1228,7 +1256,7 @@ describe('DeviceManager', () => {
 
             sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Device not responding'));
 
-            const result = await manager.deviceEngaged(device);
+            const result = await manager.healthCheckDevice(device);
 
             expect(result).to.be.false;
             expect(manager.getAllDevices().length).to.equal(0);
@@ -1303,7 +1331,7 @@ describe('DeviceManager', () => {
 
             // First health check fails (device offline)
             sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Device not responding'));
-            await manager.deviceEngaged(device);
+            await manager.healthCheckDevice(device);
 
             // Cache should still exist with device info preserved for offline display
             const cached = mockGlobalStateManager.getCachedDevice('device-123');
@@ -1326,7 +1354,7 @@ describe('DeviceManager', () => {
                 'default-device-name': 'Roku Express'
             });
 
-            const result = await manager.deviceEngaged(device);
+            const result = await manager.healthCheckDevice(device);
 
             expect(result).to.be.true;
         });
@@ -1350,8 +1378,8 @@ describe('DeviceManager', () => {
                 resolveFetch = resolve;
             }) as any);
 
-            const first = manager.deviceEngaged(device);
-            const second = manager.deviceEngaged(device);
+            const first = manager.healthCheckDevice(device);
+            const second = manager.healthCheckDevice(device);
 
             resolveFetch({
                 'device-id': 'device-123',
@@ -1393,8 +1421,8 @@ describe('DeviceManager', () => {
             getDeviceInfoStub.onSecondCall().returns(device2Promise);
 
             // Start health checks for both devices
-            const result1 = manager.deviceEngaged(device1);
-            const result2 = manager.deviceEngaged(device2);
+            const result1 = manager.healthCheckDevice(device1);
+            const result2 = manager.healthCheckDevice(device2);
 
             // Device 2 completes first (healthy)
             resolveDevice2({
@@ -2551,7 +2579,7 @@ describe('DeviceManager', () => {
             });
         });
 
-        describe('deviceEngaged with failed network calls', () => {
+        describe('healthCheckDevice with failed network calls', () => {
             it('marks configured device as offline when health check fails and cache exists', async () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
                 sinon.stub(manager as any, 'randomDelay').resolves();
@@ -2573,7 +2601,7 @@ describe('DeviceManager', () => {
                 // Stub to simulate network failure
                 sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Device not responding'));
 
-                const result = await manager.deviceEngaged(device);
+                const result = await manager.healthCheckDevice(device);
 
                 expect(result).to.be.false;
                 expect(manager.getAllDevices().length).to.equal(1);
@@ -2597,7 +2625,7 @@ describe('DeviceManager', () => {
                 // Stub to simulate network failure
                 sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Device not responding'));
 
-                const result = await manager.deviceEngaged(device);
+                const result = await manager.healthCheckDevice(device);
 
                 expect(result).to.be.false;
                 expect(manager.getAllDevices().length).to.equal(1);
@@ -2621,7 +2649,7 @@ describe('DeviceManager', () => {
                 // Stub to simulate network failure
                 sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Device not responding'));
 
-                const result = await manager.deviceEngaged(device);
+                const result = await manager.healthCheckDevice(device);
 
                 expect(result).to.be.false;
                 expect(manager.getAllDevices().length).to.equal(0);
@@ -2654,7 +2682,7 @@ describe('DeviceManager', () => {
 
                 sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Offline'));
 
-                await manager.deviceEngaged(device);
+                await manager.healthCheckDevice(device);
 
                 // Device kept (configured) but not discovered
                 expect(manager.getAllDevices().length).to.equal(1);
@@ -2677,7 +2705,7 @@ describe('DeviceManager', () => {
 
                 sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Offline'));
 
-                await manager.deviceEngaged(device);
+                await manager.healthCheckDevice(device);
 
                 // Device removed (not configured, not discovered)
                 expect(manager.getAllDevices().length).to.equal(0);
