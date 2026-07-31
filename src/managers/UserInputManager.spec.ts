@@ -260,7 +260,7 @@ describe('UserInputManager', () => {
             });
 
             //queue a broadcast order as if the network changed while no view was visible
-            deviceManager['submitBroadcast']('network');
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
 
             const promptPromise = userInputManager.promptForHost();
             await new Promise<void>(resolve => {
@@ -289,7 +289,7 @@ describe('UserInputManager', () => {
             });
 
             //the 30-minute timer queued a routine freshness order while no view was visible
-            deviceManager['submitBroadcast']('stale');
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
 
             const promptPromise = userInputManager.promptForHost();
 
@@ -346,7 +346,7 @@ describe('UserInputManager', () => {
             });
 
             //queue a reconcile order as if the network changed while no view was visible
-            deviceManager['submitReconcile']('network');
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'network' }]);
 
             const promptPromise = userInputManager.promptForHost();
             await new Promise<void>(resolve => {
@@ -371,7 +371,7 @@ describe('UserInputManager', () => {
                 return quickPick;
             });
 
-            deviceManager['submitReconcile']('stale');
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'stale' }]);
 
             const promptPromise = userInputManager.promptForHost();
             await new Promise<void>(resolve => {
@@ -402,7 +402,7 @@ describe('UserInputManager', () => {
             expect(reconcileSpy.called).to.be.false;
 
             //a trigger fires while the picker is open
-            deviceManager['submitReconcile']('sleep');
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'sleep' }]);
 
             expect(reconcileSpy.calledOnce).to.be.true;
             expect(deviceManager.getPendingReconcileReasons()).to.be.empty;

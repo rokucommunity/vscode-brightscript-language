@@ -102,13 +102,11 @@ describe('DevicesViewProvider', () => {
             getDeviceInfo: () => Promise.resolve({}),
             broadcast: sinon.stub().returns(true),
             reconcile: sinon.stub(),
-            submitBroadcast: (reason: string) => {
-                pendingBroadcastReasons.add(reason);
-                emitter.emit('broadcast-ordered', { reason: reason, timestamp: Date.now() });
-            },
-            submitReconcile: (reason: string) => {
-                pendingReconcileReasons.add(reason);
-                emitter.emit('reconcile-ordered', { reason: reason, timestamp: Date.now() });
+            submitOrders: (orders: Array<{ type: string; reason: string }>) => {
+                for (const order of orders) {
+                    (order.type === 'broadcast' ? pendingBroadcastReasons : pendingReconcileReasons).add(order.reason);
+                    emitter.emit(`${order.type}-ordered`, { reason: order.reason, timestamp: Date.now() });
+                }
             },
             getPendingBroadcastReasons: () => [...pendingBroadcastReasons],
             getPendingReconcileReasons: () => [...pendingReconcileReasons],
@@ -545,7 +543,7 @@ describe('DevicesViewProvider', () => {
             const { provider, deviceManager } = createProvider([]);
             provider['visible'] = true;
 
-            deviceManager.submitBroadcast('network');
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
 
             expect(deviceManager.broadcast.calledOnceWith(['network'])).to.be.true;
             expect(deviceManager.getPendingBroadcastReasons()).to.be.empty;
@@ -555,11 +553,11 @@ describe('DevicesViewProvider', () => {
             const { provider, deviceManager } = createProvider([]);
             provider['visible'] = true;
 
-            deviceManager.submitReconcile('config-changed');
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'config-changed' }]);
             expect(deviceManager.reconcile.calledOnceWith(['config-changed'])).to.be.true;
 
             deviceManager.reconcile.resetHistory();
-            deviceManager.submitReconcile('refresh-clicked');
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'refresh-clicked' }]);
             expect(deviceManager.reconcile.calledOnceWith(['refresh-clicked'])).to.be.true;
         });
 
@@ -567,8 +565,8 @@ describe('DevicesViewProvider', () => {
             const { provider, deviceManager } = createProvider([]);
             provider['visible'] = true;
 
-            deviceManager.submitBroadcast('stale');
-            deviceManager.submitReconcile('stale');
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'stale' }]);
 
             expect(deviceManager.broadcast.called).to.be.false;
             expect(deviceManager.reconcile.called).to.be.false;
@@ -579,8 +577,8 @@ describe('DevicesViewProvider', () => {
         it('leaves live orders pending while hidden', () => {
             const { deviceManager } = createProvider([]);
 
-            deviceManager.submitBroadcast('sleep');
-            deviceManager.submitReconcile('sleep');
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'sleep' }]);
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'sleep' }]);
 
             expect(deviceManager.broadcast.called).to.be.false;
             expect(deviceManager.reconcile.called).to.be.false;
@@ -623,8 +621,8 @@ describe('DevicesViewProvider', () => {
             const { treeView, setVisible } = createTreeView(false);
             provider.setTreeView(treeView);
 
-            deviceManager.submitBroadcast('network');
-            deviceManager.submitReconcile('refresh-clicked');
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'refresh-clicked' }]);
 
             setVisible(true);
 
@@ -637,8 +635,8 @@ describe('DevicesViewProvider', () => {
         it('consumes queued startup orders when the panel is already open at activation', () => {
             const { provider, deviceManager } = createProvider([]);
 
-            deviceManager.submitBroadcast('startup');
-            deviceManager.submitReconcile('startup');
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'startup' }]);
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'startup' }]);
 
             //panel already visible when setTreeView runs — the startup sync path fulfills
             provider.setTreeView(createTreeView(true).treeView);
@@ -652,7 +650,7 @@ describe('DevicesViewProvider', () => {
             const { treeView, setVisible } = createTreeView(false);
             provider.setTreeView(treeView);
 
-            deviceManager.submitBroadcast('stale');
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
 
             setVisible(true);
 
@@ -665,9 +663,9 @@ describe('DevicesViewProvider', () => {
             provider.setTreeView(treeView);
 
             //multiple triggers fire while no view is visible — each queues its own reason
-            deviceManager.submitBroadcast('stale');
-            deviceManager.submitBroadcast('sleep');
-            deviceManager.submitBroadcast('network');
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'sleep' }]);
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
 
             setVisible(true);
 

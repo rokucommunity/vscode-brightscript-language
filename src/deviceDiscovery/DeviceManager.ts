@@ -6,6 +6,8 @@ import { rokuDeploy, DeviceUnreachableError, type DeviceInfoRaw } from 'roku-dep
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
+import { Orders } from './Orders';
+import type { Order, BroadcastReason, ReconcileReason } from './Orders';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
@@ -40,7 +42,7 @@ export class DeviceManager {
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
                 if (this.deviceDiscoveryEnabled) {
                     //order a broadcast + reconcile so the views discover/health-check once enabled
-                    this.submitOrder('startup');
+                    this.submitOrders([{ type: 'broadcast', reason: 'startup' }, { type: 'reconcile', reason: 'startup' }]);
                     this.systemSleepMonitor.start();
                     void this.activateMonitoring();
                 } else {
@@ -58,7 +60,7 @@ export class DeviceManager {
             //local) and order a health check for the views to fulfill when one is visible
             if (event?.affectsConfiguration('brightscript.devices')) {
                 this.loadConfiguredDevices().catch(() => { });
-                this.submitOrder('config-changed');
+                this.submitOrders([{ type: 'reconcile', reason: 'config-changed' }]);
             }
 
             //if the `defaultDevicePassword` setting was changed, refresh any device views that rely on it
@@ -87,7 +89,7 @@ export class DeviceManager {
     private setupMonitors() {
         this.systemSleepMonitor = new SystemSleepMonitor(() => {
             //order a broadcast + reconcile so the views rescan/health-check on wake
-            this.submitOrder('sleep');
+            this.submitOrders([{ type: 'broadcast', reason: 'sleep' }, { type: 'reconcile', reason: 'sleep' }]);
         });
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
@@ -109,7 +111,7 @@ export class DeviceManager {
             this.restartRokuFinder();
 
             //order a broadcast + reconcile so the views rescan/health-check on the new network
-            this.submitOrder('network');
+            this.submitOrders([{ type: 'broadcast', reason: 'network' }, { type: 'reconcile', reason: 'network' }]);
         });
     }
 
@@ -134,7 +136,7 @@ export class DeviceManager {
             //order a broadcast + reconcile for the views to fulfill when they open.
             //No proactive scan here even on a cold cache — per the design doc, no network
             //traffic happens until a view is actually visible to consume these orders.
-            this.submitOrder('startup');
+            this.submitOrders([{ type: 'broadcast', reason: 'startup' }, { type: 'reconcile', reason: 'startup' }]);
 
             this.activateMonitoring().catch((e) => {
                 console.error(e);
@@ -150,11 +152,11 @@ export class DeviceManager {
     private networkId: string;
 
     // Orders (see docs/device-discovery.md "Orders"): deferred work submitted by triggers and
-    // fulfilled by visible views. Pending orders are a set of reasons per order type — the work
-    // is idempotent (one scan satisfies every queued "please scan"), so reasons accumulate and
-    // fulfillment executes once with everything it takes. A reason can't queue twice.
-    private pendingBroadcastReasons = new Set<BroadcastReason>();
-    private pendingReconcileReasons = new Set<ReconcileReason>();
+    // fulfilled by visible views. Each submitted order is announced on the emitter so live
+    // views can fulfill immediately; hidden views drain the pending sets when they open.
+    private orders = new Orders((order, timestamp) => {
+        this.emitter.emit(`${order.type}-ordered`, { reason: order.reason, timestamp: timestamp });
+    });
     private broadcastStaleTimer: ReturnType<typeof setInterval> | undefined;
     private reconcileStaleTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -594,36 +596,26 @@ export class DeviceManager {
 
     // #region Orders (docs/device-discovery.md "Orders" / "When are orders submitted?")
     /**
-     * Submit a broadcast (SSDP scan) order. Adds the reason to the pending set AND emits
-     * `broadcast-ordered` so a visible view can fulfill it live; a hidden view consumes the
-     * set when it opens. Reasons accumulate independently (e.g. `stale` and `sleep` can both
-     * be pending) but the same reason never queues twice.
+     * Submit orders. Each caller states exactly which order types its trigger implies — e.g.
+     * a refresh click submits both types, a config change submits only a reconcile (an edit
+     * can't add network devices), an unhealthy device submits only a broadcast (rescan, don't
+     * hammer every device). Every submitted order is announced
+     * (`broadcast-ordered`/`reconcile-ordered`) so a visible view fulfills it live; hidden
+     * views drain the pending sets when they open.
      */
-    private submitBroadcast(reason: BroadcastReason): void {
-        this.pendingBroadcastReasons.add(reason);
-        const order: BroadcastOrder = { reason: reason, timestamp: Date.now() };
-        this.emitter.emit('broadcast-ordered', order);
-    }
-
-    /**
-     * Submit a reconcile (health-check-all) order. Same set + event semantics as
-     * {@link submitBroadcast}.
-     */
-    private submitReconcile(reason: ReconcileReason): void {
-        this.pendingReconcileReasons.add(reason);
-        const order: ReconcileOrder = { reason: reason, timestamp: Date.now() };
-        this.emitter.emit('reconcile-ordered', order);
+    public submitOrders(orders: Order[]): void {
+        this.orders.submit(orders);
     }
 
     /**
      * The reasons of all pending broadcast orders that no view has fulfilled yet.
      */
     public getPendingBroadcastReasons(): BroadcastReason[] {
-        return [...this.pendingBroadcastReasons];
+        return this.orders.getPending('broadcast');
     }
 
     public getPendingReconcileReasons(): ReconcileReason[] {
-        return [...this.pendingReconcileReasons];
+        return this.orders.getPending('reconcile');
     }
 
     /**
@@ -633,24 +625,15 @@ export class DeviceManager {
      * decides the urgency internally (only-`stale` stays staleness-gated; any real trigger
      * scans now).
      *
-     * Consumption is atomic: when two visible views react to the same order event, the first
-     * caller fulfills it and later callers find the set empty and do nothing.
-     *
      * @param options.except - reasons that do not TRIGGER fulfillment on their own, e.g.
-     *   `{ except: ['stale'] }`. A blacklist on purpose: new reasons are acted on by default.
-     *   When a non-excepted reason does trigger execution, the whole set is cleared — the scan
-     *   satisfies every queued reason, excepted ones included.
+     *   `{ except: ['stale'] }` — see {@link Orders.take} for the full semantics.
      * @returns true if orders were consumed and a scan actually started
      */
     public fulfillPendingBroadcast(options?: { except?: BroadcastReason[] }): boolean {
-        const triggers = this.getPendingBroadcastReasons().filter(x => !options?.except?.includes(x));
-        if (triggers.length === 0) {
-            if (this.pendingBroadcastReasons.size > 0) {
-            }
+        const reasons = this.orders.take('broadcast', options?.except);
+        if (!reasons) {
             return false;
         }
-        const reasons = this.getPendingBroadcastReasons();
-        this.pendingBroadcastReasons.clear();
         return this.broadcast(reasons);
     }
 
@@ -661,14 +644,10 @@ export class DeviceManager {
      * `refresh-clicked` is among them — an explicit "I want fresh data now" from the user).
      */
     public fulfillPendingReconcile(options?: { except?: ReconcileReason[] }): boolean {
-        const triggers = this.getPendingReconcileReasons().filter(x => !options?.except?.includes(x));
-        if (triggers.length === 0) {
-            if (this.pendingReconcileReasons.size > 0) {
-            }
+        const reasons = this.orders.take('reconcile', options?.except);
+        if (!reasons) {
             return false;
         }
-        const reasons = this.getPendingReconcileReasons();
-        this.pendingReconcileReasons.clear();
         this.reconcile(reasons);
         return true;
     }
@@ -683,25 +662,6 @@ export class DeviceManager {
             scanStarted: this.fulfillPendingBroadcast({ except: options?.except as BroadcastReason[] }),
             reconciled: this.fulfillPendingReconcile({ except: options?.except as ReconcileReason[] })
         };
-    }
-
-    /**
-     * The single order-submission funnel (spec: When are orders submitted?). Callers name the
-     * trigger that happened; the reason determines which order types it implies. Most triggers
-     * imply both, with two exceptions: a config change can't introduce new devices on the
-     * network (reconcile only), and an unhealthy device warrants a rescan, not a health check
-     * of everything else (broadcast only).
-     *
-     * The `stale` timers don't go through here — they submit their single order type directly
-     * because they run on different cadences (broadcast every 30 minutes, reconcile every 5).
-     */
-    public submitOrder(reason: OrderReason): void {
-        if (reason !== 'config-changed') {
-            this.submitBroadcast(reason as BroadcastReason);
-        }
-        if (reason !== 'unhealthy-device') {
-            this.submitReconcile(reason as ReconcileReason);
-        }
     }
     // #endregion
 
@@ -814,7 +774,7 @@ export class DeviceManager {
 
         //this is a user-initiated action, so order a health check of the remaining (configured)
         //devices rather than running one directly — a visible view fulfills it immediately
-        this.submitReconcile('refresh-clicked');
+        this.submitOrders([{ type: 'reconcile', reason: 'refresh-clicked' }]);
         this.emitDevicesChanged();
     }
 
@@ -860,7 +820,7 @@ export class DeviceManager {
         if (this.timeSinceLastScan < this.UNHEALTHY_BROADCAST_MIN_INTERVAL_MS) {
             return;
         }
-        this.submitOrder('unhealthy-device');
+        this.submitOrders([{ type: 'broadcast', reason: 'unhealthy-device' }]);
     }
 
     /**
@@ -1611,10 +1571,10 @@ export class DeviceManager {
         //how to fulfill them — visible views deliberately ignore live `stale` orders)
         this.stopStaleTimers();
         this.broadcastStaleTimer = setInterval(() => {
-            this.submitBroadcast('stale');
+            this.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
         }, this.STALE_SCAN_THRESHOLD_MS);
         this.reconcileStaleTimer = setInterval(() => {
-            this.submitReconcile('stale');
+            this.submitOrders([{ type: 'reconcile', reason: 'stale' }]);
         }, this.STALE_RECONCILE_INTERVAL_MS);
         //don't keep the process alive just for these timers
         this.broadcastStaleTimer?.unref?.();
@@ -1735,45 +1695,21 @@ export class DeviceManager {
 
 export type DeviceState = 'offline' | 'unknown' | 'pending' | 'online';
 
-/**
- * Why a broadcast (SSDP scan) was ordered. Views filter on this — e.g. a visible view ignores
- * `stale` (timer-driven) orders to avoid surprise scans. (See docs/device-discovery.md "Orders")
- */
-export type BroadcastReason =
-    | 'startup'
-    | 'network'
-    | 'sleep'
-    | 'refresh-clicked'
-    | 'unhealthy-device'
-    | 'stale';
+//order types live with the Orders class; re-exported here so consumers keep one import site
+export type { Order, OrderType, BroadcastReason, ReconcileReason } from './Orders';
 
 /**
- * Why a reconcile (health-check-all) was ordered.
- */
-export type ReconcileReason =
-    | 'startup'
-    | 'network'
-    | 'sleep'
-    | 'refresh-clicked'
-    | 'config-changed'
-    | 'stale';
-
-/**
- * Any trigger accepted by the single submission funnel, {@link DeviceManager.submitOrder}.
- */
-export type OrderReason = BroadcastReason | ReconcileReason;
-
-/**
- * A unit of deferred work: queued by triggers, fulfilled by visible views.
+ * Payload of the `broadcast-ordered` event: the submitted order's reason plus when it was
+ * submitted (ms epoch).
  */
 export interface BroadcastOrder {
     reason: BroadcastReason;
-    /**
-     * When the order was submitted (ms epoch)
-     */
     timestamp: number;
 }
 
+/**
+ * Payload of the `reconcile-ordered` event.
+ */
 export interface ReconcileOrder {
     reason: ReconcileReason;
     timestamp: number;
