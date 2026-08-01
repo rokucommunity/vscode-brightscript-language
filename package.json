@@ -206,7 +206,8 @@
                 {
                     "id": "rceManagementView",
                     "name": "Device Manager",
-                    "type": "webview"
+                    "type": "webview",
+                    "when": "brightscript.experimental.rokuCloudEmulator"
                 }
             ],
             "vscode-brightscript-language": [
@@ -694,22 +695,22 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.local",
-                    "when": "!brightscript.devicesView.filter.local",
+                    "when": "!brightscript.devicesView.filter.local && brightscript.experimental.rokuCloudEmulator",
                     "group": "5_kind@1"
                 },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.local.active",
-                    "when": "brightscript.devicesView.filter.local",
+                    "when": "brightscript.devicesView.filter.local && brightscript.experimental.rokuCloudEmulator",
                     "group": "5_kind@1"
                 },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.cloud",
-                    "when": "!brightscript.devicesView.filter.cloud",
+                    "when": "!brightscript.devicesView.filter.cloud && brightscript.experimental.rokuCloudEmulator",
                     "group": "5_kind@2"
                 },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.cloud.active",
-                    "when": "brightscript.devicesView.filter.cloud",
+                    "when": "brightscript.devicesView.filter.cloud && brightscript.experimental.rokuCloudEmulator",
                     "group": "5_kind@2"
                 },
                 {
@@ -718,6 +719,18 @@
                 }
             ],
             "commandPalette": [
+                {
+                    "command": "extension.brightscript.rce.addAccount",
+                    "when": "brightscript.experimental.rokuCloudEmulator"
+                },
+                {
+                    "command": "extension.brightscript.rce.switchAccount",
+                    "when": "brightscript.experimental.rokuCloudEmulator"
+                },
+                {
+                    "command": "extension.brightscript.rce.removeAccount",
+                    "when": "brightscript.experimental.rokuCloudEmulator"
+                },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.devModeEnabled",
                     "when": "false"
@@ -812,6 +825,10 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.watchDevice",
                     "when": "false"
                 },
                 {
@@ -2635,6 +2652,24 @@
                         "deprecationMessage": "Deprecated. Use 'outputPanelStartupBehavior' instead",
                         "default": false,
                         "scope": "resource"
+                    }
+                }
+            },
+            {
+                "id": "experimental",
+                "title": "Experimental",
+                "properties": {
+                    "brightscript.experimental.all": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Enable every experimental feature in this section, regardless of each feature's own setting. Changing this requires a window reload.",
+                        "scope": "window"
+                    },
+                    "brightscript.experimental.rokuCloudEmulator": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Enable the Roku Cloud Emulator integration: the Cloud Emulator activity bar panel, cloud device discovery in the Devices view, and debugging against cloud devices. Requires Roku Cloud Emulator early access and an api token. Changing this requires a window reload.",
+                        "scope": "window"
                     }
                 }
             },

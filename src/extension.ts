@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
 import { DeviceManager } from './deviceDiscovery/DeviceManager';
+import { ExperimentalFeaturesManager } from './managers/ExperimentalFeaturesManager';
 import { RceFinder } from './deviceDiscovery/RceFinder';
 import { RceManager } from './managers/RceManager';
 import { RceVideoEditorManager } from './managers/RceVideoEditorManager';
@@ -101,11 +102,20 @@ export class Extension {
         this.telemetryManager.sendStartupEvent();
         this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
         this.extensionOutputChannel.appendLine('Extension startup');
-        const rceManager = new RceManager(context);
+        const experimentalFeatures = new ExperimentalFeaturesManager(context);
+
+        //the Roku Cloud Emulator stack is gated by the rokuCloudEmulator experimental feature, but
+        //it toggles live rather than at activation: the RceManager reports "no token" while the
+        //feature is disabled (and re-announces on every toggle), which empties the finder's device
+        //list and idles every consumer; the UI hides through the feature's context key
+        const rceManager = new RceManager(context, experimentalFeatures);
         rceManager.register(context);
         const rceFinder = new RceFinder(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
         context.subscriptions.push(new RceVideoEditorManager(context, rceManager, rceFinder));
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel, rceFinder);
+        //late-bound: lets the experimental features manager recognize cloud devices when it cleans
+        //up the workspace device-identity keys on a feature toggle
+        experimentalFeatures.setDeviceManager(this.deviceManager);
         const credentialStore = new CredentialStore(context);
         let userInputManager = new UserInputManager(
             this.deviceManager,

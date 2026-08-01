@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { EventEmitter } from 'eventemitter3';
 import { RceManagementClient } from 'roku-deploy';
 import type { DeviceType, IceServer, UserOut } from 'roku-deploy';
+import type { ExperimentalFeaturesManager } from './ExperimentalFeaturesManager';
+import { ExperimentalFeature } from './ExperimentalFeaturesManager';
 
 /**
  * Owns the Roku Cloud Emulator (RCE) accounts and the shared management-api client.
@@ -18,8 +20,22 @@ import type { DeviceType, IceServer, UserOut } from 'roku-deploy';
  */
 export class RceManager {
     constructor(
-        private context: vscode.ExtensionContext
-    ) { }
+        private context: vscode.ExtensionContext,
+        private experimentalFeatures?: ExperimentalFeaturesManager
+    ) {
+        if (experimentalFeatures) {
+            const unsubscribe = experimentalFeatures.onEnablementChanged((feature) => {
+                if (feature === ExperimentalFeature.rokuCloudEmulator) {
+                    //the effective token just changed between the account token and "none" (see
+                    //getToken); ride the existing token-changed plumbing so finders rescan (which
+                    //clears or restores cloud devices everywhere) and panels refresh
+                    this.client = undefined;
+                    this.emitter.emit('token-changed');
+                }
+            });
+            context.subscriptions.push({ dispose: unsubscribe });
+        }
+    }
 
     private emitter = new EventEmitter();
 
@@ -160,9 +176,17 @@ export class RceManager {
 
     /**
      * Get the RCE api token for this workspace: the active account first,
-     * then the ROKU_RCE_TOKEN environment variable
+     * then the ROKU_RCE_TOKEN environment variable.
+     *
+     * While the Roku Cloud Emulator experimental feature is disabled this always returns
+     * undefined: "no token" is the single gate every consumer already handles (finder scans emit
+     * an empty device list, panel state reports no account, launch resolution and adapter env
+     * injection find nothing to send).
      */
     public async getToken(): Promise<string | undefined> {
+        if (this.experimentalFeatures && !this.experimentalFeatures.isEnabled(ExperimentalFeature.rokuCloudEmulator)) {
+            return undefined;
+        }
         return (await this.getActiveAccount())?.token ?? process.env.ROKU_RCE_TOKEN;
     }
 

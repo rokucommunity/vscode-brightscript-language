@@ -183,6 +183,49 @@ describe('RceManager', () => {
         expect(events.length).to.equal(countBefore);
     });
 
+    describe('experimental feature gating', () => {
+        function createFakeExperimentalFeatures(initiallyEnabled: boolean) {
+            let enabled = initiallyEnabled;
+            let handler: (feature: string, enabled: boolean) => void;
+            return {
+                isEnabled: () => enabled,
+                onEnablementChanged: (callback: (feature: string, enabled: boolean) => void) => {
+                    handler = callback;
+                    return () => { };
+                },
+                //test hook: flip the flag and announce it like the real manager would
+                toggle: (value: boolean) => {
+                    enabled = value;
+                    handler?.('rokuCloudEmulator', value);
+                }
+            };
+        }
+
+        it('reports no token while the Roku Cloud Emulator feature is disabled, even with an account', async () => {
+            const experimentalFeatures = createFakeExperimentalFeatures(false);
+            const gatedManager = new TestRceManager(vscode.context as any, experimentalFeatures as any);
+            await gatedManager.addAccount('work', 'token-work');
+
+            expect(await gatedManager.getToken()).to.be.undefined;
+            expect(await gatedManager.getClient()).to.be.undefined;
+
+            experimentalFeatures.toggle(true);
+            expect(await gatedManager.getToken()).to.equal('token-work');
+        });
+
+        it('fires token-changed when the feature toggles, so consumers rescan', () => {
+            const experimentalFeatures = createFakeExperimentalFeatures(true);
+            const gatedManager = new TestRceManager(vscode.context as any, experimentalFeatures as any);
+            const events: string[] = [];
+            gatedManager.onTokenChanged(() => events.push('token-changed'));
+
+            experimentalFeatures.toggle(false);
+            experimentalFeatures.toggle(true);
+
+            expect(events).to.eql(['token-changed', 'token-changed']);
+        });
+    });
+
     describe('resolveStreamRequest', () => {
         it('throws when no account is configured', async () => {
             let caughtError: Error;
