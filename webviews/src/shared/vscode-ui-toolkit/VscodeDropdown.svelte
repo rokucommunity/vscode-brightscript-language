@@ -1,6 +1,4 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-
     /**
      * Two-way bindable selection, like a native `<select bind:value>`: reflects the selected
      * option's value, and setting it selects the matching option. `undefined` means "leave the
@@ -21,39 +19,23 @@
         return dropdownElement?.value || undefined;
     }
 
-    /**
-     * The toolkit dropdown (FAST select) needs its value re-asserted from outside: a value set
-     * while different options are slotted gets swallowed to '', and any slotted-option change
-     * re-derives the selection from scratch (falling back to the first option). So the bound
-     * value is re-applied after every value change and after every option mutation, a frame
-     * later so FAST's own async slot processing has settled first.
-     */
-    function applyValueToElement(element: typeof dropdownElement, valueToApply: string | undefined) {
-        requestAnimationFrame(() => {
-            if (element && valueToApply !== undefined && element.value !== valueToApply) {
-                element.value = valueToApply;
-            }
-        });
+    //vscode-single-select defers a value set before the matching option exists (it re-applies the
+    //value once the option arrives), so unlike the old FAST dropdown this needs no re-assert
+    //machinery - a plain property write is enough
+    $: if (dropdownElement && value !== undefined && dropdownElement.value !== value) {
+        dropdownElement.value = value;
     }
-
-    $: applyValueToElement(dropdownElement, value);
-
-    onMount(() => {
-        const optionObserver = new MutationObserver(() => applyValueToElement(dropdownElement, value));
-        optionObserver.observe(dropdownElement, { childList: true });
-        return () => optionObserver.disconnect();
-    });
 
     function handleChange(event) {
         value = event.target.value;
     }
 </script>
 
-<vscode-dropdown
+<vscode-single-select
     bind:this={dropdownElement}
     {disabled}
     {title}
     on:change={handleChange}
     on:change>
     <slot />
-</vscode-dropdown>
+</vscode-single-select>

@@ -14,15 +14,6 @@ import rceVideoView from './views/RceVideoView/RceVideoView.svelte';
 
 import './style.css';
 
-//write toolkit to window this to prevent svelte from tree-shaking it
-import * as toolkit from '@vscode/webview-ui-toolkit/dist/toolkit';
-(window as any).___toolkit = toolkit;
-
-// In order to use the Webview UI Toolkit web components they
-// must be registered with the browser (i.e. webview) using the
-// syntax below.
-provideVSCodeDesignSystem().register(allComponents);
-
 // Provided by ViewProviders
 declare const viewName;
 
@@ -40,7 +31,45 @@ const views = {
     rceVideoView
 };
 
-const app = new views[viewName]({
-    target: document.body
+/**
+ * Registers the custom elements the current page's view renders. Registration is per page (each
+ * view is its own webview document), which is what makes it safe for different views to use
+ * different component libraries even though several tag names exist in both.
+ */
+async function registerComponentLibrary() {
+    if (viewName === 'rceManagementView') {
+        //experiment: the management view uses the maintained vscode-elements library instead of
+        //the deprecated webview-ui-toolkit. The toolkit must not also be registered on this page
+        //(several tag names like vscode-button and vscode-option exist in both libraries); the
+        //dynamic imports keep the library and the codicon font off every other page
+        await import('@vscode-elements/elements');
+
+        //vscode-icon (which vscode-toolbar-button renders) requires the codicon stylesheet to be
+        //linked in the page with this exact id, so it can adopt the styles into its shadow root
+        //(the url stays inside the page's <base href> thanks to vite's relative base setting)
+        const codiconStylesheetUrl = (await import('@vscode/codicons/dist/codicon.css?url')).default;
+        const codiconLink = document.createElement('link');
+        codiconLink.id = 'vscode-codicon-stylesheet';
+        codiconLink.rel = 'stylesheet';
+        codiconLink.href = codiconStylesheetUrl;
+        document.head.appendChild(codiconLink);
+    } else {
+        //the dist/toolkit module SELF-REGISTERS every toolkit component as a side effect of being
+        //imported (its final line calls register(allComponents)), so even its import has to stay
+        //page-conditional or it would claim the shared tag names before vscode-elements can.
+        //Assigning it to window also keeps the bundler from tree-shaking it away.
+        const toolkit = await import('@vscode/webview-ui-toolkit/dist/toolkit');
+        (window as any).___toolkit = toolkit;
+
+        // In order to use the Webview UI Toolkit web components they
+        // must be registered with the browser (i.e. webview) using the
+        // syntax below.
+        provideVSCodeDesignSystem().register(allComponents);
+    }
+}
+
+void registerComponentLibrary().then(() => {
+    return new views[viewName]({
+        target: document.body
+    });
 });
-export default app;

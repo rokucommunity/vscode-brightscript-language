@@ -4,7 +4,7 @@
     import { onDestroy } from 'svelte';
     import type { DeviceRun, FirmwareVersionOut, SnapshotOut } from 'roku-deploy';
     import type { RceStateDevice } from '../../../../src/viewProviders/RceManagementViewProvider';
-    import { Refresh, Edit, Check, Close, Trash, Play, DebugStop, ChevronRight, ChevronDown } from 'svelte-codicons';
+    import { ChevronRight, ChevronDown } from 'svelte-codicons';
     import { intermediary } from '../../ExtensionIntermediary';
     import Loader from '../../shared/Loader.svelte';
     import VscodeDropdown from '../../shared/vscode-ui-toolkit/VscodeDropdown.svelte';
@@ -609,6 +609,14 @@
 </script>
 
 <style>
+    /* vscode-single-select and vscode-textfield ship a fixed 320px host width (the VS Code
+       settings-page convention); this view sizes them with its own flex/stretch layout instead.
+       :global because the snapshot/firmware selects render inside the VscodeDropdown wrapper */
+    :global(vscode-single-select),
+    :global(vscode-textfield) {
+        width: auto;
+    }
+
     #container {
         padding: 10px;
     }
@@ -627,7 +635,7 @@
         margin-bottom: 10px;
     }
 
-    #accountSection vscode-dropdown {
+    #accountSection vscode-single-select {
         flex: 1;
         min-width: 120px;
     }
@@ -803,7 +811,9 @@
         flex: 1;
     }
 
-    .startControl vscode-dropdown {
+    /* :global because the snapshot/firmware selects render inside the VscodeDropdown wrapper
+       component, so they never carry this component's scoping class */
+    .startControl :global(vscode-single-select) {
         flex: 1;
         min-width: 100px;
     }
@@ -811,6 +821,12 @@
     .startControl .runtimeDropdown {
         flex: 0 0 auto;
         min-width: 62px;
+    }
+
+    /* vscode-toolbar-button has no disabled property, so disabled icon actions are emulated */
+    vscode-toolbar-button.disabled {
+        pointer-events: none;
+        opacity: 0.4;
     }
 
     .snapshotRow, .historyRow {
@@ -856,13 +872,13 @@
             </div>
         {:else}
             <div id="accountSection">
-                <vscode-dropdown value={activeAccountName} on:change={onActiveAccountChange}>
+                <vscode-single-select value={activeAccountName} on:change={onActiveAccountChange}>
                     {#each accounts as accountName}
                         <vscode-option value={accountName}>{accountName}</vscode-option>
                     {/each}
-                </vscode-dropdown>
+                </vscode-single-select>
                 <vscode-button on:click={() => runAccountCommand('addAccount')}>Add Account</vscode-button>
-                <vscode-button appearance="secondary" on:click={() => runAccountCommand('removeAccount')}>Remove Account</vscode-button>
+                <vscode-button secondary on:click={() => runAccountCommand('removeAccount')}>Remove Account</vscode-button>
             </div>
 
             <vscode-divider />
@@ -877,22 +893,20 @@
 
             <div id="devicesHeader">
                 <span class="sectionTitle">Devices</span>
-                <vscode-button appearance="icon" title="Refresh" on:click={loadState}>
-                    <Refresh />
-                </vscode-button>
-                <vscode-button appearance={showCreateDeviceForm ? 'secondary' : undefined} on:click={toggleCreateDeviceForm}>
+                <vscode-toolbar-button icon="refresh" title="Refresh" on:click={loadState}></vscode-toolbar-button>
+                <vscode-button secondary={showCreateDeviceForm} on:click={toggleCreateDeviceForm}>
                     {showCreateDeviceForm ? 'Cancel' : 'Create Device'}
                 </vscode-button>
             </div>
 
             {#if showCreateDeviceForm}
                 <div id="createDeviceForm">
-                    <vscode-text-field placeholder="Name" value={newDeviceName} on:input={(event) => (newDeviceName = event.target.value)} />
-                    <vscode-dropdown value={newDeviceType} on:change={(event) => (newDeviceType = event.target.value)}>
+                    <vscode-textfield placeholder="Name" value={newDeviceName} on:input={(event) => (newDeviceName = event.target.value)} />
+                    <vscode-single-select value={newDeviceType} on:change={(event) => (newDeviceType = event.target.value)}>
                         <vscode-option value="tv">tv</vscode-option>
                         <vscode-option value="stb">stb</vscode-option>
-                    </vscode-dropdown>
-                    <vscode-text-field placeholder="Note (optional)" value={newDeviceNote} on:input={(event) => (newDeviceNote = event.target.value)} />
+                    </vscode-single-select>
+                    <vscode-textfield placeholder="Note (optional)" value={newDeviceNote} on:input={(event) => (newDeviceNote = event.target.value)} />
                     {#if createDeviceError}
                         <div class="errorBanner">{createDeviceError}</div>
                     {/if}
@@ -960,7 +974,7 @@
                                         {/each}
                                     {/if}
                                 </VscodeDropdown>
-                                <vscode-dropdown
+                                <vscode-single-select
                                     class="runtimeDropdown"
                                     title="Maximum runtime"
                                     value={String(resolveRuntimeHours(selectedRuntimeHoursByDeviceId[device.id], runtimeHourOptions))}
@@ -968,35 +982,34 @@
                                     {#each runtimeHourOptions as hours}
                                         <vscode-option value={String(hours)}>{hours}h</vscode-option>
                                     {/each}
-                                </vscode-dropdown>
-                                <vscode-button
-                                    appearance="icon"
+                                </vscode-single-select>
+                                <vscode-toolbar-button
+                                    icon="play"
                                     title="Start device"
-                                    disabled={deviceActionsInFlight[device.id] || !detailsState?.selectedSnapshotId}
-                                    on:click={() => startDevice(device, readDisplayedSnapshotId(device.id), readDisplayedFirmwareVersionId(device.id))}>
-                                    <Play />
-                                </vscode-button>
+                                    class:disabled={deviceActionsInFlight[device.id] || !detailsState?.selectedSnapshotId}
+                                    on:click={() => startDevice(device, readDisplayedSnapshotId(device.id), readDisplayedFirmwareVersionId(device.id))}></vscode-toolbar-button>
                             </div>
                         {:else if device.status === 'running' || device.status === 'pending'}
                             {#if device.status === 'running'}
-                                <vscode-button appearance={snapshotFormDeviceId === device.id ? 'secondary' : undefined} on:click={() => toggleSnapshotForm(device)}>
+                                <vscode-button
+                                    icon={snapshotFormDeviceId === device.id ? '' : 'save'}
+                                    secondary={snapshotFormDeviceId === device.id}
+                                    on:click={() => toggleSnapshotForm(device)}>
                                     {snapshotFormDeviceId === device.id ? 'Cancel' : 'Snapshot'}
                                 </vscode-button>
                             {/if}
-                            <vscode-button
-                                appearance="icon"
+                            <vscode-toolbar-button
+                                icon="debug-stop"
                                 title="Stop device"
-                                disabled={deviceActionsInFlight[device.id]}
-                                on:click={() => stopDevice(device)}>
-                                <DebugStop />
-                            </vscode-button>
+                                class:disabled={deviceActionsInFlight[device.id]}
+                                on:click={() => stopDevice(device)}></vscode-toolbar-button>
                         {/if}
                     </div>
 
                     {#if snapshotFormDeviceId === device.id && device.status === 'running'}
                         <div class="snapshotForm">
-                            <vscode-text-field placeholder="Name" value={newSnapshotName} on:input={(event) => (newSnapshotName = event.target.value)} />
-                            <vscode-text-field placeholder="Note (optional)" value={newSnapshotNote} on:input={(event) => (newSnapshotNote = event.target.value)} />
+                            <vscode-textfield placeholder="Name" value={newSnapshotName} on:input={(event) => (newSnapshotName = event.target.value)} />
+                            <vscode-textfield placeholder="Note (optional)" value={newSnapshotNote} on:input={(event) => (newSnapshotNote = event.target.value)} />
                             {#if createSnapshotError}
                                 <div class="errorBanner">{createSnapshotError}</div>
                             {/if}
@@ -1029,7 +1042,7 @@
                                             Watch
                                         </vscode-button>
                                         <vscode-button
-                                            appearance="secondary"
+                                            secondary
                                             disabled={enablingDevModeInFlight[device.id]}
                                             on:click={() => enableDevMode(device)}>
                                             Enable Dev Mode
@@ -1042,26 +1055,20 @@
 
                                 {#if editingDeviceId === device.id}
                                     <div class="editFields">
-                                        <vscode-text-field placeholder="Name" value={editName} on:input={(event) => (editName = event.target.value)} />
-                                        <vscode-text-field placeholder="Note" value={editNote} on:input={(event) => (editNote = event.target.value)} />
+                                        <vscode-textfield placeholder="Name" value={editName} on:input={(event) => (editName = event.target.value)} />
+                                        <vscode-textfield placeholder="Note" value={editNote} on:input={(event) => (editNote = event.target.value)} />
                                         {#if editDeviceError}
                                             <div class="errorBanner">{editDeviceError}</div>
                                         {/if}
                                         <div class="editRow">
-                                            <vscode-button appearance="icon" title="Save" disabled={!editName || savingDeviceEdit} on:click={() => saveDeviceEdits(device)}>
-                                                <Check />
-                                            </vscode-button>
-                                            <vscode-button appearance="icon" title="Cancel" disabled={savingDeviceEdit} on:click={cancelEditingDevice}>
-                                                <Close />
-                                            </vscode-button>
+                                            <vscode-toolbar-button icon="check" title="Save" class:disabled={!editName || savingDeviceEdit} on:click={() => saveDeviceEdits(device)}></vscode-toolbar-button>
+                                            <vscode-toolbar-button icon="close" title="Cancel" class:disabled={savingDeviceEdit} on:click={cancelEditingDevice}></vscode-toolbar-button>
                                         </div>
                                     </div>
                                 {:else}
                                     <div class="editRow">
                                         <span>Note: {device.note || 'No note'}</span>
-                                        <vscode-button appearance="icon" title="Edit name and note" on:click={() => startEditingDevice(device)}>
-                                            <Edit />
-                                        </vscode-button>
+                                        <vscode-toolbar-button icon="edit" title="Edit name and note" on:click={() => startEditingDevice(device)}></vscode-toolbar-button>
                                     </div>
                                 {/if}
 
@@ -1093,13 +1100,11 @@
                                                     </span>
                                                 </div>
                                                 {#if !snapshot.live && !snapshot.base}
-                                                    <vscode-button
-                                                        appearance="icon"
+                                                    <vscode-toolbar-button
+                                                        icon="trash"
                                                         title="Delete snapshot"
-                                                        disabled={deletingSnapshotId === snapshot.id}
-                                                        on:click={() => deleteSnapshot(device, snapshot)}>
-                                                        <Trash />
-                                                    </vscode-button>
+                                                        class:disabled={deletingSnapshotId === snapshot.id}
+                                                        on:click={() => deleteSnapshot(device, snapshot)}></vscode-toolbar-button>
                                                 {/if}
                                             </div>
                                         {/each}
