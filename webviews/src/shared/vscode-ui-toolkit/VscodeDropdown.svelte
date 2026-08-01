@@ -8,6 +8,8 @@
      */
     export let value: string | undefined = undefined;
     export let disabled = false;
+    /** Native tooltip for the rendered dropdown element */
+    export let title: string | undefined = undefined;
 
     let dropdownElement: (HTMLElement & { value?: string }) | undefined;
 
@@ -50,6 +52,7 @@
 <vscode-dropdown
     bind:this={dropdownElement}
     {disabled}
+    {title}
     on:change={handleChange}
     on:change>
     <slot />

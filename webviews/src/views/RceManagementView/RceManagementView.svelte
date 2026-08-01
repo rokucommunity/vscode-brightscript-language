@@ -2,7 +2,7 @@
     window.vscode = acquireVsCodeApi();
 
     import { onDestroy } from 'svelte';
-    import type { DeviceRun, SnapshotOut } from 'roku-deploy';
+    import type { DeviceRun, FirmwareVersionOut, SnapshotOut } from 'roku-deploy';
     import type { RceStateDevice } from '../../../../src/viewProviders/RceManagementViewProvider';
     import { Refresh, Edit, Check, Close, Trash, Play, DebugStop, ChevronRight, ChevronDown } from 'svelte-codicons';
     import { intermediary } from '../../ExtensionIntermediary';
@@ -61,9 +61,16 @@
         return availableOptions.includes(defaultRuntimeHours) ? defaultRuntimeHours : availableOptions[0];
     }
 
+    //firmware choices offered when starting a device, filtered per device type at render time.
+    //Like the runtime picks, firmware picks live outside DeviceDetailsState so a details refetch
+    //does not reset them
+    let firmwareVersions: FirmwareVersionOut[] | undefined = undefined;
+    let selectedFirmwareIdByDeviceId: Record<number, string> = {};
+
     let expandedDeviceId: number | undefined = undefined;
     let deviceDetailsByDeviceId: Record<number, DeviceDetailsState> = {};
     let snapshotDropdownsByDeviceId: Record<number, VscodeDropdown | null> = {};
+    let firmwareDropdownsByDeviceId: Record<number, VscodeDropdown | null> = {};
     let historyExpandedByDeviceId: Record<number, boolean> = {};
 
     let editingDeviceId: number | undefined = undefined;
@@ -100,6 +107,7 @@
         hasToken = state.hasToken;
         devices = state.devices;
         maxProjectRuntimeSeconds = state.maxProjectRuntimeSeconds;
+        firmwareVersions = state.firmwareVersions;
         stateError = state.error;
         loading = false;
         ensureRowSnapshotDetails(devices);
@@ -181,13 +189,14 @@
         }
     }
 
-    async function startDevice(device: RceStateDevice, snapshotId: number | undefined = undefined) {
+    async function startDevice(device: RceStateDevice, snapshotId: number | undefined = undefined, firmwareVersionId: string | undefined = undefined) {
         deviceActionError = undefined;
         deviceActionsInFlight = { ...deviceActionsInFlight, [device.id]: true };
         try {
             await intermediary.sendCommand(ViewProviderCommand.startRceDevice, {
                 deviceId: device.id,
                 snapshotId: snapshotId,
+                firmwareVersionId: firmwareVersionId,
                 maxRuntimeSeconds: resolveRuntimeHours(selectedRuntimeHoursByDeviceId[device.id], runtimeHourOptions) * 3600
             });
         } catch (error) {
@@ -426,6 +435,42 @@
             ...deviceDetailsByDeviceId,
             [deviceId]: { ...deviceDetailsByDeviceId[deviceId], selectedSnapshotId: snapshotId, userPickedSnapshotId: snapshotId !== undefined }
         };
+    }
+
+    /**
+     * Resolves which firmware the start control's firmware picker should show: the user's own
+     * in-session pick when the option list still offers it, otherwise the selected snapshot's own
+     * firmware, otherwise the device's current firmware, otherwise the first option for the
+     * device's type. Until the user picks one explicitly, the selection follows the snapshot pick.
+     */
+    function resolveFirmwareVersionId(
+        pickedFirmwareVersionId: string | undefined,
+        detailsState: DeviceDetailsState | undefined,
+        device: RceStateDevice,
+        firmwareOptions: FirmwareVersionOut[]
+    ): string | undefined {
+        const availableFirmwareIds = firmwareOptions.map((firmwareVersion) => firmwareVersion.firmware_version_id);
+        const selectedSnapshot = (detailsState?.snapshots ?? []).find((snapshot) => snapshot.id === detailsState?.selectedSnapshotId);
+        const candidateFirmwareIds = [pickedFirmwareVersionId, selectedSnapshot?.firmware_version_id, device.firmware_version_id];
+        for (const candidateFirmwareId of candidateFirmwareIds) {
+            if (candidateFirmwareId && availableFirmwareIds.includes(candidateFirmwareId)) {
+                return candidateFirmwareId;
+            }
+        }
+        return availableFirmwareIds[0];
+    }
+
+    /**
+     * The firmware Start actually uses: read from the dropdown itself at click time, mirroring
+     * readDisplayedSnapshotId. Undefined (a start whose firmware list never loaded) defers to the
+     * provider's own fallback resolution.
+     */
+    function readDisplayedFirmwareVersionId(deviceId: number): string | undefined {
+        return firmwareDropdownsByDeviceId[deviceId]?.readDisplayedValue() ?? selectedFirmwareIdByDeviceId[deviceId];
+    }
+
+    function updateSelectedFirmware(deviceId: number, firmwareVersionId: string) {
+        selectedFirmwareIdByDeviceId = { ...selectedFirmwareIdByDeviceId, [deviceId]: firmwareVersionId };
     }
 
     function startEditingDevice(device: RceStateDevice) {
@@ -879,9 +924,11 @@
                             {/if}
                         </div>
                         {#if device.status === 'shutdown'}
+                            {@const firmwareOptions = (firmwareVersions ?? []).filter((firmwareVersion) => firmwareVersion.device_type === device.device_type)}
                             <div class="startControl">
                                 <VscodeDropdown
                                     bind:this={snapshotDropdownsByDeviceId[device.id]}
+                                    title="Snapshot to start from"
                                     disabled={isFirstDetailsLoad(detailsState)}
                                     value={detailsState?.selectedSnapshotId !== undefined ? String(detailsState.selectedSnapshotId) : undefined}
                                     on:change={(event) => updateSelectedSnapshot(device.id, (event.target as HTMLElement & { value: string }).value)}>
@@ -893,6 +940,22 @@
                                         {#each detailsState?.snapshots ?? [] as snapshot}
                                             <vscode-option value={String(snapshot.id)} disabled={snapshot.ready === false}>
                                                 {snapshot.name ?? `Snapshot ${snapshot.id}`}{snapshot.ready === false ? ' (not ready)' : ''}
+                                            </vscode-option>
+                                        {/each}
+                                    {/if}
+                                </VscodeDropdown>
+                                <VscodeDropdown
+                                    bind:this={firmwareDropdownsByDeviceId[device.id]}
+                                    title="Firmware version"
+                                    disabled={firmwareOptions.length === 0}
+                                    value={resolveFirmwareVersionId(selectedFirmwareIdByDeviceId[device.id], detailsState, device, firmwareOptions)}
+                                    on:change={(event) => updateSelectedFirmware(device.id, (event.target as HTMLElement & { value: string }).value)}>
+                                    {#if firmwareOptions.length === 0}
+                                        <vscode-option value="">Firmware unavailable</vscode-option>
+                                    {:else}
+                                        {#each firmwareOptions as firmwareVersion}
+                                            <vscode-option value={firmwareVersion.firmware_version_id}>
+                                                {firmwareVersion.display_name ?? firmwareVersion.firmware_version_id}
                                             </vscode-option>
                                         {/each}
                                     {/if}
@@ -910,7 +973,7 @@
                                     appearance="icon"
                                     title="Start device"
                                     disabled={deviceActionsInFlight[device.id] || !detailsState?.selectedSnapshotId}
-                                    on:click={() => startDevice(device, readDisplayedSnapshotId(device.id))}>
+                                    on:click={() => startDevice(device, readDisplayedSnapshotId(device.id), readDisplayedFirmwareVersionId(device.id))}>
                                     <Play />
                                 </vscode-button>
                             </div>

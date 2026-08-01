@@ -137,6 +137,7 @@ describe('RceManagementViewProvider', () => {
                 device_type: 'tv',
                 status: 'running',
                 created_at: '2026-01-01',
+                firmware_version_id: 'rce-fw:1',
                 running_device: {
                     started_at: '2026-01-02',
                     max_runtime: 3600,
@@ -156,8 +157,8 @@ describe('RceManagementViewProvider', () => {
 
             const responseMessage = findResponseMessage(ViewProviderCommand.getRceState);
             const device = responseMessage.response.devices[0];
-            expect(device).to.include({ id: 5, name: 'my-device', status: 'running' });
             /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            expect(device).to.include({ id: 5, name: 'my-device', status: 'running', firmware_version_id: 'rce-fw:1' });
             expect(device.running_device).to.eql({ started_at: '2026-01-02', max_runtime: 3600 });
             /* eslint-enable camelcase */
             for (const secret of ['janus-secret', '1234', 'turn-user', 'turn-secret', 'instance/abc']) {
@@ -195,23 +196,71 @@ describe('RceManagementViewProvider', () => {
             expect(rceManager.fakeManagementClient.getUserInfo.callCount).to.equal(1);
         });
 
-        it('refetches the org runtime cap after the active account changes', async () => {
+        it('includes the firmware versions in the state payload and only fetches them once per token', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            await rceManager.addAccount('personal', 'token-personal');
+            rceManager.fakeManagementClient.listDevices.resolves([]);
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listFirmwareVersions.resolves([
+                { firmware_version_id: 'rce-fw:1', device_type: 'tv', display_name: '15.2.4 TV' }
+            ]);
+            /* eslint-enable camelcase */
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.getRceState, context: {} };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.getRceState](message);
+            await provider['messageCommandCallbacks'][ViewProviderCommand.getRceState](message);
+
+            const responseMessage = findResponseMessage(ViewProviderCommand.getRceState);
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            expect(responseMessage.response.firmwareVersions).to.eql([
+                { firmware_version_id: 'rce-fw:1', device_type: 'tv', display_name: '15.2.4 TV' }
+            ]);
+            /* eslint-enable camelcase */
+            expect(rceManager.fakeManagementClient.listFirmwareVersions.callCount).to.equal(1);
+        });
+
+        it('leaves the firmware versions undefined but still returns devices when the fetch fails', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            rceManager.fakeManagementClient.listFirmwareVersions.rejects(new Error('firmware list unavailable'));
             rceManager.fakeManagementClient.listDevices.resolves([]);
 
             createProvider();
 
             const message = { command: ViewProviderCommand.getRceState, context: {} };
             await provider['messageCommandCallbacks'][ViewProviderCommand.getRceState](message);
-            expect(rceManager.fakeManagementClient.getUserInfo.callCount).to.equal(1);
 
-            //fires token-changed, which must clear the cached cap (the pushState it triggers refetches)
+            const responseMessage = findResponseMessage(ViewProviderCommand.getRceState);
+            expect(responseMessage.response.firmwareVersions).to.be.undefined;
+            expect(responseMessage.response.devices).to.eql([]);
+        });
+
+        it('refetches the org runtime cap and firmware list after the active account changes', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            await rceManager.addAccount('personal', 'token-personal');
+            rceManager.fakeManagementClient.listDevices.resolves([]);
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listFirmwareVersions.resolves([
+                { firmware_version_id: 'rce-fw:1', device_type: 'tv', display_name: '15.2.4 TV' }
+            ]);
+            /* eslint-enable camelcase */
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.getRceState, context: {} };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.getRceState](message);
+            expect(rceManager.fakeManagementClient.getUserInfo.callCount).to.equal(1);
+            expect(rceManager.fakeManagementClient.listFirmwareVersions.callCount).to.equal(1);
+
+            //fires token-changed, which must clear both caches (the pushState it triggers refetches)
             await rceManager.setActiveAccount('work');
             await flushMicrotasks();
 
             expect(rceManager.fakeManagementClient.getUserInfo.callCount).to.equal(2);
+            expect(rceManager.fakeManagementClient.listFirmwareVersions.callCount).to.equal(2);
         });
 
         it('leaves the runtime cap undefined but still returns devices when the user info fetch fails', async () => {
@@ -285,6 +334,28 @@ describe('RceManagementViewProvider', () => {
 
             const remembered = vscode.context.workspaceState.get(WorkspaceStateKey.rceLastSnapshotByDevice);
             expect(remembered[5]).to.equal(20);
+        });
+
+        it('starts the device with the picker-sent firmware version without resolving one itself', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10], firmware_version_id: 'rce-fw:1' }
+            ]);
+            /* eslint-enable camelcase */
+            rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5, snapshotId: 10, firmwareVersionId: 'rce-fw:9' } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
+
+            const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
+            expect(startDeviceArgs[0].start.firmware_version_id).to.equal('rce-fw:9');
+            //the fallback resolution never runs when the picker sent a firmware (it always consults
+            //the snapshot list first)
+            expect(rceManager.fakeManagementClient.listSnapshots.called).to.be.false;
         });
 
         it('passes the webview-selected max runtime through to startDevice', async () => {

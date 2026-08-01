@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { DeviceOut, DeviceRun, DeviceStatus, DeviceType, RceDeviceConfig, RceManagementClient, SnapshotOut } from 'roku-deploy';
+import type { DeviceOut, DeviceRun, DeviceStatus, DeviceType, FirmwareVersionOut, RceDeviceConfig, RceManagementClient, SnapshotOut } from 'roku-deploy';
 import { rokuDeploy } from 'roku-deploy';
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import { ViewProviderId } from './ViewProviderId';
@@ -20,8 +20,10 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         this.rceFinder = dependencies.rceFinder;
 
         this.unsubscribeFromTokenChanged = this.rceManager.onTokenChanged(() => {
-            //a different account can belong to a different org, so its runtime cap must be refetched
+            //a different account can belong to a different org, so its runtime cap and firmware
+            //list must be refetched
             this.cachedMaxProjectRuntimeSeconds = undefined;
+            this.cachedFirmwareVersions = undefined;
             void this.pushState();
         });
 
@@ -88,8 +90,9 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                     throw new Error('No active Cloud Emulator account is configured');
                 }
                 const deviceId = message.context.deviceId;
-                //the webview's picker is the single source of truth for which snapshot to start from;
-                //nothing is resolved here (the picker disables Start until it has a selection)
+                //the webview's pickers are the single source of truth for the snapshot and firmware
+                //to start with; nothing is resolved here for the snapshot (the picker disables Start
+                //until it has a selection)
                 const snapshotId = message.context.snapshotId;
                 const maxRuntimeSeconds = message.context.maxRuntimeSeconds ?? RceManagementViewProvider.defaultMaxRuntimeSeconds;
                 const devices = await managementClient.listDevices();
@@ -101,14 +104,18 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                     throw new Error(`Device '${device.name}' has no snapshot to start from; create a snapshot before starting it`);
                 }
 
-                //the chosen snapshot's firmware id is looked up from the device's snapshot list
-                const snapshots = await managementClient.listSnapshots({ deviceId: deviceId });
-                const chosenSnapshot = snapshots.find((snapshot) => snapshot.id === snapshotId);
-
-                let firmwareVersionId = chosenSnapshot?.firmware_version_id ?? device.firmware_version_id;
+                //the fallback chain below only covers a start whose firmware list never loaded in
+                //the webview: the chosen snapshot's own firmware, then the device's, then the first
+                //one available for the device's type
+                let firmwareVersionId: string | null | undefined = message.context.firmwareVersionId;
                 if (!firmwareVersionId) {
-                    const firmwareVersions = await managementClient.listFirmwareVersions();
-                    firmwareVersionId = firmwareVersions.find((firmwareVersion) => firmwareVersion.device_type === device.device_type)?.firmware_version_id;
+                    const snapshots = await managementClient.listSnapshots({ deviceId: deviceId });
+                    const chosenSnapshot = snapshots.find((snapshot) => snapshot.id === snapshotId);
+                    firmwareVersionId = chosenSnapshot?.firmware_version_id ?? device.firmware_version_id;
+                    if (!firmwareVersionId) {
+                        const firmwareVersions = await managementClient.listFirmwareVersions();
+                        firmwareVersionId = firmwareVersions.find((firmwareVersion) => firmwareVersion.device_type === device.device_type)?.firmware_version_id;
+                    }
                 }
                 if (!firmwareVersionId) {
                     throw new Error(`No firmware version is available for device type '${device.device_type}'`);
@@ -416,6 +423,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         const managementClient = await this.rceManager.getClient();
         if (managementClient) {
             state.maxProjectRuntimeSeconds = await this.getMaxProjectRuntimeSeconds(managementClient);
+            state.firmwareVersions = await this.getFirmwareVersions(managementClient);
             if (deviceList === undefined) {
                 try {
                     deviceList = await managementClient.listDevices();
@@ -445,6 +453,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
             last_snapshot_id: device.last_snapshot_id,
             last_snapshot_name: device.last_snapshot_name,
             snapshots: device.snapshots,
+            firmware_version_id: device.firmware_version_id,
             running_device: device.running_device ? {
                 started_at: device.running_device.started_at,
                 max_runtime: device.running_device.max_runtime
@@ -471,6 +480,26 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
             }
         }
         return this.cachedMaxProjectRuntimeSeconds;
+    }
+
+    /**
+     * The firmware versions offered by the start control's firmware picker, fetched once per token
+     * and reused across state builds (the token-changed handler clears it). Stays undefined when
+     * the fetch fails, which the webview shows as an unavailable picker; the start handler's own
+     * fallback resolution still covers starting in that state.
+     */
+    private cachedFirmwareVersions: FirmwareVersionOut[] | undefined;
+
+    private async getFirmwareVersions(managementClient: RceManagementClient): Promise<FirmwareVersionOut[] | undefined> {
+        if (this.cachedFirmwareVersions === undefined) {
+            try {
+                this.cachedFirmwareVersions = await managementClient.listFirmwareVersions();
+            } catch {
+                //like the runtime cap, the firmware list is presentation-only here, so a failed
+                //fetch should never block the rest of the state payload
+            }
+        }
+        return this.cachedFirmwareVersions;
     }
 
     private async pushState(devices?: DeviceOut[]) {
@@ -527,6 +556,8 @@ interface RceManagementViewState {
     devices: RceStateDevice[] | undefined;
     /** The active org's device runtime cap in seconds; undefined when no account is active or the fetch failed */
     maxProjectRuntimeSeconds?: number;
+    /** The firmware versions available for starting devices; undefined when no account is active or the fetch failed */
+    firmwareVersions?: FirmwareVersionOut[];
     error?: string;
 }
 
@@ -546,6 +577,7 @@ export interface RceStateDevice {
     last_snapshot_id?: number | null;
     last_snapshot_name?: string | null;
     snapshots?: number[];
+    firmware_version_id?: string | null;
     running_device?: {
         started_at?: string | null;
         max_runtime: number;
