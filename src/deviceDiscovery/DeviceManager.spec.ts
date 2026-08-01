@@ -1529,7 +1529,7 @@ describe('DeviceManager', () => {
             fakeFinder.getCachedToken = () => 'secret';
             manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
             manager['onRceDevices']([rceDevice()] as any);
-            sinon.stub(manager as any, 'resolveDevice').resolves(true);
+            sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
 
             //no configured or discovered LAN devices: the no-LAN-ips early return must still scan
             await manager['healthCheckAllDevices'](false, false);

@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import type { SinonStub } from 'sinon';
 import { createSandbox } from 'sinon';
 import * as rta from 'roku-test-automation';
 import { RtaManager } from './RtaManager';
@@ -20,7 +21,7 @@ Module.prototype.require = function hijacked(file) {
 describe('RtaManager', () => {
 
     let rtaManager: RtaManager;
-    let odcSetConfigStub: ReturnType<typeof sinon.stub>;
+    let odcSetConfigStub: SinonStub;
 
     beforeEach(() => {
         rtaManager = new RtaManager(vscode.context as any);

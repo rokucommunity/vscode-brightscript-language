@@ -13,7 +13,6 @@ import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import { GlobalStateManager } from './GlobalStateManager';
 import { rokuDeploy } from 'roku-deploy';
 import { CredentialStore } from './managers/CredentialStore';
-import { vscodeContextManager } from './managers/VscodeContextManager';
 
 const sinon = createSandbox();
 const Module = require('module');
