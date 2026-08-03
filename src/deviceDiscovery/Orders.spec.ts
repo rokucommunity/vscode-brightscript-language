@@ -38,24 +38,26 @@ describe('Orders', () => {
         expect(orders.getPending('broadcast')).to.have.members(['stale', 'sleep']);
     });
 
-    it('take drains the whole set and returns every reason', () => {
+    it('take drains the whole set and returns one entry with every reason', () => {
         const orders = new Orders(() => { });
         orders.submit([
             { type: 'broadcast', reason: 'sleep' },
             { type: 'broadcast', reason: 'network' }
         ]);
 
-        const taken = orders.take('broadcast');
+        const taken = orders.take({ types: ['broadcast'] });
 
-        expect(taken).to.have.members(['sleep', 'network']);
+        expect(taken).to.have.length(1);
+        expect(taken[0].type).to.equal('broadcast');
+        expect(taken[0].reasons).to.have.members(['sleep', 'network']);
         expect(orders.getPending('broadcast')).to.be.empty;
     });
 
-    it('take returns undefined and keeps the set when only excepted reasons are pending', () => {
+    it('take returns nothing and keeps the set when only excepted reasons are pending', () => {
         const orders = new Orders(() => { });
         orders.submit([{ type: 'broadcast', reason: 'stale' }]);
 
-        expect(orders.take('broadcast', ['stale'])).to.be.undefined;
+        expect(orders.take({ types: ['broadcast'], except: ['stale'] })).to.be.empty;
         expect(orders.getPending('broadcast')).to.eql(['stale']);
     });
 
@@ -66,18 +68,19 @@ describe('Orders', () => {
             { type: 'broadcast', reason: 'network' }
         ]);
 
-        const taken = orders.take('broadcast', ['stale']);
+        const taken = orders.take({ types: ['broadcast'], except: ['stale'] });
 
-        expect(taken).to.have.members(['stale', 'network']);
+        expect(taken).to.have.length(1);
+        expect(taken[0].reasons).to.have.members(['stale', 'network']);
         expect(orders.getPending('broadcast')).to.be.empty;
     });
 
-    it('take is atomic: a second take finds nothing', () => {
+    it('take is atomic per type: a second take finds nothing', () => {
         const orders = new Orders(() => { });
         orders.submit([{ type: 'reconcile', reason: 'network' }]);
 
-        expect(orders.take('reconcile')).to.eql(['network']);
-        expect(orders.take('reconcile')).to.be.undefined;
+        expect(orders.take({ types: ['reconcile'] })).to.eql([{ type: 'reconcile', reasons: ['network'] }]);
+        expect(orders.take({ types: ['reconcile'] })).to.be.empty;
     });
 
     it('the two order types are independent', () => {
@@ -88,7 +91,7 @@ describe('Orders', () => {
         ];
         orders.submit(submitted);
 
-        expect(orders.take('broadcast')).to.eql(['network']);
+        expect(orders.take({ types: ['broadcast'] })).to.eql([{ type: 'broadcast', reasons: ['network'] }]);
         expect(orders.getPending('reconcile')).to.eql(['network']);
     });
 });

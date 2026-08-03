@@ -111,26 +111,23 @@ describe('DevicesViewProvider', () => {
             getPendingBroadcastReasons: () => [...pendingBroadcastReasons],
             getPendingReconcileReasons: () => [...pendingReconcileReasons],
             fulfillOrders: (fulfillOptions: { types: string[]; except?: string[] }) => {
-                const types = fulfillOptions.types;
-                const result = { scanStarted: false, reconciled: false };
-                if (types.includes('broadcast')) {
-                    const triggers = [...pendingBroadcastReasons].filter(x => !fulfillOptions.except?.includes(x));
-                    if (triggers.length > 0) {
-                        const reasons = [...pendingBroadcastReasons];
-                        pendingBroadcastReasons.clear();
-                        result.scanStarted = deviceManager.broadcast(reasons);
+                const taken: Array<{ type: string; reasons: string[] }> = [];
+                for (const type of fulfillOptions.types) {
+                    const set = type === 'broadcast' ? pendingBroadcastReasons : pendingReconcileReasons;
+                    const triggers = [...set].filter(x => !fulfillOptions.except?.includes(x));
+                    if (triggers.length === 0) {
+                        continue;
                     }
-                }
-                if (types.includes('reconcile')) {
-                    const triggers = [...pendingReconcileReasons].filter(x => !fulfillOptions.except?.includes(x));
-                    if (triggers.length > 0) {
-                        const reasons = [...pendingReconcileReasons];
-                        pendingReconcileReasons.clear();
+                    const reasons = [...set];
+                    set.clear();
+                    taken.push({ type: type, reasons: reasons });
+                    if (type === 'broadcast') {
+                        deviceManager.broadcast(reasons);
+                    } else {
                         deviceManager.reconcile(reasons);
-                        result.reconciled = true;
                     }
                 }
-                return result;
+                return taken;
             }
         };
         const credentialStore: any = {

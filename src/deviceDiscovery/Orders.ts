@@ -37,6 +37,14 @@ export type Order =
 export type SubmittedOrder = Order & { timestamp: number };
 
 /**
+ * What a take drained for one order type: every reason that was pending. The taker is
+ * expected to execute the type's work once — a single execution satisfies all of them.
+ */
+export type TakenOrders =
+    | { type: 'broadcast'; reasons: BroadcastReason[] }
+    | { type: 'reconcile'; reasons: ReconcileReason[] };
+
+/**
  * The pending-orders store (docs/device-discovery.md "Orders"): one set of reasons per order
  * type. The work is idempotent (one scan satisfies every queued "please scan"), so reasons
  * accumulate — different reasons coexist, the same reason never queues twice — and a take
@@ -77,27 +85,32 @@ export class Orders {
     }
 
     /**
-     * Atomically take every pending reason for an order type, or nothing at all.
+     * Atomically take the pending reasons for the requested order types. Returns one entry
+     * per type that actually had something to take — the caller executes each entry's work
+     * once (a single execution satisfies all of its reasons).
      *
      * `except` lists reasons that cannot TRIGGER a take on their own (a blacklist on purpose:
-     * new reasons act by default). When any non-excepted reason is present, the WHOLE set is
-     * returned and cleared — the single execution that follows satisfies every queued reason,
-     * excepted ones included. When only excepted reasons (or nothing) are pending, returns
-     * undefined and leaves the set untouched.
+     * new reasons act by default). When any non-excepted reason is present for a type, that
+     * type's WHOLE set is drained — the execution satisfies every queued reason, excepted
+     * ones included. When only excepted reasons (or nothing) are pending, the type is omitted
+     * from the result and its set is left untouched.
      *
-     * Atomic: when two visible views react to the same order event, the first taker gets the
-     * reasons and later callers find the set empty.
+     * Atomic per type: when two visible views react to the same order event, the first taker
+     * gets the reasons and later callers find the set empty.
      */
-    public take(type: 'broadcast', except?: BroadcastReason[]): BroadcastReason[] | undefined;
-    public take(type: 'reconcile', except?: ReconcileReason[]): ReconcileReason[] | undefined;
-    public take(type: OrderType, except?: string[]): string[] | undefined {
-        const set = this.pending[type] as Set<string>;
-        const triggers = [...set].filter(x => !except?.includes(x));
-        if (triggers.length === 0) {
-            return undefined;
+    public take(options: { types: OrderType[]; except?: Array<BroadcastReason | ReconcileReason> }): TakenOrders[] {
+        const except = options.except as string[] | undefined;
+        const taken: TakenOrders[] = [];
+        for (const type of options.types) {
+            const set = this.pending[type] as Set<string>;
+            const triggers = [...set].filter(x => !except?.includes(x));
+            if (triggers.length === 0) {
+                continue;
+            }
+            const reasons = [...set];
+            set.clear();
+            taken.push({ type: type, reasons: reasons } as TakenOrders);
         }
-        const reasons = [...set];
-        set.clear();
-        return reasons;
+        return taken;
     }
 }

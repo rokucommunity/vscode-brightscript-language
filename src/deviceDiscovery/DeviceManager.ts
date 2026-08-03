@@ -7,7 +7,7 @@ import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
 import { Orders } from './Orders';
-import type { Order, OrderType, SubmittedOrder, BroadcastReason, ReconcileReason } from './Orders';
+import type { Order, OrderType, SubmittedOrder, TakenOrders, BroadcastReason, ReconcileReason } from './Orders';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
@@ -630,33 +630,28 @@ export class DeviceManager {
 
     /**
      * Atomically consume AND execute pending orders — the one-call fulfillment API for views.
-     * The work is idempotent per order type, so all taken reasons are satisfied by a single
-     * execution: broadcast reasons by one scan (staleness-gated when stale-only), reconcile
-     * reasons by one health-check sweep (cache bypassed when `refresh-clicked` is among them).
+     * {@link Orders.take} drains what the options allow; each taken entry is executed once
+     * (all of its reasons are satisfied by that single execution): broadcast by one scan
+     * (staleness-gated when stale-only), reconcile by one health-check sweep (cache bypassed
+     * when `refresh-clicked` is among the reasons).
      *
      * @param options.types - which order types to fulfill. Callers state their policy
      *   explicitly — e.g. the tree view fulfills both, the quick pick's 7s fallback only wants
      *   broadcasts, live handlers pass the submitted order's type.
      * @param options.except - reasons that do not TRIGGER fulfillment on their own, e.g.
      *   `{ except: ['stale'] }` — see {@link Orders.take} for the full semantics.
+     * @returns what was taken and executed, one entry per order type that had work
      */
-    public fulfillOrders(options: { types: OrderType[]; except?: Array<BroadcastReason | ReconcileReason> }): { scanStarted: boolean; reconciled: boolean } {
-        const result = { scanStarted: false, reconciled: false };
-
-        if (options.types.includes('broadcast')) {
-            const reasons = this.orders.take('broadcast', options.except as BroadcastReason[]);
-            if (reasons) {
-                result.scanStarted = this.broadcast(reasons);
+    public fulfillOrders(options: { types: OrderType[]; except?: Array<BroadcastReason | ReconcileReason> }): TakenOrders[] {
+        const taken = this.orders.take(options);
+        for (const orders of taken) {
+            if (orders.type === 'broadcast') {
+                this.broadcast(orders.reasons);
+            } else {
+                this.reconcile(orders.reasons);
             }
         }
-        if (options.types.includes('reconcile')) {
-            const reasons = this.orders.take('reconcile', options.except as ReconcileReason[]);
-            if (reasons) {
-                this.reconcile(reasons);
-                result.reconciled = true;
-            }
-        }
-        return result;
+        return taken;
     }
     // #endregion
 
@@ -1691,7 +1686,7 @@ export class DeviceManager {
 export type DeviceState = 'offline' | 'unknown' | 'pending' | 'online';
 
 //order types live with the Orders class; re-exported here so consumers keep one import site
-export type { Order, OrderType, SubmittedOrder, BroadcastReason, ReconcileReason } from './Orders';
+export type { Order, OrderType, SubmittedOrder, TakenOrders, BroadcastReason, ReconcileReason } from './Orders';
 
 export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
 
