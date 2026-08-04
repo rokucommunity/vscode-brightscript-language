@@ -143,7 +143,7 @@ export class DeviceManager {
             this.systemSleepMonitor.start();
 
             //order a broadcast + reconcile for the views to fulfill when they open.
-            //No proactive scan here even on a cold cache — per the design doc, no network
+            //No proactive scan here even on a cold cache - per the design doc, no network
             //traffic happens until a view is actually visible to consume these orders.
             this.submitOrders([
                 { type: 'broadcast', reason: 'startup' },
@@ -184,7 +184,7 @@ export class DeviceManager {
     private readonly OFFLINE_COOLDOWN_MS = 5_000; // 5 seconds - minimum time between resolve attempts for offline devices
     private static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
 
-    // Lazy hydration (background device-info refresh triggered by view reads — spec:
+    // Lazy hydration (background device-info refresh triggered by view reads - spec:
     // "Lazy hydration on read")
     private readonly HYDRATION_MAX_CACHE_AGE_MS = 8 * 60 * 60 * 1_000; // 8 hours - cache older than this re-hydrates on read
     private readonly HYDRATION_RETRY_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes - minimum time between hydration attempts per IP
@@ -197,7 +197,7 @@ export class DeviceManager {
 
     // Scan state management. STALE_SCAN_THRESHOLD_MS is both the stale-only broadcast gate
     // ("don't scan if the last scan is younger than this") and the `stale` broadcast timer
-    // interval — one definition of "it's been a while".
+    // interval - one definition of "it's been a while".
     private readonly STALE_SCAN_THRESHOLD_MS = 30 * 60 * 1_000; // 30 minutes
     private readonly STALE_RECONCILE_INTERVAL_MS = 5 * 60 * 1_000; // 5 minutes - the spec's stale reconcile timer
     private readonly UNHEALTHY_BROADCAST_MIN_INTERVAL_MS = 60_000; // 1 minute - suppress unhealthy-device orders this soon after a scan
@@ -282,7 +282,7 @@ export class DeviceManager {
 
     /**
      * Does this device need a background device-info refresh? (spec: Lazy hydration on read)
-     * - state `unknown` — never confirmed this session (e.g. folded in from a scan response,
+     * - state `unknown` - never confirmed this session (e.g. folded in from a scan response,
      *   ssdp:alive, or the last-seen cache with info older than the 5-min freshness check).
      *   Cache age doesn't matter here: cached info can render the row, but only a resolve can
      *   confirm the device is actually there.
@@ -314,7 +314,7 @@ export class DeviceManager {
      * - while a fetch is in flight the device is `pending` and its IP is in `hydrationInFlight`
      * - success renews the cache timestamp, so neither hydration condition holds anymore
      * - failure removes discovered entries entirely; configured entries go `offline`
-     * - failure with a still-old cache would re-qualify — `hydrationLastAttempt` caps that at
+     * - failure with a still-old cache would re-qualify - `hydrationLastAttempt` caps that at
      *   one attempt per IP per {@link HYDRATION_RETRY_COOLDOWN_MS}
      */
     private queueHydration(devices: RokuDevice[]): void {
@@ -512,7 +512,7 @@ export class DeviceManager {
     /**
      * Find the highest-priority state-bearing entry across discovered then configured
      * sources. Within each source, try the IP first (skipping IP matches whose serial
-     * points to a different device — otherwise changing a configured device's serial to
+     * points to a different device - otherwise changing a configured device's serial to
      * a new value at an IP that already hosts an online discovered device would briefly
      * inherit that online state), then fall back to a serial-only match. Returns the
      * first entry that actually has a `state` set.
@@ -522,7 +522,7 @@ export class DeviceManager {
         if (lookup.ip) {
             match = entries.find(entry => {
                 const ipMatches = (entry as DiscoveredDeviceEntry).ip === lookup.ip || (entry as ConfiguredDeviceEntry).host === lookup.ip || (entry as ConfiguredDeviceEntry).resolvedIp === lookup.ip;
-                // when both sides carry a serial, they must agree — otherwise this IP belongs to a different device
+                // when both sides carry a serial, they must agree - otherwise this IP belongs to a different device
                 const serialMatches = !lookup.serialNumber || !entry.serialNumber || entry.serialNumber === lookup.serialNumber;
                 return ipMatches && serialMatches;
             });
@@ -607,11 +607,9 @@ export class DeviceManager {
 
     // #region Orders (docs/device-discovery.md "Orders" / "When are orders submitted?")
     /**
-     * Submit orders. Each caller states exactly which order types its trigger implies — e.g.
-     * a refresh click submits both types, a config change submits only a reconcile (an edit
-     * can't add network devices), an unhealthy device submits only a broadcast (rescan, don't
-     * hammer every device). Every submitted order is announced (`order-submitted`) so a
-     * visible view fulfills it live; hidden views drain the pending sets when they open.
+     * Submit orders. Each caller states which order types its trigger implies. Every
+     * submitted order is announced (`order-submitted`) so a visible view fulfills it live;
+     * hidden views drain the pending sets when they open.
      */
     public submitOrders(orders: Order[]): void {
         this.orders.submit(orders);
@@ -629,17 +627,12 @@ export class DeviceManager {
     }
 
     /**
-     * Atomically consume AND execute pending orders — the one-call fulfillment API for views.
-     * {@link Orders.take} drains what the options allow; each taken entry is executed once
-     * (all of its reasons are satisfied by that single execution): broadcast by one scan
-     * (staleness-gated when stale-only), reconcile by one health-check sweep (cache bypassed
-     * when `refresh-clicked` is among the reasons).
+     * Atomically consume AND execute pending orders. Each taken entry is executed once:
+     * broadcast by one scan, reconcile by one health-check sweep.
      *
-     * @param options.types - which order types to fulfill. Callers state their policy
-     *   explicitly — e.g. the tree view fulfills both, the quick pick's 7s fallback only wants
-     *   broadcasts, live handlers pass the submitted order's type.
-     * @param options.except - reasons that do not TRIGGER fulfillment on their own, e.g.
-     *   `{ except: ['stale'] }` — see {@link Orders.take} for the full semantics.
+     * @param options.types - which order types to fulfill
+     * @param options.except - reasons that do not trigger fulfillment on their own
+     *   (see {@link Orders.take})
      * @returns what was taken and executed, one entry per order type that had work
      */
     public fulfillOrders(options: { types: OrderType[]; except?: Array<BroadcastReason | ReconcileReason> }): TakenOrders[] {
@@ -656,30 +649,25 @@ export class DeviceManager {
     // #endregion
 
     /**
-     * Health-check a single device NOW: bypass its cache trust window, fetch fresh device
-     * info from the network, update the cache (so every view renders the freshest data), and
-     * report whether it responded. Fire-and-forget callers can ignore the result — the cache
-     * update is the point. Accepts anything {@link getDevice} can look up (encoded tree key,
-     * ip/serial lookup) or a device object; an unknown device is simply reported unhealthy.
+     * Ensure the device still exists on the network. Accepts anything {@link getDevice} can
+     * look up (encoded tree key, ip/serial lookup) or a device object; an unknown device is
+     * reported unhealthy.
      */
     public async healthCheckDevice(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<boolean> {
         return (await this.fetchFreshDevice(deviceKeyOrLookup)) !== undefined;
     }
 
     /**
-     * Fetch a single device's info fresh from the network NOW. Same work as
-     * {@link healthCheckDevice} (bypass cache trust window, fetch, update cache) — this variant
-     * returns the resulting device info for callers that need it (e.g. pre-launch host
-     * resolution). Returns undefined when the device is unknown or unreachable.
+     * Get a device's current info, fresh from the device itself. Returns undefined when the
+     * device is unknown or unreachable.
      */
     public async getDeviceInfo(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<Record<string, any> | undefined> {
         return (await this.fetchFreshDevice(deviceKeyOrLookup))?.deviceInfo;
     }
 
     /**
-     * The shared engine behind {@link healthCheckDevice} and {@link getDeviceInfo}: resolve
-     * the device with the cache trust window bypassed and no synthetic delay, then return the
-     * freshly-merged device (or undefined when unknown/unreachable).
+     * Resolve a device with the cache trust window bypassed and no synthetic delay, then
+     * return the freshly-merged device (or undefined when unknown/unreachable).
      */
     private async fetchFreshDevice(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<RokuDevice | undefined> {
         // If already a device object with deviceState, use it directly; otherwise look it up
@@ -700,7 +688,7 @@ export class DeviceManager {
         const isHealthy = await this.resolveDevice(device, { bypassCache: true, syntheticDelay: false });
         if (!isHealthy) {
             if (device.isDiscovered) {
-                // a discovered device went dark — order a rescan for the views to fulfill
+                // a discovered device went dark - order a rescan for the views to fulfill
                 this.submitUnhealthyDeviceBroadcast();
             }
             return undefined;
@@ -711,8 +699,8 @@ export class DeviceManager {
 
     /**
      * Broadcast an SSDP M-SEARCH to discover devices on the network. Does NOT health-check
-     * existing devices — that's {@link reconcile}. The reasons decide the urgency: any real
-     * trigger scans now, while a `stale` timer-tick is only a "things might be old" hint — a
+     * existing devices - that's {@link reconcile}. The reasons decide the urgency: any real
+     * trigger scans now, while a `stale` timer-tick is only a "things might be old" hint - a
      * stale-only fulfillment scans only when discovery is enabled AND the last scan is older
      * than STALE_SCAN_THRESHOLD_MS. Reachable only through order fulfillment.
      * @returns true if a scan was started
@@ -731,14 +719,16 @@ export class DeviceManager {
 
     /**
      * Health-check every known device (configured + discovered), marking them online/offline.
-     * Does NOT scan for new devices — that's {@link broadcast}. The reasons decide the urgency:
-     * only an explicit user click bypasses each device's cache trust window — a bypassing
+     * Does NOT scan for new devices - that's {@link broadcast}. The reasons decide the urgency:
+     * only an explicit user click bypasses each device's cache trust window - a bypassing
      * reconcile is one HTTP request per known device, so only "I want fresh data NOW" earns
      * that. Reachable only through order fulfillment.
      */
     private reconcile(reasons: ReconcileReason[]): void {
         const bypassDeviceCache = reasons.includes('refresh-clicked');
-        this.healthCheckAllDevices(bypassDeviceCache).catch(() => { });
+        this.healthCheckAllDevices(bypassDeviceCache).catch((e) => {
+            console.error('[DeviceManager] reconcile health check failed', e);
+        });
     }
 
     /**
@@ -763,7 +753,7 @@ export class DeviceManager {
         this.globalStateManager.setLastSeenDevices(this.networkId, []);
 
         //this is a user-initiated action, so order a health check of the remaining (configured)
-        //devices rather than running one directly — a visible view fulfills it immediately
+        //devices rather than running one directly - a visible view fulfills it immediately
         this.submitOrders([{ type: 'reconcile', reason: 'refresh-clicked' }]);
         this.emitDevicesChanged();
     }
@@ -771,7 +761,7 @@ export class DeviceManager {
     public clearAllCache() {
 
         // End any in-progress scan (emits scan-ended) so late responses don't instantly
-        // repopulate the just-cleared state — but keep the passive SSDP listener running,
+        // repopulate the just-cleared state - but keep the passive SSDP listener running,
         // otherwise the device list stays empty until the next explicit scan
         this.finder.stopScan();
 
@@ -800,7 +790,7 @@ export class DeviceManager {
     /**
      * Submit an `unhealthy-device` broadcast order (a discovered device failed a health check,
      * so the network picture may have changed). Rate-limited: suppressed when discovery is
-     * disabled or when a scan ran within the last minute — the terminating guard for the
+     * disabled or when a scan ran within the last minute - the terminating guard for the
      * potential scan → health-check → fail → scan feedback loop.
      */
     private submitUnhealthyDeviceBroadcast(): void {
@@ -817,9 +807,9 @@ export class DeviceManager {
      * Validate a developer password against the device at `host`.
      *
      * Returns:
-     * - `'ok'` — credentials accepted
-     * - `'bad-password'` — device reachable, credentials rejected
-     * - `'unreachable'` — device could not be contacted (transient; don't treat as wrong password)
+     * - `'ok'` - credentials accepted
+     * - `'bad-password'` - device reachable, credentials rejected
+     * - `'unreachable'` - device could not be contacted (transient; don't treat as wrong password)
      */
     public async validateDevicePassword(host: string, password: string): Promise<PasswordValidationResult> {
         try {
@@ -829,7 +819,7 @@ export class DeviceManager {
             if (e instanceof DeviceUnreachableError) {
                 return 'unreachable';
             }
-            // Unexpected response code or any other failure — treat as unreachable so the caller retries/prompts rather than discarding credentials.
+            // Unexpected response code or any other failure - treat as unreachable so the caller retries/prompts rather than discarding credentials.
             return 'unreachable';
         }
     }
@@ -1091,7 +1081,7 @@ export class DeviceManager {
     }
 
     private async resolveDevice(device: RokuDevice | { ip: string; serialNumber?: string }, options?: { bypassCache?: boolean; syntheticDelay?: boolean }): Promise<boolean> {
-        // bypassCache: skip the cache trust window AND the offline cooldown — "I want a real
+        // bypassCache: skip the cache trust window AND the offline cooldown - "I want a real
         // answer from the network NOW" (user engagement, refresh-clicked reconciles).
         const bypassCache = options?.bypassCache ?? false;
         const syntheticDelay = options?.syntheticDelay ?? true;
@@ -1284,7 +1274,7 @@ export class DeviceManager {
 
     /**
      * In-flight device-info requests by `ip:port`. This is the design doc's "de-dupe rule":
-     * within a single refresh flow a device only gets device-info'd once — concurrent callers
+     * within a single refresh flow a device only gets device-info'd once - concurrent callers
      * (e.g. the broadcast response and the reconcile racing on the same device) share one HTTP
      * request instead of each issuing their own. First one in wins; everyone else joins it.
      */
@@ -1292,19 +1282,17 @@ export class DeviceManager {
 
     /**
      * Fetch device info from the network, sharing any request already in flight for the same
-     * ip:port (see the de-dupe rule in docs/device-discovery.md). Never rejects — failures
+     * ip:port (see the de-dupe rule in docs/device-discovery.md). Never rejects - failures
      * return undefined. Success caches the result in globalStateManager for future lookups.
      */
     private fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw | undefined> {
         const key = `${ip}:${port}`;
         let inFlight = this.inFlightDeviceInfo.get(key);
         if (inFlight === undefined) {
-            //safe to share: fetchDeviceInfoInner never rejects (it catches and returns undefined)
             inFlight = this.fetchDeviceInfoInner(ip, port).finally(() => {
                 this.inFlightDeviceInfo.delete(key);
             });
             this.inFlightDeviceInfo.set(key, inFlight);
-        } else {
         }
         return inFlight;
     }
@@ -1523,7 +1511,7 @@ export class DeviceManager {
 
     /**
      * Handle device-online event from RokuFinder. Shows a notification if enabled.
-     * Does not eagerly device-info the device — lazy hydration on read handles that
+     * Does not eagerly device-info the device - lazy hydration on read handles that
      * once a view actually asks for the device list (spec: Passive SSDP announcements).
      */
     private handleDeviceOnline(ip: string, serialNumber?: string): void {
@@ -1558,7 +1546,7 @@ export class DeviceManager {
 
         //periodically submit `stale` broadcast/reconcile orders so long-lived sessions
         //eventually refresh (the spec's "it's been a while" timers; views decide whether and
-        //how to fulfill them — visible views deliberately ignore live `stale` orders)
+        //how to fulfill them - visible views deliberately ignore live `stale` orders)
         this.stopStaleTimers();
         this.broadcastStaleTimer = setInterval(() => {
             this.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
@@ -1600,7 +1588,7 @@ export class DeviceManager {
         this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
             this.setDiscoveredDevice(ip, options?.serialNumber);
             //no eager resolve here: this emit makes any visible view re-read the list, and a
-            //responder whose cache missed the 5-min freshness check lands in `unknown` — which
+            //responder whose cache missed the 5-min freshness check lands in `unknown` - which
             //lazy hydration on read always resolves (spec: "hydrate it immediately", routed
             //through the views-as-the-gate read path)
             this.emitDevicesChanged();
@@ -1622,7 +1610,7 @@ export class DeviceManager {
 
         this.finder.on('scan-ended', () => {
             this.emitter.emit('scan-ended');
-            //devices that didn't respond to the scan are NOT eagerly health-checked here —
+            //devices that didn't respond to the scan are NOT eagerly health-checked here -
             //lazy hydration on read covers them the next time a view asks for the list
         });
     }
@@ -1658,7 +1646,7 @@ export class DeviceManager {
     private async startRokuFinder() {
         await this.finder.start();
         const ts = new Date().toLocaleTimeString();
-        this.makeFinderLogger()(`[${ts}] RokuFinder started — passive ssdp:alive monitoring active`);
+        this.makeFinderLogger()(`[${ts}] RokuFinder started - passive ssdp:alive monitoring active`);
     }
 
     private stopRokuFinder() {
@@ -1732,7 +1720,7 @@ interface ConfiguredDeviceEntry extends ConfiguredDevice {
     state?: DeviceState;
     /**
      * Previous state, updated by setDeviceState before each transition. Undefined when no
-     * state has been recorded yet — readers should treat that as 'unknown'.
+     * state has been recorded yet - readers should treat that as 'unknown'.
      */
     lastState?: DeviceState;
     /**
@@ -1760,7 +1748,7 @@ interface DiscoveredDeviceEntry {
     state?: DeviceState;
     /**
      * Previous state, updated by setDeviceState before each transition. Undefined when no
-     * state has been recorded yet — readers should treat that as 'unknown'.
+     * state has been recorded yet - readers should treat that as 'unknown'.
      */
     lastState?: DeviceState;
     /**
