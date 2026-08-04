@@ -1093,17 +1093,21 @@ export class BrightScriptCommands {
     }
 
     /**
-     * Return the active host (paired with its raw device-info) if one is set and reachable;
-     * otherwise undefined. getDeviceInfo fetches fresh info and updates the device manager's
-     * cache along the way, so every view renders the same data this launch will use.
+     * Return the active host (paired with its raw device-info) if one is set and passes a
+     * health check; otherwise undefined. The health check refreshes the device in the device
+     * manager, so the device-info is read back from there without an extra request.
      */
     public async getHealthyActiveHost(): Promise<HostWithDeviceInfo | undefined> {
         const activeHost = vscodeContextManager.get<string>('activeHost');
         if (!activeHost) {
             return undefined;
         }
-        const deviceInfo = await this.deviceManager.getDeviceInfo({ ip: activeHost });
-        //deviceInfo is required on HostWithDeviceInfo — unreachable or unknown devices report no healthy active host
+        const isHealthy = await this.deviceManager.healthCheckDevice({ ip: activeHost });
+        if (!isHealthy) {
+            return undefined;
+        }
+        const deviceInfo = this.deviceManager.getDevice({ ip: activeHost })?.deviceInfo;
+        //deviceInfo is required on HostWithDeviceInfo, so if we couldn't read it back, report no healthy active host
         if (!deviceInfo) {
             return undefined;
         }

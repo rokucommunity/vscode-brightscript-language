@@ -516,7 +516,8 @@ describe('BrightScriptFileUtils ', () => {
         beforeEach(() => {
             sandbox = sinon.createSandbox();
             deviceManager = {
-                getDeviceInfo: sandbox.stub().resolves({ 'serial-number': 'SN123' })
+                healthCheckDevice: sandbox.stub().resolves(true),
+                getDevice: sandbox.stub().returns({ ip: '1.2.3.4', deviceInfo: { 'serial-number': 'SN123' } })
             };
             localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any);
             sandbox.stub(vscodeContextManager, 'get').returns('1.2.3.4');
@@ -526,10 +527,10 @@ describe('BrightScriptFileUtils ', () => {
             sandbox.restore();
         });
 
-        it('returns the host with its freshly-fetched device info when the active host is reachable', async () => {
+        it('returns the host with its device info when the active host is healthy', async () => {
             const result = await localCommands.getHealthyActiveHost();
             assert.deepEqual(result, { host: '1.2.3.4', deviceInfo: { 'serial-number': 'SN123' } });
-            assert.isTrue(deviceManager.getDeviceInfo.calledOnceWith({ ip: '1.2.3.4' }));
+            assert.isTrue(deviceManager.healthCheckDevice.calledOnceWith({ ip: '1.2.3.4' }));
         });
 
         it('returns undefined when no active host is set', async () => {
@@ -538,8 +539,14 @@ describe('BrightScriptFileUtils ', () => {
             assert.isUndefined(result);
         });
 
-        it('returns undefined when the active host is unreachable or unknown', async () => {
-            deviceManager.getDeviceInfo.resolves(undefined);
+        it('returns undefined when the active host fails the health check', async () => {
+            deviceManager.healthCheckDevice.resolves(false);
+            const result = await localCommands.getHealthyActiveHost();
+            assert.isUndefined(result);
+        });
+
+        it('returns undefined when no device info could be read back', async () => {
+            deviceManager.getDevice.returns(undefined);
             const result = await localCommands.getHealthyActiveHost();
             assert.isUndefined(result);
         });

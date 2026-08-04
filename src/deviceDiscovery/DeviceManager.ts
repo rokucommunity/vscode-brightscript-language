@@ -654,47 +654,7 @@ export class DeviceManager {
      * reported unhealthy.
      */
     public async healthCheckDevice(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<boolean> {
-        return (await this.fetchFreshDevice(deviceKeyOrLookup)) !== undefined;
-    }
-
-    /**
-     * Get a device's current info, fresh from the device itself. Returns undefined when the
-     * device is unknown or unreachable.
-     */
-    public async getDeviceInfo(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<Record<string, any> | undefined> {
-        return (await this.fetchFreshDevice(deviceKeyOrLookup))?.deviceInfo;
-    }
-
-    /**
-     * Resolve a device with the cache trust window bypassed and no synthetic delay, then
-     * return the freshly-merged device (or undefined when unknown/unreachable).
-     */
-    private async fetchFreshDevice(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<RokuDevice | undefined> {
-        // If already a device object with deviceState, use it directly; otherwise look it up
-        let device: RokuDevice | undefined;
-        if (typeof deviceKeyOrLookup === 'string') {
-            device = this.getDevice(deviceKeyOrLookup);
-        } else if ('deviceState' in deviceKeyOrLookup) {
-            device = deviceKeyOrLookup;
-        } else {
-            device = this.getDevice(deviceKeyOrLookup);
-        }
-
-        if (!device) {
-            return undefined;
-        }
-
-        // The caller wants a real answer now: bypass the cache trust window, no synthetic delay
-        const isHealthy = await this.resolveDevice(device, { bypassCache: true, syntheticDelay: false });
-        if (!isHealthy) {
-            if (device.isDiscovered) {
-                // a discovered device went dark - order a rescan for the views to fulfill
-                this.submitUnhealthyDeviceBroadcast();
-            }
-            return undefined;
-        }
-        // re-read so the returned device carries the just-fetched info
-        return this.getDevice({ ip: device.ip, serialNumber: device.serialNumber });
+        return (await this.getDeviceInfo(deviceKeyOrLookup)) !== undefined;
     }
 
     /**
@@ -1131,7 +1091,7 @@ export class DeviceManager {
 
             // Fetch fresh data from network
             try {
-                deviceInfo = await this.fetchDeviceInfo(device.ip, 8060);
+                deviceInfo = await this.getDeviceInfo(device.ip);
 
                 if (syntheticDelay) {
                     await this.randomDelay(400, 1_000);
@@ -1281,46 +1241,61 @@ export class DeviceManager {
     private inFlightDeviceInfo = new Map<string, Promise<DeviceInfoRaw | undefined>>();
 
     /**
-     * Fetch device info from the network, sharing any request already in flight for the same
-     * ip:port (see the de-dupe rule in docs/device-discovery.md). Never rejects - failures
-     * return undefined. Success caches the result in globalStateManager for future lookups.
+     * Get device info directly from the device. Never returns cached data - this always hits
+     * the network. Concurrent callers for the same ip:port piggyback on the in-flight request
+     * and get the same answer (the de-dupe rule in docs/device-discovery.md). Never rejects -
+     * failures return undefined.
+     *
+     * This does NOT update the device list or device states - those are maintained by the
+     * reconcile sweeps and lazy hydration. Use {@link getDevice} to read what's already known.
+     *
+     * Accepts an ip, an encoded tree key ("s:{serial}" / "i:{ip}"), an ip/serial lookup, or a
+     * device object. Returns undefined when the input can't be resolved to an ip.
      */
-    private fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw | undefined> {
+    public getDeviceInfo(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }, port = 8060): Promise<DeviceInfoRaw | undefined> {
+        //normalize the input down to an ip
+        let ip: string | undefined;
+        if (typeof deviceKeyOrLookup === 'string') {
+            //encoded tree keys resolve through the device list; any other string is already an ip
+            ip = deviceKeyOrLookup.startsWith('s:') || deviceKeyOrLookup.startsWith('i:')
+                ? this.getDevice(deviceKeyOrLookup)?.ip
+                : deviceKeyOrLookup;
+        } else {
+            ip = deviceKeyOrLookup.ip ?? this.getDevice(deviceKeyOrLookup)?.ip;
+        }
+        if (!ip) {
+            return Promise.resolve(undefined);
+        }
+
         const key = `${ip}:${port}`;
         let inFlight = this.inFlightDeviceInfo.get(key);
         if (inFlight === undefined) {
-            inFlight = this.fetchDeviceInfoInner(ip, port).finally(() => {
-                this.inFlightDeviceInfo.delete(key);
-            });
+            inFlight = (async () => {
+                try {
+                    const info = await rokuDeploy.getDeviceInfo({
+                        host: ip,
+                        remotePort: port,
+                        timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
+                    });
+                    if (info['serial-number']) {
+                        this.globalStateManager.setCachedDevice(info['serial-number'], {
+                            serialNumber: info['serial-number'],
+                            deviceInfo: info,
+                            createdAt: Date.now()
+                        });
+                        this.globalStateManager.setSerialNumberForIp(this.networkId, ip, info['serial-number']);
+                    }
+                    return info;
+                } catch (e) {
+                    console.error(e);
+                    return undefined;
+                } finally {
+                    this.inFlightDeviceInfo.delete(key);
+                }
+            })();
             this.inFlightDeviceInfo.set(key, inFlight);
         }
         return inFlight;
-    }
-
-    /**
-     * Fetch device info from the network. Always makes a network request.
-     */
-    private async fetchDeviceInfoInner(ip: string, port: number): Promise<DeviceInfoRaw> {
-        try {
-            const info = await rokuDeploy.getDeviceInfo({
-                host: ip,
-                remotePort: port,
-                timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
-            });
-            if (info['serial-number']) {
-                this.globalStateManager.setCachedDevice(info['serial-number'], {
-                    serialNumber: info['serial-number'],
-                    deviceInfo: info,
-                    createdAt: Date.now()
-                });
-                this.globalStateManager.setSerialNumberForIp(this.networkId, ip, info['serial-number']);
-            }
-
-            return info;
-        } catch (e) {
-            console.error(e);
-            return undefined;
-        }
     }
 
     /**
