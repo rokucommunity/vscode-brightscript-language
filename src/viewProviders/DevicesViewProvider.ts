@@ -333,7 +333,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         command: {
                             command: 'extension.brightscript.rce.watchDeviceInEditor',
                             title: 'Watch Device',
-                            arguments: [Number(device.rce.id), this.deviceManager.getDeviceDisplayName(device)]
+                            arguments: [device.rce.id, this.deviceManager.getDeviceDisplayName(device)]
                         }
                     })
                 );

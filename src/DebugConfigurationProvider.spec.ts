@@ -589,7 +589,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc' };
                 //seed the previous session's remote-control device
                 await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:OLD-LAN-DEVICE');
-                sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns({ key: 'rce:83', rce: { id: '83', status: 'running' } } as any);
+                sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns({ key: 'rce:83', rce: { id: 83, status: 'running' } } as any);
 
                 await (configProvider as any).processHostParameter({ host: '', device: device });
 
@@ -628,7 +628,7 @@ describe('BrightScriptConfigurationProvider', () => {
                     device: device,
                     rce: { status: 'shutdown' }
                 } as any);
-                sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns({ key: 'rce:84', rce: { id: '84', status: 'shutdown' } } as any);
+                sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns({ key: 'rce:84', rce: { id: 84, status: 'shutdown' } } as any);
 
                 try {
                     await (configProvider as any).processHostParameter({ host: '' });

@@ -320,7 +320,7 @@ class RceVideoEditorPanel implements vscode.Disposable {
             //the stream header's power button: presses the Power key on this tab's device (toggles
             //the emulated display; the stream itself keeps running either way)
             const rceToken = await this.rceManager.getToken();
-            await rokuDeploy.keyPress({ device: { id: String(this.deviceId), rceToken: rceToken }, key: 'Power' });
+            await rokuDeploy.keyPress({ device: { id: this.deviceId, rceToken: rceToken }, key: 'Power' });
             this.postOrQueueMessage({ ...message, response: { success: true } });
         } else {
             console.warn('Did not handle rce video editor message', message);

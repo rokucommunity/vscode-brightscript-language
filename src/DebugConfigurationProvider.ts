@@ -531,7 +531,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             return device.instanceUrl;
         }
         if (device && 'id' in device) {
-            return device.id;
+            return String(device.id);
         }
         if (device && 'esn' in device) {
             return device.esn;

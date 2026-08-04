@@ -108,7 +108,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         //emulated display; the stream itself keeps running either way)
         this.addMessageCommandCallback(ViewProviderCommand.pressRceDevicePowerButton, async (message) => {
             const rceToken = await this.dependencies.rceManager.getToken();
-            await rokuDeploy.keyPress({ device: { id: String(message.context.deviceId), rceToken: rceToken }, key: 'Power' });
+            await rokuDeploy.keyPress({ device: { id: Number(message.context.deviceId), rceToken: rceToken }, key: 'Power' });
             this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
             return true;
         });
@@ -202,7 +202,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         const device = this.dependencies.deviceManager?.getDeviceByDeviceConfig?.(deviceConfig);
         let deviceId: number | undefined;
         if (device?.rce) {
-            deviceId = Number(device.rce.id);
+            deviceId = device.rce.id;
         } else if ('id' in deviceConfig) {
             deviceId = Number(deviceConfig.id);
         }

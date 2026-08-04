@@ -1345,7 +1345,7 @@ describe('DeviceManager', () => {
             expect(device.deviceInfo['user-device-name']).to.equal('Chris');
             expect(device.deviceInfo['software-version']).to.equal('15.2.4');
             expect(device.rce).to.include({
-                id: '83',
+                id: 83,
                 status: 'running',
                 instanceUrl: 'https://device.rce.roku.com/instance/abc'
             });
@@ -1398,11 +1398,11 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             manager['onRceDevices']([rceDevice()] as any);
 
-            expect(manager.getDevice('s:XY020078HH5S')?.rce?.id).to.equal('83');
-            expect(manager.getDevice({ serialNumber: 'XY020078HH5S' })?.rce?.id).to.equal('83');
+            expect(manager.getDevice('s:XY020078HH5S')?.rce?.id).to.equal(83);
+            expect(manager.getDevice({ serialNumber: 'XY020078HH5S' })?.rce?.id).to.equal(83);
 
             manager['onRceDevices']([rceDevice({ serial_number: null })] as any);
-            expect(manager.getDevice('rce:83')?.rce?.id).to.equal('83');
+            expect(manager.getDevice('rce:83')?.rce?.id).to.equal(83);
         });
 
         it('a key collision between a configured LAN entry and a cloud device resolves to the cloud device everywhere', () => {
@@ -1591,7 +1591,7 @@ describe('DeviceManager', () => {
             manager['onRceDevices']([rceDevice({ id: 84, status: 'shutdown', running_device: null })] as any);
 
             const device = manager.getAllDevices().find(x => x.rce);
-            expect(device.device).to.eql({ id: '84', rceToken: 'secret' });
+            expect(device.device).to.eql({ id: 84, rceToken: 'secret' });
         });
 
         it('resolveRceDevices probes through the precomputed device option without calling getDeviceOption', async () => {
@@ -1635,15 +1635,15 @@ describe('DeviceManager', () => {
 
                 const device = manager.getDeviceByDeviceConfig({ esn: 'ESN84', rceToken: 'secret' });
 
-                expect(device?.rce?.id).to.equal('84');
+                expect(device?.rce?.id).to.equal(84);
             });
 
             it('resolves a Roku Cloud Emulator device by management-api id', () => {
                 manager = createFakeFinderManager();
 
-                const device = manager.getDeviceByDeviceConfig({ id: '84', rceToken: 'secret' });
+                const device = manager.getDeviceByDeviceConfig({ id: 84, rceToken: 'secret' });
 
-                expect(device?.rce?.id).to.equal('84');
+                expect(device?.rce?.id).to.equal(84);
             });
 
             it('resolves a Roku Cloud Emulator device by instanceUrl', () => {
@@ -1651,7 +1651,7 @@ describe('DeviceManager', () => {
 
                 const device = manager.getDeviceByDeviceConfig({ instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'secret' });
 
-                expect(device?.rce?.id).to.equal('83');
+                expect(device?.rce?.id).to.equal(83);
             });
 
             it('resolves a local device by host', () => {
@@ -1666,7 +1666,7 @@ describe('DeviceManager', () => {
             it('returns undefined when nothing matches', () => {
                 manager = createFakeFinderManager();
 
-                expect(manager.getDeviceByDeviceConfig({ id: 'unknown-id' })).to.be.undefined;
+                expect(manager.getDeviceByDeviceConfig({ id: 999999 })).to.be.undefined;
                 expect(manager.getDeviceByDeviceConfig({ host: '10.0.0.1' })).to.be.undefined;
             });
         });

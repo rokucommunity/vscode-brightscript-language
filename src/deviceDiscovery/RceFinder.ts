@@ -114,7 +114,7 @@ export class RceFinder extends EventEmitter {
      * Build a roku-deploy device option for a cloud emulator device (live instance url preferred,
      * management-api id as fallback). Returns undefined when no token is available.
      */
-    public async getDeviceOption(device: { instanceUrl?: string; id?: string }): Promise<DeviceOption | undefined> {
+    public async getDeviceOption(device: { instanceUrl?: string; id?: number }): Promise<DeviceOption | undefined> {
         const token = await this.rceManager.getToken();
         if (!token) {
             return undefined;
@@ -122,7 +122,7 @@ export class RceFinder extends EventEmitter {
         if (device.instanceUrl) {
             return { instanceUrl: device.instanceUrl, rceToken: token };
         }
-        if (device.id) {
+        if (device.id !== undefined) {
             return { id: device.id, rceToken: token };
         }
         return undefined;

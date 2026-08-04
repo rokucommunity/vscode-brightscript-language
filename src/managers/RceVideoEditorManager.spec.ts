@@ -246,7 +246,7 @@ describe('RceVideoEditorManager', () => {
 
         await fakePanel.receiveMessage({ command: ViewProviderCommand.pressRceDevicePowerButton, context: {} });
 
-        expect(keyPress.getCall(0).args[0]).to.eql({ device: { id: '5', rceToken: 'management-api-token' }, key: 'Power' });
+        expect(keyPress.getCall(0).args[0]).to.eql({ device: { id: 5, rceToken: 'management-api-token' }, key: 'Power' });
         const response = fakePanel.postedMessages.find((posted) => posted.command === ViewProviderCommand.pressRceDevicePowerButton);
         expect(response?.response).to.eql({ success: true });
     });

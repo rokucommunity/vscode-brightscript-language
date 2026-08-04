@@ -57,9 +57,9 @@ export class DeviceManager {
             //management-api device id
             const deviceOption: RceDeviceConfig = instanceUrl
                 ? { instanceUrl: instanceUrl, rceToken: rceToken }
-                : { id: String(device.id), rceToken: rceToken };
+                : { id: device.id, rceToken: rceToken };
             return {
-                id: String(device.id),
+                id: device.id,
                 name: device.name,
                 esn: device.serial_number ?? undefined,
                 status: device.status ?? 'shutdown',
@@ -1366,7 +1366,7 @@ export class DeviceManager {
     private findRceDeviceEntry(keyOrLookup: string | { ip?: string; serialNumber?: string }): RceDeviceEntry | undefined {
         if (typeof keyOrLookup === 'string') {
             if (keyOrLookup.startsWith('rce:')) {
-                const id = keyOrLookup.slice(4);
+                const id = Number(keyOrLookup.slice(4));
                 return this.rceDevices.find(entry => entry.id === id);
             }
             if (keyOrLookup.startsWith('s:')) {
@@ -1741,7 +1741,7 @@ interface ConfiguredDeviceEntry extends ConfiguredDevice {
  * A cloud emulator device as tracked from RceFinder polls of the RCE management api
  */
 interface RceDeviceEntry {
-    id: string;
+    id: number;
     name: string;
     esn?: string;
     status: DeviceStatus;
@@ -1828,7 +1828,7 @@ export interface RceRokuDevice extends BaseRokuDevice {
         /**
          * The management-api device id
          */
-        id: string;
+        id: number;
         /**
          * The management-api device status
          */

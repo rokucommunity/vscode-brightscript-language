@@ -178,7 +178,7 @@ describe('UserInputManager', () => {
             isDiscovered: false,
             isConfigured: false,
             device: { id: '83', rceToken: 'secret' },
-            rce: { id: '83', status: 'running' },
+            rce: { id: 83, status: 'running' },
             deviceInfo: {
                 'user-device-name': 'Chris',
                 'serial-number': 'XY020078HH5S',
@@ -325,7 +325,7 @@ describe('UserInputManager', () => {
                 deviceInfo: { 'default-device-name': 'Cloud Device' },
                 isDiscovered: true,
                 isConfigured: false,
-                rce: { id: '83', status: 'shutdown' },
+                rce: { id: 83, status: 'shutdown' },
                 device: { id: '83', rceToken: 'secret' }
             } as unknown as RokuDevice;
 

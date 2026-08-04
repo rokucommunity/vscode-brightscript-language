@@ -238,7 +238,7 @@ describe('BrightScriptFileUtils ', () => {
         });
 
         it('sets activeDeviceKey and remoteControlDeviceKey for a cloud device selected by key', async () => {
-            deviceManager.getDevice.withArgs('rce:83').returns({ ip: undefined, key: 'rce:83', rce: { id: '83', status: 'running' } });
+            deviceManager.getDevice.withArgs('rce:83').returns({ ip: undefined, key: 'rce:83', rce: { id: 83, status: 'running' } });
 
             await capturedCommands['extension.brightscript.setActiveDevice']({ key: 'rce:83' });
 
@@ -247,9 +247,9 @@ describe('BrightScriptFileUtils ', () => {
         });
 
         it('resolves a cloud device picked from the fallback picker', async () => {
-            const cloudDeviceOption = { id: '83', rceToken: 'secret' };
+            const cloudDeviceOption = { id: 83, rceToken: 'secret' };
             userInputManager.promptForHost.resolves({ host: undefined, deviceInfo: undefined, device: cloudDeviceOption, rce: { status: 'running' } });
-            deviceManager.getDeviceByDeviceConfig.withArgs(cloudDeviceOption).returns({ ip: undefined, key: 'rce:83', rce: { id: '83', status: 'running' } });
+            deviceManager.getDeviceByDeviceConfig.withArgs(cloudDeviceOption).returns({ ip: undefined, key: 'rce:83', rce: { id: 83, status: 'running' } });
 
             await capturedCommands['extension.brightscript.setActiveDevice']();
 
@@ -475,8 +475,8 @@ describe('BrightScriptFileUtils ', () => {
             //no remembered remote-control device
             await vscode.context.workspaceState.update('remoteControlDeviceKey', '');
             await vscode.context.workspaceState.update('activeDeviceKey', '');
-            const cloudDevice = { id: '83', rceToken: 'super-secret-token' };
-            deviceManager.getDeviceByDeviceConfig.withArgs(cloudDevice).returns({ key: 'rce:83', device: cloudDevice, rce: { id: '83', status: 'running' } });
+            const cloudDevice = { id: 83, rceToken: 'super-secret-token' };
+            deviceManager.getDeviceByDeviceConfig.withArgs(cloudDevice).returns({ key: 'rce:83', device: cloudDevice, rce: { id: 83, status: 'running' } });
             const userInputManager = {
                 promptForHost: sandbox.stub().resolves({ host: undefined, deviceInfo: undefined, device: cloudDevice, rce: { status: 'running' } })
             };
@@ -500,8 +500,8 @@ describe('BrightScriptFileUtils ', () => {
             // eslint-disable-next-line no-template-curly-in-string
             (vscode.workspace as any)._configuration['brightscript.remoteControl.host'] = '${promptForHost}';
             try {
-                const cloudDevice = { id: '83', rceToken: 'super-secret-token' };
-                deviceManager.getDeviceByDeviceConfig.withArgs(cloudDevice).returns({ key: 'rce:83', device: cloudDevice, rce: { id: '83', status: 'running' } });
+                const cloudDevice = { id: 83, rceToken: 'super-secret-token' };
+                deviceManager.getDeviceByDeviceConfig.withArgs(cloudDevice).returns({ key: 'rce:83', device: cloudDevice, rce: { id: 83, status: 'running' } });
                 const userInputManager = {
                     promptForHost: sandbox.stub().resolves({ host: undefined, deviceInfo: undefined, device: cloudDevice, rce: { status: 'running' } })
                 };
@@ -599,7 +599,7 @@ describe('BrightScriptFileUtils ', () => {
 
         it('restarts a cloud emulator device through its device config without probing a host', async () => {
             const cloudDeviceConfig = { instanceUrl: 'https://rce.example.com/instance', rceToken: 'super-secret-token' };
-            const cloudDevice = { key: 'rce:83', serialNumber: 'ESN83', device: cloudDeviceConfig, rce: { id: '83', status: 'running' }, deviceInfo: {} };
+            const cloudDevice = { key: 'rce:83', serialNumber: 'ESN83', device: cloudDeviceConfig, rce: { id: 83, status: 'running' }, deviceInfo: {} };
             deviceManager.getDevice.withArgs('rce:83').returns(cloudDevice);
             deviceManager.getDeviceDisplayName.returns('Chris (cloud emulator)');
 
@@ -613,7 +613,7 @@ describe('BrightScriptFileUtils ', () => {
 
         it('checks for updates on a cloud emulator device through its device config', async () => {
             const cloudDeviceConfig = { instanceUrl: 'https://rce.example.com/instance', rceToken: 'super-secret-token' };
-            const cloudDevice = { key: 'rce:83', serialNumber: 'ESN83', device: cloudDeviceConfig, rce: { id: '83', status: 'running' }, deviceInfo: {} };
+            const cloudDevice = { key: 'rce:83', serialNumber: 'ESN83', device: cloudDeviceConfig, rce: { id: 83, status: 'running' }, deviceInfo: {} };
             deviceManager.getDevice.withArgs('rce:83').returns(cloudDevice);
 
             await localCommands.checkForUpdates({ key: 'rce:83' });
@@ -782,8 +782,8 @@ describe('BrightScriptFileUtils ', () => {
                 ip: undefined,
                 key: 'rce:83',
                 deviceInfo: { 'default-device-name': 'Cloud Device' },
-                device: { id: '83', rceToken: 'secret' },
-                rce: { id: '83', status: 'running' }
+                device: { id: 83, rceToken: 'secret' },
+                rce: { id: 83, status: 'running' }
             };
             deviceManager.getDevice.returns(cloudDevice);
             await vscode.context.workspaceState.update('activeDeviceKey', 'rce:83');
@@ -803,8 +803,8 @@ describe('BrightScriptFileUtils ', () => {
                 ip: undefined,
                 key: 'rce:83',
                 deviceInfo: { 'default-device-name': 'Cloud Device' },
-                device: { id: '83', rceToken: 'secret' },
-                rce: { id: '83', status: 'shutdown' }
+                device: { id: 83, rceToken: 'secret' },
+                rce: { id: 83, status: 'shutdown' }
             };
             deviceManager.getDevice.returns(cloudDevice);
             deviceManager.healthCheckDevice.resolves(false);

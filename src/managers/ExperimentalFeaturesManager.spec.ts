@@ -118,7 +118,7 @@ describe('ExperimentalFeaturesManager', () => {
         const manager = new ExperimentalFeaturesManager(managerContext as any);
         //only 's:CLOUD-ESN' resolves to a cloud device; the other keys are LAN or unknown
         manager.setDeviceManager({
-            getDevice: (key: string) => (key === 's:CLOUD-ESN' ? { rce: { id: '83' } } : undefined)
+            getDevice: (key: string) => (key === 's:CLOUD-ESN' ? { rce: { id: 83 } } : undefined)
         } as any);
         await vscode.context.workspaceState.update('activeDeviceKey', 's:CLOUD-ESN');
         await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:CLOUD-ESN');

@@ -767,7 +767,7 @@ describe('RokuDeviceViewViewProvider', () => {
             const message = { command: ViewProviderCommand.pressRceDevicePowerButton, context: { deviceId: 5 } };
             await provider['messageCommandCallbacks'][ViewProviderCommand.pressRceDevicePowerButton](message);
 
-            expect(keyPress.getCall(0).args[0]).to.eql({ device: { id: '5', rceToken: 'management-api-token' }, key: 'Power' });
+            expect(keyPress.getCall(0).args[0]).to.eql({ device: { id: 5, rceToken: 'management-api-token' }, key: 'Power' });
             const response = postOrQueueMessage.getCalls().map((call) => call.args[0]).find((posted) => posted.command === ViewProviderCommand.pressRceDevicePowerButton);
             expect(response?.response).to.eql({ success: true });
         });
@@ -846,7 +846,7 @@ describe('RokuDeviceViewViewProvider', () => {
         it('starts the stream when a channel is published to a cloud device', async () => {
             createProvider();
             markViewReady();
-            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: '83', status: 'running' }, deviceInfo: { 'user-device-name': 'Chris' } });
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: 83, status: 'running' }, deviceInfo: { 'user-device-name': 'Chris' } });
 
             publishChannel({ esn: 'ESN1' });
             await flushMicrotasks();
@@ -869,7 +869,7 @@ describe('RokuDeviceViewViewProvider', () => {
         it('stops the stream and forgets the device when a channel is published to a LAN device', async () => {
             createProvider();
             markViewReady();
-            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: '83', status: 'running' }, deviceInfo: {} });
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: 83, status: 'running' }, deviceInfo: {} });
             publishChannel({ esn: 'ESN1' });
             await flushMicrotasks();
             const client = provider.createdClients[0];
@@ -888,7 +888,7 @@ describe('RokuDeviceViewViewProvider', () => {
         it('reconnects to the last sideloaded cloud device when the view reopens', async () => {
             createProvider();
             markViewReady();
-            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: '83', status: 'running' }, deviceInfo: {} });
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: 83, status: 'running' }, deviceInfo: {} });
             publishChannel({ esn: 'ESN1' });
             await flushMicrotasks();
             expect(provider.createdClients).to.have.length(1);
@@ -915,7 +915,7 @@ describe('RokuDeviceViewViewProvider', () => {
             createProvider();
             markViewReady();
             await vscode.context.workspaceState.update('activeDeviceKey', 's:ESN1');
-            getDevice.returns({ key: 's:ESN1', rce: { id: '83', status: 'running' }, deviceInfo: {} });
+            getDevice.returns({ key: 's:ESN1', rce: { id: 83, status: 'running' }, deviceInfo: {} });
 
             markViewReady();
             await flushMicrotasks();
@@ -944,7 +944,7 @@ describe('RokuDeviceViewViewProvider', () => {
         it('surfaces stream resolution failures through the stream error banner', async () => {
             createProvider();
             markViewReady();
-            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: '83', status: 'shutdown' }, deviceInfo: { 'user-device-name': 'Chris' } });
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: 83, status: 'shutdown' }, deviceInfo: { 'user-device-name': 'Chris' } });
             resolveStreamRequest.rejects(new Error('device must be running'));
 
             publishChannel({ esn: 'ESN1' });
