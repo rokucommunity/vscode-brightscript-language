@@ -189,7 +189,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         try {
             let watcher;
             try {
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                // eslint-disable-next-line @typescript-eslint/no-require-imports, import/no-extraneous-dependencies
                 watcher = require('@parcel/watcher');
             } catch (e) {
                 // Doing nothing if watcher does not exist
