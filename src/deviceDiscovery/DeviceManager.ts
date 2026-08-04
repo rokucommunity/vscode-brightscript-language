@@ -107,6 +107,8 @@ export class DeviceManager {
 
             //clear and reload discovered devices anytime this network changes (state goes with them)
             this.discoveredDevices = [];
+            //in-session knowledge is network-specific - same IP may be a different device now
+            this.lastCheckedByIp.clear();
             this.loadLastSeenDevices();
 
             //re-point the active device at its IP on this network (found by serial number)
@@ -170,18 +172,16 @@ export class DeviceManager {
     private networkChangeMonitor: NetworkChangeMonitor;
     private finder = new RokuFinder(this.globalStateManager, this.makeFinderLogger());
 
-    // Health check tracking and cooldowns
-    private resolveDeviceSequence = new Map<string, number>();
-    private readonly DEVICE_INFO_CACHE_MS = 5 * 60 * 1_000; // 5 minutes - cache duration for fetchDeviceInfo
+    // Health check tracking. lastCheckedByIp is when we last attempted a check (success or
+    // failure) - ensureDeviceFresh callers state how old that knowledge may be (maxAgeMs)
+    private deviceCheckSequence = new Map<string, number>();
+    private lastCheckedByIp = new Map<string, number>();
+    private readonly DEVICE_INFO_CACHE_MS = 5 * 60 * 1_000; // 5 minutes - default freshness requirement for ensureDeviceFresh
     private readonly FRESH_CACHE_THRESHOLD_MS = 5 * 60 * 1_000; // 5 minutes - cache fresher than this = online on load
-    private readonly OFFLINE_COOLDOWN_MS = 5_000; // 5 seconds - minimum time between resolve attempts for offline devices
     private static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
 
     // Lazy hydration (background device-info refresh triggered by view reads)
-    private readonly HYDRATION_MAX_CACHE_AGE_MS = 8 * 60 * 60 * 1_000; // 8 hours - cache older than this re-hydrates on read
-    private readonly HYDRATION_RETRY_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes - minimum time between hydration attempts per IP
-    private hydrationInFlight = new Set<string>();
-    private hydrationLastAttempt = new Map<string, number>();
+    private readonly HYDRATION_MAX_CACHE_AGE_MS = 8 * 60 * 60 * 1_000; // 8 hours - hydration's freshness requirement
 
     // Notifications and event debouncing
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
@@ -241,7 +241,8 @@ export class DeviceManager {
         }
 
         if (device) {
-            this.queueHydration([device]);
+            //background freshness: return immediately, updates arrive via devices-changed
+            void this.ensureDeviceFresh(device, { maxAgeMs: this.HYDRATION_MAX_CACHE_AGE_MS, syntheticDelay: false }).catch(() => { });
         }
         return device;
     }
@@ -255,69 +256,20 @@ export class DeviceManager {
      */
     public async validateAndAddDevice(ip: string): Promise<RokuDevice | undefined> {
         this.setDiscoveredDevice(ip, undefined);
-        await this.resolveDevice({ ip: ip }, { syntheticDelay: false });
+        await this.ensureDeviceFresh({ ip: ip }, { syntheticDelay: false });
         return this.getDevice({ ip: ip });
     }
 
     /**
      * Get a list of all roku devices. Returns immediately from in-memory data; stale devices
-     * hydrate in the background and fire `devices-changed` when fresh data arrives.
+     * refresh in the background and fire `devices-changed` when fresh data arrives.
      */
     public getAllDevices(): RokuDevice[] {
         const devices = this.buildAllDevices();
-        this.queueHydration(devices);
-        return devices;
-    }
-
-    /**
-     * Does this device need a background device-info refresh? Yes when it has never been
-     * confirmed this session (`unknown`), or its cached info is older than
-     * HYDRATION_MAX_CACHE_AGE_MS.
-     */
-    private needsHydration(device: RokuDevice): boolean {
-        //pending means a resolve is already in flight - without this guard a pending device
-        //would re-queue on every read
-        if (device.deviceState === 'pending') {
-            return false;
-        }
-        if (device.deviceState === 'unknown') {
-            return true;
-        }
-        const cached = device.serialNumber ? this.globalStateManager.getCachedDevice(device.serialNumber) : undefined;
-        if (!cached) {
-            return false;
-        }
-        return Date.now() - cached.createdAt > this.HYDRATION_MAX_CACHE_AGE_MS;
-    }
-
-    /**
-     * Lazy hydration on read: queue background device-info fetches for devices that need one.
-     * Must converge even though resolves emit devices-changed (which triggers more reads) -
-     * the in-flight set and per-IP cooldown below are that guard.
-     */
-    private queueHydration(devices: RokuDevice[]): void {
-        const now = Date.now();
         for (const device of devices) {
-            if (!this.needsHydration(device)) {
-                continue;
-            }
-            if (this.hydrationInFlight.has(device.ip)) {
-                continue;
-            }
-            const lastAttempt = this.hydrationLastAttempt.get(device.ip);
-            if (lastAttempt !== undefined && now - lastAttempt < this.HYDRATION_RETRY_COOLDOWN_MS) {
-                continue;
-            }
-
-            //timestamp at queue time so even instantly-failing attempts are rate-limited
-            this.hydrationLastAttempt.set(device.ip, now);
-            this.hydrationInFlight.add(device.ip);
-            void this.resolveDevice({ ip: device.ip, serialNumber: device.serialNumber }, { syntheticDelay: false })
-                .catch(() => { })
-                .finally(() => {
-                    this.hydrationInFlight.delete(device.ip);
-                });
+            void this.ensureDeviceFresh(device, { maxAgeMs: this.HYDRATION_MAX_CACHE_AGE_MS, syntheticDelay: false }).catch(() => { });
         }
+        return devices;
     }
 
     /**
@@ -646,8 +598,9 @@ export class DeviceManager {
      * Only an explicit user refresh bypasses each device's cache trust window.
      */
     private reconcile(reasons: ReconcileReason[]): void {
-        const bypassDeviceCache = reasons.includes('refresh-clicked');
-        this.healthCheckAllDevices(bypassDeviceCache).catch((e) => {
+        //an explicit user refresh demands data fresher than anything we have (maxAgeMs 0)
+        const maxAgeMs = reasons.includes('refresh-clicked') ? 0 : undefined;
+        this.healthCheckAllDevices(maxAgeMs).catch((e) => {
             console.error('[DeviceManager] reconcile health check failed', e);
         });
     }
@@ -687,8 +640,8 @@ export class DeviceManager {
 
         // Clear all timestamps and per-device state
         this.lastScanDate = null;
-        this.resolveDeviceSequence.clear();
-        this.hydrationLastAttempt.clear();
+        this.deviceCheckSequence.clear();
+        this.lastCheckedByIp.clear();
 
         // Reset configured device states to unknown
         for (const entry of this.configuredDevices) {
@@ -992,9 +945,15 @@ export class DeviceManager {
         this.emitDevicesChanged();
     }
 
-    private async resolveDevice(device: RokuDevice | { ip: string; serialNumber?: string }, options?: { bypassCache?: boolean; syntheticDelay?: boolean }): Promise<boolean> {
-        //bypassCache skips the cache trust window AND the offline cooldown
-        const bypassCache = options?.bypassCache ?? false;
+    /**
+     * Check a single device and apply the result to the device list (online/offline states,
+     * discovered-device removal, devices-changed). `maxAgeMs` is the caller's freshness
+     * requirement: when our knowledge of the device (last successful fetch OR last failed
+     * attempt) is younger than this, return the current state without touching the network.
+     * A device in state `unknown` has no trustable knowledge, so it always fetches.
+     */
+    private async ensureDeviceFresh(device: RokuDevice | { ip: string; serialNumber?: string }, options?: { maxAgeMs?: number; syntheticDelay?: boolean }): Promise<boolean> {
+        const maxAgeMs = options?.maxAgeMs ?? this.DEVICE_INFO_CACHE_MS;
         const syntheticDelay = options?.syntheticDelay ?? true;
 
         // Extract serial from device if available (for proper state key management)
@@ -1002,58 +961,45 @@ export class DeviceManager {
 
         const currentStateObject = this.getDeviceState({ ip: device.ip, serialNumber: knownSerial });
 
-        // Offline cooldown: if device is offline and we recently checked, skip the re-check.
-        // This prevents the loop: healthCheck → resolve → offline → emit → refresh → healthCheck...
-        const isOffline = currentStateObject.state === 'offline';
-        const recentlyCheckedOffline = isOffline && (Date.now() - currentStateObject.lastUpdated < this.OFFLINE_COOLDOWN_MS);
-        if (!bypassCache && recentlyCheckedOffline) {
-            return false;
+        // How old is our knowledge of this device? In-session attempts win; otherwise fall
+        // back to the persisted cache write (but don't trust cache if the device moved IPs)
+        const serialForCache = knownSerial ?? this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
+        const cached = serialForCache ? this.globalStateManager.getCachedDevice(serialForCache) : undefined;
+        const cachedIp = serialForCache ? this.globalStateManager.getIpForSerial(serialForCache, this.networkId) : undefined;
+        const lastChecked = this.lastCheckedByIp.get(device.ip) ?? (cachedIp === device.ip ? cached?.createdAt : undefined) ?? 0;
+
+        // Fresh enough for this caller (and not `unknown`): answer from what we already know
+        if (currentStateObject.state !== 'unknown' && Date.now() - lastChecked < maxAgeMs) {
+            return currentStateObject.state === 'online' || currentStateObject.state === 'pending';
         }
+
+        // Stamp the attempt up front so even instantly-failing checks count as knowledge
+        this.lastCheckedByIp.set(device.ip, Date.now());
 
         // Increment and capture sequence number to handle concurrent refresh calls
         // Use IP for sequence tracking (primary key)
-        const currentSeq = (this.resolveDeviceSequence.get(device.ip) ?? 0) + 1;
-        this.resolveDeviceSequence.set(device.ip, currentSeq);
+        const currentSeq = (this.deviceCheckSequence.get(device.ip) ?? 0) + 1;
+        this.deviceCheckSequence.set(device.ip, currentSeq);
 
-        // Get device info from cache or network
+        // Set to pending before making network call
+        if (currentStateObject.state !== 'pending') {
+            this.setDeviceState({ ip: device.ip, serialNumber: knownSerial }, 'pending');
+            this.emitDevicesChanged();
+        }
+
         let deviceInfo: DeviceInfoRaw | undefined;
+        try {
+            deviceInfo = await this.getDeviceInfo(device.ip);
 
-        // Try to find cached data via serial number
-        const serialForCache = knownSerial ?? this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
-        const cached = serialForCache ? this.globalStateManager.getCachedDevice(serialForCache) : undefined;
-        // Check if the serial was last seen at this IP (don't trust cache if device moved)
-        const cachedIp = serialForCache ? this.globalStateManager.getIpForSerial(serialForCache, this.networkId) : undefined;
-        const cacheIsFresh = cached && (Date.now() - cached.createdAt < this.DEVICE_INFO_CACHE_MS) && cachedIp === device.ip;
-
-        // Use cache only if:
-        // - The caller didn't ask to bypass it
-        // - Cache is fresh
-        // - Device is not offline (offline devices should always hit network to check if back online)
-        if (!bypassCache && cacheIsFresh && !isOffline) {
-            // Use cached data
-            deviceInfo = cached.deviceInfo as DeviceInfoRaw;
-        } else {
-            // Set to pending before making network call
-            // This prevents unnecessary state flicker (online→pending→online) when using cache
-            if (currentStateObject.state !== 'pending') {
-                this.setDeviceState({ ip: device.ip, serialNumber: knownSerial }, 'pending');
-                this.emitDevicesChanged();
+            if (syntheticDelay) {
+                await this.randomDelay(400, 1_000);
             }
-
-            // Fetch fresh data from network
-            try {
-                deviceInfo = await this.getDeviceInfo(device.ip);
-
-                if (syntheticDelay) {
-                    await this.randomDelay(400, 1_000);
-                }
-            } catch {
-                deviceInfo = undefined;
-            }
+        } catch {
+            deviceInfo = undefined;
         }
 
         // Only apply result if this is still the latest request for this device
-        if (this.resolveDeviceSequence.get(device.ip) !== currentSeq) {
+        if (this.deviceCheckSequence.get(device.ip) !== currentSeq) {
             // Stale response - a newer check was started, ignore this result
             return !!deviceInfo;
         }
@@ -1151,7 +1097,7 @@ export class DeviceManager {
         }
     }
 
-    private async healthCheckAllDevices(bypassDeviceCache = false): Promise<void> {
+    private async healthCheckAllDevices(maxAgeMs?: number): Promise<void> {
         // Collect all unique IPs from both sources (same serial at different IPs = different entries to check)
         const discoveredIpSet = new Set(this.discoveredDevices.map(entry => entry.ip));
         const allIps = new Set([
@@ -1163,16 +1109,10 @@ export class DeviceManager {
             return;
         }
 
-        // Set all to pending and emit before async work
-        for (const ip of allIps) {
-            this.setDeviceState({ ip: ip }, 'pending');
-        }
-        this.emitDevicesChanged();
-
         // Health check all devices - if any discovered device is unhealthy, order a scan
         let needsScan = false;
         await Promise.all([...allIps].map(async (ip) => {
-            const isHealthy = await this.resolveDevice({ ip: ip }, { bypassCache: bypassDeviceCache });
+            const isHealthy = await this.ensureDeviceFresh({ ip: ip }, { maxAgeMs: maxAgeMs });
             if (!isHealthy && discoveredIpSet.has(ip)) {
                 needsScan = true;
             }
