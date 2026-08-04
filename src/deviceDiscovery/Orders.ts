@@ -1,6 +1,5 @@
 /**
- * Why a broadcast (SSDP scan) was ordered. Views filter on this - e.g. a visible view ignores
- * `stale` (timer-driven) orders to avoid surprise scans. (See docs/device-discovery.md "Orders")
+ * Why a broadcast (SSDP scan) was ordered
  */
 export type BroadcastReason =
     | 'startup'
@@ -11,7 +10,7 @@ export type BroadcastReason =
     | 'stale';
 
 /**
- * Why a reconcile (health-check-all) was ordered.
+ * Why a reconcile (health-check-all) was ordered
  */
 export type ReconcileReason =
     | 'startup'
@@ -24,21 +23,19 @@ export type ReconcileReason =
 export type OrderType = 'broadcast' | 'reconcile';
 
 /**
- * A unit of deferred work: submitted by triggers, fulfilled by visible views.
- * The discriminated union keeps each order type paired with its own reason vocabulary.
+ * A unit of deferred work: submitted by triggers, fulfilled by visible views
  */
 export type Order =
     | { type: 'broadcast'; reason: BroadcastReason }
     | { type: 'reconcile'; reason: ReconcileReason };
 
 /**
- * Payload of the `order-submitted` event: the order plus when it was submitted (ms epoch).
+ * Payload of the `order-submitted` event
  */
 export type SubmittedOrder = Order & { timestamp: number };
 
 /**
- * What a take drained for one order type: every reason that was pending. The taker is
- * expected to execute the type's work once - a single execution satisfies all of them.
+ * Everything a take drained for one order type; a single execution satisfies all of it
  */
 export type TakenOrders =
     | { type: 'broadcast'; reasons: BroadcastReason[] }
@@ -46,15 +43,13 @@ export type TakenOrders =
 
 /**
  * The pending-orders store (docs/device-discovery.md "Orders"): one set of reasons per order
- * type. The work is idempotent (one scan satisfies every queued "please scan"), so reasons
- * accumulate - different reasons coexist, the same reason never queues twice - and a take
- * drains everything at once for a single execution.
+ * type. Reasons accumulate (the same reason never queues twice) and a take drains everything
+ * at once for a single execution.
  */
 export class Orders {
     public constructor(
         /**
-         * Called once per submitted order, after it lands in the pending set - the hook the
-         * owner uses to notify live views.
+         * Called once per submitted order
          */
         private onSubmit: (order: Order, timestamp: number) => void
     ) { }
@@ -64,10 +59,6 @@ export class Orders {
         reconcile: new Set<ReconcileReason>()
     };
 
-    /**
-     * Submit orders. Each order's reason is added to its type's pending set (a reason never
-     * queues twice) and announced via the onSubmit hook so visible views can fulfill live.
-     */
     public submit(orders: Order[]): void {
         for (const order of orders) {
             (this.pending[order.type] as Set<string>).add(order.reason);
@@ -75,9 +66,6 @@ export class Orders {
         }
     }
 
-    /**
-     * The reasons currently pending for an order type (nothing is consumed).
-     */
     public getPending(type: 'broadcast'): BroadcastReason[];
     public getPending(type: 'reconcile'): ReconcileReason[];
     public getPending(type: OrderType): string[] {
@@ -85,18 +73,11 @@ export class Orders {
     }
 
     /**
-     * Atomically take the pending reasons for the requested order types. Returns one entry
-     * per type that actually had something to take - the caller executes each entry's work
-     * once (a single execution satisfies all of its reasons).
-     *
-     * `except` lists reasons that cannot TRIGGER a take on their own (a blacklist on purpose:
-     * new reasons act by default). When any non-excepted reason is present for a type, that
-     * type's WHOLE set is drained - the execution satisfies every queued reason, excepted
-     * ones included. When only excepted reasons (or nothing) are pending, the type is omitted
-     * from the result and its set is left untouched.
-     *
-     * Atomic per type: when two visible views react to the same order event, the first taker
-     * gets the reasons and later callers find the set empty.
+     * Atomically take the pending reasons for the requested order types, one entry per type
+     * that had something to take. `except` reasons can't trigger a take on their own, but when
+     * another reason triggers one, the type's WHOLE set is drained (the single execution that
+     * follows satisfies excepted reasons too). Atomic per type: concurrent takers can't drain
+     * the same set twice.
      */
     public take(options: { types: OrderType[]; except?: Array<BroadcastReason | ReconcileReason> }): TakenOrders[] {
         const except = options.except as string[] | undefined;

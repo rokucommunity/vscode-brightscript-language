@@ -241,18 +241,14 @@ export class UserInputManager {
 
         let scanTimeoutId: NodeJS.Timeout | null = null;
 
-        // On open: fulfill queued real orders (network/sleep/refresh-clicked/...). Queued
-        // `stale` orders are deliberately left alone — routine freshness is the 7s
-        // fallback's job (below), so opening the picker never scans the network by itself.
-        // (spec's quick-pick table: "on open, fulfills pending orders for any reason except stale")
-        //any broadcast taken here has a real (non-stale) trigger, so a scan definitely started
+        //on open: fulfill queued real orders. `stale` is left alone - routine freshness is the
+        //fallback's job (below), so opening the picker never scans the network by itself
         let hasScanned = this.deviceManager.fulfillOrders({ types: ['broadcast', 'reconcile'], except: ['stale'] })
             .some(taken => taken.type === 'broadcast');
 
         this.deviceManager.on('order-submitted', (order) => {
+            //a real broadcast means a scan is happening - the fallback isn't needed
             if (order.type === 'broadcast' && order.reason !== 'stale') {
-                // Suppress the 7s fallback even if another visible consumer fulfills this
-                // order — a scan is happening either way
                 hasScanned = true;
                 if (scanTimeoutId) {
                     clearTimeout(scanTimeoutId);
@@ -266,17 +262,13 @@ export class UserInputManager {
             if (hasScanned) {
                 return;
             }
-            // Nothing scanned since the picker opened — fulfill any pending broadcast with no
-            // exceptions. When the system is genuinely stale, the 30-minute timer has already
-            // queued a `stale` order (visible views ignore it live, so it waits here); its
-            // fulfillment is staleness-gated, so this never over-scans. If nothing is pending,
-            // nothing happens.
+            //nothing scanned since the picker opened - fulfill any pending broadcast, `stale`
+            //included (its fulfillment is staleness-gated, so this never over-scans)
             this.deviceManager.fulfillOrders({ types: ['broadcast'] });
         }, this.scanTimeoutMs);
 
         function dispose() {
-            // The fallback timer must not outlive the picker — a leaked timer would fire a
-            // broadcast on a picker that's already closed
+            //the fallback timer must not outlive the picker
             if (scanTimeoutId) {
                 clearTimeout(scanTimeoutId);
                 scanTimeoutId = null;
@@ -294,8 +286,6 @@ export class UserInputManager {
                     if (selectedDevice.label === manualLabel) {
                         deferred.resolve({ manual: true });
                     } else if (selectedDevice.label === scanForDevicesLabel) {
-                        //an explicit "scan" click is the refresh-clicked trigger — submit orders;
-                        //this picker (or another visible view) fulfills them immediately
                         this.deviceManager.submitOrders([
                             { type: 'broadcast', reason: 'refresh-clicked' },
                             { type: 'reconcile', reason: 'refresh-clicked' }
@@ -449,8 +439,6 @@ export class UserInputManager {
 
         quickPick.onDidTriggerButton(button => {
             if (button.tooltip === SCAN_FOR_DEVICES) {
-                //an explicit "scan" click is the refresh-clicked trigger — submit orders;
-                //this picker (or another visible view) fulfills them immediately
                 this.deviceManager.submitOrders([
                     { type: 'broadcast', reason: 'refresh-clicked' },
                     { type: 'reconcile', reason: 'refresh-clicked' }

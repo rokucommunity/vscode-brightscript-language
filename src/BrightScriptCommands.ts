@@ -58,9 +58,7 @@ export class BrightScriptCommands {
             await this.sendRemoteCommand(key);
         });
 
-        //the "Refresh" button in the Devices list. Submits orders rather than scanning directly
-        //(spec: "Clicking refresh... always submits a broadcast order and a reconcile order") —
-        //a visible view fulfills them immediately
+        //the "Refresh" button in the Devices list
         this.registerCommand('refreshDeviceList', (key: string) => {
             this.deviceManager.submitOrders([
                 { type: 'broadcast', reason: 'refresh-clicked' },
@@ -75,8 +73,7 @@ export class BrightScriptCommands {
             ]);
         });
 
-        // Refresh a single device (inline button on hover in devices panel).
-        // item.key is the encoded tree key ("s:{serial}" or "i:{ip}")
+        //refresh a single device (inline button on hover in devices panel)
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
             await this.deviceManager.healthCheckDevice(item.key);
         });
