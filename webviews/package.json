@@ -19,5 +19,8 @@
     "tslib": "^2.4.1",
     "typescript": "^5.5.4",
     "vite": "^6.4.3"
+  },
+  "overrides": {
+    "postcss": "^8.5.25"
   }
 }
