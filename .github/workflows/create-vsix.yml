@@ -4,15 +4,9 @@ on:
     types: [labeled, unlabeled, synchronize]
   workflow_dispatch:
     inputs:
-      branch:
-        description: "The branch name which should be used to build the vsix. Optional when pr is provided (defaults to the PR's branch)"
-        required: false
       pr:
-        description: "Optional PR that requested this build (PR number or full PR URL). When provided, a comment with the .vsix download links will be posted on that PR"
-        required: false
-      repo:
-        description: "Optional owner/repo that the PR number belongs to (defaults to this repo). Ignored when pr is a full URL"
-        required: false
+        description: "What to build: a PR number (for this repo), a full PR URL (for any repo), or a branch name"
+        required: true
 jobs:
   create-vsix:
     runs-on: ubuntu-latest
@@ -30,49 +24,62 @@ jobs:
         id: info
         with:
           script: |
-            let branch, prInput, repoInput;
+            let input;
             if (context.eventName === 'pull_request') {
-              branch = context.payload.pull_request.head.ref;
-              prInput = context.payload.pull_request.html_url;
-              repoInput = `${context.repo.owner}/${context.repo.repo}`;
+              input = context.payload.pull_request.html_url;
             } else {
-              branch = `${{ github.event.inputs.branch }}`.trim();
-              prInput = `${{ github.event.inputs.pr }}`.trim();
-              repoInput = `${{ github.event.inputs.repo }}`.trim();
+              input = `${{ github.event.inputs.pr }}`.trim();
             }
-            if (prInput) {
-              //`pr` can be a full PR URL or a plain PR number (paired with the `repo` input)
-              let prOwner, prRepo, prNumber;
-              const urlMatch = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(prInput);
-              if (urlMatch) {
-                [, prOwner, prRepo, prNumber] = urlMatch;
-              } else if (/^\d+$/.test(prInput)) {
-                [prOwner, prRepo] = (repoInput || `${context.repo.owner}/${context.repo.repo}`).split('/');
-                prNumber = prInput;
-              } else {
-                core.setFailed(`Could not parse a PR number or URL from "${prInput}"`);
-                return;
-              }
+            if (!input) {
+              core.setFailed('You must provide a PR number, PR URL, or branch name');
+              return;
+            }
+            //`pr` can be a full PR URL (any repo), a plain PR number (this repo), or a branch name
+            let prOwner, prRepo, prNumber;
+            const urlMatch = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(input);
+            if (urlMatch) {
+              [, prOwner, prRepo, prNumber] = urlMatch;
+            } else if (/^\d+$/.test(input)) {
+              prOwner = context.repo.owner;
+              prRepo = context.repo.repo;
+              prNumber = input;
+            }
+            let branch;
+            let forkOwner = '';
+            if (prNumber) {
               const { data: pr } = await github.rest.pulls.get({
                 owner: prOwner,
                 repo: prRepo,
                 pull_number: Number(prNumber)
               });
+              branch = pr.head.ref;
+              //when the PR comes from a fork, remember the fork owner so the build can also consider
+              //that owner's same-named branches (when attached to open PRs) on the other projects
+              if (pr.head.repo.owner.login !== prOwner) {
+                forkOwner = pr.head.repo.owner.login;
+              }
               core.setOutput('prOwner', prOwner);
               core.setOutput('prRepo', prRepo);
               core.setOutput('prNumber', prNumber);
               core.setOutput('prSha', pr.head.sha);
-              branch = branch || pr.head.ref;
-              console.log(`PR: ${prOwner}/${prRepo}#${prNumber} @ ${pr.head.sha}`);
-            }
-            if (!branch) {
-              core.setFailed('You must provide either a branch or a pr');
-              return;
+              console.log(`PR: ${prOwner}/${prRepo}#${prNumber} @ ${pr.head.sha}${forkOwner ? ` (fork owner: ${forkOwner})` : ''}`);
+            } else {
+              //not a PR number or URL, so treat the input as a branch name
+              branch = input.replace(/^refs\/heads\//, '');
             }
             core.setOutput('branch', branch);
+            core.setOutput('forkOwner', forkOwner);
             console.log(`branch: "${branch}"`);
+      # GitHub withholds repository secrets from fork-triggered runs, so fail fast with a clear message
+      - name: Reject fork PRs
+        if: github.event.pull_request.head.repo.fork
+        run: |
+          echo "::error::Could not build a .vsix because fork PRs can't access the required secrets. Ask a maintainer to dispatch it manually for PR #${{ github.event.pull_request.number }}: https://github.com/${{ github.repository }}/actions/workflows/create-vsix.yml"
+          exit 1
       - run: npm ci
-      - run: npx ts-node scripts/create-vsix.ts ${{ steps.info.outputs.branch }}
+      - run: npx ts-node scripts/create-vsix.ts "${{ steps.info.outputs.branch }}" --fork-owner "${{ steps.info.outputs.forkOwner }}"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       # upload the production .vsix (archive: false only supports a single file, so
       # upload each .vsix as its own artifact: upload, delete, repackage, upload again)
       - uses: actions/upload-artifact@v7
@@ -133,10 +140,22 @@ jobs:
             const prod = artifacts.find(a => a.name.startsWith('brightscript-') && a !== temp);
 
             let body = 'Hey there! I just built a new version of the vscode extension based on [' + sha.substring(0, 7) + '](https://github.com/' + '${{ steps.info.outputs.prOwner }}' + '/' + '${{ steps.info.outputs.prRepo }}' + '/commit/' + sha + ').\n\n';
-            body += 'Download:\n';
-            body += '- [brightscript (replaces store version)](' + prod.url + ')\n';
-            body += '- [brightscript-temp (side-by-side install)](' + temp.url + ')\n';
-            body += '\n[Install instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html).';
+            body += '### 📦 [Download the .vsix](' + prod.url + ')\n';
+            body += 'See the [install instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html) if you need them. This replaces your marketplace version of the extension until you reinstall it.\n\n';
+
+            //include the per-project sources so testers can see exactly what went into this build
+            try {
+              const buildInfo = JSON.parse(require('fs').readFileSync('.vsix-building/build-info.json', 'utf8'));
+              body += 'Built from:\n';
+              for (const project of buildInfo) {
+                body += '- ' + project.name + ': ' + project.source + '\n';
+              }
+              body += '\n';
+            } catch (e) {
+              console.log('Could not read build-info.json:', e.message);
+            }
+
+            body += '<sub>_Prefer to keep the marketplace version installed? There\'s also a [side-by-side build](' + temp.url + ') that installs as a separate extension. Be sure to disable the marketplace version while testing it, otherwise the two will conflict._</sub>';
 
             await github.rest.issues.createComment({
               owner: '${{ steps.info.outputs.prOwner }}',

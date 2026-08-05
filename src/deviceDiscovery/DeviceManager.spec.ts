@@ -2411,6 +2411,7 @@ describe('DeviceManager', () => {
         });
     });
 
+
     describe('configured devices', () => {
         describe('merging configured and discovered', () => {
             it('merges configured and discovered entries by serialNumber', () => {

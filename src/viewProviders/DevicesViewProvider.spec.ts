@@ -15,6 +15,7 @@ Module.prototype.require = function hijacked(file) {
 };
 
 import { DevicesViewProvider } from './DevicesViewProvider';
+import { vscodeContextManager } from '../managers/VscodeContextManager';
 import type { DeviceFilters } from '../deviceFilters';
 
 if (!(vscode as any).TreeItemCollapsibleState) {
@@ -67,11 +68,11 @@ afterEach(() => {
 });
 
 describe('DevicesViewProvider', () => {
-    function makeDevice(overrides: { key: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean; serialNumber?: string; softwareVersion?: string; configuredIn?: string[]; isRce?: boolean }) {
+    function makeDevice(overrides: { key: string; ip?: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean; serialNumber?: string; softwareVersion?: string; configuredIn?: string[]; isRce?: boolean }) {
         return {
             key: overrides.key,
-            ip: overrides.isRce ? undefined : '1.2.3.4',
-            rce: overrides.isRce ? { id: '83', status: 'running' } : undefined,
+            ip: overrides.isRce ? undefined : (overrides.ip ?? '1.2.3.4'),
+            rce: overrides.isRce ? { id: 83, status: 'running' } : undefined,
             deviceState: overrides.deviceState ?? 'online',
             lastDeviceState: overrides.lastDeviceState ?? 'unknown',
             isConfigured: overrides.isConfigured ?? false,
@@ -108,9 +109,13 @@ describe('DevicesViewProvider', () => {
         return { provider: provider, deviceManager: deviceManager, emitter: emitter };
     }
 
-    beforeEach(() => {
+    beforeEach(async () => {
         clearFilters();
         (vscode.workspace as any)._onDidChangeConfigurationEmitter?.removeAllListeners();
+        //make sure no active device leaks in from a previous test (the context manager is a module
+        //singleton and the provider seeds it from workspaceState)
+        await vscode.context.workspaceState.update('activeDeviceKey', undefined);
+        await vscodeContextManager.set('activeDeviceKey', '');
     });
 
     describe('applyFilters via getChildren', () => {
@@ -211,21 +216,21 @@ describe('DevicesViewProvider', () => {
             const devices = [makeDevice({ key: 'tv1', isTv: true, softwareVersion: '15.3.4', serialNumber: 'SERIAL1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-noPassword-isTv-canViewRegistry-canRestart');
+            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-noPassword-isTv-canViewRegistry-canRestart-notActive');
         });
 
         it('includes hasPassword and configured-in tokens, and gates version-specific tokens', async () => {
             const devices = [makeDevice({ key: 'stb1', softwareVersion: '12.0.0', serialNumber: 'SERIAL2', configuredIn: ['user', 'workspace'] })];
             const { provider } = createProvider(devices, { storedPasswords: { SERIAL2: 'secret' } });
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-local-inUser-inWorkspace-hasPassword-canViewRegistry');
+            expect(items[0].contextValue).to.equal('device-local-inUser-inWorkspace-hasPassword-canViewRegistry-notActive');
         });
 
         it('omits password and version-gated tokens when serial number and software version are unknown', async () => {
             const devices = [makeDevice({ key: 'stb1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace');
+            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-notActive');
         });
 
         it('builds a cloud contextValue without the settings tokens', async () => {
@@ -234,7 +239,7 @@ describe('DevicesViewProvider', () => {
             const devices = [makeDevice({ key: 's:ESN1', isRce: true, isTv: true, softwareVersion: '15.2.4', serialNumber: 'ESN1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-cloud-noPassword-isTv-canViewRegistry-canRestart');
+            expect(items[0].contextValue).to.equal('device-cloud-noPassword-isTv-canViewRegistry-canRestart-notActive');
         });
 
         it('lists the cloud action items for an rce device', async () => {
@@ -304,6 +309,100 @@ describe('DevicesViewProvider', () => {
                 '📺 Switch TV Input',
                 'Device Info'
             ]);
+        });
+    });
+
+    describe('active device indicator', () => {
+        it('marks the active device with an isActive contextValue token', async () => {
+            const devices = [
+                makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
+                makeDevice({ key: 'stb2', ip: '2.2.2.2' })
+            ];
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb2');
+            const { provider } = createProvider(devices);
+
+            const items = await provider.getChildren();
+
+            expect(items[0].contextValue).to.contain('-notActive');
+            expect(items[1].contextValue).to.contain('-isActive');
+        });
+
+        it('shows a star decoration badge on the active device only', async () => {
+            const devices = [
+                makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
+                makeDevice({ key: 'stb2', ip: '2.2.2.2' })
+            ];
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb2');
+            const { provider } = createProvider(devices);
+            const decorationProvider = provider['decorationProvider'];
+
+            const activeDecoration = decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/stb2' } as any);
+            expect(activeDecoration?.badge).to.equal('⭐');
+            expect(activeDecoration?.tooltip).to.equal('Active device');
+            //the badge is the colored element; the row label keeps its normal theme color
+            expect(activeDecoration?.color).to.be.undefined;
+
+            const inactiveDecoration = decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any);
+            expect(inactiveDecoration?.badge).to.be.undefined;
+            expect(inactiveDecoration?.color).to.be.undefined;
+        });
+
+        it('keeps the offline coloring alongside the active badge', async () => {
+            const devices = [makeDevice({ key: 'stb1', ip: '1.1.1.1', deviceState: 'offline' })];
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb1');
+            const { provider } = createProvider(devices);
+
+            const decoration = provider['decorationProvider'].provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any);
+            expect(decoration?.badge).to.equal('⭐');
+            expect((decoration?.color as any)?.id).to.equal('disabledForeground');
+        });
+
+        it('moves the badge and refreshes the tree when the active device changes', async () => {
+            const devices = [
+                makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
+                makeDevice({ key: 'stb2', ip: '2.2.2.2' })
+            ];
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb1');
+            const { provider } = createProvider(devices);
+            const decorationProvider = provider['decorationProvider'];
+
+            let treeChanges = 0;
+            provider.onDidChangeTreeData(() => treeChanges++);
+
+            await vscodeContextManager.set('activeDeviceKey', 'stb2');
+
+            expect(treeChanges).to.equal(1);
+            expect(decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any)?.badge).to.be.undefined;
+            expect(decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/stb2' } as any)?.badge).to.equal('⭐');
+        });
+
+        it('shows Clear Active Device instead of Set as Active Device on the active device row', async () => {
+            const devices = [
+                makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
+                makeDevice({ key: 'stb2', ip: '2.2.2.2' })
+            ];
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb2');
+            const { provider } = createProvider(devices);
+            const [inactiveItem, activeItem] = await provider.getChildren();
+
+            const inactiveChildren = await provider.getChildren(inactiveItem);
+            const setItem = inactiveChildren.find(child => child.label === '⭐ Set as Active Device');
+            expect((setItem as any)?.command?.command).to.equal('extension.brightscript.setActiveDevice');
+            expect(inactiveChildren.map(child => child.label)).to.not.include('⭐ Clear Active Device');
+
+            const activeChildren = await provider.getChildren(activeItem);
+            const clearItem = activeChildren.find(child => child.label === '⭐ Clear Active Device');
+            expect((clearItem as any)?.command?.command).to.equal('extension.brightscript.clearActiveDevice');
+            expect(activeChildren.map(child => child.label)).to.not.include('⭐ Set as Active Device');
+        });
+
+        it('shows no badge when the active host does not match any device', async () => {
+            const devices = [makeDevice({ key: 'stb1', ip: '1.1.1.1' })];
+            await vscode.context.workspaceState.update('activeDeviceKey', 's:UNKNOWN');
+            const { provider } = createProvider(devices);
+
+            const decoration = provider['decorationProvider'].provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any);
+            expect(decoration?.badge).to.be.undefined;
         });
     });
 

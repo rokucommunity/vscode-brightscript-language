@@ -16,6 +16,7 @@ import type { LocalPackageManager } from './managers/LocalPackageManager';
 import { profilingCommands } from './commands/ProfilingCommands';
 import type { CredentialStore } from './managers/CredentialStore';
 import type { DeviceTargetManager } from './managers/DeviceTargetManager';
+import { vscodeContextManager } from './managers/VscodeContextManager';
 import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { DEVICE_FILTER_KEYS } from './deviceFilters';
 import { rokuDeploy, isLocalDeviceConfig } from 'roku-deploy';
@@ -463,6 +464,8 @@ export class BrightScriptCommands {
             const activeDeviceKey = device?.key ?? `i:${ip}`;
             await this.context.workspaceState.update('activeDeviceKey', activeDeviceKey);
             await this.context.workspaceState.update('remoteControlDeviceKey', activeDeviceKey);
+            //mirrored into a vscode context so the Devices view indicator re-renders and menus can gate on it
+            await vscodeContextManager.set('activeDeviceKey', activeDeviceKey);
 
             const label = device ? this.deviceManager.getDeviceDisplayName(device, true) : ip;
             await util.showTimedNotification(`'${label}' set as active device`);
@@ -608,6 +611,7 @@ export class BrightScriptCommands {
         this.registerCommand('clearActiveDevice', async () => {
             await this.context.workspaceState.update('activeDeviceKey', '');
             await this.context.workspaceState.update('remoteControlDeviceKey', '');
+            await vscodeContextManager.set('activeDeviceKey', '');
             await util.showTimedNotification('Active device cleared');
         });
 
@@ -1175,6 +1179,9 @@ export class BrightScriptCommands {
 
         this.registerCommand('devicesView.deviceMenu.setActiveDevice', (element?: { key?: string }) => {
             return vscode.commands.executeCommand('extension.brightscript.setActiveDevice', element);
+        });
+        this.registerCommand('devicesView.deviceMenu.clearActiveDevice', () => {
+            return vscode.commands.executeCommand('extension.brightscript.clearActiveDevice');
         });
         this.registerCommand('devicesView.deviceMenu.captureScreenshot', (element?: { key?: string }) => {
             return vscode.commands.executeCommand('extension.brightscript.captureScreenshot', element);

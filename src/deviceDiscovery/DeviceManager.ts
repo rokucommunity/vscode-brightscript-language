@@ -778,6 +778,7 @@ export class DeviceManager {
     }
 
     public getLastUsedDeviceIp(): string | undefined {
+
         return this.lastUsedDeviceIp;
     }
 
