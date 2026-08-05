@@ -172,9 +172,8 @@ export class DeviceManager {
     private networkChangeMonitor: NetworkChangeMonitor;
     private finder = new RokuFinder(this.globalStateManager, this.makeFinderLogger());
 
-    // Health check tracking. lastCheckedByIp is when we last attempted a check (success or
-    // failure) - ensureDeviceFresh callers state how old that knowledge may be (maxAgeMs)
-    private deviceCheckSequence = new Map<string, number>();
+    // When we last attempted a check per IP (success or failure) - callers state how old
+    // that knowledge may be (maxAgeMs)
     private lastCheckedByIp = new Map<string, number>();
     private readonly ON_WRITE_TRUST_MS = 5 * 60 * 1_000; // 5 minutes - refresh paths (sweeps, load-time state seeding) trust knowledge this old
     private static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
@@ -571,7 +570,8 @@ export class DeviceManager {
      * Ensure the device still exists on the network
      */
     public async healthCheckDevice(deviceKeyOrLookup: RokuDevice | string | { ip?: string; serialNumber?: string }): Promise<boolean> {
-        return (await this.getDeviceInfo(deviceKeyOrLookup)) !== undefined;
+        const isHealthy = (await this.getDeviceInfo(deviceKeyOrLookup)) !== undefined;
+        return isHealthy;
     }
 
     /**
@@ -639,7 +639,6 @@ export class DeviceManager {
 
         // Clear all timestamps and per-device state
         this.lastScanDate = null;
-        this.deviceCheckSequence.clear();
         this.lastCheckedByIp.clear();
 
         // Reset configured device states to unknown
@@ -955,9 +954,7 @@ export class DeviceManager {
         const maxAgeMs = options?.maxAgeMs ?? this.ON_WRITE_TRUST_MS;
         const syntheticDelay = options?.syntheticDelay ?? true;
 
-        // Extract serial from device if available (for proper state key management)
         const knownSerial = 'serialNumber' in device ? device.serialNumber : undefined;
-
         const currentStateObject = this.getDeviceState({ ip: device.ip, serialNumber: knownSerial });
 
         // How old is our knowledge of this device? In-session attempts win; otherwise fall
@@ -972,68 +969,13 @@ export class DeviceManager {
             return currentStateObject.state === 'online' || currentStateObject.state === 'pending';
         }
 
-        // Stamp the attempt up front so even instantly-failing checks count as knowledge
-        this.lastCheckedByIp.set(device.ip, Date.now());
-
-        // Increment and capture sequence number to handle concurrent refresh calls
-        // Use IP for sequence tracking (primary key)
-        const currentSeq = (this.deviceCheckSequence.get(device.ip) ?? 0) + 1;
-        this.deviceCheckSequence.set(device.ip, currentSeq);
-
-        // Set to pending before making network call
-        if (currentStateObject.state !== 'pending') {
-            this.setDeviceState({ ip: device.ip, serialNumber: knownSerial }, 'pending');
-            this.emitDevicesChanged();
+        // Stagger the request (sweeps fire many of these at once)
+        if (syntheticDelay) {
+            await this.randomDelay(400, 1_000);
         }
 
-        let deviceInfo: DeviceInfoRaw | undefined;
-        try {
-            deviceInfo = await this.getDeviceInfo(device.ip);
-
-            if (syntheticDelay) {
-                await this.randomDelay(400, 1_000);
-            }
-        } catch {
-            deviceInfo = undefined;
-        }
-
-        // Only apply result if this is still the latest request for this device
-        if (this.deviceCheckSequence.get(device.ip) !== currentSeq) {
-            // Stale response - a newer check was started, ignore this result
-            return !!deviceInfo;
-        }
-
-        if (deviceInfo) {
-            // Extract serial from response, fall back to known serial
-            const serial = deviceInfo['serial-number']?.toString?.() ?? knownSerial;
-
-            if (serial) {
-                // Add to last seen devices (successfully resolved with serial)
-                this.globalStateManager.addLastSeenDevice(this.networkId, serial);
-            }
-
-            // Update discoveredDevices array (handles mismatch detection internally)
-            if ('isDiscovered' in device && device.isDiscovered) {
-                this.setDiscoveredDevice(device.ip, serial);
-            }
-
-            // Mark any configured devices at this IP with different serials as offline
-            this.markMismatchedConfiguredDevicesOffline(device.ip, serial);
-
-            // Only emit if state actually changed
-            this.setDeviceState({ ip: device.ip, serialNumber: serial }, 'online');
-            this.emitDevicesChanged();
-            return true;
-        } else {
-            // Remove from discoveredDevices (ephemeral - offline devices are removed)
-            this.removeDiscoveredDevice(device.ip);
-
-            // Set state to offline on any remaining entries at this IP (configured devices persist)
-            this.setDeviceState({ ip: device.ip, serialNumber: knownSerial }, 'offline');
-
-            this.emitDevicesChanged();
-            return false;
-        }
+        // getDeviceInfo applies everything we learn (states, cache, devices-changed)
+        return (await this.getDeviceInfo({ ip: device.ip, serialNumber: knownSerial })) !== undefined;
     }
 
     /**
@@ -1108,18 +1050,9 @@ export class DeviceManager {
             return;
         }
 
-        // Health check all devices - if any discovered device is unhealthy, order a scan
-        let needsScan = false;
-        await Promise.all([...allIps].map(async (ip) => {
-            const isHealthy = await this.ensureDeviceFresh({ ip: ip }, { maxAgeMs: maxAgeMs });
-            if (!isHealthy && discoveredIpSet.has(ip)) {
-                needsScan = true;
-            }
-        }));
-
-        if (needsScan) {
-            this.submitUnhealthyDeviceBroadcast();
-        }
+        //failure consequences (offline states, removal, unhealthy-device rescan orders) are
+        //applied by getDeviceInfo as each check settles
+        await Promise.all([...allIps].map(ip => this.ensureDeviceFresh({ ip: ip }, { maxAgeMs: maxAgeMs })));
     }
 
     private inFlightDeviceInfo = new Map<string, Promise<DeviceInfoRaw | undefined>>();
@@ -1143,34 +1076,72 @@ export class DeviceManager {
             return Promise.resolve(undefined);
         }
 
+        //a serial hint for state keying when the fetch fails (the response carries its own on success)
+        const serialHint = typeof deviceKeyOrLookup === 'string'
+            ? this.getDevice(deviceKeyOrLookup)?.serialNumber
+            : deviceKeyOrLookup.serialNumber;
+
         const key = `${ip}:${port}`;
         let inFlight = this.inFlightDeviceInfo.get(key);
-        if (inFlight === undefined) {
-            inFlight = (async () => {
-                try {
-                    const info = await rokuDeploy.getDeviceInfo({
-                        host: ip,
-                        remotePort: port,
-                        timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
-                    });
-                    if (info['serial-number']) {
-                        this.globalStateManager.setCachedDevice(info['serial-number'], {
-                            serialNumber: info['serial-number'],
-                            deviceInfo: info,
-                            createdAt: Date.now()
-                        });
-                        this.globalStateManager.setSerialNumberForIp(this.networkId, ip, info['serial-number']);
-                    }
-                    return info;
-                } catch (e) {
-                    console.error(e);
-                    return undefined;
-                } finally {
-                    this.inFlightDeviceInfo.delete(key);
-                }
-            })();
-            this.inFlightDeviceInfo.set(key, inFlight);
+        if (inFlight !== undefined) {
+            return inFlight;
         }
+
+        //every attempt counts as knowledge for the freshness gate, even an instant failure
+        this.lastCheckedByIp.set(ip, Date.now());
+        const currentState = this.getDeviceState({ ip: ip, serialNumber: serialHint });
+        if (currentState.state !== 'pending') {
+            this.setDeviceState({ ip: ip, serialNumber: serialHint }, 'pending');
+            this.emitDevicesChanged();
+        }
+
+        inFlight = (async () => {
+            let info: DeviceInfoRaw | undefined;
+            try {
+                info = await rokuDeploy.getDeviceInfo({
+                    host: ip,
+                    remotePort: port,
+                    timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
+                });
+            } catch (e) {
+                console.error(e);
+                info = undefined;
+            } finally {
+                this.inFlightDeviceInfo.delete(key);
+            }
+
+            //apply what we learned - this runs exactly once per real network request, so
+            //results can never race or land out of order (concurrent callers share this promise)
+            if (info) {
+                const serial = info['serial-number']?.toString?.() ?? serialHint;
+                if (serial) {
+                    this.globalStateManager.setCachedDevice(serial, {
+                        serialNumber: serial,
+                        deviceInfo: info,
+                        createdAt: Date.now()
+                    });
+                    this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serial);
+                    this.globalStateManager.addLastSeenDevice(this.networkId, serial);
+                }
+                //keep the discovered entry's serial current (handles mismatch detection internally)
+                if (this.discoveredDevices.some(d => d.ip === ip)) {
+                    this.setDiscoveredDevice(ip, serial);
+                }
+                this.markMismatchedConfiguredDevicesOffline(ip, serial);
+                this.setDeviceState({ ip: ip, serialNumber: serial }, 'online');
+            } else {
+                const wasDiscovered = this.discoveredDevices.some(d => d.ip === ip);
+                this.removeDiscoveredDevice(ip);
+                this.setDeviceState({ ip: ip, serialNumber: serialHint }, 'offline');
+                if (wasDiscovered) {
+                    //a discovered device went dark - order a rescan for the views to fulfill
+                    this.submitUnhealthyDeviceBroadcast();
+                }
+            }
+            this.emitDevicesChanged();
+            return info;
+        })();
+        this.inFlightDeviceInfo.set(key, inFlight);
         return inFlight;
     }
 

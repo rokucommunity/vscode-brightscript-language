@@ -1247,61 +1247,6 @@ describe('DeviceManager', () => {
             expect(manager.getAllDevices().length).to.equal(0);
         });
 
-        it('discards an earlier check\'s result when a newer check for the same IP already applied its own', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            (vscode.window as any).state = { focused: true };
-
-            const device = createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' });
-            addDevice(device);
-
-            // First check's network call fails fast (device unreachable) - this is NOT the race
-            // window. The race window is the synthetic delay that runs *after* the fetch settles.
-            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
-            getDeviceInfoStub.onCall(0).rejects(new Error('Unreachable'));
-            getDeviceInfoStub.onCall(1).resolves({
-                'device-id': 'device-1',
-                'serial-number': 'device-1',
-                'default-device-name': 'Roku Express'
-            } as any);
-
-            // Hold the first check's synthetic delay open so a second, independent check can
-            // start, finish, and apply its result before the first one resumes.
-            let releaseFirstDelay: () => void;
-            const firstDelay = new Promise<void>(resolve => {
-                releaseFirstDelay = resolve;
-            });
-            const randomDelayStub = sinon.stub(manager as any, 'randomDelay');
-            randomDelayStub.onCall(0).returns(firstDelay);
-            randomDelayStub.onCall(1).resolves();
-
-            // Start the first (soon-to-be-stale) check.
-            const firstCheck = manager['ensureDeviceFresh'](device);
-
-            // Let it reach (and suspend on) its synthetic delay. By that point its own network
-            // call has already failed and cleared out of the in-flight map, which is what lets
-            // the second check below issue its own independent request instead of joining it.
-            for (let i = 0; i < 20 && randomDelayStub.callCount < 1; i++) {
-                await Promise.resolve();
-            }
-            expect(randomDelayStub.callCount).to.equal(1);
-
-            // Start a second, newer check for the SAME device while the first is still
-            // suspended (maxAgeMs 0 so the freshness guard doesn't answer from pending state)
-            await manager['ensureDeviceFresh'](device, { maxAgeMs: 0 });
-
-            // The newer check's result (online) is applied.
-            expect(manager.getAllDevices()[0].deviceState).to.equal('online');
-
-            // Now let the first (stale) check's failure resolve. Its result must be discarded -
-            // it must NOT flip the device back to offline or remove it.
-            releaseFirstDelay();
-            await firstCheck;
-
-            expect(getDeviceInfoStub.callCount).to.equal(2);
-            expect(manager.getAllDevices().length).to.equal(1);
-            expect(manager.getAllDevices()[0].deviceState).to.equal('online');
-        });
-
         it('preserves cache data when device goes offline (for offline display)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             (vscode.window as any).state = { focused: true };
@@ -1346,10 +1291,9 @@ describe('DeviceManager', () => {
         });
 
         it('concurrent health checks of the same device share one request (the de-dupe rule)', async () => {
-            // Under the de-dupe rule, two truly-concurrent checks can no longer race two
-            // different responses — the second joins the first's in-flight request. The
-            // still-possible ordering hazard (first check settles, second starts and applies,
-            // first applies late) is covered by the "discards an earlier check's result" test.
+            // Under the de-dupe rule, concurrent checks share one in-flight request, and the
+            // result is applied exactly once when that shared request settles — out-of-order
+            // application is structurally impossible.
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             (vscode.window as any).state = { focused: true };
 
@@ -3066,18 +3010,15 @@ describe('DeviceManager', () => {
                     expect(getDeviceInfoStub.calledTwice).to.be.true;
                 });
 
-                it('clears deviceCheckSequence map', () => {
+                it('clears the lastCheckedByIp knowledge map', () => {
                     manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                     const device = createMockDevice();
-
-                    // Populate sequence map
-                    manager['deviceCheckSequence'].set(device.ip, 5);
-                    expect(manager['deviceCheckSequence'].get(device.ip)).to.equal(5);
+                    manager['lastCheckedByIp'].set(device.ip, Date.now());
 
                     manager.clearAllCache();
 
-                    expect(manager['deviceCheckSequence'].has(device.ip)).to.be.false;
+                    expect(manager['lastCheckedByIp'].has(device.ip)).to.be.false;
                 });
             });
 
@@ -3135,36 +3076,6 @@ describe('DeviceManager', () => {
                     // Health check should run immediately (no cooldown)
                     await manager['ensureDeviceFresh'](device);
                     expect(resolveDeviceSpy.calledTwice).to.be.true;
-                });
-
-                it('ignores concurrent health check results after clear', async () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                    const device = createMockDevice();
-
-                    // Start a health check but don't let it complete
-                    let resolvePromise: ((value: boolean) => void) | undefined;
-                    const healthCheckPromise = new Promise<boolean>((resolve) => {
-                        resolvePromise = resolve;
-                    });
-                    sinon.stub(manager as any, 'ensureDeviceFresh').returns(healthCheckPromise);
-
-                    const healthCheckCall = manager['ensureDeviceFresh'](device);
-
-                    // Clear cache while health check is in flight
-                    manager.clearAllCache();
-
-                    // Sequence should be cleared
-                    expect(manager['deviceCheckSequence'].has(device.ip)).to.be.false;
-
-                    // Complete the health check
-                    if (resolvePromise) {
-                        resolvePromise(true);
-                    }
-                    await healthCheckCall;
-
-                    // Result should be ignored (sequence mismatch)
-                    // The device state should not be updated by the stale health check
                 });
 
                 it('handles multiple rapid clears safely', () => {
