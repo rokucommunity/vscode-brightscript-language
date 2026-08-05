@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { rokuDeploy, RokuDeploy } from 'roku-deploy';
+import { rokuDeploy } from 'roku-deploy';
 import type { FileEntry } from 'roku-deploy';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
 import * as path from 'path';
@@ -263,16 +263,21 @@ export class RekeyAndPackageCommand {
             }
 
             //normalize a few options
-            rokuDeployOptions.outFile ??= RokuDeploy.defaults.outFile;
+            rokuDeployOptions.outFile ??= 'roku-deploy.zip';
             rokuDeployOptions.outDir = standardizePath(rokuDeployOptions.outDir ?? `${workspaceFolder}/out`);
             rokuDeployOptions.rootDir = standardizePath(rokuDeployOptions.rootDir);
             if (rokuDeployOptions.rekeySignedPackage?.length > 0) {
                 rokuDeployOptions.rekeySignedPackage = standardizePath(rokuDeployOptions.rekeySignedPackage);
             }
 
-            const stagingDir = rokuDeploy.getStagingDir({ outDir: rokuDeployOptions.outDir });
-            const zipPath = rokuDeploy.getOutputZipPath({ outDir: rokuDeployOptions.outDir, outFile: rokuDeployOptions.outFile });
-            const pkgPath = rokuDeploy.getOutputPkgPath({ outDir: rokuDeployOptions.outDir, outFile: rokuDeployOptions.outFile });
+            //resolve the same paths roku-deploy's stage/zip/createSignedPackage will produce (roku-deploy
+            //does not expose this resolution, so it is rolled here and must stay in step with its defaults)
+            const stagingDir = standardizePath(`${rokuDeployOptions.outDir}/.roku-deploy-staging`);
+            let zipPath = standardizePath(`${rokuDeployOptions.outDir}/${rokuDeployOptions.outFile}`);
+            if (!zipPath.toLowerCase().endsWith('.zip')) {
+                zipPath += '.zip';
+            }
+            const pkgPath = zipPath.replace(/\.zip$/i, '.pkg');
 
             let details = [
                 `host: ${rokuDeployOptions.host}`,
