@@ -1243,7 +1243,7 @@ describe('DeviceManager', () => {
 
             const result = await manager['ensureDeviceFresh'](device, { maxAgeMs: 0, syntheticDelay: false });
 
-            expect(result).to.be.false;
+            expect(result).to.be.undefined;
             expect(manager.getAllDevices().length).to.equal(0);
         });
 
@@ -2539,7 +2539,7 @@ describe('DeviceManager', () => {
 
                 const result = await manager['ensureDeviceFresh'](device, { maxAgeMs: 0, syntheticDelay: false });
 
-                expect(result).to.be.false;
+                expect(result).to.be.undefined;
                 expect(manager.getAllDevices().length).to.equal(1);
                 expect(manager.getAllDevices()[0].deviceState).to.equal('offline');
             });
@@ -2563,7 +2563,7 @@ describe('DeviceManager', () => {
 
                 const result = await manager['ensureDeviceFresh'](device, { maxAgeMs: 0, syntheticDelay: false });
 
-                expect(result).to.be.false;
+                expect(result).to.be.undefined;
                 expect(manager.getAllDevices().length).to.equal(1);
                 // State is always 'offline' - icon logic uses cache check to distinguish
                 expect(manager.getAllDevices()[0].deviceState).to.equal('offline');
@@ -2587,7 +2587,7 @@ describe('DeviceManager', () => {
 
                 const result = await manager['ensureDeviceFresh'](device, { maxAgeMs: 0, syntheticDelay: false });
 
-                expect(result).to.be.false;
+                expect(result).to.be.undefined;
                 expect(manager.getAllDevices().length).to.equal(0);
             });
         });

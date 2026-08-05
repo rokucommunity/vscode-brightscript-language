@@ -254,8 +254,7 @@ export class DeviceManager {
      */
     public async validateAndAddDevice(ip: string): Promise<RokuDevice | undefined> {
         this.setDiscoveredDevice(ip, undefined);
-        await this.ensureDeviceFresh({ ip: ip }, { syntheticDelay: false });
-        return this.getDevice({ ip: ip });
+        return this.ensureDeviceFresh({ ip: ip }, { syntheticDelay: false });
     }
 
     /**
@@ -950,7 +949,7 @@ export class DeviceManager {
      * attempt) is younger than this, return the current state without touching the network.
      * A device in state `unknown` has no trustable knowledge, so it always fetches.
      */
-    private async ensureDeviceFresh(device: RokuDevice | { ip: string; serialNumber?: string }, options?: { maxAgeMs?: number; syntheticDelay?: boolean }): Promise<boolean> {
+    private async ensureDeviceFresh(device: RokuDevice | { ip: string; serialNumber?: string }, options?: { maxAgeMs?: number; syntheticDelay?: boolean }): Promise<RokuDevice | undefined> {
         const maxAgeMs = options?.maxAgeMs ?? this.ON_WRITE_TRUST_MS;
         const syntheticDelay = options?.syntheticDelay ?? true;
 
@@ -966,7 +965,8 @@ export class DeviceManager {
 
         // Fresh enough for this caller (and not `unknown`): answer from what we already know
         if (currentStateObject.state !== 'unknown' && Date.now() - lastChecked < maxAgeMs) {
-            return currentStateObject.state === 'online' || currentStateObject.state === 'pending';
+            const isHealthy = currentStateObject.state === 'online' || currentStateObject.state === 'pending';
+            return isHealthy ? this.getDeviceWithoutRefresh(device.ip) : undefined;
         }
 
         // Stagger the request (sweeps fire many of these at once)
@@ -975,7 +975,17 @@ export class DeviceManager {
         }
 
         // getDeviceInfo applies everything we learn (states, cache, devices-changed)
-        return (await this.getDeviceInfo({ ip: device.ip, serialNumber: knownSerial })) !== undefined;
+        const info = await this.getDeviceInfo({ ip: device.ip, serialNumber: knownSerial });
+        return info ? this.getDeviceWithoutRefresh(device.ip) : undefined;
+    }
+
+    /**
+     * Read a device without kicking the background refresh (getDevice would re-enter
+     * ensureDeviceFresh, which calls this)
+     */
+    private getDeviceWithoutRefresh(ip: string): RokuDevice | undefined {
+        const { configured, discovered } = this.findDeviceEntries({ ip: ip });
+        return this.buildMergedDevice(configured, discovered);
     }
 
     /**
