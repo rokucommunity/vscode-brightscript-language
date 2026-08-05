@@ -55,7 +55,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.decorationProvider = new DeviceDecorationProvider();
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
-        //no device-list read here: reads trigger lazy hydration (network traffic), which must
+        //no device-list read here: reads trigger background refreshes (network traffic), which must
         //wait until this view is actually visible
         this.deviceManager.on('devices-changed', () => {
             this.handleDevicesChanged();
@@ -158,7 +158,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     private handleDevicesChanged(): void {
-        //while hidden, only mark the list dirty - reading it would trigger lazy hydration
+        //while hidden, only mark the list dirty - reading it would trigger background refreshes
         //(network traffic) for a panel nobody can see
         if (!this.visible) {
             this.devicesDirty = true;

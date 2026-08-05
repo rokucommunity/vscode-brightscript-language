@@ -603,7 +603,7 @@ describe('DevicesViewProvider', () => {
             const readSpy = sinon.spy(deviceManager, 'getAllDevices');
 
             //a devices-changed arrives while the panel is hidden: reading would trigger
-            //lazy hydration (network traffic) that nobody can see
+            //background refreshes (network traffic) that nobody can see
             provider['handleDevicesChanged']();
 
             expect(readSpy.called).to.be.false;

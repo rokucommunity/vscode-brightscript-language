@@ -1780,9 +1780,9 @@ describe('DeviceManager', () => {
             expect(showTimedStub.calledTwice).to.be.true;
         });
 
-        //NOTE: ssdp:alive deliberately does NOT trigger eager health checks — lazy hydration
+        //NOTE: ssdp:alive deliberately does NOT trigger eager health checks — the background refresh
         //on read covers uncached devices when a view actually asks for the list (spec:
-        //"Passive SSDP announcements" / "Lazy hydration on read")
+        //"Passive SSDP announcements" / "Lazy hydration on read" in the design doc)
     });
 
     describe('notifyFocusGained', () => {
@@ -1800,20 +1800,20 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('scan responder hydration (spec: "responds to an M-SEARCH — hydrate it immediately", via read)', () => {
+    describe('scan responders refresh via the read path (spec: "responds to an M-SEARCH — hydrate it immediately")', () => {
         function flush(): Promise<void> {
             return new Promise(resolve => {
                 setTimeout(resolve, 5);
             });
         }
 
-        it('an unknown responder with cache in the 5min–8h dead zone hydrates on the next read', async () => {
+        it('an unknown responder with cache in the 5min–8h dead zone is refreshed on the next read', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             const rokuDeployStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'serial-number': 'SCAN70' } as any);
             sinon.stub(manager as any, 'randomDelay').resolves();
 
             //cache aged past the 5-min freshness check (so the responder lands `unknown`) but
-            //younger than the 8-hour hydration threshold — the exact gap that used to strand
+            //younger than the 8-hour read trust window — the exact gap that used to strand
             //the device grey forever
             mockGlobalStateManager.setCachedDevice('SCAN70', {
                 serialNumber: 'SCAN70',
@@ -1830,7 +1830,7 @@ describe('DeviceManager', () => {
             expect(manager.getDevice({ ip: '192.168.1.70' }).deviceState).to.equal('online');
         });
 
-        it('repeated M-SEARCH answers do not double-hydrate (freshness guard)', async () => {
+        it('repeated M-SEARCH answers do not double-fetch (freshness guard)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             const rokuDeployStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({ 'serial-number': 'SCAN70' } as any);
             sinon.stub(manager as any, 'randomDelay').resolves();
@@ -1846,14 +1846,14 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('lazy hydration on read', () => {
+    describe('background refresh on read', () => {
         function flush(): Promise<void> {
             return new Promise(resolve => {
                 setTimeout(resolve, 5);
             });
         }
 
-        it('queues a background resolve for an unknown device with no cached deviceInfo', async () => {
+        it('starts a background refresh for an unknown device with no cached deviceInfo', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             const resolveStub = sinon.stub(manager as any, 'ensureDeviceFresh').returns(Promise.resolve(true) as any);
 
@@ -1867,7 +1867,7 @@ describe('DeviceManager', () => {
             expect(resolveStub.calledOnce).to.be.true;
             expect(resolveStub.firstCall.args[0]).to.include({ ip: '192.168.1.50', serialNumber: 'no-cache-1' });
             //silent background refresh: no synthetic delay, cache trusted
-            expect(resolveStub.firstCall.args[1]).to.eql({ maxAgeMs: manager['HYDRATION_MAX_CACHE_AGE_MS'], syntheticDelay: false });
+            expect(resolveStub.firstCall.args[1]).to.eql({ maxAgeMs: manager['ON_READ_TRUST_MS'], syntheticDelay: false });
         });
 
         it('does not fetch for a device whose knowledge is fresh', async () => {
@@ -1884,13 +1884,13 @@ describe('DeviceManager', () => {
             expect(rokuDeployStub.called).to.be.false;
         });
 
-        it('hydrates a device whose cache is older than 8 hours, regardless of state', async () => {
+        it('refreshes a device whose knowledge is older than the read trust window, regardless of state', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             const resolveStub = sinon.stub(manager as any, 'ensureDeviceFresh').returns(Promise.resolve(true) as any);
 
             const device = createMockDevice({ serialNumber: 'old-1', ip: '192.168.1.52', deviceInfo: { 'default-device-name': 'Roku Express' } });
             addDevice(device);
-            //age the cache past the 8h hydration threshold
+            //age the cache past the read trust window
             mockGlobalStateManager.setCachedDevice('old-1', {
                 serialNumber: 'old-1',
                 deviceInfo: { 'serial-number': 'old-1' },
@@ -1936,7 +1936,7 @@ describe('DeviceManager', () => {
             expect(rokuDeployStub.calledOnce).to.be.true;
         });
 
-        it('getDevice (single lookup) also triggers hydration', async () => {
+        it('getDevice (single lookup) also triggers the background refresh', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             const resolveStub = sinon.stub(manager as any, 'ensureDeviceFresh').returns(Promise.resolve(true) as any);
 

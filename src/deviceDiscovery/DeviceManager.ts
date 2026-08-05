@@ -176,12 +176,11 @@ export class DeviceManager {
     // failure) - ensureDeviceFresh callers state how old that knowledge may be (maxAgeMs)
     private deviceCheckSequence = new Map<string, number>();
     private lastCheckedByIp = new Map<string, number>();
-    private readonly DEVICE_INFO_CACHE_MS = 5 * 60 * 1_000; // 5 minutes - default freshness requirement for ensureDeviceFresh
-    private readonly FRESH_CACHE_THRESHOLD_MS = 5 * 60 * 1_000; // 5 minutes - cache fresher than this = online on load
+    private readonly ON_WRITE_TRUST_MS = 5 * 60 * 1_000; // 5 minutes - refresh paths (sweeps, load-time state seeding) trust knowledge this old
     private static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
 
-    // Lazy hydration (background device-info refresh triggered by view reads)
-    private readonly HYDRATION_MAX_CACHE_AGE_MS = 8 * 60 * 60 * 1_000; // 8 hours - hydration's freshness requirement
+    // Reads are the backstop, not the freshness engine (orders are) - so they tolerate old knowledge
+    private readonly ON_READ_TRUST_MS = 8 * 60 * 60 * 1_000; // 8 hours - reads trust knowledge this old
 
     // Notifications and event debouncing
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
@@ -223,7 +222,7 @@ export class DeviceManager {
     public getDevice(key: string): RokuDevice | undefined;
     /**
      * Get device by IP or serial number.
-     * Returns device with deviceInfo hydrated from cache.
+     * Returns device with deviceInfo populated from cache.
      *
      * @param lookup - Object with optional ip and/or serialNumber
      * @returns Device with deviceInfo or undefined if not found
@@ -242,7 +241,7 @@ export class DeviceManager {
 
         if (device) {
             //background freshness: return immediately, updates arrive via devices-changed
-            void this.ensureDeviceFresh(device, { maxAgeMs: this.HYDRATION_MAX_CACHE_AGE_MS, syntheticDelay: false }).catch(() => { });
+            void this.ensureDeviceFresh(device, { maxAgeMs: this.ON_READ_TRUST_MS, syntheticDelay: false }).catch(() => { });
         }
         return device;
     }
@@ -267,7 +266,7 @@ export class DeviceManager {
     public getAllDevices(): RokuDevice[] {
         const devices = this.buildAllDevices();
         for (const device of devices) {
-            void this.ensureDeviceFresh(device, { maxAgeMs: this.HYDRATION_MAX_CACHE_AGE_MS, syntheticDelay: false }).catch(() => { });
+            void this.ensureDeviceFresh(device, { maxAgeMs: this.ON_READ_TRUST_MS, syntheticDelay: false }).catch(() => { });
         }
         return devices;
     }
@@ -489,7 +488,7 @@ export class DeviceManager {
             } else {
                 // For non-online devices, check cache freshness
                 const cached = lookup.serialNumber ? this.globalStateManager.getCachedDevice(lookup.serialNumber) : undefined;
-                const isFreshCache = cached && (now - cached.createdAt < this.FRESH_CACHE_THRESHOLD_MS);
+                const isFreshCache = cached && (now - cached.createdAt < this.ON_WRITE_TRUST_MS);
                 resolvedState = isFreshCache ? 'online' : 'unknown';
             }
         }
@@ -953,7 +952,7 @@ export class DeviceManager {
      * A device in state `unknown` has no trustable knowledge, so it always fetches.
      */
     private async ensureDeviceFresh(device: RokuDevice | { ip: string; serialNumber?: string }, options?: { maxAgeMs?: number; syntheticDelay?: boolean }): Promise<boolean> {
-        const maxAgeMs = options?.maxAgeMs ?? this.DEVICE_INFO_CACHE_MS;
+        const maxAgeMs = options?.maxAgeMs ?? this.ON_WRITE_TRUST_MS;
         const syntheticDelay = options?.syntheticDelay ?? true;
 
         // Extract serial from device if available (for proper state key management)
@@ -1363,7 +1362,7 @@ export class DeviceManager {
 
     /**
      * Handle device-online event from RokuFinder. Shows a notification if enabled.
-     * Does not eagerly device-info the device - lazy hydration on read handles that
+     * Does not eagerly device-info the device - the background refresh on read handles that
      * once a view actually asks for the device list (spec: Passive SSDP announcements).
      */
     private handleDeviceOnline(ip: string, serialNumber?: string): void {
@@ -1437,7 +1436,7 @@ export class DeviceManager {
         this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
             this.setDiscoveredDevice(ip, options?.serialNumber);
             //no eager resolve here - a responder that lands in `unknown` is picked up by lazy
-            //hydration on the next visible read
+            //background refresh on the next visible read
             this.emitDevicesChanged();
         });
 
