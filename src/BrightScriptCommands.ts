@@ -432,7 +432,7 @@ export class BrightScriptCommands {
                     //a cloud emulator device has no browser-reachable ECP url; fetch the raw
                     //registry response and show it in an editor instead
                     const result = await util.spinAsync('Fetching registry', async () => {
-                        return rokuDeploy.ecp(device.device, `query/registry/${appId}`);
+                        return rokuDeploy.sendEcpRequest(device.device, `query/registry/${appId}`);
                     });
                     const document = await vscode.workspace.openTextDocument({
                         language: 'xml',
