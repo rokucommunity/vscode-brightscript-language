@@ -13,23 +13,32 @@
 
     let odcAvailable = false;
 
+    async function loadRegistry() {
+        loading = true;
+        try {
+            const { values } = await odc.readRegistry();
+            registryValues = registryView.formatValues(values);
+        } catch (err) {
+            registryValues = {};
+            const detail = (err as any)?.message ?? String(err);
+            intermediary.showErrorMessage(`Failed to read registry: ${detail}`);
+        } finally {
+            loading = false;
+        }
+    }
+
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
         odcAvailable = message.context.odcAvailable;
         if (odcAvailable) {
-            loading = true;
-            const { values } = await odc.readRegistry();
-            registryValues = registryView.formatValues(values);
-            loading = false;
+            await loadRegistry();
         } else {
-            registryValues = {}
+            registryValues = {};
+            loading = false;
         }
     });
 
     intermediary.observeEvent(ViewProviderEvent.onRegistryUpdated, async (message) => {
-        loading = true;
-        const { values } = await odc.readRegistry();
-        registryValues = registryView.formatValues(values);
-        loading = false;
+        await loadRegistry();
     });
 
     // Required by any view so we can know that the view is ready to receive messages
