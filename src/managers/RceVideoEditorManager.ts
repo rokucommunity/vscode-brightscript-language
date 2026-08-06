@@ -6,7 +6,7 @@ import { VscodeCommand } from '../commands/VscodeCommand';
 import { ViewProviderCommand } from '../viewProviders/ViewProviderCommand';
 import { RceStreamSession } from '../viewProviders/RceStreamSession';
 import { buildWebviewIndexHtml } from '../viewProviders/webviewHtml';
-import type { DeviceOut } from 'roku-deploy';
+import type { RceDevice } from 'roku-deploy';
 import type { RceManager, RceStreamRequestConfig } from './RceManager';
 import type { RceFinder } from '../deviceDiscovery/RceFinder';
 
@@ -61,7 +61,7 @@ export class RceVideoEditorManager implements vscode.Disposable {
      * Relay each streamed device's current status (from an RceFinder poll emission) into its tab's
      * stream session. Bound so `on`/`off` see the same function reference.
      */
-    private handleFinderDevices = (devices: DeviceOut[]) => {
+    private handleFinderDevices = (devices: RceDevice[]) => {
         for (const [deviceId, editorPanel] of this.editorPanelsByDeviceId) {
             const device = devices.find((candidateDevice) => candidateDevice.id === deviceId);
             if (device) {

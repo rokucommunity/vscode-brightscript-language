@@ -2,7 +2,7 @@ import { EventEmitter } from 'eventemitter3';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
-import { rokuDeploy, DeviceUnreachableError, isLocalDeviceConfig, isRceByEsn, isRceById, isRceByUrl, type DeviceInfoRaw, type DeviceOut, type DeviceStatus, type DeviceConfig, type RceDeviceConfig } from 'roku-deploy';
+import { rokuDeploy, DeviceUnreachableError, isLocalDeviceConfig, isRceDeviceConfigByEsn, isRceDeviceConfigById, isRceDeviceConfigByUrl, type DeviceInfoRaw, type RceDevice, type DeviceStatus, type DeviceConfig, type RceDeviceConfig } from 'roku-deploy';
 import type { RceFinder } from './RceFinder';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
@@ -38,7 +38,7 @@ export class DeviceManager {
      * replaced rather than accumulated.
      */
     private setupRceFinderListeners() {
-        this.rceFinder?.on('devices', (devices: DeviceOut[]) => {
+        this.rceFinder?.on('devices', (devices: RceDevice[]) => {
             this.onRceDevices(devices);
         });
     }
@@ -46,16 +46,16 @@ export class DeviceManager {
     /**
      * Replace the cloud emulator device list with the latest management-api poll results
      */
-    private onRceDevices(devices: DeviceOut[]) {
+    private onRceDevices(devices: RceDevice[]) {
         //entries only ever get built from a non-empty devices list, which only happens when the finder
         //resolved a token for this scan (a token-less scan emits an empty list - see RceFinder.scan()),
         //so the cached token is expected to be set here
         const rceToken = this.rceFinder?.getCachedToken();
         this.rceDevices = devices.map(device => {
             const instanceUrl = device.running_device?.instance_api_url ?? undefined;
-            //same preference order as RceFinder.getDeviceOption: a live instance url first, then the
+            //same preference order as RceFinder.getDeviceConfig: a live instance url first, then the
             //management-api device id
-            const deviceOption: RceDeviceConfig = instanceUrl
+            const deviceConfig: RceDeviceConfig = instanceUrl
                 ? { instanceUrl: instanceUrl, rceToken: rceToken }
                 : { id: device.id, rceToken: rceToken };
             return {
@@ -66,7 +66,7 @@ export class DeviceManager {
                 instanceUrl: instanceUrl,
                 deviceType: device.device_type,
                 firmwareVersion: device.running_device?.firmware_version_id ?? device.firmware_version_id ?? undefined,
-                device: deviceOption
+                device: deviceConfig
             };
         });
         this.emitDevicesChanged();
@@ -310,12 +310,11 @@ export class DeviceManager {
     }
 
     /**
-     * Find the RokuDevice matching a roku-deploy device option, for resolving a launch config's
+     * Find the RokuDevice matching a roku-deploy device config, for resolving a launch config's
      * `device` back to a UI-facing RokuDevice (for example to look up its DeviceManager key when
      * marking it as the active device). A local device is matched by host/ip; a Roku Cloud Emulator
      * device is matched by whichever of esn/id/instanceUrl the given config carries, among the
-     * currently known cloud emulator devices. Returns undefined for a device-registry name (a plain
-     * string), since that doesn't correspond to anything this class tracks.
+     * currently known cloud emulator devices.
      */
     public getDeviceByDeviceConfig(config: DeviceConfig): RokuDevice | undefined {
         if (isLocalDeviceConfig(config)) {
@@ -323,11 +322,11 @@ export class DeviceManager {
         }
 
         let matchingEntry: RceDeviceEntry | undefined;
-        if (isRceByEsn(config)) {
+        if (isRceDeviceConfigByEsn(config)) {
             matchingEntry = this.rceDevices.find(entry => entry.esn === config.esn);
-        } else if (isRceById(config)) {
+        } else if (isRceDeviceConfigById(config)) {
             matchingEntry = this.rceDevices.find(entry => entry.id === config.id);
-        } else if (isRceByUrl(config)) {
+        } else if (isRceDeviceConfigByUrl(config)) {
             matchingEntry = this.rceDevices.find(entry => entry.instanceUrl === config.instanceUrl);
         }
         return matchingEntry ? this.buildRceDevice(matchingEntry) : undefined;

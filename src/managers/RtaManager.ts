@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as rta from 'roku-test-automation';
 import { isLocalDeviceConfig } from 'roku-deploy';
-import type { DeviceOption } from 'roku-deploy';
+import type { DeviceConfig } from 'roku-deploy';
 import * as vscode from 'vscode';
 import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { ViewProviderId } from '../viewProviders/ViewProviderId';
@@ -28,16 +28,15 @@ export class RtaManager {
     private webviewViewProviderManager?: WebviewViewProviderManager;
     private lastAppUIResponse: rta.AppUIResponse | undefined;
 
-    public setupRtaWithConfig(config: { device?: DeviceOption; host?: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
+    public setupRtaWithConfig(config: { device?: DeviceConfig; host?: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
         //roku-test-automation talks to the device by host over the local network, so a device without
-        //a host (a Roku Cloud Emulator config, or a roku-deploy device-registry name that only
-        //roku-deploy can resolve) cannot back the RDB views yet. A debug session's launch config
-        //addresses the device through `device`; the bare `host` field remains only for the RDB view's
-        //manual-ip flow, and is deliberately ignored whenever any `device` is present (a non-local
-        //session's raw `host` field can hold an unresolved placeholder).
+        //a host (a Roku Cloud Emulator config) cannot back the RDB views yet. A debug session's
+        //launch config addresses the device through `device`; the bare `host` field remains only for
+        //the RDB view's manual-ip flow, and is deliberately ignored whenever any `device` is present
+        //(a non-local session's raw `host` field can hold an unresolved placeholder).
         let host: string | undefined;
         if (config.device !== undefined) {
-            host = typeof config.device === 'object' && isLocalDeviceConfig(config.device) ? config.device.host : undefined;
+            host = isLocalDeviceConfig(config.device) ? config.device.host : undefined;
         } else {
             host = config.host;
         }

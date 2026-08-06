@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { ChannelPublishedEvent } from 'roku-debug';
-import type { DeviceConfig, DeviceOut, RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
+import type { DeviceConfig, RceDevice, RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'roku-deploy';
 import { isRceDeviceConfig, RceVideoSignalingClient, rokuDeploy } from 'roku-deploy';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
@@ -218,7 +218,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
      * Relay the streamed device's current status (from an RceFinder poll emission) into the stream
      * session. Bound so `on`/`off` see the same function reference.
      */
-    private handleFinderDevices = (devices: DeviceOut[]) => {
+    private handleFinderDevices = (devices: RceDevice[]) => {
         const deviceId = this.rceStreamSession.deviceId;
         const device = deviceId === undefined ? undefined : devices.find((candidateDevice) => candidateDevice.id === deviceId);
         if (device) {

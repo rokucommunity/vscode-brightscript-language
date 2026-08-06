@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { DeviceOut, DeviceRun, DeviceStatus, DeviceType, FirmwareVersionOut, RceDeviceConfig, RceManagementClient, SnapshotOut } from 'roku-deploy';
+import type { RceDevice, DeviceRun, DeviceStatus, DeviceType, FirmwareVersion, RceDeviceConfig, RceManagementClient, Snapshot } from 'roku-deploy';
 import { rokuDeploy } from 'roku-deploy';
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import { ViewProviderId } from './ViewProviderId';
@@ -349,7 +349,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
      * token-change re-poll, or a scan() triggered by the transition watch below. Declared as a bound
      * field (rather than a method) so the exact same reference can be removed in dispose().
      */
-    private handleFinderDevices = (devices: DeviceOut[]) => {
+    private handleFinderDevices = (devices: RceDevice[]) => {
         void this.pushState(devices);
         this.stopTransitionWatchIfSettled(devices);
     };
@@ -393,7 +393,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         }
     }
 
-    private stopTransitionWatchIfSettled(devices: DeviceOut[]) {
+    private stopTransitionWatchIfSettled(devices: RceDevice[]) {
         if (this.transitionWatchIntervalId === undefined) {
             return;
         }
@@ -407,7 +407,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
      * Builds the state payload. When `devices` is supplied (a fresh list the finder just emitted),
      * it is reused as-is rather than fetching again; otherwise devices are fetched fresh here.
      */
-    private async buildStatePayload(devices?: DeviceOut[]): Promise<RceManagementViewState> {
+    private async buildStatePayload(devices?: RceDevice[]): Promise<RceManagementViewState> {
         const accounts = await this.rceManager.getAccounts();
         const activeAccount = await this.rceManager.getActiveAccount();
         const hasToken = await this.rceManager.hasToken();
@@ -438,9 +438,9 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         return state;
     }
 
-    //the webview gets only the fields it renders; DeviceOut's running_device otherwise carries the
+    //the webview gets only the fields it renders; RceDevice's running_device otherwise carries the
     //instance's stream credentials
-    private projectDeviceForWebview(device: DeviceOut): RceStateDevice {
+    private projectDeviceForWebview(device: RceDevice): RceStateDevice {
         /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
         return {
             id: device.id,
@@ -488,9 +488,9 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
      * the fetch fails, which the webview shows as an unavailable picker; the start handler's own
      * fallback resolution still covers starting in that state.
      */
-    private cachedFirmwareVersions: FirmwareVersionOut[] | undefined;
+    private cachedFirmwareVersions: FirmwareVersion[] | undefined;
 
-    private async getFirmwareVersions(managementClient: RceManagementClient): Promise<FirmwareVersionOut[] | undefined> {
+    private async getFirmwareVersions(managementClient: RceManagementClient): Promise<FirmwareVersion[] | undefined> {
         if (this.cachedFirmwareVersions === undefined) {
             try {
                 this.cachedFirmwareVersions = await managementClient.listFirmwareVersions();
@@ -502,7 +502,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         return this.cachedFirmwareVersions;
     }
 
-    private async pushState(devices?: DeviceOut[]) {
+    private async pushState(devices?: RceDevice[]) {
         const state = await this.buildStatePayload(devices);
         this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRceStateChanged, state));
     }
@@ -557,13 +557,13 @@ interface RceManagementViewState {
     /** The active org's device runtime cap in seconds; undefined when no account is active or the fetch failed */
     maxProjectRuntimeSeconds?: number;
     /** The firmware versions available for starting devices; undefined when no account is active or the fetch failed */
-    firmwareVersions?: FirmwareVersionOut[];
+    firmwareVersions?: FirmwareVersion[];
     error?: string;
 }
 
 /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
 /**
- * The device fields the management webview renders - a projection of roku-deploy's DeviceOut that
+ * The device fields the management webview renders - a projection of roku-deploy's RceDevice that
  * leaves the instance's stream credentials behind (see projectDeviceForWebview).
  */
 export interface RceStateDevice {
@@ -586,7 +586,7 @@ export interface RceStateDevice {
 /* eslint-enable camelcase */
 
 interface RceDeviceDetailsPayload {
-    snapshots: SnapshotOut[] | undefined;
+    snapshots: Snapshot[] | undefined;
     runs: DeviceRun[] | undefined;
     lastUsedSnapshotId: number | undefined;
     error?: string;

@@ -547,18 +547,6 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect((rokuDeploy.getDeviceInfo as any).called).to.be.false;
             });
 
-            it('does not inject a token into a device-registry name (string device option)', async () => {
-                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
-
-                await (configProvider as any).processHostParameter({ host: '', device: 'my-registry-device' });
-
-                expect(rceManager.getToken.called).to.be.false;
-                expect((rokuDeploy.getDeviceInfo as any).calledWith({
-                    device: 'my-registry-device',
-                    timeout: DeviceManager.RCE_DEVICE_INFO_TIMEOUT_MS
-                })).to.be.true;
-            });
-
             it('never injects a token into a local device config', async () => {
                 const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: { 'serial-number': 'abc123' }, key: 's:abc123' } as any;
                 sinon.stub(deviceManager, 'getDevice').returns(device);
@@ -604,15 +592,6 @@ describe('BrightScriptConfigurationProvider', () => {
                 (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
 
                 await (configProvider as any).processHostParameter({ host: '', device: device });
-
-                expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.equal('');
-            });
-
-            it('clears remoteControlDeviceKey for a device-registry name session', async () => {
-                await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:OLD-LAN-DEVICE');
-                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
-
-                await (configProvider as any).processHostParameter({ host: '', device: 'my-registry-device' });
 
                 expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.equal('');
             });
@@ -1034,16 +1013,6 @@ describe('BrightScriptConfigurationProvider', () => {
                 error = e as Error;
             }
             expect(error?.message).to.contain('password is required');
-        });
-
-        it('keeps the config password as-is for a device-registry name', async () => {
-            const resolveStub = sinon.stub(userInputManager, 'resolveDevicePassword');
-
-            const result: any = { device: 'my-registry-device', password: 'registry-pw' };
-            const returned = await (configProvider as any).processPasswordParameter({}, result);
-
-            expect(returned.password).to.equal('registry-pw');
-            expect(resolveStub.called).to.be.false;
         });
 
         it('accepts the first candidate that validates ok and refreshes the existing cred-store entry', async () => {

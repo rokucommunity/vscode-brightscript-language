@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { EventEmitter } from 'eventemitter3';
 import { RceManagementClient } from 'roku-deploy';
-import type { DeviceType, IceServer, UserOut } from 'roku-deploy';
+import type { DeviceType, IceServer, User } from 'roku-deploy';
 import type { ExperimentalFeaturesManager } from './ExperimentalFeaturesManager';
 import { ExperimentalFeature } from './ExperimentalFeaturesManager';
 
@@ -221,7 +221,7 @@ export class RceManager {
      * Validate a token against the management api and return the authenticated user.
      * Throws when the token is rejected or the api is unreachable.
      */
-    public async validateToken(token: string): Promise<UserOut> {
+    public async validateToken(token: string): Promise<User> {
         return this.createClient(token).getUserInfo();
     }
 
@@ -272,7 +272,7 @@ export class RceManager {
     /**
      * The default label for an account, derived from the authenticated user (for example `chrisdp (fubo)`)
      */
-    private buildDefaultAccountName(user: UserOut): string {
+    private buildDefaultAccountName(user: User): string {
         const orgName = user.organisation?.name;
         return orgName ? `${user.username} (${orgName})` : user.username;
     }
@@ -295,7 +295,7 @@ export class RceManager {
         }
 
         //validate the token against the management api before saving it, and learn who it belongs to
-        let user: UserOut;
+        let user: User;
         try {
             user = await vscode.window.withProgress(
                 { location: vscode.ProgressLocation.Notification, title: 'Validating Cloud Emulator token' },

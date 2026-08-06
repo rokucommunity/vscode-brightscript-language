@@ -944,12 +944,8 @@
                                 "default": "${promptForHost}"
                             },
                             "device": {
-                                "description": "The canonical way to address the target device; supersedes `host`. Either the name of a device entry in a roku-deploy device registry file (string), a local network device (`{ host }`), or a Roku Cloud Emulator device addressed by serial number, management-api device id, or running instance URL. The Cloud Emulator api token always comes from the active Cloud Emulator account (managed from the Cloud Emulator panel, stored in VS Code secret storage) - it cannot be set here.",
+                                "description": "The canonical way to address the target device; supersedes `host`. Either a local network device (`{ host }`), or a Roku Cloud Emulator device addressed by serial number, management-api device id, or running instance URL. The Cloud Emulator api token always comes from the active Cloud Emulator account (managed from the Cloud Emulator panel, stored in VS Code secret storage) - it cannot be set here.",
                                 "oneOf": [
-                                    {
-                                        "type": "string",
-                                        "description": "The name of a device entry in a roku-deploy device registry file."
-                                    },
                                     {
                                         "type": "object",
                                         "description": "A local network device.",
@@ -986,7 +982,7 @@
                                         ],
                                         "properties": {
                                             "id": {
-                                                "type": "string",
+                                                "type": "number",
                                                 "description": "The Roku Cloud Emulator management-api device id."
                                             }
                                         },

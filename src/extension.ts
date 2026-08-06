@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as prettyBytes from 'pretty-bytes';
 import { extensions } from 'vscode';
 import { isRceDeviceConfig } from 'roku-deploy';
-import type { DeviceOption } from 'roku-deploy';
+import type { DeviceConfig } from 'roku-deploy';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
@@ -243,7 +243,7 @@ export class Extension {
                     //the config resolver strips rceToken from the resolved config, which travels through DAP
                     //traffic/logs and is readable by other extensions. roku-debug hydrates the device option's
                     //rceToken from ROKU_RCE_TOKEN whenever the launch config did not carry one
-                    const device = session.configuration.device as DeviceOption | undefined;
+                    const device = session.configuration.device as DeviceConfig | undefined;
                     if (typeof device === 'object' && isRceDeviceConfig(device)) {
                         const accountToken = await rceManager.getToken();
                         if (accountToken) {

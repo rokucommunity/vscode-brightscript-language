@@ -1594,21 +1594,21 @@ describe('DeviceManager', () => {
             expect(device.device).to.eql({ id: 84, rceToken: 'secret' });
         });
 
-        it('resolveRceDevices probes through the precomputed device option without calling getDeviceOption', async () => {
+        it('resolveRceDevices probes through the precomputed device option without calling getDeviceConfig', async () => {
             const fakeFinder = new EventEmitter() as any;
             fakeFinder.start = () => { };
             fakeFinder.stop = () => { };
             fakeFinder.dispose = () => { };
             fakeFinder.getCachedToken = () => 'secret';
-            const getDeviceOptionSpy = sinon.stub().resolves(undefined);
-            fakeFinder.getDeviceOption = getDeviceOptionSpy;
+            const getDeviceConfigSpy = sinon.stub().resolves(undefined);
+            fakeFinder.getDeviceConfig = getDeviceConfigSpy;
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
             manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
 
             manager['onRceDevices']([rceDevice()] as any);
             await manager['resolveRceDevices']();
 
-            expect(getDeviceOptionSpy.called).to.be.false;
+            expect(getDeviceConfigSpy.called).to.be.false;
             expect(getDeviceInfoStub.getCall(0).args[0].device).to.eql({
                 instanceUrl: 'https://device.rce.roku.com/instance/abc',
                 rceToken: 'secret'

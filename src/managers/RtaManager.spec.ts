@@ -58,10 +58,10 @@ describe('RtaManager', () => {
             expect(rtaManager.device).to.be.undefined;
         });
 
-        it('skips RTA setup for a device-registry name, even when a raw host field is present', () => {
+        it('skips RTA setup for a cloud emulator device, even when a raw host field is present', () => {
             //a non-local session's raw `host` can hold an unresolved placeholder like ${promptForHost},
             //so it must never be used when the session addresses the device through `device`
-            rtaManager.setupRtaWithConfig({ device: 'my-registry-device', host: '${promptForHost}', password: 'aaaa' } as any);
+            rtaManager.setupRtaWithConfig({ device: { esn: 'ESN123' }, host: '${promptForHost}', password: 'aaaa' } as any);
 
             expect(odcSetConfigStub.called).to.be.false;
             expect(rtaManager.device).to.be.undefined;

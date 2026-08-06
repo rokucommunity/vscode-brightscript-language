@@ -1,5 +1,5 @@
 import { EventEmitter } from 'eventemitter3';
-import type { DeviceOption, DeviceOut } from 'roku-deploy';
+import type { DeviceConfig, RceDevice } from 'roku-deploy';
 import type { RceManager } from '../managers/RceManager';
 
 /**
@@ -92,7 +92,7 @@ export class RceFinder extends EventEmitter {
                 this.emit('devices', []);
                 return;
             }
-            const devices: DeviceOut[] = await client.listDevices();
+            const devices: RceDevice[] = await client.listDevices();
             this.emit('devices', devices);
         } catch (e) {
             this.log(`RCE device poll failed: ${(e as Error).message}`);
@@ -103,7 +103,7 @@ export class RceFinder extends EventEmitter {
     /**
      * The token used for the most recent scan. Undefined before any scan has run, or when the most
      * recent scan found no account token configured. Synchronous so a caller building a
-     * roku-deploy-compatible device option for an RCE device (see DeviceManager.onRceDevices) doesn't
+     * roku-deploy-compatible device config for an RCE device (see DeviceManager.onRceDevices) doesn't
      * need to await another token lookup.
      */
     public getCachedToken(): string | undefined {
@@ -111,10 +111,10 @@ export class RceFinder extends EventEmitter {
     }
 
     /**
-     * Build a roku-deploy device option for a cloud emulator device (live instance url preferred,
+     * Build a roku-deploy device config for a cloud emulator device (live instance url preferred,
      * management-api id as fallback). Returns undefined when no token is available.
      */
-    public async getDeviceOption(device: { instanceUrl?: string; id?: number }): Promise<DeviceOption | undefined> {
+    public async getDeviceConfig(device: { instanceUrl?: string; id?: number }): Promise<DeviceConfig | undefined> {
         const token = await this.rceManager.getToken();
         if (!token) {
             return undefined;

@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import * as sinonImport from 'sinon';
 import { EventEmitter } from 'eventemitter3';
 import { rokuDeploy } from 'roku-deploy';
-import type { DeviceOut, RceManagementClient } from 'roku-deploy';
+import type { RceDevice, RceManagementClient } from 'roku-deploy';
 import { vscode } from '../mockVscode.spec';
 import { RceManager } from '../managers/RceManager';
 import { RceManagementViewProvider } from './RceManagementViewProvider';
@@ -808,7 +808,7 @@ describe('RceManagementViewProvider', () => {
             createProvider();
 
             /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-            const emittedDevices: DeviceOut[] = [
+            const emittedDevices: RceDevice[] = [
                 { id: 5, name: 'my-device', device_type: 'tv', status: 'running', created_at: '2026-01-01' }
             ];
             /* eslint-enable camelcase */

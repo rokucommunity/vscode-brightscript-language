@@ -1,11 +1,11 @@
 import { expect } from 'chai';
-import type { DeviceOut, RceManagementClient } from 'roku-deploy';
+import type { RceDevice, RceManagementClient } from 'roku-deploy';
 import type { RceManager } from '../managers/RceManager';
 import { RceFinder } from './RceFinder';
 
 describe('RceFinder', () => {
     let finder: RceFinder;
-    let client: { listDevices: () => Promise<DeviceOut[]> } | undefined;
+    let client: { listDevices: () => Promise<RceDevice[]> } | undefined;
     let token: string | undefined;
     let tokenChangedHandlers: Array<() => void>;
 
@@ -34,8 +34,8 @@ describe('RceFinder', () => {
     });
 
     it('emits an empty device list when no token is configured', async () => {
-        const events: DeviceOut[][] = [];
-        finder.on('devices', (devices: DeviceOut[]) => events.push(devices));
+        const events: RceDevice[][] = [];
+        finder.on('devices', (devices: RceDevice[]) => events.push(devices));
 
         await finder.scan();
 
@@ -43,10 +43,10 @@ describe('RceFinder', () => {
     });
 
     it('emits the device list from the management api', async () => {
-        const devices = [{ id: 83, name: 'Chris', status: 'running' }] as unknown as DeviceOut[];
+        const devices = [{ id: 83, name: 'Chris', status: 'running' }] as unknown as RceDevice[];
         client = { listDevices: () => Promise.resolve(devices) };
-        const events: DeviceOut[][] = [];
-        finder.on('devices', (result: DeviceOut[]) => events.push(result));
+        const events: RceDevice[][] = [];
+        finder.on('devices', (result: RceDevice[]) => events.push(result));
 
         await finder.scan();
 
@@ -57,9 +57,9 @@ describe('RceFinder', () => {
         client = {
             listDevices: () => Promise.reject(new Error('boom'))
         };
-        const deviceEvents: DeviceOut[][] = [];
+        const deviceEvents: RceDevice[][] = [];
         const errors: Error[] = [];
-        finder.on('devices', (result: DeviceOut[]) => deviceEvents.push(result));
+        finder.on('devices', (result: RceDevice[]) => deviceEvents.push(result));
         finder.on('error', (e: Error) => errors.push(e));
 
         await finder.scan();
@@ -80,8 +80,8 @@ describe('RceFinder', () => {
     });
 
     it('re-polls when the token changes', async () => {
-        const events: DeviceOut[][] = [];
-        finder.on('devices', (result: DeviceOut[]) => events.push(result));
+        const events: RceDevice[][] = [];
+        finder.on('devices', (result: RceDevice[]) => events.push(result));
 
         //simulate a token change (the handler was registered in the constructor)
         tokenChangedHandlers[0]();
@@ -92,18 +92,18 @@ describe('RceFinder', () => {
     });
 
     it('a scan requested mid-flight resolves with a trailing scan instead of the in-flight results', async () => {
-        const resolvers: Array<(devices: DeviceOut[]) => void> = [];
+        const resolvers: Array<(devices: RceDevice[]) => void> = [];
         let listDevicesCalls = 0;
         client = {
             listDevices: () => {
                 listDevicesCalls++;
-                return new Promise<DeviceOut[]>((resolve) => {
+                return new Promise<RceDevice[]>((resolve) => {
                     resolvers.push(resolve);
                 });
             }
         };
-        const events: DeviceOut[][] = [];
-        finder.on('devices', (result: DeviceOut[]) => events.push(result));
+        const events: RceDevice[][] = [];
+        finder.on('devices', (result: RceDevice[]) => events.push(result));
 
         const firstScan = finder.scan();
         //let the first scan reach listDevices before the overlapping requests arrive

@@ -17,7 +17,7 @@ import type { TelemetryManager } from './managers/TelemetryManager';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import cloneDeep = require('clone-deep');
 import { rokuDeploy, isLocalDeviceConfig, isRceDeviceConfig } from 'roku-deploy';
-import type { DeviceConfig, DeviceInfo, DeviceOption, DeviceStatus } from 'roku-deploy';
+import type { DeviceConfig, DeviceInfo, DeviceStatus } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
 import type { BrightScriptCommands } from './BrightScriptCommands';
 import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
@@ -172,7 +172,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             //`vscode.debug.activeDebugSession.configuration`. The debug adapter receives the token
             //exclusively through the ROKU_RCE_TOKEN env var injected by the descriptor factory (see
             //extension.ts), which roku-debug hydrates back onto the device config
-            if (typeof result.device === 'object' && isRceDeviceConfig(result.device)) {
+            if (result.device && isRceDeviceConfig(result.device)) {
                 const device = { ...result.device };
                 delete device.rceToken;
                 result.device = device;
@@ -503,27 +503,26 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Is this device option addressed by something other than a local network host (a roku-deploy
-     * device-registry name or a Roku Cloud Emulator config)?
+     * Is this device config addressed by something other than a local network host (a Roku Cloud
+     * Emulator config)?
      */
-    private isNonLocalDevice(device: DeviceOption | undefined): boolean {
+    private isNonLocalDevice(device: DeviceConfig | undefined): boolean {
         if (!device) {
             return false;
         }
-        return typeof device === 'string' || !isLocalDeviceConfig(device);
+        //explicitly an RCE config: a local config with an empty host is still local (it follows
+        //the host-prompt flow rather than the non-local one)
+        return isRceDeviceConfig(device);
     }
 
     /**
-     * Describe a device option (a local `{host}` config, a roku-deploy device-registry name, or a
-     * Roku Cloud Emulator config addressed by esn/id/instanceUrl) by whichever address field it
-     * has, for error messages. `processHostParameter` always normalizes `config.device`, so once
-     * it has run this is the authoritative way to name the target device - unlike the top-level
-     * `host`, which non-local sessions leave unset or unresolved.
+     * Describe a device config (a local `{host}` config, or a Roku Cloud Emulator config addressed
+     * by esn/id/instanceUrl) by whichever address field it has, for error messages.
+     * `processHostParameter` always normalizes `config.device`, so once it has run this is the
+     * authoritative way to name the target device - unlike the top-level `host`, which non-local
+     * sessions leave unset or unresolved.
      */
-    private describeDevice(device: DeviceOption | undefined): string {
-        if (typeof device === 'string') {
-            return device;
-        }
+    private describeDevice(device: DeviceConfig | undefined): string {
         if (device && isLocalDeviceConfig(device)) {
             return device.host;
         }
@@ -544,14 +543,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * ${activeHost} is a deprecated alias for ${promptForHost}.
      * Both use the active device when it's set and passes a health check, otherwise fall back to the device picker.
      *
-     * Devices that are not addressed by host (a roku-deploy device-registry name or a Roku Cloud
-     * Emulator config) skip host resolution entirely; roku-debug reaches them through roku-deploy's
-     * `device` option. Everything else follows the host-based local flow.
+     * Devices that are not addressed by host (a Roku Cloud Emulator config) skip host resolution
+     * entirely; roku-debug reaches them through roku-deploy's `device` option. Everything else
+     * follows the host-based local flow.
      * @param config  current config object
      */
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         //a local `device` config's host takes the place of the top-level `host` field
-        if (typeof config.device === 'object' && isLocalDeviceConfig(config.device) && config.device.host) {
+        if (config.device && isLocalDeviceConfig(config.device)) {
             config.host = config.device.host;
         }
 
@@ -643,9 +642,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * The flow for a non-local device (a roku-deploy device-registry name, or a Roku Cloud Emulator
-     * config - either provided directly in the config, or picked from the device picker in the local
-     * flow): host resolution and the LAN password probe are skipped entirely; instead this fetches
+     * The flow for a non-local device (a Roku Cloud Emulator config - either provided directly in
+     * the config, or picked from the device picker in the local flow): host resolution and the LAN
+     * password probe are skipped entirely; instead this fetches
      * device-info through roku-deploy's `device` option (so the dev-mode check below and telemetry
      * have something to work with).
      *
@@ -667,9 +666,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     private async processNonLocalDeviceParameter(config: BrightScriptLaunchConfiguration, pickedRceStatus?: DeviceStatus): Promise<BrightScriptLaunchConfiguration> {
         //a non-local sideload must never leave the previous session's device as the remote-control
         //target - re-point the remote device key: the resolved device's key when the device manager
-        //already knows it, otherwise cleared (a device-registry name, or a cloud device the finder
-        //hasn't registered yet), so remote commands can't keep targeting the previous device
-        const sideloadedDevice = typeof config.device === 'object'
+        //already knows it, otherwise cleared (a cloud device the finder hasn't registered yet), so
+        //remote commands can't keep targeting the previous device
+        const sideloadedDevice = config.device
             ? this.deviceManager.getDeviceByDeviceConfig(config.device)
             : undefined;
         await this.context.workspaceState.update('remoteControlDeviceKey', sideloadedDevice?.key ?? '');
@@ -680,7 +679,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //The token is injected onto a copy for this resolver's own device requests (device-info below,
         //password validation later) and is stripped again before the resolved config is returned - see
         //resolveDebugConfiguration; the debug adapter gets it via the ROKU_RCE_TOKEN env var instead.
-        if (typeof config.device === 'object' && isRceDeviceConfig(config.device)) {
+        if (config.device && isRceDeviceConfig(config.device)) {
             const accountToken = await this.rceManager.getToken();
             if (!accountToken) {
                 throw new Error('Debug session terminated: no Cloud Emulator account is configured. Add one from the Cloud Emulator panel (or run the "Add Cloud Emulator Account" command).');
@@ -737,10 +736,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //`processHostParameter` always normalizes `result.device` before this runs (`host` is only
         //its deprecated alias): `{host}` for a LAN device, the cloud config for a Roku Cloud
         //Emulator device (its dev installer authenticates with the same digest auth as a LAN
-        //device), or a device-registry name string - which keeps the launch config password as-is,
-        //since roku-deploy resolves that device's own credentials.
+        //device).
         const device = result.device;
-        if (typeof device !== 'object') {
+        if (!device) {
             return result;
         }
         const serialNumber = result.deviceInfo?.['serial-number'];
