@@ -1791,7 +1791,7 @@ describe('DeviceManager', () => {
     });
 
     describe('peekDevice (internal read)', () => {
-        it('reads a device without scheduling any background work', async () => {
+        it('reads a device without scheduling any background work', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             const ensureStub = sinon.stub(manager as any, 'ensureDeviceFresh');
             manager['discoveredDevices'].push({ ip: '192.168.1.90', serialNumber: 'PEEK90' });
