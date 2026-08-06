@@ -66,5 +66,45 @@ describe('RtaManager', () => {
             expect(odcSetConfigStub.called).to.be.false;
             expect(rtaManager.device).to.be.undefined;
         });
+
+        it('marks an RCE debug session and notifies the webviews so they can show the unsupported message', () => {
+            const updateDeviceAvailabilityStub = sinon.stub();
+            rtaManager.setWebviewViewProviderManager({ getWebviewViewProviders: () => [{ updateDeviceAvailability: updateDeviceAvailabilityStub }] } as any);
+
+            rtaManager.setupRtaWithConfig({ device: { esn: 'ESN123' }, password: 'aaaa' } as any);
+
+            expect(rtaManager.isRceDebugSession).to.be.true;
+            expect(updateDeviceAvailabilityStub.called).to.be.true;
+        });
+
+        it('clears the RCE debug session flag when RTA is set up against a LAN device', () => {
+            rtaManager.setupRtaWithConfig({ device: { esn: 'ESN123' }, password: 'aaaa' } as any);
+            rtaManager.setupRtaWithConfig({ device: { host: '1.2.3.4' }, password: 'aaaa' } as any);
+
+            expect(rtaManager.isRceDebugSession).to.be.false;
+        });
+    });
+
+    describe('onDidTerminateDebugSession', () => {
+        it('clears the RCE debug session state and notifies the webviews', () => {
+            rtaManager.setupRtaWithConfig({ device: { id: 83 }, password: 'aaaa' } as any);
+            const updateDeviceAvailabilityStub = sinon.stub();
+            rtaManager.setWebviewViewProviderManager({ getWebviewViewProviders: () => [{ updateDeviceAvailability: updateDeviceAvailabilityStub }] } as any);
+
+            rtaManager.onDidTerminateDebugSession();
+
+            expect(rtaManager.isRceDebugSession).to.be.false;
+            expect(updateDeviceAvailabilityStub.called).to.be.true;
+        });
+
+        it('does nothing when the session was not for an RCE device', () => {
+            rtaManager.setupRtaWithConfig({ device: { host: '1.2.3.4' }, password: 'aaaa' } as any);
+            const updateDeviceAvailabilityStub = sinon.stub();
+            rtaManager.setWebviewViewProviderManager({ getWebviewViewProviders: () => [{ updateDeviceAvailability: updateDeviceAvailabilityStub }] } as any);
+
+            rtaManager.onDidTerminateDebugSession();
+
+            expect(updateDeviceAvailabilityStub.called).to.be.false;
+        });
     });
 });

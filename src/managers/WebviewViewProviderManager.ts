@@ -85,6 +85,7 @@ export class WebviewViewProviderManager {
     }
 
     public onDidTerminateDebugSession(e: vscode.DebugSession) {
+        this.rtaManager.onDidTerminateDebugSession();
         for (const webview of this.webviewViews) {
             webview.provider.onDidTerminateDebugSession(e);
         }

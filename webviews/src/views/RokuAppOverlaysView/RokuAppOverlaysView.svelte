@@ -3,6 +3,7 @@
     import type * as rta from 'roku-test-automation';
     import { odc, intermediary } from '../../ExtensionIntermediary';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
+    import RceUnsupportedMessage from '../../shared/RceUnsupportedMessage.svelte';
     import { NewFile, Trash } from 'svelte-codicons';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
@@ -204,8 +205,10 @@
     });
 
     let odcAvailable = false;
+    let isRceDebugSession = false;
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
         odcAvailable = message.context.odcAvailable;
+        isRceDebugSession = message.context.isRceDebugSession;
         if (odcAvailable) {
             for (const [index, overlay] of overlays.entries()) {
                 await conditionallyDeployOverlay(overlay, index);
@@ -310,7 +313,9 @@
 </style>
 
 
-{#if odcAvailable}
+{#if isRceDebugSession}
+    <RceUnsupportedMessage />
+{:else if odcAvailable}
     {#if overlays.length }
         {#each overlays as overlay, index}
             <div class="container">
