@@ -228,6 +228,21 @@ export class DeviceManager {
      */
     public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined;
     public getDevice(keyOrLookup: string | { ip?: string; serialNumber?: string }): RokuDevice | undefined {
+        const device = this.peekDevice(keyOrLookup);
+        if (device) {
+            //background freshness: return immediately, updates arrive via devices-changed
+            void this.ensureDeviceFresh(device, { maxAgeMs: this.ON_READ_TRUST_MS, syntheticDelay: false }).catch(() => { });
+        }
+        return device;
+    }
+
+    /**
+     * The internal read: same lookup semantics as getDevice, zero side effects. All
+     * DeviceManager-internal reads go through here - getDevice is the view-facing read
+     * and schedules background freshness work (calling it from inside the freshness
+     * machinery would make the machinery observe its own work).
+     */
+    private peekDevice(keyOrLookup: string | { ip?: string; serialNumber?: string }): RokuDevice | undefined {
         const { configured, discovered } = this.findDeviceEntries(keyOrLookup);
         const device = this.buildMergedDevice(configured, discovered);
 
@@ -236,11 +251,6 @@ export class DeviceManager {
             if (device.ip !== keyOrLookup.ip || device.serialNumber !== keyOrLookup.serialNumber) {
                 return undefined;
             }
-        }
-
-        if (device) {
-            //background freshness: return immediately, updates arrive via devices-changed
-            void this.ensureDeviceFresh(device, { maxAgeMs: this.ON_READ_TRUST_MS, syntheticDelay: false }).catch(() => { });
         }
         return device;
     }
@@ -691,7 +701,7 @@ export class DeviceManager {
      * workspace storage so the active device can be recovered in future sessions even if its IP changed.
      */
     public async setActiveDevice(ip: string): Promise<void> {
-        const serialNumber = this.getDevice({ ip: ip })?.serialNumber;
+        const serialNumber = this.peekDevice({ ip: ip })?.serialNumber;
         await this.context.workspaceState.update('remoteHost', ip);
         await this.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: serialNumber, ip: ip } as ActiveDeviceEntry);
         await vscodeContextManager.set('activeHost', ip);
@@ -719,7 +729,7 @@ export class DeviceManager {
             return;
         }
 
-        const pickedSerialNumber = this.getDevice({ ip: pickedIp })?.serialNumber;
+        const pickedSerialNumber = this.peekDevice({ ip: pickedIp })?.serialNumber;
         const isSameDevice = pickedIp === activeDevice.ip ||
             (!!activeDevice.serialNumber && pickedSerialNumber === activeDevice.serialNumber);
         if (isSameDevice) {
@@ -746,7 +756,7 @@ export class DeviceManager {
         //falling back to the last IP we saw it at
         let currentIp = activeDevice.ip;
         if (activeDevice.serialNumber) {
-            currentIp = this.getDevice({ serialNumber: activeDevice.serialNumber })?.ip ??
+            currentIp = this.peekDevice({ serialNumber: activeDevice.serialNumber })?.ip ??
                 this.globalStateManager.getIpForSerial(activeDevice.serialNumber, this.networkId) ??
                 activeDevice.ip;
         }
@@ -966,7 +976,7 @@ export class DeviceManager {
         // Fresh enough for this caller (and not `unknown`): answer from what we already know
         if (currentStateObject.state !== 'unknown' && Date.now() - lastChecked < maxAgeMs) {
             const isHealthy = currentStateObject.state === 'online' || currentStateObject.state === 'pending';
-            return isHealthy ? this.getDeviceWithoutRefresh(device.ip) : undefined;
+            return isHealthy ? this.peekDevice({ ip: device.ip }) : undefined;
         }
 
         // Stagger the request (sweeps fire many of these at once)
@@ -976,16 +986,7 @@ export class DeviceManager {
 
         // getDeviceInfo applies everything we learn (states, cache, devices-changed)
         const info = await this.getDeviceInfo({ ip: device.ip, serialNumber: knownSerial });
-        return info ? this.getDeviceWithoutRefresh(device.ip) : undefined;
-    }
-
-    /**
-     * Read a device without kicking the background refresh (getDevice would re-enter
-     * ensureDeviceFresh, which calls this)
-     */
-    private getDeviceWithoutRefresh(ip: string): RokuDevice | undefined {
-        const { configured, discovered } = this.findDeviceEntries({ ip: ip });
-        return this.buildMergedDevice(configured, discovered);
+        return info ? this.peekDevice({ ip: device.ip }) : undefined;
     }
 
     /**
@@ -1077,10 +1078,10 @@ export class DeviceManager {
         if (typeof deviceKeyOrLookup === 'string') {
             //encoded tree keys resolve through the device list; any other string is already an ip
             ip = deviceKeyOrLookup.startsWith('s:') || deviceKeyOrLookup.startsWith('i:')
-                ? this.getDevice(deviceKeyOrLookup)?.ip
+                ? this.peekDevice(deviceKeyOrLookup)?.ip
                 : deviceKeyOrLookup;
         } else {
-            ip = deviceKeyOrLookup.ip ?? this.getDevice(deviceKeyOrLookup)?.ip;
+            ip = deviceKeyOrLookup.ip ?? this.peekDevice(deviceKeyOrLookup)?.ip;
         }
         if (!ip) {
             return Promise.resolve(undefined);
@@ -1088,7 +1089,7 @@ export class DeviceManager {
 
         //a serial hint for state keying when the fetch fails (the response carries its own on success)
         const serialHint = typeof deviceKeyOrLookup === 'string'
-            ? this.getDevice(deviceKeyOrLookup)?.serialNumber
+            ? this.peekDevice(deviceKeyOrLookup)?.serialNumber
             : deviceKeyOrLookup.serialNumber;
 
         const key = `${ip}:${port}`;

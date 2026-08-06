@@ -1790,6 +1790,21 @@ describe('DeviceManager', () => {
         });
     });
 
+    describe('peekDevice (internal read)', () => {
+        it('reads a device without scheduling any background work', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const ensureStub = sinon.stub(manager as any, 'ensureDeviceFresh');
+            manager['discoveredDevices'].push({ ip: '192.168.1.90', serialNumber: 'PEEK90' });
+            manager['setDeviceState']({ ip: '192.168.1.90', serialNumber: 'PEEK90' }, 'unknown');
+
+            const device = manager['peekDevice']({ ip: '192.168.1.90' });
+
+            //an unknown device read through getDevice would schedule a refresh; peek must not
+            expect(device.serialNumber).to.equal('PEEK90');
+            expect(ensureStub.called).to.be.false;
+        });
+    });
+
     describe('background refresh on read', () => {
         function flush(): Promise<void> {
             return new Promise(resolve => {
