@@ -364,6 +364,18 @@ export class RceManager {
         if (!picked) {
             return;
         }
+        const removeLabel = 'Remove';
+        const confirmed = await vscode.window.showWarningMessage(
+            `Remove Cloud Emulator account '${picked}'?`,
+            {
+                modal: true,
+                detail: 'This deletes the saved token for this account from VS Code. The account and its devices are not affected.'
+            },
+            removeLabel
+        );
+        if (confirmed !== removeLabel) {
+            return;
+        }
         await this.removeAccount(picked);
         void vscode.window.showInformationMessage(`Cloud Emulator account '${picked}' removed`);
     }

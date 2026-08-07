@@ -666,6 +666,24 @@
         opacity: 0.7;
     }
 
+    .getting-started {
+        padding: 10px 0;
+    }
+
+    .getting-started ol {
+        margin: 8px 0 12px;
+        padding-left: 20px;
+    }
+
+    .getting-started li {
+        margin-bottom: 4px;
+    }
+
+    .experimentalBanner {
+        color: var(--vscode-editorWarning-foreground);
+        margin-bottom: 10px;
+    }
+
     .errorBanner {
         color: var(--vscode-debugConsole-errorForeground);
         margin-bottom: 10px;
@@ -865,9 +883,17 @@
     <Loader />
 {:else}
     <div id="container">
+        <div class="experimentalBanner">The Roku Cloud Emulator integration is an experimental feature and may change or break as Roku evolves the service.</div>
         {#if accounts.length === 0 && !hasToken}
-            <div class="empty-state">
+            <div class="getting-started">
                 <p>No Cloud Emulator accounts are configured yet.</p>
+                <p>The Cloud Emulator management APIs require a Personal Access Token (PAT). To generate one:</p>
+                <ol>
+                    <li>From the <a href="https://developer.roku.com/dev/landing">Roku Launchpad</a>, click <strong>Cloud Emulator</strong> in the <strong>Roku Developers</strong> pane to open the <a href="https://developer.roku.com/cloud-emulator/devices">Cloud Emulator UI</a>.</li>
+                    <li>Click the <strong>Token</strong> tab.</li>
+                    <li>Click <strong>Add token</strong>, then copy and save your token.</li>
+                    <li>Click <strong>Add Account</strong> below and paste the token when prompted.</li>
+                </ol>
                 <vscode-button on:click={() => runAccountCommand('addAccount')}>Add Account</vscode-button>
             </div>
         {:else}
@@ -877,8 +903,8 @@
                         <vscode-option value={accountName}>{accountName}</vscode-option>
                     {/each}
                 </vscode-single-select>
-                <vscode-button on:click={() => runAccountCommand('addAccount')}>Add Account</vscode-button>
-                <vscode-button secondary on:click={() => runAccountCommand('removeAccount')}>Remove Account</vscode-button>
+                <vscode-toolbar-button icon="add" title="Add Account" on:click={() => runAccountCommand('addAccount')}></vscode-toolbar-button>
+                <vscode-toolbar-button icon="trash" title="Remove Account" on:click={() => runAccountCommand('removeAccount')}></vscode-toolbar-button>
             </div>
 
             <vscode-divider />
