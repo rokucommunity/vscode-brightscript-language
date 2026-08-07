@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as rta from 'roku-test-automation';
+import { isLocalDeviceConfig, isRceDeviceConfig } from 'roku-deploy';
+import type { DeviceConfig } from 'roku-deploy';
 import * as vscode from 'vscode';
 import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { ViewProviderId } from '../viewProviders/ViewProviderId';
@@ -23,15 +25,41 @@ export class RtaManager {
     public onDeviceComponent?: rta.OnDeviceComponent;
     public device?: rta.RokuDevice;
 
+    /**
+     * Whether the most recent debug session addressed a Roku Cloud Emulator device. RTA reaches a
+     * device by LAN host, which an RCE device does not have, so the RTA-driven webviews hide their
+     * UI behind an explanatory message while this is true. Cleared when that debug session ends
+     * (see onDidTerminateDebugSession) or when RTA is set up against a LAN device.
+     */
+    public isRceDebugSession = false;
+
     private webviewViewProviderManager?: WebviewViewProviderManager;
     private lastAppUIResponse: rta.AppUIResponse | undefined;
 
-    public setupRtaWithConfig(config: { host: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
+    public setupRtaWithConfig(config: { device?: DeviceConfig; host?: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
+        //roku-test-automation talks to the device by host over the local network, so a device without
+        //a host (a Roku Cloud Emulator config) cannot back the RDB views yet. A debug session's
+        //launch config addresses the device through `device`; the bare `host` field remains only for
+        //the RDB view's manual-ip flow, and is deliberately ignored whenever any `device` is present
+        //(a non-local session's raw `host` field can hold an unresolved placeholder).
+        this.isRceDebugSession = config.device !== undefined && isRceDeviceConfig(config.device);
+        let host: string | undefined;
+        if (config.device !== undefined) {
+            host = isLocalDeviceConfig(config.device) ? config.device.host : undefined;
+        } else {
+            host = config.host;
+        }
+        if (!host) {
+            //RTA cannot be set up without a host, but the webviews still need to hear about the
+            //device change (an RCE session hides the RTA-driven views behind an unsupported message)
+            this.updateDeviceAvailabilityOnWebViewProviders();
+            return;
+        }
         const enableDebugging = ['info', 'debug', 'trace'].includes(config.logLevel);
         const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {
                 devices: [{
-                    host: config.host,
+                    host: host,
                     password: config.password
                 }]
             },
@@ -105,6 +133,17 @@ export class RtaManager {
 
     public getStoredAppUI() {
         return this.lastAppUIResponse;
+    }
+
+    /**
+     * A brightscript debug session ended. An RCE session's unsupported-message state ends with it,
+     * so the RTA-driven views fall back to their normal setup-steps UI.
+     */
+    public onDidTerminateDebugSession() {
+        if (this.isRceDebugSession) {
+            this.isRceDebugSession = false;
+            this.updateDeviceAvailabilityOnWebViewProviders();
+        }
     }
 
     public setWebviewViewProviderManager(manager: WebviewViewProviderManager) {

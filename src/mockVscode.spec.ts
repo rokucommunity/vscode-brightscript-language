@@ -20,6 +20,8 @@ afterEach(() => {
     vscode.workspace.findFiles = () => [] as any;
     vscode.context.globalState['_data'] = {};
     vscode.context.workspaceState['_data'] = {};
+    vscode.context.secrets['_data'] = {};
+    vscode.context.secrets['_changeHandlers'] = [];
 });
 
 export let vscode = {
@@ -121,6 +123,38 @@ export let vscode = {
             },
             get: function(key: string) {
                 return this._data[key];
+            }
+        } as any,
+        secrets: {
+            _data: {},
+            _changeHandlers: [] as Array<(event: { key: string }) => void>,
+            store: function(key: string, value: string) {
+                this._data[key] = value;
+                for (const handler of [...this._changeHandlers]) {
+                    handler({ key: key });
+                }
+                return Promise.resolve();
+            },
+            get: function(key: string) {
+                return Promise.resolve(this._data[key]);
+            },
+            delete: function(key: string) {
+                delete this._data[key];
+                for (const handler of [...this._changeHandlers]) {
+                    handler({ key: key });
+                }
+                return Promise.resolve();
+            },
+            onDidChange: function(handler: (event: { key: string }) => void) {
+                this._changeHandlers.push(handler);
+                return {
+                    dispose: () => {
+                        const index = this._changeHandlers.indexOf(handler);
+                        if (index >= 0) {
+                            this._changeHandlers.splice(index, 1);
+                        }
+                    }
+                };
             }
         } as any,
         globalStorageUri: URI.file(tempDir),
@@ -283,7 +317,7 @@ export let vscode = {
         showInformationMessage: function(message: string) {
 
         },
-        showWarningMessage: function(message: string) {
+        showWarningMessage: function(message: string, ..._rest: any[]): any {
 
         },
         showErrorMessage: function(message: string, ..._rest: any[]): any {

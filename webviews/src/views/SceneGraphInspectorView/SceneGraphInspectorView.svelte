@@ -8,6 +8,7 @@
     import Branch from './Branch.svelte';
     import NodeDetailPage from './NodeDetailPage.svelte';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
+    import RceUnsupportedMessage from '../../shared/RceUnsupportedMessage.svelte';
     import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
     import { SettingsGear, Issues, Refresh, Play, DebugPause, StopCircle } from 'svelte-codicons';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
@@ -228,8 +229,11 @@
 
     let odcAvailable = false;
 
+    let isRceDebugSession = false;
+
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         odcAvailable = message.context.odcAvailable;
+        isRceDebugSession = message.context.isRceDebugSession;
         if (odcAvailable) {
             refresh(false, false);
         } else {
@@ -377,7 +381,9 @@
         </span>
     {/if}
 
-    {#if loading}
+    {#if isRceDebugSession}
+        <RceUnsupportedMessage />
+    {:else if loading}
         <Loader />
     {:else if !odcAvailable}
         <OdcSetupSteps />

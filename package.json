@@ -193,10 +193,23 @@
                     "id": "vscode-brightscript-language",
                     "title": "BrightScript Language",
                     "icon": "images/icons/logo.svg"
+                },
+                {
+                    "id": "roku-cloud-emulator",
+                    "title": "Roku Cloud Emulator",
+                    "icon": "images/icons/rce-logo.svg"
                 }
             ]
         },
         "views": {
+            "roku-cloud-emulator": [
+                {
+                    "id": "rceManagementView",
+                    "name": "Device Manager",
+                    "type": "webview",
+                    "when": "brightscript.experimental.rokuCloudEmulator"
+                }
+            ],
             "vscode-brightscript-language": [
                 {
                     "id": "rokuProjectsView",
@@ -404,14 +417,19 @@
                     "group": "navigation@3"
                 },
                 {
+                    "command": "extension.brightscript.rokuDeviceView.openVideoEditor",
+                    "when": "view == rokuDeviceView && brightscript.rokuDeviceView.isRceStreamActive",
+                    "group": "navigation@4"
+                },
+                {
                     "command": "extension.brightscript.rokuDeviceView.copyScreenshot",
                     "when": "view == rokuDeviceView",
-                    "group": "navigation@4"
+                    "group": "navigation@5"
                 },
                 {
                     "command": "extension.brightscript.disconnectFromDevice",
                     "when": "view == rokuDeviceView && brightscript.isOnDeviceComponentAvailable",
-                    "group": "navigation@5"
+                    "group": "navigation@6"
                 },
                 {
                     "command": "extension.brightscript.rokuAutomationView.startRecording",
@@ -504,6 +522,11 @@
                     "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
                     "when": "view == devicesView && viewItem =~ /^device\\b/",
                     "group": "1_primary@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.watchDevice",
+                    "when": "view == devicesView && viewItem =~ /-cloud\\b/",
+                    "group": "1_primary@3"
                 },
                 {
                     "command": "extension.brightscript.devicesView.deviceMenu.switchTvInput",
@@ -676,11 +699,43 @@
                     "group": "4_source@2"
                 },
                 {
+                    "command": "extension.brightscript.devicesView.toggleFilter.local",
+                    "when": "!brightscript.devicesView.filter.local && brightscript.experimental.rokuCloudEmulator",
+                    "group": "5_kind@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.local.active",
+                    "when": "brightscript.devicesView.filter.local && brightscript.experimental.rokuCloudEmulator",
+                    "group": "5_kind@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.cloud",
+                    "when": "!brightscript.devicesView.filter.cloud && brightscript.experimental.rokuCloudEmulator",
+                    "group": "5_kind@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.cloud.active",
+                    "when": "brightscript.devicesView.filter.cloud && brightscript.experimental.rokuCloudEmulator",
+                    "group": "5_kind@2"
+                },
+                {
                     "command": "extension.brightscript.devicesView.resetFilters",
                     "group": "9_reset@1"
                 }
             ],
             "commandPalette": [
+                {
+                    "command": "extension.brightscript.rce.addAccount",
+                    "when": "brightscript.experimental.rokuCloudEmulator"
+                },
+                {
+                    "command": "extension.brightscript.rce.switchAccount",
+                    "when": "brightscript.experimental.rokuCloudEmulator"
+                },
+                {
+                    "command": "extension.brightscript.rce.removeAccount",
+                    "when": "brightscript.experimental.rokuCloudEmulator"
+                },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.devModeEnabled",
                     "when": "false"
@@ -754,6 +809,22 @@
                     "when": "false"
                 },
                 {
+                    "command": "extension.brightscript.devicesView.toggleFilter.local",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.local.active",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.cloud",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.cloud.active",
+                    "when": "false"
+                },
+                {
                     "command": "extension.brightscript.devicesView.deviceMenu.setActiveDevice",
                     "when": "false"
                 },
@@ -763,6 +834,10 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.watchDevice",
                     "when": "false"
                 },
                 {
@@ -865,8 +940,69 @@
                         "properties": {
                             "host": {
                                 "type": "string",
-                                "description": "The host or ip address for the target Roku",
+                                "description": "The host or ip address for the target Roku. `device` is the preferred way to address the target device and supersedes this field.",
                                 "default": "${promptForHost}"
+                            },
+                            "device": {
+                                "description": "The canonical way to address the target device; supersedes `host`. Either a local network device (`{ host }`), or a Roku Cloud Emulator device addressed by serial number, management-api device id, or running instance URL. The Cloud Emulator api token always comes from the active Cloud Emulator account (managed from the Cloud Emulator panel, stored in VS Code secret storage) - it cannot be set here.",
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "description": "A local network device.",
+                                        "required": [
+                                            "host"
+                                        ],
+                                        "properties": {
+                                            "host": {
+                                                "type": "string",
+                                                "description": "IP address or hostname of the device."
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    {
+                                        "type": "object",
+                                        "description": "A Roku Cloud Emulator device addressed by serial number (ESN). Its api token always comes from the active Cloud Emulator account and cannot be set here.",
+                                        "required": [
+                                            "esn"
+                                        ],
+                                        "properties": {
+                                            "esn": {
+                                                "type": "string",
+                                                "description": "The device's serial number (ESN)."
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    {
+                                        "type": "object",
+                                        "description": "A Roku Cloud Emulator device addressed by management-api device id. Its api token always comes from the active Cloud Emulator account and cannot be set here.",
+                                        "required": [
+                                            "id"
+                                        ],
+                                        "properties": {
+                                            "id": {
+                                                "type": "number",
+                                                "description": "The Roku Cloud Emulator management-api device id."
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    {
+                                        "type": "object",
+                                        "description": "A Roku Cloud Emulator device addressed directly by its running instance's api URL. Its api token always comes from the active Cloud Emulator account and cannot be set here.",
+                                        "required": [
+                                            "instanceUrl"
+                                        ],
+                                        "properties": {
+                                            "instanceUrl": {
+                                                "type": "string",
+                                                "description": "The running instance's api URL."
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    }
+                                ]
                             },
                             "deepLinkUrl": {
                                 "type": "string",
@@ -2525,6 +2661,24 @@
                 }
             },
             {
+                "id": "experimental",
+                "title": "Experimental",
+                "properties": {
+                    "brightscript.experimental.all": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Enable every experimental feature in this section, regardless of each feature's own setting. Changing this requires a window reload.",
+                        "scope": "window"
+                    },
+                    "brightscript.experimental.rokuCloudEmulator": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Enable the Roku Cloud Emulator integration: the Cloud Emulator activity bar panel, cloud device discovery in the Devices view, and debugging against cloud devices. Requires Roku Cloud Emulator early access and an api token. Changing this requires a window reload.",
+                        "scope": "window"
+                    }
+                }
+            },
+            {
                 "id": "deviceDiscovery",
                 "title": "Device Discovery",
                 "properties": {
@@ -2647,6 +2801,18 @@
                         "default": true,
                         "description": "Show auto-detected devices (discovered on the network) in the Devices view.",
                         "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.local": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show local (LAN) devices in the Devices view.",
+                        "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.cloud": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show Roku Cloud Emulator devices in the Devices view.",
+                        "scope": "application"
                     }
                 }
             },
@@ -2706,6 +2872,18 @@
                         "type": "boolean",
                         "default": true,
                         "description": "Show auto-detected devices (discovered on the network) in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.local": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show local (LAN) devices in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.cloud": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show Roku Cloud Emulator devices in the device quick pick.",
                         "scope": "application"
                     }
                 }
@@ -3446,6 +3624,21 @@
                 "category": "BrightScript"
             },
             {
+                "command": "extension.brightscript.rce.addAccount",
+                "title": "Add Cloud Emulator Account",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.rce.switchAccount",
+                "title": "Switch Cloud Emulator Account",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.rce.removeAccount",
+                "title": "Remove Cloud Emulator Account",
+                "category": "BrightScript"
+            },
+            {
                 "command": "extension.brightscript.startTracing",
                 "title": "Start Perfetto Tracing",
                 "icon": "$(record)"
@@ -3756,6 +3949,11 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.pressPower",
+                "title": "Press the Power button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.pressPowerOff",
                 "title": "Press the PowerOff button on the Roku remote",
                 "category": "Brightscript"
@@ -3798,6 +3996,11 @@
             {
                 "command": "extension.brightscript.pressExit",
                 "title": "Press the Exit button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressGuide",
+                "title": "Press the Guide button on the Roku remote",
                 "category": "Brightscript"
             },
             {
@@ -3959,6 +4162,26 @@
                 "category": "BrightScript"
             },
             {
+                "command": "extension.brightscript.devicesView.toggleFilter.local",
+                "title": "☐ Local",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.local.active",
+                "title": "☑ Local",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.cloud",
+                "title": "☐ Cloud",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.cloud.active",
+                "title": "☑ Cloud",
+                "category": "BrightScript"
+            },
+            {
                 "command": "extension.brightscript.devicesView.resetFilters",
                 "title": "Reset Filters",
                 "category": "BrightScript"
@@ -4041,6 +4264,11 @@
             {
                 "command": "extension.brightscript.devicesView.deviceMenu.captureScreenshot",
                 "title": "📷 Capture Screenshot",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.watchDevice",
+                "title": "🎥 Watch Device",
                 "category": "BrightScript"
             },
             {
@@ -4284,6 +4512,13 @@
                 "title": "Copy Screenshot",
                 "category": "BrightScript",
                 "icon": "$(clippy)"
+            },
+            {
+                "command": "extension.brightscript.rokuDeviceView.openVideoEditor",
+                "title": "Open Video in Editor Tab",
+                "category": "BrightScript",
+                "icon": "$(link-external)",
+                "enablement": "brightscript.rokuDeviceView.isRceStreamActive"
             },
             {
                 "command": "extension.brightscript.disconnectFromDevice",

@@ -16,13 +16,15 @@ import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import cloneDeep = require('clone-deep');
-import { rokuDeploy } from 'roku-deploy';
-import type { DeviceInfo } from 'roku-deploy';
+import { rokuDeploy, isLocalDeviceConfig, isRceDeviceConfig } from 'roku-deploy';
+import type { DeviceConfig, DeviceInfo, DeviceStatus } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
 import type { BrightScriptCommands } from './BrightScriptCommands';
 import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
-import type { DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
+import { DeviceManager } from './deviceDiscovery/DeviceManager';
+import type { RokuDevice } from './deviceDiscovery/DeviceManager';
 import type { CredentialStore } from './managers/CredentialStore';
+import type { RceManager } from './managers/RceManager';
 
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
@@ -58,6 +60,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         private brightScriptCommands: BrightScriptCommands,
         private deviceManager: DeviceManager,
         private credentialStore: CredentialStore,
+        private rceManager: RceManager,
         private rokuProjectDiscovery?: RokuProjectManager
     ) {
         this.context = context;
@@ -148,7 +151,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
 
             if (deviceInfo && !deviceInfo.developerEnabled) {
-                throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
+                //`processHostParameter` normalized `result.device` above, so it names the target
+                //for every session kind - the top-level `host` is unset or unresolved for cloud
+                //and device-registry sessions
+                throw new Error(`Cannot deploy: developer mode is disabled on '${this.describeDevice(result.device)}'`);
             }
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
 
@@ -158,6 +164,19 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result.clientCapabilities = {
                 supportsProcessStagingDir: true
             };
+
+            //the Cloud Emulator account token was only needed on the device config for this resolver's
+            //own device requests (device-info, password validation). Strip it before handing the config
+            //back: the resolved config is sent as the DAP launch request (so it lands in DAP traffic and
+            //protocol logs) and is readable by every extension in the window via
+            //`vscode.debug.activeDebugSession.configuration`. The debug adapter receives the token
+            //exclusively through the ROKU_RCE_TOKEN env var injected by the descriptor factory (see
+            //extension.ts), which roku-debug hydrates back onto the device config
+            if (result.device && isRceDeviceConfig(result.device)) {
+                const device = { ...result.device };
+                delete device.rceToken;
+                result.device = device;
+            }
 
             return result;
         } catch (e) {
@@ -484,17 +503,77 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
+     * Is this device config addressed by something other than a local network host (a Roku Cloud
+     * Emulator config)?
+     */
+    private isNonLocalDevice(device: DeviceConfig | undefined): boolean {
+        if (!device) {
+            return false;
+        }
+        //explicitly an RCE config: a local config with an empty host is still local (it follows
+        //the host-prompt flow rather than the non-local one)
+        return isRceDeviceConfig(device);
+    }
+
+    /**
+     * Describe a device config (a local `{host}` config, or a Roku Cloud Emulator config addressed
+     * by esn/id/instanceUrl) by whichever address field it has, for error messages.
+     * `processHostParameter` always normalizes `config.device`, so once it has run this is the
+     * authoritative way to name the target device - unlike the top-level `host`, which non-local
+     * sessions leave unset or unresolved.
+     */
+    private describeDevice(device: DeviceConfig | undefined): string {
+        if (device && isLocalDeviceConfig(device)) {
+            return device.host;
+        }
+        if (device && 'instanceUrl' in device) {
+            return device.instanceUrl;
+        }
+        if (device && 'id' in device) {
+            return String(device.id);
+        }
+        if (device && 'esn' in device) {
+            return device.esn;
+        }
+        return 'the target device';
+    }
+
+    /**
      * Validates the host parameter in the config and opens an input ui if set to ${promptForHost}.
      * ${activeHost} is a deprecated alias for ${promptForHost}.
      * Both use the active device when it's set and passes a health check, otherwise fall back to the device picker.
      *
-     * Assigns the raw `device-info` gathered while probing the resolved host onto `config.deviceInfo`,
-     * so downstream password resolution and the debug session can reuse it without re-fetching.
-     * Throws if the device couldn't be reached (no device-info came back).
+     * Devices that are not addressed by host (a Roku Cloud Emulator config) skip host resolution
+     * entirely; roku-debug reaches them through roku-deploy's `device` option. Everything else
+     * follows the host-based local flow.
      * @param config  current config object
      */
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
-        const trimmedHost = config.host.trim();
+        //a local `device` config's host takes the place of the top-level `host` field
+        if (config.device && isLocalDeviceConfig(config.device)) {
+            config.host = config.device.host;
+        }
+
+        if (this.isNonLocalDevice(config.device)) {
+            return this.processNonLocalDeviceParameter(config);
+        }
+        return this.processLocalHostParameter(config);
+    }
+
+    /**
+     * The host-based flow for a local (LAN) device: resolves the host (prompting when the config asks
+     * for it), then assigns the raw `device-info` gathered while probing the resolved host onto
+     * `config.deviceInfo`, so downstream password resolution and the debug session can reuse it
+     * without re-fetching. Throws if the device couldn't be reached (no device-info came back).
+     *
+     * When the user picks a Roku Cloud Emulator device from the (shared) device picker, the config
+     * adopts its precomputed device option and the non-local flow takes over.
+     * @param config  current config object
+     */
+    private async processLocalHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+        //`host` can be missing entirely (a config that only supplies `device: { host: '' }`) - treat
+        //that the same as an empty host and prompt, rather than crashing on the trim
+        const trimmedHost = (config.host ?? '').trim();
         const needsHostPrompt =
             trimmedHost === '' ||
             trimmedHost === '${promptForHost}' ||
@@ -506,14 +585,20 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (needsHostPrompt) {
             // both the active-host lookup and the picker probe + register the device in the device
             // manager, so reuse it below instead of probing again
-            let resolved = await this.brightScriptCommands.getHealthyActiveHost();
-            if (!resolved) {
-                resolved = await this.userInputManager.promptForHost();
-                if (resolved?.host) {
-                    //the active device (if there was one) couldn't be located and the user picked a device
-                    //themselves, so forget the saved active device unless they picked that same device
-                    await this.deviceManager.forgetActiveDeviceIfDifferent(resolved.host);
+            const resolved = await this.brightScriptCommands.getHealthyActiveHost() ??
+                await this.userInputManager.promptForHost();
+
+            if (resolved && this.isNonLocalDevice(resolved.device)) {
+                //the user picked a Roku Cloud Emulator device from the (shared) device picker: adopt a
+                //copy of its precomputed device option (never the original - the device manager owns
+                //that object) minus the account token it carries, so the non-local flow below stays the
+                //only token source and can treat any token already on the config as config-supplied
+                const device = { ...resolved.device };
+                if (isRceDeviceConfig(device)) {
+                    delete device.rceToken;
                 }
+                config.device = device;
+                return this.processNonLocalDeviceParameter(config, resolved.rce?.status);
             }
             config.host = resolved?.host;
             if (resolved?.host) {
@@ -521,11 +606,17 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
         }
 
-        //check the host and throw error if not provided or update the workspace to set last host
+        //check the host and throw error if not provided, or remember the device as the
+        //remote-control target
         if (!config.host) {
             throw new Error('Debug session terminated: host is required.');
         } else {
-            await this.context.workspaceState.update('remoteHost', config.host);
+            //a sideload re-points the remote-control device (by DeviceManager key, LAN and cloud
+            //alike; a synthesized ip-based key covers a brand-new host the device manager doesn't
+            //know yet). It deliberately does NOT touch activeDeviceKey - the active device is the
+            //user's explicit pick and only Set as Active Device writes it
+            const remoteControlDeviceKey = this.deviceManager.getDevice({ ip: config.host })?.key ?? `i:${config.host}`;
+            await this.context.workspaceState.update('remoteControlDeviceKey', remoteControlDeviceKey);
         }
 
         // If the host didn't come from the picker, probe it so we have fresh SN/deviceInfo.
@@ -539,6 +630,86 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         // Attach the raw device-info so downstream password resolution and the debug session can reuse it
         // without another request to the device.
         config.deviceInfo = device.deviceInfo;
+
+        //`device` is the canonical way to address the target device (`host` is its deprecated alias),
+        //so always hand roku-debug a device option built from the resolved host. Rebuild it even when
+        //the config supplied its own local device object: its host may have been a `${promptForHost}`
+        //placeholder that the resolution above replaced, and roku-debug addresses the device through
+        //`device.host`, not the top-level `host`
+        config.device = { host: config.host };
+
+        return config;
+    }
+
+    /**
+     * The flow for a non-local device (a Roku Cloud Emulator config - either provided directly in
+     * the config, or picked from the device picker in the local flow): host resolution and the LAN
+     * password probe are skipped entirely; instead this fetches
+     * device-info through roku-deploy's `device` option (so the dev-mode check below and telemetry
+     * have something to work with).
+     *
+     * For a Roku Cloud Emulator device config specifically, `rceToken` is always overwritten with the
+     * active Cloud Emulator account's token from SecretStorage - a launch config can never supply its
+     * own; a config-supplied one surfaces a warning explaining why it was replaced. The token only
+     * lives on the config while the resolver runs (device-info here, password validation later);
+     * `resolveDebugConfiguration` strips it before the resolved config is returned to VS Code.
+     * Throws when no Cloud Emulator account is configured at all.
+     * @param config  current config object
+     * @param pickedRceStatus  the management-api status of a cloud emulator device the user just
+     *                         picked from the device picker, used for the friendly "not running"
+     *                         guard below. Stays undefined when nothing was picked (including when
+     *                         config.device was already a non-local device to begin with) - a
+     *                         config-provided device just fails the device-info fetch below with the
+     *                         generic unreachable error instead, since there is no live status to
+     *                         check ahead of time
+     */
+    private async processNonLocalDeviceParameter(config: BrightScriptLaunchConfiguration, pickedRceStatus?: DeviceStatus): Promise<BrightScriptLaunchConfiguration> {
+        //a non-local sideload must never leave the previous session's device as the remote-control
+        //target - re-point the remote device key: the resolved device's key when the device manager
+        //already knows it, otherwise cleared (a cloud device the finder hasn't registered yet), so
+        //remote commands can't keep targeting the previous device
+        const sideloadedDevice = config.device
+            ? this.deviceManager.getDeviceByDeviceConfig(config.device)
+            : undefined;
+        await this.context.workspaceState.update('remoteControlDeviceKey', sideloadedDevice?.key ?? '');
+
+        //Cloud Emulator api tokens come from SecretStorage (the RceManager active account) only - a
+        //launch config can never supply its own, so any token already present here is config-supplied
+        //(the picker path strips the precomputed option's token before handing off) and gets a warning.
+        //The token is injected onto a copy for this resolver's own device requests (device-info below,
+        //password validation later) and is stripped again before the resolved config is returned - see
+        //resolveDebugConfiguration; the debug adapter gets it via the ROKU_RCE_TOKEN env var instead.
+        if (config.device && isRceDeviceConfig(config.device)) {
+            const accountToken = await this.rceManager.getToken();
+            if (!accountToken) {
+                throw new Error('Debug session terminated: no Cloud Emulator account is configured. Add one from the Cloud Emulator panel (or run the "Add Cloud Emulator Account" command).');
+            }
+            if (config.device.rceToken !== undefined) {
+                void vscode.window.showWarningMessage('rceToken in launch configurations is not supported; the active Cloud Emulator account\'s token was used instead.');
+            }
+            config.device = { ...config.device, rceToken: accountToken };
+        }
+
+        if (pickedRceStatus !== undefined && pickedRceStatus !== 'running') {
+            throw new Error('Debug session terminated: start the cloud emulator device from the Cloud Emulator panel first.');
+        }
+
+        const deviceLabel = this.describeDevice(config.device);
+        try {
+            config.deviceInfo = await rokuDeploy.getDeviceInfo({
+                device: config.device,
+                timeout: DeviceManager.RCE_DEVICE_INFO_TIMEOUT_MS
+            });
+        } catch {
+            throw new Error(`Debug session terminated: unable to reach device '${deviceLabel}'.`);
+        }
+
+        //dev mode on a Roku Cloud Emulator device can't be worked around the way a LAN dev web
+        //server's reachability can, so catch it here with an actionable message rather than letting
+        //the deploy fail later with a less specific error
+        if (config.deviceInfo?.['developer-enabled'] === 'false') {
+            throw new Error(`Debug session terminated: developer mode is disabled on '${deviceLabel}'. Enable it from the running device's details in the Cloud Emulator panel (the Enable Dev Mode button).`);
+        }
 
         return config;
     }
@@ -562,19 +733,27 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config: BrightScriptLaunchConfiguration,
         result: BrightScriptLaunchConfiguration
     ): Promise<BrightScriptLaunchConfiguration> {
-        const host = result.host;
+        //`processHostParameter` always normalizes `result.device` before this runs (`host` is only
+        //its deprecated alias): `{host}` for a LAN device, the cloud config for a Roku Cloud
+        //Emulator device (its dev installer authenticates with the same digest auth as a LAN
+        //device).
+        const device = result.device;
+        if (!device) {
+            return result;
+        }
         const serialNumber = result.deviceInfo?.['serial-number'];
 
         // Opportunistically drain any legacy IP-keyed password that still lives in
-        // workspaceState from pre-refactor extension installs. Reads never consult
-        // this store anymore; it's peeked here and disposed of once we know whether
-        // it works. This step is best-effort: an unreachable device just means we
-        // try again next launch; the authoritative error surfaces from the main flow.
-        const legacyPassword = this.getLegacyIpKeyedPassword(host);
+        // workspaceState from pre-refactor extension installs (the helpers no-op for anything but
+        // a local device config, since the store is keyed by ip). Reads never consult this store
+        // anymore; it's peeked here and disposed of once we know whether it works. This step is
+        // best-effort: an unreachable device just means we try again next launch; the
+        // authoritative error surfaces from the main flow.
+        const legacyPassword = this.getLegacyIpKeyedPassword(device);
         if (legacyPassword !== undefined) {
-            const validation = await this.deviceManager.validateDevicePassword(host, legacyPassword);
+            const validation = await this.deviceManager.validateDevicePassword(device, legacyPassword);
             if (validation === 'ok') {
-                await this.clearLegacyIpKeyedPassword(host);
+                await this.clearLegacyIpKeyedPassword(device);
                 // A legacy entry is explicit historical opt-in: persist it to the cred store
                 // (unconditionally, unlike the normal "refresh existing only" gate) and the
                 // global fallback, then use it.
@@ -586,7 +765,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 return result;
             } else if (validation === 'bad-password') {
                 // Reads don't use the legacy store anymore, so a proven-wrong entry is dead weight.
-                await this.clearLegacyIpKeyedPassword(host);
+                await this.clearLegacyIpKeyedPassword(device);
             }
             // 'unreachable' — leave the legacy entry alone (it may still be correct) and
             // fall through to the normal candidate flow, which will surface its own error.
@@ -596,18 +775,20 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         // `result.password`/`config.password` after the standard credential sources. The resolver
         // prompts (and persists an accepted password) the same way it does for the other commands.
         const resolution = await this.userInputManager.resolveDevicePassword({
-            host: host,
+            device: device,
             serialNumber: serialNumber,
             extraCandidates: [result.password, config.password]
         });
         if (resolution.status === 'unreachable') {
-            throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
+            throw new Error(`Debug session terminated: device '${this.describeDevice(device)}' is unreachable.`);
         }
         if (resolution.status === 'cancelled') {
             throw new Error('Debug session terminated: password is required.');
         }
         result.password = resolution.password;
         // Keep the global password fallback in sync so later launches resolve without re-prompting.
+        // Consumers only ever offer it as a validated candidate, so a password from one device kind
+        // can never misfire against another - it just gets skipped.
         await this.context.workspaceState.update('remotePassword', resolution.password);
         return result;
     }
@@ -618,28 +799,29 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Peek the legacy IP-keyed password store (`workspaceState.devicePasswords`).
      * Reads never use this store anymore; it's consulted only for one-shot
      * migration inside `processPasswordParameter` and drained on the first
-     * successful device contact.
+     * successful device contact. The store is keyed by ip, so only a local
+     * device config can have an entry; every other device kind returns undefined.
      */
-    private getLegacyIpKeyedPassword(ip: string): string | undefined {
-        if (!ip) {
+    private getLegacyIpKeyedPassword(device: DeviceConfig): string | undefined {
+        if (!isLocalDeviceConfig(device) || !device.host) {
             return undefined;
         }
         const map = this.context.workspaceState.get<Record<string, string>>(this.legacyPasswordStoreKey) ?? {};
-        return map[ip];
+        return map[device.host];
     }
 
     /**
      * Remove an entry from the legacy IP-keyed password store.
      */
-    private async clearLegacyIpKeyedPassword(ip: string): Promise<void> {
-        if (!ip) {
+    private async clearLegacyIpKeyedPassword(device: DeviceConfig): Promise<void> {
+        if (!isLocalDeviceConfig(device) || !device.host) {
             return;
         }
         const map = this.context.workspaceState.get<Record<string, string>>(this.legacyPasswordStoreKey) ?? {};
-        if (!(ip in map)) {
+        if (!(device.host in map)) {
             return;
         }
-        delete map[ip];
+        delete map[device.host];
         await this.context.workspaceState.update(this.legacyPasswordStoreKey, map);
     }
 
