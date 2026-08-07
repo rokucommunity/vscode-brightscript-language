@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { createSandbox } from 'sinon';
 import * as path from 'path';
 import * as fs from 'fs';
-import { rokuDeploy } from 'roku-deploy';
+import { util as rokuDeployUtil } from 'roku-deploy';
 import { vscode } from '../../mockVscode.spec';
 
 let Module = require('module');
@@ -189,7 +189,7 @@ describe('BrsConfigProjectProvider', () => {
                 rootDir: projectDir
             });
 
-            sinon.stub(rokuDeploy, 'getDestPath').returns('source/main.brs');
+            sinon.stub(rokuDeployUtil, 'getDestPath').returns('source/main.brs');
 
             const results = await provider.findProjectConfigFromFile(fileUri);
 
@@ -199,7 +199,7 @@ describe('BrsConfigProjectProvider', () => {
 
         it('returns an empty array when no indexed config owns the file', async () => {
             const fileUri = makeUri('/project/src/main.brs');
-            sinon.stub(rokuDeploy, 'getDestPath').returns(undefined as any);
+            sinon.stub(rokuDeployUtil, 'getDestPath').returns(undefined as any);
 
             const results = await provider.findProjectConfigFromFile(fileUri);
 
@@ -219,7 +219,7 @@ describe('BrsConfigProjectProvider', () => {
                 configUri: configUri2, files: [], rootDir: projectDir
             });
 
-            sinon.stub(rokuDeploy, 'getDestPath').returns('source/main.brs');
+            sinon.stub(rokuDeployUtil, 'getDestPath').returns('source/main.brs');
 
             const results = await provider.findProjectConfigFromFile(fileUri);
 

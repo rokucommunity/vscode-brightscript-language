@@ -1127,7 +1127,7 @@ describe('DeviceManager', () => {
             validateStub.resolves(true);
             const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
             expect(result).to.equal('ok');
-            expect(validateStub.firstCall.args[0]).to.deep.equal({ host: '192.168.1.100', password: 'rokudev' });
+            expect(validateStub.firstCall.args[0]).to.deep.equal({ device: { host: '192.168.1.100' }, password: 'rokudev' });
         });
 
         it(`returns 'bad-password' when the device rejects the credentials`, async () => {
@@ -3411,8 +3411,8 @@ describe('DeviceManager', () => {
 
                 // Stub: IP .100 fails (wrong IP), IP .50 succeeds (correct IP)
                 const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
-                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.100' })).rejects(new Error('Unreachable'));
-                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.50' })).resolves({
+                getDeviceInfoStub.withArgs(sinon.match({ device: { host: '192.168.1.100' } })).rejects(new Error('Unreachable'));
+                getDeviceInfoStub.withArgs(sinon.match({ device: { host: '192.168.1.50' } })).resolves({
                     'serial-number': 'XYZ',
                     'device-id': 'XYZ',
                     'default-device-name': 'Roku Express'
@@ -3453,8 +3453,8 @@ describe('DeviceManager', () => {
                 }));
 
                 const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
-                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.100' })).rejects(new Error('Unreachable'));
-                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.50' })).resolves({
+                getDeviceInfoStub.withArgs(sinon.match({ device: { host: '192.168.1.100' } })).rejects(new Error('Unreachable'));
+                getDeviceInfoStub.withArgs(sinon.match({ device: { host: '192.168.1.50' } })).resolves({
                     'serial-number': 'XYZ',
                     'device-id': 'XYZ',
                     'default-device-name': 'Roku Express'
@@ -3470,8 +3470,8 @@ describe('DeviceManager', () => {
 
                 // Now test the reverse order: correct IP first, then wrong IP
                 getDeviceInfoStub.reset();
-                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.100' })).rejects(new Error('Unreachable'));
-                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.50' })).resolves({
+                getDeviceInfoStub.withArgs(sinon.match({ device: { host: '192.168.1.100' } })).rejects(new Error('Unreachable'));
+                getDeviceInfoStub.withArgs(sinon.match({ device: { host: '192.168.1.50' } })).resolves({
                     'serial-number': 'XYZ',
                     'device-id': 'XYZ',
                     'default-device-name': 'Roku Express'
