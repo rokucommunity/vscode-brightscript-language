@@ -7,6 +7,9 @@ import { util } from './util';
 import * as fsExtra from 'fs-extra';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 import stripAnsi from 'strip-ansi';
+import { createLogger } from './logging';
+
+const logger = createLogger('LogOutputManager');
 
 export class LogLine {
     constructor(
@@ -259,12 +262,12 @@ export class LogOutputManager {
                 if (!this.includeStackTraces) {
                     // filter out debugger noise
                     if (this.debugStartRegex.exec(line)) {
-                        console.log('start MicroDebugger block');
+                        logger.log('start MicroDebugger block');
                         this.isInMicroDebugger = true;
                         this.isNextBreakpointSkipped = false;
                         line = 'Pausing for a breakpoint...';
                     } else if (this.isInMicroDebugger && (this.debugEndRegex.exec(line))) {
-                        console.log('ended MicroDebugger block');
+                        logger.log('ended MicroDebugger block');
                         this.isInMicroDebugger = false;
                         if (this.isNextBreakpointSkipped) {
                             line = '\n**Was a bogus breakpoint** Skipping!\n';
@@ -273,7 +276,7 @@ export class LogOutputManager {
                         }
                     } else if (this.isInMicroDebugger) {
                         if (this.launchConfig.enableDebuggerAutoRecovery && line.startsWith('Break in ')) {
-                            console.log('this block is a break: skipping it');
+                            logger.log('this block is a break: skipping it');
                             this.isNextBreakpointSkipped = true;
                         }
                         line = null;

@@ -5,8 +5,8 @@ import * as path from 'path';
 import type { Disposable } from 'vscode';
 import { window, workspace } from 'vscode';
 import { BusyStatus, NotificationName, standardizePath as s } from 'brighterscript';
-import { Logger } from '@rokucommunity/logger';
 import { CustomCommands, Deferred } from 'brighterscript';
+import { createLogger } from './logging';
 import type { CodeWithSourceMap } from 'source-map';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptWorkspaceSymbolProvider, SymbolInformationRepository } from './SymbolInformationRepository';
@@ -21,6 +21,8 @@ import { EventEmitter } from 'eventemitter3';
 import * as dayjs from 'dayjs';
 import type { LocalPackageManager, ParsedVersionInfo } from './managers/LocalPackageManager';
 import { firstBy } from 'thenby';
+
+const logger = createLogger('LanguageServerManager');
 
 /**
  * Tracks the running/stopped state of the language server. When the lsp crashes, vscode will restart it. After the 5th crash, they'll leave it permanently crashed.
@@ -279,7 +281,7 @@ export class LanguageServerManager {
             this.client = this.constructLanguageClient();
 
             this.client.onDidChangeState((event: StateChangeEvent) => {
-                console.log(new Date().toLocaleTimeString(), 'onDidChangeState', State[event.newState]);
+                logger.log('onDidChangeState', State[event.newState]);
                 this.lspRunTracker.setState(event.newState);
             });
 
@@ -316,7 +318,6 @@ export class LanguageServerManager {
     private registerBusyStatusHandler() {
         let timeoutHandle: NodeJS.Timeout;
 
-        const logger = new Logger();
         this.client.onNotification(NotificationName.busyStatus, (event: any) => {
             this.updateStatusbar(event.status === BusyStatus.busy, event.activeRuns);
 
@@ -487,7 +488,7 @@ export class LanguageServerManager {
         try {
             this.selectedBscInfo = await this.ensureBscVersionInstalled(versionInfo);
         } catch (e) {
-            console.error(e);
+            logger.error(e);
             //fall back to the embedded version, and show a popup (don't await the popup because that blocks this flow)
             void vscode.window.showErrorMessage(`Language server failure. Did you forget \`npm install\`? Using embedded version ${this.embeddedBscInfo.version}. Can't find language server for "${versionInfo}"`);
             this.selectedBscInfo = this.embeddedBscInfo;
@@ -608,7 +609,7 @@ export class LanguageServerManager {
 
         } catch (e) {
             if (retryCount > 0) {
-                console.error('Failed to install brighterscript', versionInfo, e);
+                logger.error('Failed to install brighterscript', versionInfo, e);
 
                 //if the install failed for some reason, uninstall the package and try again
                 await this.localPackageManager.uninstall('brighterscript', versionInfo);
@@ -673,7 +674,7 @@ function OneAtATime(options: { timeout?: number }) {
                 //race for the timeout to expire (we give up waiting for the previous task to complete)
                 timer.then(() => {
                     //our timer fired before we had a chance to cancel it. Report the error and move on
-                    console.error(`timer expired waiting for the previous ${propertyKey} to complete. Running the next instance`, target);
+                    logger.error(`timer expired waiting for the previous ${propertyKey} to complete. Running the next instance`, target);
                 })
                 //now we can move on to the actual task
             ]).then(() => {

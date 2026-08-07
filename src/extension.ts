@@ -38,6 +38,9 @@ import { standardizePath as s } from 'brighterscript';
 import { PerfettoEditorProvider } from './editors/PerfettoEditor';
 import { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
 import { RokuProjectsViewProvider } from './viewProviders/RokuProjectsViewProvider';
+import { attachExtensionOutputChannel, createLogger } from './logging';
+
+const logger = createLogger('Extension');
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -81,6 +84,7 @@ export class Extension {
 
         this.telemetryManager.sendStartupEvent();
         this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
+        attachExtensionOutputChannel(this.extensionOutputChannel);
         this.extensionOutputChannel.appendLine('Extension startup');
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel);
         const credentialStore = new CredentialStore(context);
@@ -395,7 +399,7 @@ export class Extension {
         try {
             await logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
         } catch (err) {
-            console.error('Error handling custom event', e, err);
+            logger.error('Error handling custom event', e, err);
         }
     }
 
@@ -455,7 +459,7 @@ export class Extension {
         });
 
         execution = await vscode.tasks.executeTask(targetTask);
-        console.log(execution);
+        logger.log(execution);
         await taskFinished;
     }
 
@@ -465,10 +469,10 @@ export class Extension {
      */
     private async processStagingDir(event: CustomRequestEvent<{ projects: Array<{ type: string; stagingDir: string }> }>) {
         const projects = event.body.projects ?? [];
-        console.log(`[processStagingDir] received ${projects.length} project(s) to process`);
+        logger.log(`[processStagingDir] received ${projects.length} project(s) to process`);
         for (const project of projects) {
             const exists = await fsExtra.pathExists(project.stagingDir);
-            console.log(`[processStagingDir] ${project.type} staging dir ${exists ? 'exists' : 'is MISSING'}: ${project.stagingDir}`);
+            logger.log(`[processStagingDir] ${project.type} staging dir ${exists ? 'exists' : 'is MISSING'}: ${project.stagingDir}`);
         }
     }
 

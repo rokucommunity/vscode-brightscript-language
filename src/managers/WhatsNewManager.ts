@@ -3,6 +3,9 @@ import { gte as semverGte } from 'semver';
 import * as vscode from 'vscode';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { util } from '../util';
+import { createLogger } from '../logging';
+
+const logger = createLogger('WhatsNewManager');
 
 const FILE_SCHEME = 'bs-whatsNew';
 
@@ -97,7 +100,7 @@ export class WhatsNewManager {
             uri = uri.with({ scheme: FILE_SCHEME });
             void vscode.commands.executeCommand('markdown.showPreview', uri, { sideBySide: false });
         } else {
-            console.error(`WhatsNewManager.showReleaseNotes: Unknown version: ${version}`);
+            logger.error(`WhatsNewManager.showReleaseNotes: Unknown version: ${version}`);
         }
     }
 }

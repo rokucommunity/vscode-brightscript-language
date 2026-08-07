@@ -12,6 +12,9 @@ import { util } from '../util';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { debounce } from 'lodash';
 import { icons } from '../icons';
+import { createLogger } from '../logging';
+
+const logger = createLogger('DeviceManager');
 
 export class DeviceManager {
     // #region constructor
@@ -138,7 +141,7 @@ export class DeviceManager {
                     this.setScanNeeded();
                 }
             }).catch((e) => {
-                console.error(e);
+                logger.error(e);
             });
         }
     }
@@ -903,7 +906,7 @@ export class DeviceManager {
         // Check if the serial was last seen at this IP (don't trust cache if device moved)
         const cachedIp = serialForCache ? this.globalStateManager.getIpForSerial(serialForCache, this.networkId) : undefined;
         const cacheIsFresh = cached && (Date.now() - cached.createdAt < this.DEVICE_INFO_CACHE_MS) && cachedIp === device.ip;
-        console.log('[TRACE] resolveDevice', device.ip, 'serialForCache=', serialForCache, 'cachedIp=', cachedIp, 'cacheIsFresh=', cacheIsFresh);
+        logger.log('[TRACE] resolveDevice', device.ip, 'serialForCache=', serialForCache, 'cachedIp=', cachedIp, 'cacheIsFresh=', cacheIsFresh);
 
         // Use cache only if:
         // - Not forced
@@ -1125,7 +1128,7 @@ export class DeviceManager {
 
             return info;
         } catch (e) {
-            console.error(e);
+            logger.error(e);
             return undefined;
         }
     }
@@ -1430,7 +1433,7 @@ export class DeviceManager {
         // Restart if device discovery is enabled
         if (this.deviceDiscoveryEnabled) {
             this.startRokuFinder().catch((e) => {
-                console.error('Failed to restart RokuFinder:', e);
+                logger.error('Failed to restart RokuFinder:', e);
             });
         }
     }

@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { isProfilingEnabledEvent, isProfilingStartEvent, isProfilingStopEvent, isProfilingErrorEvent } from 'roku-debug';
+import { createLogger } from '../logging';
+
+const logger = createLogger('ProfilingCommands');
 
 export class ProfilingCommands {
 
@@ -68,7 +71,7 @@ export class ProfilingCommands {
                         await session.customRequest('startPerfettoTracing');
                         await vscodeContextManager.set('brightscript.tracingActive', true);
                     } catch (e) {
-                        console.error(`Failed to start tracing`, e);
+                        logger.error(`Failed to start tracing`, e);
                     }
                 }
             )
@@ -86,7 +89,7 @@ export class ProfilingCommands {
                     try {
                         await session.customRequest('stopPerfettoTracing');
                     } catch (e) {
-                        console.error(`Failed to stop tracing:`, e);
+                        logger.error(`Failed to stop tracing:`, e);
                     }
                 }
             )
@@ -103,7 +106,7 @@ export class ProfilingCommands {
             try {
                 await session.customRequest('captureHeapSnapshot');
             } catch (e) {
-                console.error(`Failed to capture snapshot:`, e);
+                logger.error(`Failed to capture snapshot:`, e);
             }
         }
 

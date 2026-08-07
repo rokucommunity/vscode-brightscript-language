@@ -2,6 +2,9 @@ import { EventEmitter } from 'eventemitter3';
 import type { SsdpHeaders } from 'node-ssdp';
 import { Client, Server } from 'node-ssdp';
 import type { GlobalStateManager } from '../GlobalStateManager';
+import { createLogger } from '../logging';
+
+const logger = createLogger('RokuFinder');
 
 export class RokuFinder extends EventEmitter {
     constructor(
@@ -91,7 +94,7 @@ export class RokuFinder extends EventEmitter {
                 Promise.resolve(
                     this.client.search('roku:ecp')
                 ).catch((error) => {
-                    console.error(error);
+                    logger.error(error);
                 });
             };
 
