@@ -2,6 +2,9 @@ import type { ChannelPublishedEvent } from 'roku-debug';
 import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
 import type { RtaManager } from './RtaManager';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
+import type { RceManager } from './RceManager';
+import type { RceFinder } from '../deviceDiscovery/RceFinder';
+import type { DeviceManager } from '../deviceDiscovery/DeviceManager';
 import * as vscode from 'vscode';
 import { RokuCommandsViewProvider } from '../viewProviders/RokuCommandsViewProvider';
 import { RokuDeviceViewViewProvider } from '../viewProviders/RokuDeviceViewViewProvider';
@@ -11,17 +14,24 @@ import { RokuRegistryViewProvider } from '../viewProviders/RokuRegistryViewProvi
 import { SceneGraphInspectorViewProvider } from '../viewProviders/SceneGraphInspectorViewProvider';
 import { RokuAutomationViewViewProvider } from '../viewProviders/RokuAutomationViewViewProvider';
 import { RokuReplViewProvider } from '../viewProviders/RokuReplViewProvider';
+import { RceManagementViewProvider } from '../viewProviders/RceManagementViewProvider';
 
 export class WebviewViewProviderManager {
     constructor(
         context: vscode.ExtensionContext,
         private rtaManager: RtaManager,
+        rceManager: RceManager,
+        rceFinder: RceFinder,
+        deviceManager: DeviceManager,
         brightScriptCommands: BrightScriptCommands
     ) {
         for (const webview of this.webviewViews) {
             if (!webview.provider) {
                 webview.provider = new webview.constructor(context, {
                     rtaManager: rtaManager,
+                    rceManager: rceManager,
+                    rceFinder: rceFinder,
+                    deviceManager: deviceManager,
                     brightScriptCommands: brightScriptCommands
                 });
                 vscode.window.registerWebviewViewProvider(webview.provider.id, webview.provider);
@@ -55,6 +65,9 @@ export class WebviewViewProviderManager {
     }, {
         constructor: RokuReplViewProvider,
         provider: undefined as RokuReplViewProvider
+    }, {
+        constructor: RceManagementViewProvider,
+        provider: undefined as RceManagementViewProvider
     }];
 
     public getWebviewViewProviders() {
@@ -72,6 +85,7 @@ export class WebviewViewProviderManager {
     }
 
     public onDidTerminateDebugSession(e: vscode.DebugSession) {
+        this.rtaManager.onDidTerminateDebugSession();
         for (const webview of this.webviewViews) {
             webview.provider.onDidTerminateDebugSession(e);
         }

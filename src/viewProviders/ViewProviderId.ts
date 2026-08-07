@@ -9,5 +9,6 @@ export enum ViewProviderId {
     rokuCommandsView = 'rokuCommandsView',
     rokuAutomationView = 'rokuAutomationView',
     rokuReplView = 'rokuReplView',
-    rokuProjectsView = 'rokuProjectsView'
+    rokuProjectsView = 'rokuProjectsView',
+    rceManagementView = 'rceManagementView'
 }

@@ -5,8 +5,8 @@ import { vscode } from '../mockVscode.spec';
 import type { RokuDevice } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
-import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { util } from '../util';
+import { EventEmitter } from 'eventemitter3';
 
 describe('DeviceManager', () => {
     let manager: DeviceManager;
@@ -1125,38 +1125,38 @@ describe('DeviceManager', () => {
 
         it(`returns 'ok' when the device accepts the credentials`, async () => {
             validateStub.resolves(true);
-            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'rokudev');
             expect(result).to.equal('ok');
             expect(validateStub.firstCall.args[0]).to.deep.equal({ device: { host: '192.168.1.100' }, password: 'rokudev' });
         });
 
         it(`returns 'bad-password' when the device rejects the credentials`, async () => {
             validateStub.resolves(false);
-            const result = await manager.validateDevicePassword('192.168.1.100', 'wrong');
+            const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'wrong');
             expect(result).to.equal('bad-password');
         });
 
         it(`returns 'unreachable' when roku-deploy throws DeviceUnreachableError`, async () => {
             validateStub.rejects(new DeviceUnreachableError('offline'));
-            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'rokudev');
             expect(result).to.equal('unreachable');
         });
 
         it(`returns 'unreachable' on unexpected response codes`, async () => {
             validateStub.rejects(new InvalidDeviceResponseCodeError('500'));
-            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'rokudev');
             expect(result).to.equal('unreachable');
         });
 
         it(`returns 'unreachable' on any other unexpected error`, async () => {
             validateStub.rejects(new Error('something weird'));
-            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'rokudev');
             expect(result).to.equal('unreachable');
         });
     });
 
     describe('removeDiscoveredDevice', () => {
-        it('clears lastUsedDeviceIp when removed device matches', () => {
+        it('clears lastUsedDeviceKey when removed device matches by ip key', () => {
             const clock = sinon.useFakeTimers();
             try {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
@@ -1164,19 +1164,37 @@ describe('DeviceManager', () => {
 
                 const device = createMockDevice();
                 addDevice(device);
-                manager.setLastUsedDeviceIp(device.ip);
+                manager.setLastUsedDeviceKey(`i:${device.ip}`);
 
-                expect(manager.getLastUsedDeviceIp()).to.equal(device.ip);
+                expect(manager.getLastUsedDeviceKey()).to.equal(`i:${device.ip}`);
 
                 manager['removeDiscoveredDevice'](device.ip);
 
-                expect(manager.getLastUsedDeviceIp()).to.be.undefined;
+                expect(manager.getLastUsedDeviceKey()).to.be.undefined;
             } finally {
                 clock.restore();
             }
         });
 
-        it('does not clear lastUsedDeviceIp when different device is removed', () => {
+        it('clears lastUsedDeviceKey when removed device matches by serial key', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                (vscode.window as any).state = { focused: true };
+
+                const device = createMockDevice({ serialNumber: 'ABC123', ip: '192.168.1.101' });
+                addDevice(device);
+                manager.setLastUsedDeviceKey('s:ABC123');
+
+                manager['removeDiscoveredDevice'](device.ip);
+
+                expect(manager.getLastUsedDeviceKey()).to.be.undefined;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('does not clear lastUsedDeviceKey when different device is removed', () => {
             const clock = sinon.useFakeTimers();
             try {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
@@ -1186,11 +1204,11 @@ describe('DeviceManager', () => {
                 const device2 = createMockDevice({ serialNumber: 'device-2', ip: '192.168.1.102' });
                 addDevice(device1);
                 addDevice(device2);
-                manager.setLastUsedDeviceIp(device1.ip);
+                manager.setLastUsedDeviceKey(`i:${device1.ip}`);
 
                 manager['removeDiscoveredDevice'](device2.ip);
 
-                expect(manager.getLastUsedDeviceIp()).to.equal(device1.ip);
+                expect(manager.getLastUsedDeviceKey()).to.equal(`i:${device1.ip}`);
             } finally {
                 clock.restore();
             }
@@ -1309,6 +1327,369 @@ describe('DeviceManager', () => {
             expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', 'stale-device')).to.be.true;
         });
     });
+
+    /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
+    describe('cloud emulator devices', () => {
+        function rceDevice(overrides: Record<string, any> = {}) {
+            return {
+                id: 83,
+                name: 'Chris',
+                device_type: 'tv',
+                serial_number: 'XY020078HH5S',
+                status: 'running',
+                created_at: '2026-01-01',
+                running_device: {
+                    instance_api_url: 'https://device.rce.roku.com/instance/abc',
+                    firmware_version_id: 'rce-fw:15.2.4-tv_prod',
+                    instance_uuid: 'uuid-1',
+                    created_at: '2026-01-01',
+                    snapshot_id: 1,
+                    id: 1,
+                    device_id: 83,
+                    max_runtime: 3600
+                },
+                ...overrides
+            };
+        }
+
+        it('merges rce devices into getAllDevices with mapped state and synthesized deviceInfo', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([rceDevice()] as any);
+
+            const device = manager.getAllDevices().find(x => x.rce);
+            expect(device.key).to.equal('s:XY020078HH5S');
+            expect(device.serialNumber).to.equal('XY020078HH5S');
+            expect(device.deviceState).to.equal('online');
+            expect(device.deviceInfo['user-device-name']).to.equal('Chris');
+            expect(device.deviceInfo['software-version']).to.equal('15.2.4');
+            expect(device.rce).to.include({
+                id: 83,
+                status: 'running',
+                instanceUrl: 'https://device.rce.roku.com/instance/abc'
+            });
+        });
+
+        it('synthesizes is-tv and is-stick as raw ECP string values, not booleans', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([
+                rceDevice(),
+                rceDevice({ id: 86, serial_number: 'ESN86', device_type: 'stb', running_device: null })
+            ] as any);
+
+            const tvDevice = manager.getAllDevices().find(x => x.key === 's:XY020078HH5S');
+            expect(tvDevice.deviceInfo['is-tv']).to.equal('true');
+            expect(tvDevice.deviceInfo['is-stick']).to.equal('false');
+
+            const stbDevice = manager.getAllDevices().find(x => x.key === 's:ESN86');
+            expect(stbDevice.deviceInfo['is-tv']).to.equal('false');
+            expect(stbDevice.deviceInfo['is-stick']).to.equal('false');
+        });
+
+        it('maps shutdown and pending statuses, and keys by id when the esn is missing', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([
+                rceDevice({ id: 84, serial_number: null, status: 'shutdown', running_device: null }),
+                rceDevice({ id: 85, serial_number: 'ESN85', status: 'pending', running_device: null })
+            ] as any);
+
+            const devices = manager.getAllDevices().filter(x => x.rce);
+            const byId = devices.find(x => x.key === 'rce:84');
+            expect(byId.deviceState).to.equal('offline');
+            expect(byId.lastDeviceState).to.equal('offline');
+            const byEsn = devices.find(x => x.key === 's:ESN85');
+            expect(byEsn.deviceState).to.equal('pending');
+            // a booting cloud device reports online as its last known state so the device filters
+            // keep it visible alongside online devices while it starts up
+            expect(byEsn.lastDeviceState).to.equal('online');
+        });
+
+        it('getAddressLabel labels rce devices as cloud emulator and LAN devices by ip', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([rceDevice()] as any);
+
+            const cloudDevice = manager.getAllDevices().find(x => x.rce);
+            expect(manager.getAddressLabel(cloudDevice)).to.equal('cloud emulator');
+            expect(manager.getAddressLabel({ ip: '192.168.1.100' } as any)).to.equal('192.168.1.100');
+        });
+
+        it('getDevice finds rce devices by key and by serial number', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([rceDevice()] as any);
+
+            expect(manager.getDevice('s:XY020078HH5S')?.rce?.id).to.equal(83);
+            expect(manager.getDevice({ serialNumber: 'XY020078HH5S' })?.rce?.id).to.equal(83);
+
+            manager['onRceDevices']([rceDevice({ serial_number: null })] as any);
+            expect(manager.getDevice('rce:83')?.rce?.id).to.equal(83);
+        });
+
+        it('a key collision between a configured LAN entry and a cloud device resolves to the cloud device everywhere', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            addDevice(createMockDevice({
+                serialNumber: 'XY020078HH5S',
+                isConfigured: true,
+                isDiscovered: false,
+                deviceInfo: { 'default-device-name': 'My LAN Roku' }
+            }));
+            manager['onRceDevices']([rceDevice()] as any);
+
+            //one row for the key, and it is the same device the key-routed actions resolve to
+            const matches = manager.getAllDevices().filter(x => x.key === 's:XY020078HH5S');
+            expect(matches).to.have.length(1);
+            expect(matches[0].rce).to.exist;
+            expect(manager.getDevice('s:XY020078HH5S')?.rce).to.exist;
+        });
+
+        it('health checks a cloud device through a finder rescan, including one with no esn yet', async () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            fakeFinder.getCachedToken = () => 'secret';
+            fakeFinder.scan = sinon.stub().resolves();
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            //a just-booted device that has not reported an esn yet (keyed rce:83)
+            manager['onRceDevices']([rceDevice({ serial_number: null })] as any);
+            const device = manager.getAllDevices().find(x => x.rce);
+            expect(device.key).to.equal('rce:83');
+
+            expect(await manager.healthCheckDevice(device)).to.be.true;
+            expect(fakeFinder.scan.called).to.be.true;
+
+            //the same check reports unhealthy once the rescan shows the device stopped
+            manager['onRceDevices']([rceDevice({ serial_number: null, status: 'shutdown', running_device: null })] as any);
+            expect(await manager.healthCheckDevice(device)).to.be.false;
+        });
+
+        it('consumes the devices event from an injected RceFinder and replaces the list on every poll', () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            fakeFinder.getCachedToken = () => 'secret';
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            fakeFinder.emit('devices', [rceDevice()]);
+            expect(manager.getAllDevices().filter(x => x.rce).length).to.equal(1);
+
+            //the next poll replaces the list rather than accumulating
+            fakeFinder.emit('devices', []);
+            expect(manager.getAllDevices().filter(x => x.rce).length).to.equal(0);
+        });
+
+        it('fetches real device-info for running devices and renders it over the synthesized info', async () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            fakeFinder.getCachedToken = () => 'secret';
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                'serial-number': 'XY020078HH5S',
+                'friendly-model-name': 'Roku 4K TV',
+                'model-number': '2910X',
+                'software-version': '15.2.4',
+                'user-device-name': ''
+            } as any);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            manager['onRceDevices']([rceDevice()] as any);
+            await manager['resolveRceDevices']();
+
+            //probed through roku-deploy's device option using the live instance url
+            expect(getDeviceInfoStub.getCall(0).args[0].device).to.eql({
+                instanceUrl: 'https://device.rce.roku.com/instance/abc',
+                rceToken: 'secret'
+            });
+
+            const device = manager.getAllDevices().find(x => x.rce);
+            //real device-info fields render
+            expect(device.deviceInfo['model-number']).to.equal('2910X');
+            expect(device.deviceInfo['friendly-model-name']).to.equal('Roku 4K TV');
+            //the management-api device name still wins for display
+            expect(device.deviceInfo['user-device-name']).to.equal('Chris');
+        });
+
+        it('health checks rce devices through the management api instead of a LAN probe', async () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            let scanCount = 0;
+            fakeFinder.scan = () => {
+                scanCount++;
+                return Promise.resolve();
+            };
+            fakeFinder.getCachedToken = () => 'secret';
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+            manager['onRceDevices']([rceDevice()] as any);
+
+            const healthy = await manager.healthCheckDevice({ serialNumber: 'XY020078HH5S' });
+
+            expect(scanCount).to.equal(1);
+            expect(healthy).to.be.true;
+            //no LAN probe was attempted (there is no ip to probe); resolveRceDevices may still probe
+            //the device through its precomputed RCE device option in the background
+            expect(getDeviceInfoStub.getCalls().some(call => 'host' in (call.args[0].device as any))).to.be.false;
+        });
+
+        it('refreshes rce devices when health checking all devices, including with no LAN devices at all', async () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            let scanCount = 0;
+            fakeFinder.scan = () => {
+                scanCount++;
+                return Promise.resolve();
+            };
+            fakeFinder.getCachedToken = () => 'secret';
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+            manager['onRceDevices']([rceDevice()] as any);
+            sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
+
+            //no configured or discovered LAN devices: the no-LAN-ips early return must still scan
+            await manager['healthCheckAllDevices'](false, false);
+            expect(scanCount).to.equal(1);
+
+            //with LAN devices present the scan rides alongside the LAN probes
+            addDevice(createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' }));
+            await manager['healthCheckAllDevices'](false, false);
+            expect(scanCount).to.equal(2);
+        });
+
+        it('resolveDevice never probes rce devices and reports their management-api state', async () => {
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([rceDevice()] as any);
+            const device = manager.getDevice('s:XY020078HH5S');
+
+            expect(await manager['resolveDevice'](device)).to.be.true;
+            //no LAN probe was attempted (there is no ip to probe); resolveRceDevices may still probe
+            //the device through its precomputed RCE device option in the background
+            expect(getDeviceInfoStub.getCalls().some(call => 'host' in (call.args[0].device as any))).to.be.false;
+        });
+
+        it('skips the device-info fetch for devices that are not running or have no esn', async () => {
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            manager['onRceDevices']([
+                rceDevice({ status: 'shutdown', running_device: null }),
+                rceDevice({ id: 99, serial_number: null })
+            ] as any);
+
+            await manager['resolveRceDevices']();
+
+            expect(getDeviceInfoStub.called).to.be.false;
+        });
+
+        it('builds a running device\'s device connection option as {instanceUrl, rceToken}', () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            fakeFinder.getCachedToken = () => 'secret';
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            manager['onRceDevices']([rceDevice()] as any);
+
+            const device = manager.getAllDevices().find(x => x.rce);
+            expect(device.device).to.eql({ instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'secret' });
+        });
+
+        it('builds a stopped device\'s device connection option as {id, rceToken}', () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            fakeFinder.getCachedToken = () => 'secret';
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            manager['onRceDevices']([rceDevice({ id: 84, status: 'shutdown', running_device: null })] as any);
+
+            const device = manager.getAllDevices().find(x => x.rce);
+            expect(device.device).to.eql({ id: 84, rceToken: 'secret' });
+        });
+
+        it('resolveRceDevices probes through the precomputed device option without calling getDeviceConfig', async () => {
+            const fakeFinder = new EventEmitter() as any;
+            fakeFinder.start = () => { };
+            fakeFinder.stop = () => { };
+            fakeFinder.dispose = () => { };
+            fakeFinder.getCachedToken = () => 'secret';
+            const getDeviceConfigSpy = sinon.stub().resolves(undefined);
+            fakeFinder.getDeviceConfig = getDeviceConfigSpy;
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+
+            manager['onRceDevices']([rceDevice()] as any);
+            await manager['resolveRceDevices']();
+
+            expect(getDeviceConfigSpy.called).to.be.false;
+            expect(getDeviceInfoStub.getCall(0).args[0].device).to.eql({
+                instanceUrl: 'https://device.rce.roku.com/instance/abc',
+                rceToken: 'secret'
+            });
+        });
+
+        describe('getDeviceByDeviceConfig', () => {
+            function createFakeFinderManager(): DeviceManager {
+                const fakeFinder = new EventEmitter() as any;
+                fakeFinder.start = () => { };
+                fakeFinder.stop = () => { };
+                fakeFinder.dispose = () => { };
+                fakeFinder.getCachedToken = () => 'secret';
+                const testManager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
+                testManager['onRceDevices']([
+                    rceDevice(),
+                    rceDevice({ id: 84, serial_number: 'ESN84', status: 'shutdown', running_device: null })
+                ] as any);
+                return testManager;
+            }
+
+            it('resolves a Roku Cloud Emulator device by esn', () => {
+                manager = createFakeFinderManager();
+
+                const device = manager.getDeviceByDeviceConfig({ esn: 'ESN84', rceToken: 'secret' });
+
+                expect(device?.rce?.id).to.equal(84);
+            });
+
+            it('resolves a Roku Cloud Emulator device by management-api id', () => {
+                manager = createFakeFinderManager();
+
+                const device = manager.getDeviceByDeviceConfig({ id: 84, rceToken: 'secret' });
+
+                expect(device?.rce?.id).to.equal(84);
+            });
+
+            it('resolves a Roku Cloud Emulator device by instanceUrl', () => {
+                manager = createFakeFinderManager();
+
+                const device = manager.getDeviceByDeviceConfig({ instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'secret' });
+
+                expect(device?.rce?.id).to.equal(83);
+            });
+
+            it('resolves a local device by host', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                addDiscoveredDevice(createMockDevice({ serialNumber: 'lan-device', ip: '192.168.1.55' }));
+
+                const device = manager.getDeviceByDeviceConfig({ host: '192.168.1.55' });
+
+                expect(device?.serialNumber).to.equal('lan-device');
+            });
+
+            it('returns undefined when nothing matches', () => {
+                manager = createFakeFinderManager();
+
+                expect(manager.getDeviceByDeviceConfig({ id: 999999 })).to.be.undefined;
+                expect(manager.getDeviceByDeviceConfig({ host: '10.0.0.1' })).to.be.undefined;
+            });
+        });
+    });
+    /* eslint-enable camelcase */
 
     describe('getDevice', () => {
         it('returns full device with deviceInfo when found', () => {
@@ -2048,182 +2429,6 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('active device persistence', () => {
-        it('setActiveDevice persists the serial number alongside the IP', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            manager['discoveredDevices'].push({ ip: '192.168.1.100', serialNumber: 'device-123' });
-
-            await manager.setActiveDevice('192.168.1.100');
-
-            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.100');
-            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
-                serialNumber: 'device-123',
-                ip: '192.168.1.100'
-            });
-        });
-
-        it('setActiveDevice persists just the IP when the serial number is unknown', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-            await manager.setActiveDevice('192.168.1.100');
-
-            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
-                serialNumber: undefined,
-                ip: '192.168.1.100'
-            });
-        });
-
-        it('clearActiveDevice clears the persisted entry', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            await manager.setActiveDevice('192.168.1.100');
-
-            await manager.clearActiveDevice();
-
-            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('');
-            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.be.undefined;
-        });
-
-        it('recovers the active device by serial number on startup', async () => {
-            //active device persisted by a previous session at an old IP
-            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
-            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
-            //the SN↔IP store knows the device now lives at a new IP on this network
-            mockGlobalStateManager.setSerialNumberForIp('test-network-hash', '192.168.1.60', 'device-123');
-
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            await manager['syncActiveDevice']();
-
-            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.60');
-            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
-                serialNumber: 'device-123',
-                ip: '192.168.1.60'
-            });
-            expect(vscodeContextManager.get('activeHost')).to.equal('192.168.1.60');
-        });
-
-        it('leaves remoteHost alone when something else has since pointed it elsewhere', async () => {
-            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
-            //e.g. a debug launch set remoteHost to a different host after the active device was chosen
-            await vscode.context.workspaceState.update('remoteHost', '192.168.1.99');
-            mockGlobalStateManager.setSerialNumberForIp('test-network-hash', '192.168.1.60', 'device-123');
-
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            await manager['syncActiveDevice']();
-
-            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.99');
-            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
-                serialNumber: 'device-123',
-                ip: '192.168.1.60'
-            });
-        });
-
-        it('re-points the active device when a network change finds it at a new IP', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
-            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
-
-            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
-            mockGlobalStateManager.setSerialNumberForIp('new-network-hash', '10.0.0.5', 'device-123');
-
-            const syncSpy = sinon.spy(manager as any, 'syncActiveDevice');
-            manager['networkChangeMonitor']['onNetworkChanged']();
-            await Promise.all(syncSpy.returnValues);
-
-            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('10.0.0.5');
-            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
-                serialNumber: 'device-123',
-                ip: '10.0.0.5'
-            });
-        });
-
-        it('follows the active device when discovery sees it at a new IP', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
-            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
-
-            const syncSpy = sinon.spy(manager as any, 'syncActiveDevice');
-            manager['setDiscoveredDevice']('192.168.1.60', 'device-123');
-            await Promise.all(syncSpy.returnValues);
-
-            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.60');
-            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
-                serialNumber: 'device-123',
-                ip: '192.168.1.60'
-            });
-        });
-
-        it('does not follow discovery updates for devices that are not the active device', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
-            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
-
-            const syncSpy = sinon.spy(manager as any, 'syncActiveDevice');
-            manager['setDiscoveredDevice']('192.168.1.60', 'device-456');
-            await Promise.all(syncSpy.returnValues);
-
-            expect(syncSpy.called).to.be.false;
-            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.50');
-        });
-
-        it('keeps the last known IP when the serial number cannot be found in the stores', async () => {
-            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
-            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
-
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            await manager['syncActiveDevice']();
-
-            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.50');
-            expect(vscodeContextManager.get('activeHost')).to.equal('192.168.1.50');
-        });
-
-        it('forgets the saved active device when the user picks a different device', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
-            await vscodeContextManager.set('activeHost', '192.168.1.50');
-            manager['discoveredDevices'].push({ ip: '192.168.1.60', serialNumber: 'device-456' });
-
-            await manager.forgetActiveDeviceIfDifferent('192.168.1.60');
-
-            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.be.undefined;
-            expect(vscodeContextManager.get('activeHost')).to.equal('');
-        });
-
-        it('keeps the saved active device when the user picks it at its known IP', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
-
-            await manager.forgetActiveDeviceIfDifferent('192.168.1.50');
-
-            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
-                serialNumber: 'device-123',
-                ip: '192.168.1.50'
-            });
-        });
-
-        it('keeps and re-syncs the saved active device when the user picks it at a new IP', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            await vscode.context.workspaceState.update(DeviceManager.ACTIVE_DEVICE_STATE_KEY, { serialNumber: 'device-123', ip: '192.168.1.50' });
-            await vscode.context.workspaceState.update('remoteHost', '192.168.1.50');
-            //the same device was discovered at a new IP, and the user picked it there
-            manager['discoveredDevices'].push({ ip: '192.168.1.60', serialNumber: 'device-123' });
-
-            await manager.forgetActiveDeviceIfDifferent('192.168.1.60');
-
-            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.eql({
-                serialNumber: 'device-123',
-                ip: '192.168.1.60'
-            });
-            expect(vscode.context.workspaceState.get('remoteHost')).to.equal('192.168.1.60');
-        });
-
-        it('does nothing when no active device is saved', async () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-            await manager.forgetActiveDeviceIfDifferent('192.168.1.60');
-
-            expect(vscode.context.workspaceState.get(DeviceManager.ACTIVE_DEVICE_STATE_KEY)).to.be.undefined;
-        });
-    });
 
     describe('configured devices', () => {
         describe('merging configured and discovered', () => {
@@ -2301,6 +2506,19 @@ describe('DeviceManager', () => {
                 const device = manager.getAllDevices()[0];
                 expect(device.deviceInfo['user-device-name']).to.equal('Discovered Name');
                 expect(device.configuredName).to.equal('My Custom Name');
+            });
+
+            it('builds a roku-deploy-compatible {host} device connection option', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                addDiscoveredDevice(createMockDevice({
+                    serialNumber: 'device-456',
+                    ip: '192.168.1.77',
+                    deviceState: 'online'
+                }));
+
+                const device = manager.getAllDevices()[0];
+                expect(device.device).to.eql({ host: '192.168.1.77' });
             });
         });
 
@@ -3182,7 +3400,7 @@ describe('DeviceManager', () => {
                 expect(manager.getAllDevices()[0].configuredPassword).to.equal('secret123');
             });
 
-            it('transfers lastUsedDeviceIp when device changes IP', () => {
+            it('moves an ip-based lastUsedDeviceKey to the serial key when the device changes IP', () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                 // Device exists at old IP and is the last used device
@@ -3193,13 +3411,13 @@ describe('DeviceManager', () => {
                     isDiscovered: true
                 });
                 addDevice(oldDevice);
-                manager.setLastUsedDeviceIp('192.168.1.100');
+                manager.setLastUsedDeviceKey('i:192.168.1.100');
 
                 // SSDP discovers same serial at new IP
                 manager['setDiscoveredDevice']('192.168.1.200', 'ABC123');
 
-                // lastUsedDeviceIp should transfer to new IP
-                expect(manager.getLastUsedDeviceIp()).to.equal('192.168.1.200');
+                // the last-used key should now be the device's stable serial key
+                expect(manager.getLastUsedDeviceKey()).to.equal('s:ABC123');
             });
         });
 
