@@ -228,7 +228,7 @@ export class DeviceManager {
     private discoveredDevices: DiscoveredDeviceEntry[] = [];
     private rceDevices: RceDeviceEntry[] = [];
     private scanNeeded = false;
-    private lastUsedDeviceIp: string | undefined = undefined;
+    private lastUsedDeviceKey: string | undefined = undefined;
     private networkId: string;
 
     private emitter = new EventEmitter();
@@ -685,14 +685,11 @@ export class DeviceManager {
         // Clear discovered devices (ephemeral)
         this.discoveredDevices = [];
 
-        // Only clear lastUsedDeviceIp if it belonged to a discovered-only device
-        if (this.lastUsedDeviceIp) {
-            const stillExists = this.configuredDevices.some(
-                d => d.resolvedIp === this.lastUsedDeviceIp || d.host === this.lastUsedDeviceIp
-            );
-            if (!stillExists) {
-                this.lastUsedDeviceIp = undefined;
-            }
+        // Only clear lastUsedDeviceKey if it belonged to a discovered-only device. With the
+        // discovered list already cleared, a key that still resolves points at a configured or
+        // cloud emulator device, which survives the clear.
+        if (this.lastUsedDeviceKey && !this.getDevice(this.lastUsedDeviceKey)) {
+            this.lastUsedDeviceKey = undefined;
         }
 
         //clear the cache for the current list of devices
@@ -776,13 +773,18 @@ export class DeviceManager {
         }
     }
 
-    public getLastUsedDeviceIp(): string | undefined {
-
-        return this.lastUsedDeviceIp;
+    /**
+     * The DeviceManager key (`s:{serial}`, `i:{ip}`, or `rce:{id}`) of the device most recently
+     * picked in the device quick pick. Resolve it back to a device with `getDevice(key)`, which
+     * also absorbs a cloud emulator key drifting from `rce:{id}` to `s:{esn}` once the booted
+     * instance reports its esn.
+     */
+    public getLastUsedDeviceKey(): string | undefined {
+        return this.lastUsedDeviceKey;
     }
 
-    public setLastUsedDeviceIp(value: string | undefined) {
-        this.lastUsedDeviceIp = value;
+    public setLastUsedDeviceKey(value: string | undefined) {
+        this.lastUsedDeviceKey = value;
     }
 
     public dispose() {
@@ -1248,9 +1250,10 @@ export class DeviceManager {
             const oldIdx = this.discoveredDevices.findIndex(d => d.ip !== ip && d.serialNumber === serialNumber);
             if (oldIdx >= 0) {
                 const oldIp = this.discoveredDevices[oldIdx].ip;
-                // Transfer lastUsedDeviceIp to new IP if it was pointing to old IP
-                if (this.lastUsedDeviceIp === oldIp) {
-                    this.lastUsedDeviceIp = ip;
+                // An ip-based last-used key pointing at the old IP moves to the device's stable
+                // serial key (we only get here when the serial is known)
+                if (this.lastUsedDeviceKey === `i:${oldIp}`) {
+                    this.lastUsedDeviceKey = `s:${serialNumber}`;
                 }
                 this.discoveredDevices.splice(oldIdx, 1);
             }
@@ -1286,7 +1289,7 @@ export class DeviceManager {
 
     /**
      * Remove a discovered device by IP. Clears from discoveredDevices array,
-     * clears lastUsedDeviceIp if it matches, and removes from lastSeenDevices cache.
+     * clears lastUsedDeviceKey if it matches, and removes from lastSeenDevices cache.
      */
     private removeDiscoveredDevice(ip: string): void {
         // Find the device first to get its serial number
@@ -1298,9 +1301,12 @@ export class DeviceManager {
         const device = this.discoveredDevices[idx];
         this.discoveredDevices.splice(idx, 1);
 
-        // Clear lastUsedDeviceIp if it matches
-        if (this.lastUsedDeviceIp === ip) {
-            this.lastUsedDeviceIp = undefined;
+        // Clear lastUsedDeviceKey if it points at this device (by ip key or serial key)
+        if (
+            this.lastUsedDeviceKey === `i:${ip}` ||
+            (device.serialNumber && this.lastUsedDeviceKey === `s:${device.serialNumber}`)
+        ) {
+            this.lastUsedDeviceKey = undefined;
         }
 
         // Remove from lastSeenDevices if we have a serial

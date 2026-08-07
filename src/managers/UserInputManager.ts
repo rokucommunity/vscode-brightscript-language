@@ -275,6 +275,7 @@ export class UserInputManager {
                             //isn't running yet is allowed through so the caller (DebugConfigurationProvider)
                             //can show a more specific "start it from the Cloud Emulator panel" message
                             //instead of the generic "not responding" one
+                            this.deviceManager.setLastUsedDeviceKey(device.key);
                             deferred.resolve({
                                 ip: device.ip,
                                 deviceInfo: device.deviceInfo,
@@ -290,7 +291,7 @@ export class UserInputManager {
                                 await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
                                 return;
                             }
-                            this.deviceManager.setLastUsedDeviceIp(device.ip);
+                            this.deviceManager.setLastUsedDeviceKey(device.key);
                             deferred.resolve({ ip: device.ip, deviceInfo: device.deviceInfo, device: device.device });
                         }
                     }
@@ -308,7 +309,7 @@ export class UserInputManager {
                     await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${typedValue}. Check the IP and confirm developer mode is enabled.`);
                     return;
                 }
-                this.deviceManager.setLastUsedDeviceIp(probed.ip);
+                this.deviceManager.setLastUsedDeviceKey(probed.key);
                 deferred.resolve({ ip: probed.ip, deviceInfo: probed.deviceInfo, device: probed.device });
                 quickPick.dispose();
             }
@@ -353,7 +354,7 @@ export class UserInputManager {
             const filters = loadDeviceFilters(DEVICE_QUICK_PICK_FILTERS_SECTION);
             const items = this.createHostQuickPickList(
                 applyDeviceFilters(this.deviceManager.getAllDevices(), filters),
-                this.deviceManager.getLastUsedDeviceIp(),
+                this.deviceManager.getLastUsedDeviceKey(),
                 itemCache
             );
             quickPick.items = items;
@@ -465,17 +466,19 @@ export class UserInputManager {
      */
     private createHostQuickPickList(
         devices: RokuDevice[],
-        lastUsedDeviceIp: string | undefined,
+        lastUsedDeviceKey: string | undefined,
         cache = new Map<string, QuickPickHostItem>()
     ) {
         //the collection of items we will eventually return
         let items: QuickPickHostItem[] = [];
 
-        //find the lastUsedDevice from the devices list
-        const lastUsedDevice = lastUsedDeviceIp ? devices.find(x => x.ip === lastUsedDeviceIp) : undefined;
-        //remove the lastUsedDevice from the devices list so we can more easily reason with the rest
-        //of the list. Only when one exists: a blanket `x.ip !== lastUsedDeviceIp` comparison with no
-        //last-used ip would drop every cloud device, since those have no ip at all
+        //find the lastUsedDevice from the devices list. Resolve the stored key through the
+        //DeviceManager first (rather than comparing keys directly) so a cloud emulator key that
+        //drifted from `rce:{id}` to `s:{esn}` after boot still matches its device; fall back to
+        //the stored key itself when the DeviceManager no longer resolves it
+        const resolvedLastUsedKey = lastUsedDeviceKey ? this.deviceManager.getDevice(lastUsedDeviceKey)?.key ?? lastUsedDeviceKey : undefined;
+        const lastUsedDevice = resolvedLastUsedKey ? devices.find(x => x.key === resolvedLastUsedKey) : undefined;
+        //remove the lastUsedDevice from the devices list so we can more easily reason with the rest of the list
         if (lastUsedDevice) {
             devices = devices.filter(x => x !== lastUsedDevice);
         }

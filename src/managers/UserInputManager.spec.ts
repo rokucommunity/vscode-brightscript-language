@@ -157,7 +157,7 @@ describe('UserInputManager', () => {
 
         it('moves active device to the top', () => {
             expect(
-                userInputManager['createHostQuickPickList']([devices[0], devices[1], devices[2]], devices[1].ip).map(x => x.label)
+                userInputManager['createHostQuickPickList']([devices[0], devices[1], devices[2]], devices[1].key).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[1]),
@@ -187,21 +187,39 @@ describe('UserInputManager', () => {
             }
         } as any;
 
-        it('keeps cloud devices (which have no ip) in the list when no last-used ip exists', () => {
+        it('keeps cloud devices (which have no ip) in the list when no last-used device exists', () => {
             const labels = userInputManager['createHostQuickPickList']([devices[0], cloudDevice], undefined).map(x => x.label);
             expect(labels.some(itemLabel => itemLabel.includes('Chris'))).to.be.true;
             expect(labels).to.include(label(devices[0]));
         });
 
         it('keeps cloud devices in the list alongside a last-used LAN device', () => {
-            const labels = userInputManager['createHostQuickPickList']([devices[0], devices[1], cloudDevice], devices[1].ip).map(x => x.label);
+            const labels = userInputManager['createHostQuickPickList']([devices[0], devices[1], cloudDevice], devices[1].key).map(x => x.label);
             expect(labels.filter(itemLabel => itemLabel.includes('Chris'))).to.have.length(1);
             expect(labels[0]).to.equal('last used');
         });
 
+        it('moves a last-used cloud device to the top', () => {
+            const labels = userInputManager['createHostQuickPickList']([devices[0], cloudDevice], cloudDevice.key).map(x => x.label);
+            expect(labels[0]).to.equal('last used');
+            expect(labels[1]).to.include('Chris');
+            expect(labels[2]).to.equal('other devices');
+        });
+
+        it('matches a last-used cloud device whose key drifted from rce id to esn after boot', () => {
+            //the picker stored `rce:{id}` while the instance was booting; once the esn arrived the
+            //device's key became `s:{esn}`, and the DeviceManager resolves the old key to the same device
+            sinon.stub(deviceManager, 'getDevice').callsFake((keyOrLookup: any) => {
+                return keyOrLookup === 'rce:83' ? cloudDevice : undefined;
+            });
+            const labels = userInputManager['createHostQuickPickList']([devices[0], cloudDevice], 'rce:83').map(x => x.label);
+            expect(labels[0]).to.equal('last used');
+            expect(labels[1]).to.include('Chris');
+        });
+
         it('includes action items when "last used" and "other devices" separators are both present', () => {
             expect(
-                userInputManager['createHostQuickPickList'](devices, devices[1].ip).map(x => x.label)
+                userInputManager['createHostQuickPickList'](devices, devices[1].key).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[1]),
@@ -230,7 +248,7 @@ describe('UserInputManager', () => {
 
         it('includes action items when only "last used" separator is present', () => {
             expect(
-                userInputManager['createHostQuickPickList']([devices[0]], devices[0].ip).map(x => x.label)
+                userInputManager['createHostQuickPickList']([devices[0]], devices[0].key).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[0]),

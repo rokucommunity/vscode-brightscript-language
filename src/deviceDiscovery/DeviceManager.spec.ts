@@ -1156,7 +1156,7 @@ describe('DeviceManager', () => {
     });
 
     describe('removeDiscoveredDevice', () => {
-        it('clears lastUsedDeviceIp when removed device matches', () => {
+        it('clears lastUsedDeviceKey when removed device matches by ip key', () => {
             const clock = sinon.useFakeTimers();
             try {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
@@ -1164,19 +1164,37 @@ describe('DeviceManager', () => {
 
                 const device = createMockDevice();
                 addDevice(device);
-                manager.setLastUsedDeviceIp(device.ip);
+                manager.setLastUsedDeviceKey(`i:${device.ip}`);
 
-                expect(manager.getLastUsedDeviceIp()).to.equal(device.ip);
+                expect(manager.getLastUsedDeviceKey()).to.equal(`i:${device.ip}`);
 
                 manager['removeDiscoveredDevice'](device.ip);
 
-                expect(manager.getLastUsedDeviceIp()).to.be.undefined;
+                expect(manager.getLastUsedDeviceKey()).to.be.undefined;
             } finally {
                 clock.restore();
             }
         });
 
-        it('does not clear lastUsedDeviceIp when different device is removed', () => {
+        it('clears lastUsedDeviceKey when removed device matches by serial key', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                (vscode.window as any).state = { focused: true };
+
+                const device = createMockDevice({ serialNumber: 'ABC123', ip: '192.168.1.101' });
+                addDevice(device);
+                manager.setLastUsedDeviceKey('s:ABC123');
+
+                manager['removeDiscoveredDevice'](device.ip);
+
+                expect(manager.getLastUsedDeviceKey()).to.be.undefined;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('does not clear lastUsedDeviceKey when different device is removed', () => {
             const clock = sinon.useFakeTimers();
             try {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
@@ -1186,11 +1204,11 @@ describe('DeviceManager', () => {
                 const device2 = createMockDevice({ serialNumber: 'device-2', ip: '192.168.1.102' });
                 addDevice(device1);
                 addDevice(device2);
-                manager.setLastUsedDeviceIp(device1.ip);
+                manager.setLastUsedDeviceKey(`i:${device1.ip}`);
 
                 manager['removeDiscoveredDevice'](device2.ip);
 
-                expect(manager.getLastUsedDeviceIp()).to.equal(device1.ip);
+                expect(manager.getLastUsedDeviceKey()).to.equal(`i:${device1.ip}`);
             } finally {
                 clock.restore();
             }
@@ -3382,7 +3400,7 @@ describe('DeviceManager', () => {
                 expect(manager.getAllDevices()[0].configuredPassword).to.equal('secret123');
             });
 
-            it('transfers lastUsedDeviceIp when device changes IP', () => {
+            it('moves an ip-based lastUsedDeviceKey to the serial key when the device changes IP', () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                 // Device exists at old IP and is the last used device
@@ -3393,13 +3411,13 @@ describe('DeviceManager', () => {
                     isDiscovered: true
                 });
                 addDevice(oldDevice);
-                manager.setLastUsedDeviceIp('192.168.1.100');
+                manager.setLastUsedDeviceKey('i:192.168.1.100');
 
                 // SSDP discovers same serial at new IP
                 manager['setDiscoveredDevice']('192.168.1.200', 'ABC123');
 
-                // lastUsedDeviceIp should transfer to new IP
-                expect(manager.getLastUsedDeviceIp()).to.equal('192.168.1.200');
+                // the last-used key should now be the device's stable serial key
+                expect(manager.getLastUsedDeviceKey()).to.equal('s:ABC123');
             });
         });
 
