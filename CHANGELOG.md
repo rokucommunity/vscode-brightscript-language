@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.68.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.3...v2.68.0) - 2026-08-07
+### Changed
+ - Experimental Roku Cloud Emulator support ([#861](https://github.com/rokucommunity/vscode-brightscript-language/pull/861))
+ - Migrate to roku-deploy v4 ([#860](https://github.com/rokucommunity/vscode-brightscript-language/pull/860))
+ - upgrade to [roku-debug@0.24.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0240---2026-08-07). Notable changes since 0.23.16:
+     - Roku Cloud Emulator support ([#399](https://github.com/rokucommunity/roku-debug/pull/399))
+     - Migrate to roku-deploy v4 ([#398](https://github.com/rokucommunity/roku-debug/pull/398))
+     - Failed to apply breakpoints in component libraries ([#406](https://github.com/rokucommunity/roku-debug/pull/406))
+     - Fix `libary` statement complib postfixes ([#323](https://github.com/rokucommunity/roku-debug/pull/323))
+     - Better ECP limited messaging ([#397](https://github.com/rokucommunity/roku-debug/pull/397))
+     - Make perfettoManager action calls null-safe ([#390](https://github.com/rokucommunity/roku-debug/pull/390))
+ - upgrade to [roku-deploy@4.0.0-alpha.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#400-alpha3---2026-08-07). Notable changes since 3.17.7:
+     - Roku Cloud Emulator support ([#331](https://github.com/rokucommunity/roku-deploy/pull/331))
+     - Unified device option ([#323](https://github.com/rokucommunity/roku-deploy/pull/323))
+     - Enhanced logging levels ([#168](https://github.com/rokucommunity/roku-deploy/pull/168))
+
+
+
 ## [2.67.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.2...v2.67.3) - 2026-07-13
 ### Added
  - Indicator for the active device in the Devices panel ([#856](https://github.com/rokucommunity/vscode-brightscript-language/pull/856))
