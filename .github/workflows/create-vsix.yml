@@ -143,19 +143,19 @@ jobs:
             body += '### 📦 [Download the .vsix](' + prod.url + ')\n';
             body += 'See the [install instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html) if you need them. This replaces your marketplace version of the extension until you reinstall it.\n\n';
 
+            body += '<sub>_Prefer to keep the marketplace version installed? There\'s also a [side-by-side build](' + temp.url + ') that installs as a separate extension. Be sure to disable the marketplace version while testing it, otherwise the two will conflict._</sub>\n\n';
+
             //include the per-project sources so testers can see exactly what went into this build
             try {
               const buildInfo = JSON.parse(require('fs').readFileSync('.vsix-building/build-info.json', 'utf8'));
-              body += 'Built from:\n';
+              body += '| package | source |\n';
+              body += '| :--- | :--- |\n';
               for (const project of buildInfo) {
-                body += '- ' + project.name + ': ' + project.source + '\n';
+                body += '| `' + project.name + '` | ' + project.source + ' |\n';
               }
-              body += '\n';
             } catch (e) {
               console.log('Could not read build-info.json:', e.message);
             }
-
-            body += '<sub>_Prefer to keep the marketplace version installed? There\'s also a [side-by-side build](' + temp.url + ') that installs as a separate extension. Be sure to disable the marketplace version while testing it, otherwise the two will conflict._</sub>';
 
             await github.rest.issues.createComment({
               owner: '${{ steps.info.outputs.prOwner }}',
