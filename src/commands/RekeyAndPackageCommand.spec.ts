@@ -4,6 +4,7 @@ import { createSandbox } from 'sinon';
 import { RekeyAndPackageCommand } from './RekeyAndPackageCommand';
 import { rokuDeploy } from 'roku-deploy';
 import { expect } from 'chai';
+import { util } from '../util';
 
 const sinon = createSandbox();
 
@@ -102,13 +103,28 @@ describe('RekeyAndPackageCommand', () => {
         });
     });
 
-    describe('describeDevice', () => {
-        it('names devices by whichever address field they carry', () => {
-            expect(command['describeDevice']({ host: '1.1.1.1' })).to.equal('1.1.1.1');
-            expect(command['describeDevice']({ instanceUrl: 'https://rce.example.com', rceToken: 'token' })).to.equal('https://rce.example.com');
-            expect(command['describeDevice']({ id: 83, rceToken: 'token' })).to.equal('83');
-            expect(command['describeDevice']({ esn: 'RCE123', rceToken: 'token' })).to.equal('RCE123');
-            expect(command['describeDevice'](undefined)).to.equal('unknown');
+    describe('packageFromLaunchConfig', () => {
+        function selectLaunchConfig(launchConfig: any) {
+            sinon.stub(util, 'getConfiguration').returns({ get: () => [launchConfig] } as any);
+            sinon.stub(vscode.window, 'showQuickPick').resolves(launchConfig.name);
+            return command['packageFromLaunchConfig']({});
+        }
+
+        it('handles a launch config with no host or password (a cloud emulator config)', async () => {
+            const options = await selectLaunchConfig({ name: 'cloud', rootDir: '/proj', device: { id: 83 } });
+            expect(options.host).to.be.undefined;
+            expect(options.password).to.be.undefined;
+        });
+
+        it('prefills the host from a local device config when there is no top-level host', async () => {
+            const options = await selectLaunchConfig({ name: 'lan', rootDir: '/proj', device: { host: '1.1.1.1' } });
+            expect(options.host).to.equal('1.1.1.1');
+        });
+
+        it('ignores placeholder hosts', async () => {
+            const options = await selectLaunchConfig({ name: 'prompt', rootDir: '/proj', host: '${promptForHost}', password: '${promptForPassword}' });
+            expect(options.host).to.be.undefined;
+            expect(options.password).to.be.undefined;
         });
     });
 });
