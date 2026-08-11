@@ -57,7 +57,7 @@ async function main() {
         if (!project.packagePath) {
             try {
                 const version = fsExtra.readJsonSync(`${tempDir}/vscode-brightscript-language/node_modules/${project.name}/package.json`).version;
-                project.source = `[${project.name}@${version}](${baseUrl}/${project.name}/releases/tag/v${version})`;
+                project.source = `[v${version}](${baseUrl}/${project.name}/releases/tag/v${version})`;
             } catch (e) {
                 log(`Warning: could not determine the installed npm version of ${project.name}`);
             }
@@ -65,7 +65,7 @@ async function main() {
     }
 
     //write a summary of what was built (the workflow includes this in the PR comment)
-    const buildInfo = projects.map(x => ({ name: x.name, source: x.source }));
+    const buildInfo = projects.map(x => ({ name: x.name, source: x.source, sha: x.sha }));
     fsExtra.writeJsonSync(`${tempDir}/build-info.json`, buildInfo, { spaces: 4 });
     log('Build summary:\n' + buildInfo.map(x => `  ${x.name}: ${x.source}`).join('\n'));
 
@@ -91,7 +91,9 @@ async function processProject(project: Project, branch: string, forkOwner: strin
         ref = {
             cloneUrl: cloneUrl,
             ref: 'master',
-            source: masterSha ? commitLink(project, 'master', masterSha) : `${orgName} branch 'master'`
+            source: branchLink(project, 'master'),
+            sha: masterSha,
+            commitUrl: `${cloneUrl}/commit/${masterSha}`
         };
     }
     if (!ref) {
@@ -122,6 +124,9 @@ async function processProject(project: Project, branch: string, forkOwner: strin
 
     project.packagePath = `file:/${tempDir}/${project.name}/${project.name}-${buildVersion}.tgz`;
     project.source = ref.source;
+    if (ref.sha) {
+        project.sha = `[${ref.sha.slice(0, 7)}](${ref.commitUrl})`;
+    }
     log(`${project.name}: done`);
 }
 
@@ -138,19 +143,37 @@ async function resolveRef(project: Project, branch: string, forkOwner: string): 
         //1. the org has this branch and it's attached to an open PR
         let pr = await findOpenPr(project.name, orgName, branch);
         if (pr) {
-            return { cloneUrl: orgCloneUrl, ref: branch, source: prLink(pr) };
+            return {
+                cloneUrl: orgCloneUrl,
+                ref: branch,
+                source: prLink(pr),
+                sha: pr.head.sha,
+                commitUrl: `${pr.head.repo.html_url}/commit/${pr.head.sha}`
+            };
         }
         //2. the fork owner has this branch attached to an open PR on this project
         if (forkOwner) {
             pr = await findOpenPr(project.name, forkOwner, branch);
             if (pr) {
-                return { cloneUrl: pr.head.repo.clone_url, ref: branch, source: prLink(pr) };
+                return {
+                    cloneUrl: pr.head.repo.clone_url,
+                    ref: branch,
+                    source: prLink(pr),
+                    sha: pr.head.sha,
+                    commitUrl: `${pr.head.repo.html_url}/commit/${pr.head.sha}`
+                };
             }
         }
         //3. the org has this branch (no PR)
         const sha = getBranchSha(orgCloneUrl, branch);
         if (sha) {
-            return { cloneUrl: orgCloneUrl, ref: branch, source: commitLink(project, branch, sha) };
+            return {
+                cloneUrl: orgCloneUrl,
+                ref: branch,
+                source: branchLink(project, branch),
+                sha: sha,
+                commitUrl: `${orgCloneUrl}/commit/${sha}`
+            };
         }
     }
     //no matching branch anywhere
@@ -158,10 +181,10 @@ async function resolveRef(project: Project, branch: string, forkOwner: string): 
 }
 
 /**
- * Render a PR as a markdown link, e.g. `[rokucommunity/roku-deploy/pull/123](https://github.com/rokucommunity/roku-deploy/pull/123)`
+ * Render a PR as a markdown link, e.g. `pr: [rokucommunity/roku-deploy#123](https://github.com/rokucommunity/roku-deploy/pull/123)`
  */
-function prLink(pr: { html_url: string }) {
-    return `[${pr.html_url.replace(/^https:\/\/github\.com\//, '')}](${pr.html_url})`;
+function prLink(pr: { html_url: string; number: number; base: { repo: { full_name: string } } }) {
+    return `pr: [${pr.base.repo.full_name}#${pr.number}](${pr.html_url})`;
 }
 
 /**
@@ -194,6 +217,10 @@ interface Project {
     dependencies: string[];
     packagePath?: string;
     source?: string;
+    /**
+     * Markdown link to the exact commit that was built (only set for locally-built projects)
+     */
+    sha?: string;
     processed: boolean;
 }
 
@@ -201,6 +228,8 @@ interface Ref {
     cloneUrl: string;
     ref: string;
     source: string;
+    sha?: string;
+    commitUrl?: string;
 }
 
 /**
@@ -212,11 +241,11 @@ function getBranchSha(cloneUrl: string, branch: string) {
 }
 
 /**
- * Render a branch build as a markdown link to its tip commit,
- * e.g. `[rokucommunity/roku-deploy/commit/a1b2c3d](https://github.com/rokucommunity/roku-deploy/commit/a1b2c3d...) (branch 'alpha')`
+ * Render a branch build as a markdown link to the branch,
+ * e.g. `branch: [alpha](https://github.com/rokucommunity/roku-deploy/tree/alpha)`
  */
-function commitLink(project: Project, branch: string, sha: string) {
-    return `[${orgName}/${project.name}/commit/${sha.slice(0, 7)}](${baseUrl}/${project.name}/commit/${sha}) (branch '${branch}')`;
+function branchLink(project: Project, branch: string) {
+    return `branch: [${branch}](${baseUrl}/${project.name}/tree/${branch})`;
 }
 
 function clone(project: Project, ref: Ref) {

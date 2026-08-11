@@ -148,11 +148,13 @@ jobs:
             //include the per-project sources so testers can see exactly what went into this build
             try {
               const buildInfo = JSON.parse(require('fs').readFileSync('.vsix-building/build-info.json', 'utf8'));
-              body += '| package | source |\n';
-              body += '| :--- | :--- |\n';
+              body += '<details><summary>Built from</summary>\n\n';
+              body += '| package | source | sha |\n';
+              body += '| :--- | :--- | :--- |\n';
               for (const project of buildInfo) {
-                body += '| `' + project.name + '` | ' + project.source + ' |\n';
+                body += '| `' + project.name + '` | ' + project.source + ' | ' + (project.sha ?? '') + ' |\n';
               }
+              body += '\n</details>';
             } catch (e) {
               console.log('Could not read build-info.json:', e.message);
             }
