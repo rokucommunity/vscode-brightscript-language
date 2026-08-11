@@ -684,6 +684,20 @@
         margin-bottom: 10px;
     }
 
+    .closedBetaBadge {
+        display: inline-block;
+        background-color: var(--vscode-badge-background);
+        color: var(--vscode-badge-foreground);
+        border-radius: 2px;
+        padding: 1px 6px;
+        margin-right: 6px;
+        font-size: 0.85em;
+        font-weight: bold;
+        text-transform: uppercase;
+        vertical-align: baseline;
+        white-space: nowrap;
+    }
+
     .errorBanner {
         color: var(--vscode-debugConsole-errorForeground);
         margin-bottom: 10px;
@@ -883,7 +897,7 @@
     <Loader />
 {:else}
     <div id="container">
-        <div class="experimentalBanner">The Roku Cloud Emulator integration is an experimental feature and may change or break as Roku evolves the service.</div>
+        <div class="experimentalBanner"><span class="closedBetaBadge">Closed Beta</span>The Roku Cloud Emulator integration is an experimental feature and may change or break as Roku evolves the service.</div>
         {#if accounts.length === 0 && !hasToken}
             <div class="getting-started">
                 <p>No Cloud Emulator accounts are configured yet.</p>
