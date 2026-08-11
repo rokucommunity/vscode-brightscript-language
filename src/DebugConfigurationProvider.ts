@@ -516,26 +516,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Describe a device config (a local `{host}` config, or a Roku Cloud Emulator config addressed
-     * by esn/id/instanceUrl) by whichever address field it has, for error messages.
+     * Describe a device config by whichever address field it has, for error messages.
      * `processHostParameter` always normalizes `config.device`, so once it has run this is the
      * authoritative way to name the target device - unlike the top-level `host`, which non-local
      * sessions leave unset or unresolved.
      */
     private describeDevice(device: DeviceConfig | undefined): string {
-        if (device && isLocalDeviceConfig(device)) {
-            return device.host;
-        }
-        if (device && 'instanceUrl' in device) {
-            return device.instanceUrl;
-        }
-        if (device && 'id' in device) {
-            return String(device.id);
-        }
-        if (device && 'esn' in device) {
-            return device.esn;
-        }
-        return 'the target device';
+        return util.describeDevice(device, 'the target device');
     }
 
     /**

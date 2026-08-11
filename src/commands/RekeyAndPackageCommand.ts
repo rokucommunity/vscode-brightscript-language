@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
-import { rokuDeploy } from 'roku-deploy';
-import type { FileEntry } from 'roku-deploy';
+import { rokuDeploy, isLocalDeviceConfig } from 'roku-deploy';
+import type { DeviceConfig, FileEntry } from 'roku-deploy';
+import type { HostWithDeviceInfo } from '../deviceDiscovery/DeviceManager';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
 import * as path from 'path';
 import { readFileSync } from 'fs-extra';
@@ -60,7 +61,7 @@ export class RekeyAndPackageCommand {
         }
 
         await rokuDeploy.rekeyDevice({
-            device: { host: rekeyConfig.host },
+            device: rekeyConfig.device ?? { host: rekeyConfig.host },
             password: rekeyConfig.password,
             signingPassword: rekeyConfig.signingPassword,
             pkg: rekeyConfig.rekeySignedPackage
@@ -105,7 +106,9 @@ export class RekeyAndPackageCommand {
     }
 
     private async getRekeyManualEntries(rekeyConfig: RekeyConfig, defaultValues) {
-        rekeyConfig.host = (await this.userInputManager.promptForHost({ defaultValue: rekeyConfig?.host ?? defaultValues?.host }))?.host;
+        const pickedDevice = await this.userInputManager.promptForHost({ defaultValue: rekeyConfig?.host ?? defaultValues?.host });
+        rekeyConfig.host = pickedDevice?.host;
+        rekeyConfig.device = this.resolveDeviceConfig(pickedDevice);
 
         rekeyConfig.password = await vscode.window.showInputBox({
             title: 'Enter password for the Roku device you want to rekey',
@@ -128,7 +131,7 @@ export class RekeyAndPackageCommand {
         const selection = await vscode.window.showInformationMessage('Rekey info:', {
             modal: true,
             detail: [
-                `host: ${rekeyConfig.host}`,
+                `device: ${util.describeDevice(rekeyConfig.device ?? { host: rekeyConfig.host })}`,
                 `password: ${rekeyConfig.password}`,
                 `signing password: ${rekeyConfig.signingPassword}`,
                 `package: ${rekeyConfig.rekeySignedPackage}`
@@ -139,6 +142,23 @@ export class RekeyAndPackageCommand {
         } else if (selection === 'I want to change something') {
             return this.getRekeyManualEntries(rekeyConfig, rekeyConfig);
         }
+    }
+
+    /**
+     * Convert a host-picker result into the roku-deploy device config the rekey/package flows
+     * should target. A Roku Cloud Emulator pick has no LAN host, so its precomputed device option
+     * (instanceUrl/id plus rceToken) is the only way to address it. Rekeying and packaging also
+     * require the emulator to actually be running, so a stopped pick is rejected here with an
+     * actionable message instead of failing later with a generic roku-deploy error.
+     */
+    private resolveDeviceConfig(pickedDevice: HostWithDeviceInfo | undefined): DeviceConfig | undefined {
+        if (!pickedDevice) {
+            return undefined;
+        }
+        if (pickedDevice.rce && pickedDevice.rce.status !== 'running') {
+            throw new Error('The selected cloud emulator device is not running. Start it from the Cloud Emulator panel first.');
+        }
+        return pickedDevice.device ?? (pickedDevice.host ? { host: pickedDevice.host } : undefined);
     }
 
     private async getSignedPackage(rekeySignedPackage: string) {
@@ -240,7 +260,9 @@ export class RekeyAndPackageCommand {
                     break;
             }
 
-            rokuDeployOptions.host = (await this.userInputManager.promptForHost({ defaultValue: rokuDeployOptions?.host ?? '' }))?.host;
+            const pickedDevice = await this.userInputManager.promptForHost({ defaultValue: rokuDeployOptions?.host ?? '' });
+            rokuDeployOptions.host = pickedDevice?.host;
+            rokuDeployOptions.device = this.resolveDeviceConfig(pickedDevice);
 
             rokuDeployOptions.password = await vscode.window.showInputBox({
                 title: 'Enter password for the Roku device',
@@ -280,7 +302,7 @@ export class RekeyAndPackageCommand {
             const pkgPath = zipPath.replace(/\.zip$/i, '.pkg');
 
             let details = [
-                `host: ${rokuDeployOptions.host}`,
+                `device: ${util.describeDevice(rokuDeployOptions.device ?? { host: rokuDeployOptions.host })}`,
                 `password: ${rokuDeployOptions.password}`,
                 `signing password: ${rokuDeployOptions.signingPassword}`,
                 `outDir: ${rokuDeployOptions.outDir}`,
@@ -301,7 +323,7 @@ export class RekeyAndPackageCommand {
             }, confirmText, changeText);
 
             if (response === confirmText) {
-                const device = { host: rokuDeployOptions.host };
+                const device = rokuDeployOptions.device ?? { host: rokuDeployOptions.host };
 
                 if (rekeyFlag) {
                     //rekey device
@@ -402,11 +424,17 @@ export class RekeyAndPackageCommand {
         }
         rokuDeployOptions.packageConfig = 'launch.json: ' + selectedConfig.rootDir;
 
-        if (!selectedConfig.host.includes('${')) {
+        //a launch config may address its device through `device` instead of a top-level `host`
+        //(a Roku Cloud Emulator config has no host at all), so host and password can be absent
+        //entirely. Values migrate into `device` through the host picker below; a usable host (or a
+        //local device's host) only prefills that picker.
+        if (selectedConfig.host && !selectedConfig.host.includes('${')) {
             rokuDeployOptions.host = selectedConfig.host;
+        } else if (selectedConfig.device && isLocalDeviceConfig(selectedConfig.device) && !selectedConfig.device.host?.includes('${')) {
+            rokuDeployOptions.host = selectedConfig.device.host;
         }
 
-        if (!selectedConfig.password.includes('${')) {
+        if (selectedConfig.password && !selectedConfig.password.includes('${')) {
             rokuDeployOptions.password = selectedConfig.password;
         }
 
@@ -462,8 +490,17 @@ export class RekeyAndPackageCommand {
 interface RekeyConfig {
     signingPassword: string;
     rekeySignedPackage: string;
-    host: string;
+    /**
+     * The raw host loaded from a rekey json file, only used to prefill the host picker. The picked
+     * device is migrated into `device`, which is what the rekey call targets.
+     */
+    host?: string;
     password: string;
+    /**
+     * The roku-deploy device config resolved from the host picker. This is the only way to address
+     * a Roku Cloud Emulator device, which has no LAN host.
+     */
+    device?: DeviceConfig;
 }
 
 interface RokuDeployOptions {
@@ -471,7 +508,16 @@ interface RokuDeployOptions {
     outDir: string;
     outFile: string;
     files?: FileEntry[];
-    host: string;
+    /**
+     * The raw host loaded from a launch config or rokudeploy.json, only used to prefill the host
+     * picker. The picked device is migrated into `device`, which is what the deploy calls target.
+     */
+    host?: string;
+    /**
+     * The roku-deploy device config resolved from the host picker. This is the only way to address
+     * a Roku Cloud Emulator device, which has no LAN host.
+     */
+    device?: DeviceConfig;
     password: string;
     signingPassword: string;
     rekeySignedPackage: string;
