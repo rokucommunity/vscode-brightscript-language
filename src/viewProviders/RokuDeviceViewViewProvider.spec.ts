@@ -148,6 +148,20 @@ describe('RokuDeviceViewViewProvider', () => {
         });
     }
 
+    /**
+     * Poll until the condition holds, settling as soon as it does. A condition that never holds
+     * ends the wait after the deadline so the test's own assertions report the failure with their
+     * normal messages. Use this instead of a fixed sleep to give an async reconnect loop time to
+     * run: a fixed wait long enough for a slow CI runner would slow every local run, and a short
+     * one flakes on CI.
+     */
+    async function waitFor(condition: () => boolean, timeoutMs = 1000): Promise<void> {
+        const deadline = Date.now() + timeoutMs;
+        while (!condition() && Date.now() < deadline) {
+            await sleep(5);
+        }
+    }
+
     function findEventMessages(event: ViewProviderEvent) {
         return postOrQueueMessage.getCalls().map((call) => call.args[0]).filter((message) => message.event === event);
     }
@@ -314,7 +328,7 @@ describe('RokuDeviceViewViewProvider', () => {
 
             await provider['startRceStreamSession'](createStreamRequest());
             provider.nextConnectError = undefined;
-            await sleep(10);
+            await waitFor(() => findEventMessages(ViewProviderEvent.onRceStreamOffer).length === 1);
 
             expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
             expect(provider.createdClients).to.have.length(2);
@@ -374,7 +388,7 @@ describe('RokuDeviceViewViewProvider', () => {
             shrinkReconnectDelays([0]);
 
             client.emit('close');
-            await sleep(10);
+            await waitFor(() => findEventMessages(ViewProviderEvent.onRceStreamOffer).length === 2);
 
             //the drop was reported as a reconnect status, not as closed
             expect(findEventMessages(ViewProviderEvent.onRceStreamClosed)).to.have.length(0);
@@ -395,7 +409,7 @@ describe('RokuDeviceViewViewProvider', () => {
             shrinkReconnectDelays([0]);
 
             client.emit('error', new Error('Janus hung up on stream 7'));
-            await sleep(10);
+            await waitFor(() => provider.createdClients.length === 2);
 
             expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
             expect(resolveStreamRequest.calledOnceWith(5)).to.be.true;
@@ -410,7 +424,7 @@ describe('RokuDeviceViewViewProvider', () => {
 
             const message = { command: ViewProviderCommand.reportRceStreamFailure, context: { message: 'ICE connection failed' } };
             await provider['messageCommandCallbacks'][ViewProviderCommand.reportRceStreamFailure](message);
-            await sleep(10);
+            await waitFor(() => provider.createdClients.length === 2);
 
             expect(client.stop.called).to.be.true;
             expect(resolveStreamRequest.calledOnceWith(5)).to.be.true;
@@ -425,12 +439,12 @@ describe('RokuDeviceViewViewProvider', () => {
 
             //cycle 1: the stream drops right after connecting; the reconnect negotiates a new one
             client.emit('close');
-            await sleep(10);
+            await waitFor(() => provider.createdClients.length === 2);
             expect(provider.createdClients).to.have.length(2);
 
             //cycle 2: the fresh stream drops right away too - the limit is hit
             provider.createdClients[1].emit('close');
-            await sleep(10);
+            await waitFor(() => findEventMessages(ViewProviderEvent.onRceStreamError).length === 1);
 
             //no third negotiation; the error banner (with its Retry action) reports the pattern
             expect(provider.createdClients).to.have.length(2);
@@ -450,9 +464,9 @@ describe('RokuDeviceViewViewProvider', () => {
             provider['rceStreamSession']['quickDropThresholdMs'] = 0;
 
             client.emit('close');
-            await sleep(10);
+            await waitFor(() => provider.createdClients.length === 2);
             provider.createdClients[1].emit('close');
-            await sleep(10);
+            await waitFor(() => provider.createdClients.length === 3);
 
             expect(provider.createdClients).to.have.length(3);
             expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
@@ -465,7 +479,7 @@ describe('RokuDeviceViewViewProvider', () => {
             resolveStreamRequest.rejects(new RceDeviceNotRunningError(`Device 'my-device' must be running and expose a video stream to watch it`));
 
             client.emit('close');
-            await sleep(10);
+            await waitFor(() => findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped).length === 1 && !provider['rceStreamSession'].isActive);
 
             const stoppedMessages = findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped);
             expect(stoppedMessages).to.have.length(1);
@@ -485,7 +499,7 @@ describe('RokuDeviceViewViewProvider', () => {
             resolveStreamRequest.rejects(new Error('gateway unreachable'));
 
             client.emit('close');
-            await sleep(30);
+            await waitFor(() => findEventMessages(ViewProviderEvent.onRceStreamError).length === 1 && !provider['rceStreamSession'].isActive);
 
             expect(resolveStreamRequest.calledTwice).to.be.true;
             const errorMessages = findEventMessages(ViewProviderEvent.onRceStreamError);
@@ -504,7 +518,7 @@ describe('RokuDeviceViewViewProvider', () => {
             resolveStreamRequest.onSecondCall().rejects(new RceDeviceNotRunningError(`Device 'my-device' is not running`, 'pending'));
 
             client.emit('close');
-            await sleep(30);
+            await waitFor(() => findEventMessages(ViewProviderEvent.onRceStreamOffer).length === 2);
 
             const waitingMessages = findEventMessages(ViewProviderEvent.onRceStreamConnecting).filter((message) => message.context.waitingForDevice);
             expect(waitingMessages).to.have.length(2);
@@ -524,7 +538,7 @@ describe('RokuDeviceViewViewProvider', () => {
             resolveStreamRequest.rejects(new RceDeviceNotRunningError(`Device 'my-device' is not running`, 'pending'));
 
             client.emit('close');
-            await sleep(30);
+            await waitFor(() => findEventMessages(ViewProviderEvent.onRceStreamError).length === 1 && !provider['rceStreamSession'].isActive);
 
             const errorMessages = findEventMessages(ViewProviderEvent.onRceStreamError);
             expect(errorMessages).to.have.length(1);
@@ -541,6 +555,8 @@ describe('RokuDeviceViewViewProvider', () => {
             client.emit('close');
             //the loop is now parked on its backoff wait; stopping cuts it short
             provider['rceStreamSession'].stop();
+            //this test asserts nothing happened, so there is no state to waitFor - a short grace
+            //period is all that can catch a loop that kept running
             await sleep(10);
 
             expect(resolveStreamRequest.called).to.be.false;
@@ -574,7 +590,7 @@ describe('RokuDeviceViewViewProvider', () => {
             provider['rceStreamSession']['pendingPollDelayMs'] = 0;
 
             rceFinder.emit('devices', [{ id: 5, status: 'pending' }]);
-            await sleep(10);
+            await waitFor(() => findEventMessages(ViewProviderEvent.onRceStreamOffer).length === 2);
 
             expect(client.stop.called).to.be.true;
             const waitingMessages = findEventMessages(ViewProviderEvent.onRceStreamConnecting).filter((message) => message.context.waitingForDevice);
@@ -608,7 +624,7 @@ describe('RokuDeviceViewViewProvider', () => {
             expect(findEventMessages(ViewProviderEvent.onRceStreamDeviceStopped)).to.have.length(1);
 
             rceFinder.emit('devices', [{ id: 5, status: 'running' }]);
-            await sleep(10);
+            await waitFor(() => findEventMessages(ViewProviderEvent.onRceStreamOffer).length === 2);
 
             expect(provider.createdClients).to.have.length(2);
             expect(findEventMessages(ViewProviderEvent.onRceStreamOffer)).to.have.length(2);
@@ -623,6 +639,8 @@ describe('RokuDeviceViewViewProvider', () => {
             await provider['messageCommandCallbacks'][ViewProviderCommand.stopRceStream](message);
 
             rceFinder.emit('devices', [{ id: 5, status: 'running' }]);
+            //this test asserts nothing happened, so there is no state to waitFor - a short grace
+            //period is all that can catch a resume that should not have started
             await sleep(10);
 
             expect(provider.createdClients).to.have.length(1);
@@ -749,7 +767,7 @@ describe('RokuDeviceViewViewProvider', () => {
 
             const message = { command: ViewProviderCommand.watchRceDevice, context: { deviceId: 5 } };
             await provider['messageCommandCallbacks'][ViewProviderCommand.watchRceDevice](message);
-            await sleep(10);
+            await waitFor(() => findEventMessages(ViewProviderEvent.onRceStreamOffer).length === 2);
 
             const waitingMessages = findEventMessages(ViewProviderEvent.onRceStreamConnecting).filter((candidate) => candidate.context.waitingForDevice);
             expect(waitingMessages.length).to.be.greaterThanOrEqual(1);
