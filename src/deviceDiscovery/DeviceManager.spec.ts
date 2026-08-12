@@ -166,30 +166,253 @@ describe('DeviceManager', () => {
         sinon.restore();
     });
 
-    describe('setScanNeeded', () => {
-        it('emits event when scanNeeded is false', () => {
+    describe('orders (submit + pending sets)', () => {
+        it('a broadcast order lands in the pending set and emits order-submitted with type + reason', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const eventSpy = sinon.spy();
-            manager.on('scanNeeded-changed', eventSpy);
+            manager.on('order-submitted', eventSpy);
 
-            manager['setScanNeeded']();
+            manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
 
             expect(eventSpy.calledOnce).to.be.true;
+            expect(eventSpy.firstCall.args[0].reason).to.equal('network');
+            expect(manager.getPendingBroadcastReasons()).to.include('network');
         });
 
-        it('does not emit event when scanNeeded is already true', () => {
+        it('a reconcile order lands in the pending set and emits order-submitted with type + reason', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            manager['setScanNeeded'](); // Set to true first
 
             const eventSpy = sinon.spy();
-            manager.on('scanNeeded-changed', eventSpy);
+            manager.on('order-submitted', eventSpy);
 
-            manager['setScanNeeded'](); // Set to true again
+            manager.submitOrders([{ type: 'reconcile', reason: 'config-changed' }]);
 
-            expect(eventSpy.called).to.be.false;
+            expect(eventSpy.calledOnce).to.be.true;
+            expect(eventSpy.firstCall.args[0].reason).to.equal('config-changed');
+            expect(manager.getPendingReconcileReasons()).to.include('config-changed');
         });
 
+        it('different reasons accumulate instead of replacing each other', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager.submitOrders([{ type: 'broadcast', reason: 'sleep' }]);
+            manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
+            manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+
+            expect(manager.getPendingBroadcastReasons()).to.have.members(['sleep', 'network', 'stale']);
+        });
+
+        it('the same reason never queues twice', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+            manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+            manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+
+            expect(manager.getPendingBroadcastReasons()).to.eql(['stale']);
+        });
+
+        it('broadcast and reconcile pending sets are independent', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
+            manager.submitOrders([{ type: 'reconcile', reason: 'config-changed' }]);
+
+            expect(manager.getPendingBroadcastReasons()).to.include('network');
+            expect(manager.getPendingReconcileReasons()).to.include('config-changed');
+        });
+
+        it('submitOrders accepts multiple orders at once', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager.submitOrders([{ type: 'broadcast', reason: 'refresh-clicked' }, { type: 'reconcile', reason: 'refresh-clicked' }]);
+
+            expect(manager.getPendingBroadcastReasons()).to.eql(['refresh-clicked']);
+            expect(manager.getPendingReconcileReasons()).to.eql(['refresh-clicked']);
+        });
+
+        it('a reconcile-only submission leaves the broadcast set untouched', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager.submitOrders([{ type: 'reconcile', reason: 'config-changed' }]);
+
+            expect(manager.getPendingBroadcastReasons()).to.be.empty;
+            expect(manager.getPendingReconcileReasons()).to.eql(['config-changed']);
+        });
+
+        it('a broadcast-only submission leaves the reconcile set untouched', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            manager.submitOrders([{ type: 'broadcast', reason: 'unhealthy-device' }]);
+
+            expect(manager.getPendingBroadcastReasons()).to.eql(['unhealthy-device']);
+            expect(manager.getPendingReconcileReasons()).to.be.empty;
+        });
+    });
+
+    describe('fulfillOrders', () => {
+        beforeEach(() => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+        });
+
+        it('consumes and executes a pending broadcast, passing its reason through', () => {
+            const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
+            manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
+
+            const result = manager.fulfillOrders({ types: ['broadcast'] }).length > 0;
+
+            expect(result).to.be.true;
+            expect(broadcastStub.calledOnceWith(['network'])).to.be.true;
+            expect(manager.getPendingBroadcastReasons()).to.be.empty;
+        });
+
+        it('consumes all accumulated reasons in a single execution', () => {
+            const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
+            manager.submitOrders([{ type: 'broadcast', reason: 'sleep' }]);
+            manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
+
+            const result = manager.fulfillOrders({ types: ['broadcast'] }).length > 0;
+
+            expect(result).to.be.true;
+            expect(broadcastStub.calledOnce).to.be.true;
+            expect(broadcastStub.firstCall.args[0]).to.have.members(['sleep', 'network']);
+            expect(manager.getPendingBroadcastReasons()).to.be.empty;
+        });
+
+        it('passes a stale reason through (broadcast applies the staleness gate itself)', () => {
+            const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(false);
+            manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+
+            manager.fulfillOrders({ types: ['broadcast'] });
+
+            expect(broadcastStub.calledOnceWith(['stale'])).to.be.true;
+        });
+
+        it('leaves except-listed reasons QUEUED instead of consuming them', () => {
+            const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
+            manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+
+            const result = manager.fulfillOrders({ types: ['broadcast'], except: ['stale'] }).length > 0;
+
+            expect(result).to.be.false;
+            expect(broadcastStub.called).to.be.false;
+            expect(manager.getPendingBroadcastReasons()).to.include('stale');
+        });
+
+        it('when a real reason triggers execution, the whole set is cleared — excepted reasons included', () => {
+            const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
+            manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+            manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
+
+            const result = manager.fulfillOrders({ types: ['broadcast'], except: ['stale'] }).length > 0;
+
+            //the scan satisfies the stale want too, so it rides along instead of staying queued
+            expect(result).to.be.true;
+            expect(broadcastStub.calledOnce).to.be.true;
+            expect(broadcastStub.firstCall.args[0]).to.have.members(['stale', 'network']);
+            expect(manager.getPendingBroadcastReasons()).to.be.empty;
+        });
+
+        it('returns false and does nothing when no order is pending', () => {
+            const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
+
+            expect(manager.fulfillOrders({ types: ['broadcast'] })).to.be.empty;
+            expect(broadcastStub.called).to.be.false;
+        });
+
+        it('is atomic: a second fulfillment finds the set empty', () => {
+            const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
+            manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
+
+            expect(manager.fulfillOrders({ types: ['broadcast'] })).to.not.be.empty;
+            expect(manager.fulfillOrders({ types: ['broadcast'] })).to.be.empty;
+            expect(broadcastStub.calledOnce).to.be.true;
+        });
+
+        it('passes the reconcile reason through (reconcile decides cache bypass itself)', () => {
+            const reconcileStub = sinon.stub(manager as any, 'reconcile');
+
+            manager.submitOrders([{ type: 'reconcile', reason: 'config-changed' }]);
+            expect(manager.fulfillOrders({ types: ['reconcile'] })).to.not.be.empty;
+            expect(reconcileStub.calledOnceWith(['config-changed'])).to.be.true;
+
+            reconcileStub.resetHistory();
+            manager.submitOrders([{ type: 'reconcile', reason: 'refresh-clicked' }]);
+            expect(manager.fulfillOrders({ types: ['reconcile'] })).to.not.be.empty;
+            expect(reconcileStub.calledOnceWith(['refresh-clicked'])).to.be.true;
+        });
+
+        it('leaves an except-listed reconcile queued', () => {
+            const reconcileStub = sinon.stub(manager as any, 'reconcile');
+            manager.submitOrders([{ type: 'reconcile', reason: 'stale' }]);
+
+            expect(manager.fulfillOrders({ types: ['reconcile'], except: ['stale'] })).to.be.empty;
+            expect(reconcileStub.called).to.be.false;
+            expect(manager.getPendingReconcileReasons()).to.include('stale');
+        });
+
+        it('fulfills both order types in one call, returning what was taken', () => {
+            const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
+            const reconcileStub = sinon.stub(manager as any, 'reconcile');
+            manager.submitOrders([{ type: 'broadcast', reason: 'refresh-clicked' }, { type: 'reconcile', reason: 'refresh-clicked' }]);
+
+            const result = manager.fulfillOrders({ types: ['broadcast', 'reconcile'] });
+
+            expect(result).to.eql([
+                { type: 'broadcast', reasons: ['refresh-clicked'] },
+                { type: 'reconcile', reasons: ['refresh-clicked'] }
+            ]);
+            expect(broadcastStub.calledOnceWith(['refresh-clicked'])).to.be.true;
+            expect(reconcileStub.calledOnceWith(['refresh-clicked'])).to.be.true;
+            expect(manager.getPendingBroadcastReasons()).to.be.empty;
+            expect(manager.getPendingReconcileReasons()).to.be.empty;
+        });
+
+        it('passes the except list to both order types', () => {
+            const broadcastStub = sinon.stub(manager as any, 'broadcast').returns(true);
+            const reconcileStub = sinon.stub(manager as any, 'reconcile');
+            manager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+            manager.submitOrders([{ type: 'reconcile', reason: 'stale' }]);
+
+            const result = manager.fulfillOrders({ types: ['broadcast', 'reconcile'], except: ['stale'] });
+
+            expect(result).to.be.empty;
+            expect(broadcastStub.called).to.be.false;
+            expect(reconcileStub.called).to.be.false;
+            expect(manager.getPendingBroadcastReasons()).to.include('stale');
+            expect(manager.getPendingReconcileReasons()).to.include('stale');
+        });
+    });
+
+    describe('stale timers', () => {
+        it('activateMonitoring starts the stale order timers, deactivateMonitoring stops them', async () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager['finder'], 'start').resolves();
+                sinon.stub(manager['networkChangeMonitor'], 'start');
+                sinon.stub(manager['networkChangeMonitor'], 'stop');
+
+                await manager['activateMonitoring']();
+
+                clock.tick(manager['STALE_RECONCILE_INTERVAL_MS']);
+                expect(manager.getPendingReconcileReasons()).to.include('stale');
+
+                clock.tick(manager['STALE_SCAN_THRESHOLD_MS']);
+                expect(manager.getPendingBroadcastReasons()).to.include('stale');
+
+                //consume the pending orders, stop monitoring, and verify no new stale orders arrive
+                manager['orders'].take({ types: ['broadcast', 'reconcile'] });
+                manager['deactivateMonitoring']();
+
+                clock.tick(manager['STALE_SCAN_THRESHOLD_MS'] * 2);
+                expect(manager.getPendingBroadcastReasons()).to.be.empty;
+                expect(manager.getPendingReconcileReasons()).to.be.empty;
+            } finally {
+                clock.restore();
+            }
+        });
     });
 
     describe('timeSinceLastScan', () => {
@@ -198,12 +421,12 @@ describe('DeviceManager', () => {
             expect(manager['timeSinceLastScan']).to.equal(Infinity);
         });
 
-        it('returns elapsed time after refresh', () => {
+        it('returns elapsed time after a broadcast', () => {
             const clock = sinon.useFakeTimers();
             try {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-                manager.refresh(true);
+                manager['broadcast'](['refresh-clicked']);
 
                 clock.tick(5_000);
 
@@ -399,16 +622,14 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const handler = sinon.spy();
-            const unsubscribe = manager.on('scanNeeded-changed', handler);
+            const unsubscribe = manager.on('order-submitted', handler);
 
-            manager['setScanNeeded']();
+            manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
             expect(handler.calledOnce).to.be.true;
 
             unsubscribe();
 
-            // Reset via refresh and try again
-            manager.refresh(true);
-            manager['setScanNeeded']();
+            manager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
             expect(handler.calledOnce).to.be.true; // Still just one call (unsubscribed)
         });
 
@@ -416,7 +637,7 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const disposables: any[] = [];
-            manager.on('scanNeeded-changed', () => { }, disposables);
+            manager.on('order-submitted', () => { }, disposables);
 
             expect(disposables.length).to.equal(1);
             expect(disposables[0]).to.have.property('dispose');
@@ -491,88 +712,97 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('refresh', () => {
-        it('resets scanNeeded flag (allows event to fire again)', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-            const eventSpy = sinon.spy();
-            manager.on('scanNeeded-changed', eventSpy);
-
-            manager['setScanNeeded']();
-            expect(eventSpy.calledOnce).to.be.true;
-
-            // Before refresh, calling setScanNeeded again should not emit
-            manager['setScanNeeded']();
-            expect(eventSpy.calledOnce).to.be.true;
-
-            // After refresh, the flag is reset so event should fire again
-            manager.refresh(true);
-            manager['setScanNeeded']();
-            expect(eventSpy.calledTwice).to.be.true;
-        });
-
-        it('sets lastScanDate', () => {
+    describe('reconcile', () => {
+        it('sets lastScanDate via broadcast', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             expect(manager['timeSinceLastScan']).to.equal(Infinity);
 
-            manager.refresh(true);
+            manager['broadcast'](['refresh-clicked']);
 
-            // After refresh, timeSinceLastScan should be very small (just happened)
+            // After a broadcast, timeSinceLastScan should be very small (just happened)
             expect(manager['timeSinceLastScan']).to.be.lessThan(100);
         });
 
-        it('calls healthCheckAllDevices with force flag', () => {
+        it('bypasses the device-info cache (force) only for refresh-clicked', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const healthCheckAllDevicesSpy = sinon.stub(manager as any, 'healthCheckAllDevices').resolves();
 
-            manager.refresh(true);
+            manager['reconcile'](['refresh-clicked']);
             expect(healthCheckAllDevicesSpy.calledWith(true)).to.be.true;
 
-            manager.refresh(false);
+            manager['reconcile'](['config-changed']);
             expect(healthCheckAllDevicesSpy.calledWith(false)).to.be.true;
 
-            manager.refresh(); // defaults to false
-            expect(healthCheckAllDevicesSpy.calledWith(false)).to.be.true;
+            manager['reconcile'](['network']);
+            expect(healthCheckAllDevicesSpy.lastCall.args[0]).to.equal(false);
         });
     });
 
-    describe('scan', () => {
+    describe('broadcast', () => {
         it('triggers discovery without health checking', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
+            const finderScanSpy = sinon.stub(manager['finder'], 'scan');
             const healthCheckAllDevicesSpy = sinon.spy(manager as any, 'healthCheckAllDevices');
 
-            manager.scan(true);
+            manager['broadcast'](['refresh-clicked']);
 
-            expect(discoverAllSpy.calledOnce).to.be.true;
+            expect(finderScanSpy.calledOnce).to.be.true;
             expect(healthCheckAllDevicesSpy.called).to.be.false;
         });
 
-        it('respects deviceDiscoveryEnabled when force=false', () => {
+        it('a stale reason does not scan while device discovery is disabled', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => false);
 
-            const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
+            const finderScanSpy = sinon.stub(manager['finder'], 'scan');
 
-            const result = manager.scan(false);
+            const result = manager['broadcast'](['stale']);
 
             expect(result).to.be.false;
-            expect(discoverAllSpy.called).to.be.false;
+            expect(finderScanSpy.called).to.be.false;
         });
 
-        it('ignores deviceDiscoveryEnabled when force=true', () => {
+        it('a real reason scans even while device discovery is disabled (explicit user intent)', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => false);
 
-            const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
+            const finderScanSpy = sinon.stub(manager['finder'], 'scan');
 
-            const result = manager.scan(true);
+            const result = manager['broadcast'](['refresh-clicked']);
 
             expect(result).to.be.true;
-            expect(discoverAllSpy.calledOnce).to.be.true;
+            expect(finderScanSpy.calledOnce).to.be.true;
+        });
+
+        it('a stale reason is staleness-gated: no scan when the last scan is recent', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager['finder'], 'scan');
+
+            expect(manager['broadcast'](['refresh-clicked'])).to.be.true; //sets lastScanDate
+            expect(manager['broadcast'](['stale'])).to.be.false; //fresh — gate closed
+        });
+
+        it('the gate only applies when stale is the ONLY reason: stale + a real reason scans', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager['finder'], 'scan');
+
+            expect(manager['broadcast'](['refresh-clicked'])).to.be.true; //sets lastScanDate
+            expect(manager['broadcast'](['stale', 'network'])).to.be.true; //the real reason wins
+        });
+
+        it('a stale reason scans when the last scan is older than the threshold', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            //the suite-wide config stub disables discovery; this test is about the staleness half of the gate
+            sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => true);
+            sinon.stub(manager['finder'], 'scan');
+
+            //backdate the last scan past the staleness threshold
+            manager['lastScanDate'] = new Date(Date.now() - manager['STALE_SCAN_THRESHOLD_MS'] - 1);
+
+            expect(manager['broadcast'](['stale'])).to.be.true;
         });
 
         it('emits scan-started event', () => {
@@ -583,7 +813,7 @@ describe('DeviceManager', () => {
                 const scanStartedSpy = sinon.spy();
                 manager.on('scan-started', scanStartedSpy);
 
-                manager.scan(true);
+                manager['broadcast'](['refresh-clicked']);
 
                 expect(scanStartedSpy.calledOnce).to.be.true;
             } finally {
@@ -760,7 +990,7 @@ describe('DeviceManager', () => {
                 const scanStartedSpy = sinon.spy();
                 manager.on('scan-started', scanStartedSpy);
 
-                manager.refresh(true);
+                manager['broadcast'](['refresh-clicked']);
 
                 expect(scanStartedSpy.calledOnce).to.be.true;
             } finally {
@@ -776,7 +1006,7 @@ describe('DeviceManager', () => {
                 const scanEndedSpy = sinon.spy();
                 manager.on('scan-ended', scanEndedSpy);
 
-                manager.refresh(true);
+                manager['broadcast'](['refresh-clicked']);
 
                 // Not ended yet - neither timer has fired
                 expect(scanEndedSpy.called).to.be.false;
@@ -801,11 +1031,11 @@ describe('DeviceManager', () => {
                 const scanStartedSpy = sinon.spy();
                 manager.on('scan-started', scanStartedSpy);
 
-                manager.refresh(true);
+                manager['broadcast'](['refresh-clicked']);
                 expect(scanStartedSpy.calledOnce).to.be.true;
 
                 // Try to start another scan while one is in progress
-                manager.refresh(true);
+                manager['broadcast'](['refresh-clicked']);
                 expect(scanStartedSpy.calledOnce).to.be.true; // Still just one call
             } finally {
                 clock.restore();
@@ -822,7 +1052,7 @@ describe('DeviceManager', () => {
                 manager.on('scan-started', scanStartedSpy);
                 manager.on('scan-ended', scanEndedSpy);
 
-                manager.refresh(true);
+                manager['broadcast'](['refresh-clicked']);
                 expect(scanStartedSpy.calledOnce).to.be.true;
 
                 // Complete the scan
@@ -830,7 +1060,7 @@ describe('DeviceManager', () => {
                 expect(scanEndedSpy.calledOnce).to.be.true;
 
                 // Now can start a new scan
-                manager.refresh(true);
+                manager['broadcast'](['refresh-clicked']);
                 expect(scanStartedSpy.calledTwice).to.be.true;
             } finally {
                 clock.restore();
@@ -1019,8 +1249,8 @@ describe('DeviceManager', () => {
             const device = createMockDevice({ serialNumber: 'device-123' });
             addDevice(device);
 
-            // Stub refresh to prevent cascade of health checks
-            sinon.stub(manager, 'refresh');
+            // Stub the unhealthy-device order path to prevent cascade of health checks
+            sinon.stub(manager as any, 'submitUnhealthyDeviceBroadcast');
 
             // Create two controllable promises for the health checks
             let rejectSlowCheck: (err: Error) => void;
@@ -1072,8 +1302,8 @@ describe('DeviceManager', () => {
             addDevice(device1);
             addDevice(device2);
 
-            // Stub refresh to prevent cascade of health checks
-            sinon.stub(manager, 'refresh');
+            // Stub the unhealthy-device order path to prevent cascade of health checks
+            sinon.stub(manager as any, 'submitUnhealthyDeviceBroadcast');
 
             let resolveDevice1: (value: any) => void;
             let resolveDevice2: (value: any) => void;
@@ -2343,10 +2573,8 @@ describe('DeviceManager', () => {
             expect(manager['discoveredDevices'].length).to.equal(0);
         });
 
-        it('calls setScanNeeded when network changes', () => {
+        it('submits broadcast + reconcile orders when the network changes', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-            const setScanNeededSpy = sinon.spy(manager as any, 'setScanNeeded');
 
             // Change the network hash
             (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
@@ -2354,7 +2582,8 @@ describe('DeviceManager', () => {
             // Trigger the network change callback directly
             manager['networkChangeMonitor']['onNetworkChanged']();
 
-            expect(setScanNeededSpy.calledOnce).to.be.true;
+            expect(manager.getPendingBroadcastReasons()).to.include('network');
+            expect(manager.getPendingReconcileReasons()).to.include('network');
         });
 
         it('clears discovered devices when network changes', () => {
@@ -2526,7 +2755,7 @@ describe('DeviceManager', () => {
             it('marks configured device as offline when health check fails and cache exists', async () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
                 sinon.stub(manager as any, 'randomDelay').resolves();
-                sinon.stub(manager as any, 'refresh').resolves();
+                sinon.stub(manager as any, 'submitUnhealthyDeviceBroadcast');
 
                 const device = createMockDevice({
                     serialNumber: 'device-123',
@@ -2554,7 +2783,7 @@ describe('DeviceManager', () => {
             it('marks configured device as offline when health check fails and no cache exists', async () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
                 sinon.stub(manager as any, 'randomDelay').resolves();
-                sinon.stub(manager as any, 'refresh').resolves();
+                sinon.stub(manager as any, 'submitUnhealthyDeviceBroadcast');
 
                 const device = createMockDevice({
                     serialNumber: 'device-123',
@@ -2581,7 +2810,7 @@ describe('DeviceManager', () => {
             it('removes discovered-only device when health check fails', async () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
                 sinon.stub(manager as any, 'randomDelay').resolves();
-                sinon.stub(manager as any, 'refresh').resolves();
+                sinon.stub(manager as any, 'submitUnhealthyDeviceBroadcast');
 
                 const device = createMockDevice({
                     serialNumber: 'device-123',
@@ -2613,7 +2842,7 @@ describe('DeviceManager', () => {
             it('sets isDiscovered false when health check fails on configured device', async () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
                 sinon.stub(manager as any, 'randomDelay').resolves();
-                sinon.stub(manager as any, 'refresh').resolves();
+                sinon.stub(manager as any, 'submitUnhealthyDeviceBroadcast');
 
                 const device = createMockDevice({
                     ip: '192.168.1.100',
@@ -2636,7 +2865,7 @@ describe('DeviceManager', () => {
             it('removes discovered-only device when health check fails', async () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
                 sinon.stub(manager as any, 'randomDelay').resolves();
-                sinon.stub(manager as any, 'refresh').resolves();
+                sinon.stub(manager as any, 'submitUnhealthyDeviceBroadcast');
 
                 const device = createMockDevice({
                     ip: '192.168.1.100',
@@ -3046,20 +3275,21 @@ describe('DeviceManager', () => {
                     const clock = sinon.useFakeTimers();
                     try {
                         manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                        sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => true);
 
                         // Simulate recent scan
                         manager['lastScanDate'] = new Date();
                         sinon.stub(manager['finder'], 'scan');
 
-                        // discoverAll should return false (scan not needed)
-                        let scanStarted = manager['discoverAll'](false);
+                        // a stale-only broadcast is gated off while the last scan is recent
+                        let scanStarted = manager['broadcast'](['stale']);
                         expect(scanStarted).to.be.false;
 
                         // Clear cache
                         manager.clearAllCache();
 
                         // Now scan should be allowed (lastScanDate is null, timeSinceLastScan is Infinity)
-                        scanStarted = manager['discoverAll'](false);
+                        scanStarted = manager['broadcast'](['stale']);
                         expect(scanStarted).to.be.true;
                     } finally {
                         clock.restore();
@@ -3606,7 +3836,7 @@ describe('DeviceManager', () => {
             it('shows online when configured at wrong IP and discovered at correct IP resolve concurrently', async () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
                 sinon.stub(manager as any, 'randomDelay').resolves();
-                sinon.stub(manager as any, 'refresh').resolves();
+                sinon.stub(manager as any, 'submitUnhealthyDeviceBroadcast');
 
                 // Configured device XYZ at wrong IP (192.168.1.100)
                 const configuredDevice = createMockDevice({
@@ -3654,7 +3884,7 @@ describe('DeviceManager', () => {
             it('shows online regardless of which concurrent health check completes first', async () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
                 sinon.stub(manager as any, 'randomDelay').resolves();
-                sinon.stub(manager as any, 'refresh').resolves();
+                sinon.stub(manager as any, 'submitUnhealthyDeviceBroadcast');
 
                 // Same setup: configured at wrong IP, discovered at correct IP
                 addDevice(createMockDevice({
