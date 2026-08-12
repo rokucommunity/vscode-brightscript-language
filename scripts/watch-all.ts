@@ -1,6 +1,9 @@
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
-import { spawn } from 'child_process';
+import * as os from 'os';
+import * as crypto from 'crypto';
+import { spawn, spawnSync } from 'child_process';
+import type { ChildProcess } from 'child_process';
 import * as debounce from 'debounce';
 import * as chalk from 'chalk';
 import * as dayjs from 'dayjs';
@@ -32,7 +35,68 @@ class Logger {
 
 const logger = new Logger();
 
-logger.writeLine(`${timestamp()} Starting compilation in watch mode...`);
+const repoRoot = path.resolve(__dirname, '..');
+//scope the pid file to this checkout so parallel clones don't kill each other's watchers
+const pidFile = path.join(
+    os.tmpdir(),
+    `vscode-brightscript-watch-all-${crypto.createHash('md5').update(repoRoot).digest('hex').slice(0, 8)}.json`
+);
+const watchers: ChildProcess[] = [];
+
+function killGroup(pid: number) {
+    try {
+        if (process.platform === 'win32') {
+            spawnSync('taskkill', ['/pid', `${pid}`, '/t', '/f'], { stdio: 'ignore' });
+        } else {
+            //negative pid targets the whole process group (npm + tsc/vite),
+            //which a plain kill(pid) would leave running
+            process.kill(-pid, 'SIGKILL');
+        }
+    } catch {
+        //group is already gone - nothing to do
+    }
+}
+
+//kill any watchers left behind by a previous run that didn't shut down cleanly
+//(VS Code killing the task, a crash, etc). This is what stops watcher processes
+//from piling up across launches until the machine has to be restarted.
+function cleanupPreviousRun() {
+    let previousPids: number[] = [];
+    try {
+        previousPids = fsExtra.readJsonSync(pidFile);
+    } catch {
+        return;
+    }
+    for (const pid of previousPids) {
+        killGroup(pid);
+    }
+    fsExtra.removeSync(pidFile);
+}
+
+function writePidFile() {
+    fsExtra.writeJsonSync(pidFile, watchers.map(watcher => watcher.pid).filter(pid => pid !== undefined));
+}
+
+function shutdown() {
+    for (const watcher of watchers) {
+        if (watcher.pid !== undefined) {
+            killGroup(watcher.pid);
+        }
+    }
+    fsExtra.removeSync(pidFile);
+}
+
+process.on('exit', shutdown);
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
+    process.on(signal, () => {
+        shutdown();
+        process.exit();
+    });
+}
+
+cleanupPreviousRun();
+
+logger.writeLine(`[${timestamp()}] Starting compilation in watch mode...`);
 
 //run watch tasks for every related project, in a single output window so we don't have 7 console tabs open
 const projects = [{
@@ -122,7 +186,6 @@ function processData(project: Project, source: 'stdout' | 'stderr', data: string
 const printStatus = debounce(() => {
     let errorCount = 0;
     let pendingCount = 0;
-    const diagnostics = [];
     let status = projects.map(project => {
         if (project.state === 'success') {
             return chalk.green(`✔ ${project.name}`);
@@ -175,8 +238,13 @@ projects.forEach(async (project) => {
     const watcher = spawn('npm', ['run', 'watch'], {
         cwd: project.path,
         env: { ...process.env },
-        shell: true
+        shell: true,
+        //run each watcher in its own process group so shutdown can kill the entire
+        //npm -> tsc/vite subtree instead of orphaning it
+        detached: true
     });
+    watchers.push(watcher);
+    writePidFile();
 
     watcher.stdout.on('data', (data) => {
         processData(project, 'stdout', data.toString());
