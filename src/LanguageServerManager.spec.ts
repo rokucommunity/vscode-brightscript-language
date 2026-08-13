@@ -270,6 +270,97 @@ describe('LanguageServerManager', () => {
             );
         });
 
+        it('resolves relative bsdk path from the workspace file directory, not the project root', async () => {
+            // .code-workspace file lives in a subdirectory (.vscode/)
+            vscode.workspace.workspaceFile = URI.file(s`${tempDir}/.vscode/workspace.code-workspace`);
+            vscode.workspace.workspaceFolders.push({
+                index: 0,
+                name: 'SDK',
+                uri: URI.file(s`${tempDir}`)
+            });
+
+            setConfig(vscode.workspace.workspaceFile.fsPath, {
+                'brightscript.bsdk': '../node_modules/brighterscript'
+            });
+
+            expect(
+                s(await languageServerManager['getBsdkVersionInfo']())
+            ).to.eql(
+                // resolves from .vscode/ → one level up → tempDir/node_modules/brighterscript
+                s`${tempDir}/node_modules/brighterscript`
+            );
+        });
+
+        it('expands ${workspaceFolder:name} variable in bsdk path', async () => {
+            vscode.workspace.workspaceFile = URI.file(s`${tempDir}/.vscode/workspace.code-workspace`);
+            vscode.workspace.workspaceFolders.push({
+                index: 0,
+                name: 'SDK',
+                uri: URI.file(s`${tempDir}`)
+            });
+
+            setConfig(vscode.workspace.workspaceFile.fsPath, {
+                'brightscript.bsdk': '${workspaceFolder:SDK}/node_modules/brighterscript'
+            });
+
+            expect(
+                s(await languageServerManager['getBsdkVersionInfo']())
+            ).to.eql(s`${tempDir}/node_modules/brighterscript`);
+        });
+
+        it('expands ${workspaceFolder} variable to the first workspace folder', async () => {
+            vscode.workspace.workspaceFile = URI.file(s`${tempDir}/.vscode/workspace.code-workspace`);
+            vscode.workspace.workspaceFolders.push({
+                index: 0,
+                name: 'SDK',
+                uri: URI.file(s`${tempDir}`)
+            });
+
+            setConfig(vscode.workspace.workspaceFile.fsPath, {
+                'brightscript.bsdk': '${workspaceFolder}/node_modules/brighterscript'
+            });
+
+            expect(
+                s(await languageServerManager['getBsdkVersionInfo']())
+            ).to.eql(s`${tempDir}/node_modules/brighterscript`);
+        });
+
+        it('throws for an unrecognized variable in bsdk path', async () => {
+            vscode.workspace.workspaceFile = URI.file(s`${tempDir}/.vscode/workspace.code-workspace`);
+            vscode.workspace.workspaceFolders.push({
+                index: 0,
+                name: 'SDK',
+                uri: URI.file(s`${tempDir}`)
+            });
+
+            setConfig(vscode.workspace.workspaceFile.fsPath, {
+                'brightscript.bsdk': '${env:MY_VAR}/node_modules/brighterscript'
+            });
+
+            await expectThrowsAsync(
+                () => languageServerManager['getBsdkVersionInfo'](),
+                'brightscript.bsdk: unsupported variable "${env:MY_VAR}"'
+            );
+        });
+
+        it('throws for an unknown workspace folder name in bsdk path', async () => {
+            vscode.workspace.workspaceFile = URI.file(s`${tempDir}/.vscode/workspace.code-workspace`);
+            vscode.workspace.workspaceFolders.push({
+                index: 0,
+                name: 'SDK',
+                uri: URI.file(s`${tempDir}`)
+            });
+
+            setConfig(vscode.workspace.workspaceFile.fsPath, {
+                'brightscript.bsdk': '${workspaceFolder:Unknown}/node_modules/brighterscript'
+            });
+
+            await expectThrowsAsync(
+                () => languageServerManager['getBsdkVersionInfo'](),
+                'brightscript.bsdk: unknown workspace folder name "Unknown"'
+            );
+        });
+
         it('returns folder version when not in a workspace', async () => {
             vscode.workspace.workspaceFolders.push({
                 index: 0,
