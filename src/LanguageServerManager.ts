@@ -524,7 +524,7 @@ export class LanguageServerManager {
         //use bsdk entry in the code-workspace file
         if (this.workspaceConfigIncludesBsdkKey()) {
             let result = this.parseVersionInfo(
-                util.getConfiguration('brightscript', vscode.workspace.workspaceFile).get<string>('bsdk')?.trim?.(),
+                this.workspaceBsdkPath(),
                 path.dirname(vscode.workspace.workspaceFile.fsPath)
             );
             if (result) {
@@ -555,6 +555,39 @@ export class LanguageServerManager {
             //TODO should we prompt for just these items?
             return languageServerInfoCommand.selectBrighterScriptVersion();
         }
+    }
+
+    /**
+     * Get the `brightscript.bsdk` value from the .code-workspace settings block with workspace
+     * folder variables expanded. `inspect().workspaceValue` returns the unresolved string from
+     * the .code-workspace file — VSCode does not expand variables like ${workspaceFolder} in this
+     * value, so we expand ${workspaceFolder} and ${workspaceFolder:name} ourselves.
+     */
+    private workspaceBsdkPath(): string {
+        const rawValue = util.getConfiguration('brightscript', vscode.workspace.workspaceFile).inspect<string>('bsdk')?.workspaceValue?.trim?.();
+        return this.expandWorkspaceBsdkPath(rawValue);
+    }
+
+    /**
+     * Expand ${workspaceFolder} and ${workspaceFolder:name} variables in a bsdk path string.
+     * VSCode does not expand these variables in inspect().workspaceValue, so we do it ourselves.
+     * Throws if an unrecognized variable is encountered.
+     */
+    private expandWorkspaceBsdkPath(value: string): string {
+        return value?.replace(/\$\{([^}]+)\}/g, (_match, expression) => {
+            const namedFolder = /^workspaceFolder:(.+)$/.exec(expression);
+            if (namedFolder) {
+                const folder = vscode.workspace.workspaceFolders?.find(f => f.name === namedFolder[ 1 ]);
+                if (!folder) {
+                    throw new Error(`brightscript.bsdk: unknown workspace folder name "${namedFolder[ 1 ]}"`);
+                }
+                return folder.uri.fsPath;
+            }
+            if (expression === 'workspaceFolder') {
+                return vscode.workspace.workspaceFolders?.[ 0 ]?.uri.fsPath ?? _match;
+            }
+            throw new Error(`brightscript.bsdk: unsupported variable "\${${expression}}"`);
+        });
     }
 
     private workspaceConfigIncludesBsdkKey() {
