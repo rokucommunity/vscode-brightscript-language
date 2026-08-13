@@ -525,7 +525,7 @@ export class LanguageServerManager {
         if (this.workspaceConfigIncludesBsdkKey()) {
             let result = this.parseVersionInfo(
                 this.getWorkspaceBsdkInfo(vscode.workspace.workspaceFile),
-                path.dirname(vscode.workspace.workspaceFile.fsPath),
+                path.dirname(vscode.workspace.workspaceFile.fsPath)
             );
 
             if (result) {
@@ -535,8 +535,7 @@ export class LanguageServerManager {
 
         //collect `brightscript.bsdk` setting value from each workspaceFolder
         const folderResults = vscode.workspace.workspaceFolders?.reduce((acc, workspaceFolder) => {
-            const versionInfo = this.getWorkspaceBsdkInfo(vscode.workspace.workspaceFile)
-
+            const versionInfo = this.getWorkspaceBsdkInfo(vscode.workspace.workspaceFile);
             const parsed = this.parseVersionInfo(versionInfo, workspaceFolder.uri.fsPath);
             if (parsed) {
                 acc.set(parsed.value, parsed);
@@ -568,7 +567,7 @@ export class LanguageServerManager {
     private getWorkspaceBsdkInfo(workspaceFolder: vscode.ConfigurationScope) {
         const rawValue = util.getConfiguration('brightscript', workspaceFolder).inspect<string>('bsdk')?.workspaceValue?.trim?.();
 
-        const hasVariable = /^\$\{/.test(rawValue);
+        const hasVariable = rawValue?.startsWith('${');
         if (!hasVariable) {
             return rawValue;
         }
@@ -582,16 +581,18 @@ export class LanguageServerManager {
      * Throws if an unrecognized variable is encountered.
      */
     private expandWorkspaceBsdkInfo(value: string): string {
-        if (!value) { return value; }
+        if (!value) {
+            return value;
+        }
 
-        const [ match, workspaceName, relativePath ] = /^\$\{workspaceFolder:?([^}]*)\}(.*)$/.exec(value) ?? [];
+        const [match, workspaceName, relativePath] = /^\$\{workspaceFolder:?([^}]*)\}(.*)$/.exec(value) ?? [];
 
         if (!match) {
             throw new Error(`brightscript.bsdk: unsupported variable in bsdk "${value}"`);
         }
 
         // if ${workspaceFolder}, use workspaceFolders[0]
-        let workspaceFolder = vscode.workspace.workspaceFolders?.[ 0 ]
+        let workspaceFolder = vscode.workspace.workspaceFolders?.[0]
 
         // if ${workspaceFolder:name}, find by name
         if (workspaceName) {
