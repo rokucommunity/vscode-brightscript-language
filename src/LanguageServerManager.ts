@@ -577,14 +577,14 @@ export class LanguageServerManager {
         return value?.replace(/\$\{([^}]+)\}/g, (_match, expression) => {
             const namedFolder = /^workspaceFolder:(.+)$/.exec(expression);
             if (namedFolder) {
-                const folder = vscode.workspace.workspaceFolders?.find(f => f.name === namedFolder[ 1 ]);
+                const folder = vscode.workspace.workspaceFolders?.find(f => f.name === namedFolder[1]);
                 if (!folder) {
-                    throw new Error(`brightscript.bsdk: unknown workspace folder name "${namedFolder[ 1 ]}"`);
+                    throw new Error(`brightscript.bsdk: unknown workspace folder name "${namedFolder[1]}"`);
                 }
                 return folder.uri.fsPath;
             }
             if (expression === 'workspaceFolder') {
-                return vscode.workspace.workspaceFolders?.[ 0 ]?.uri.fsPath ?? _match;
+                return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? _match;
             }
             throw new Error(`brightscript.bsdk: unsupported variable "\${${expression}}"`);
         });
