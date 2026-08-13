@@ -339,7 +339,7 @@ describe('LanguageServerManager', () => {
 
             await expectThrowsAsync(
                 () => languageServerManager['getBsdkVersionInfo'](),
-                'brightscript.bsdk: unsupported variable "${env:MY_VAR}"'
+                'brightscript.bsdk: unsupported variable in bsdk "${env:MY_VAR}/node_modules/brighterscript"'
             );
         });
 
