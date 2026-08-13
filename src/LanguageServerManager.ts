@@ -524,9 +524,10 @@ export class LanguageServerManager {
         //use bsdk entry in the code-workspace file
         if (this.workspaceConfigIncludesBsdkKey()) {
             let result = this.parseVersionInfo(
-                this.workspaceBsdkPath(),
-                path.dirname(vscode.workspace.workspaceFile.fsPath)
+                this.getWorkspaceBsdkInfo(vscode.workspace.workspaceFile),
+                path.dirname(vscode.workspace.workspaceFile.fsPath),
             );
+
             if (result) {
                 return result.value;
             }
@@ -534,7 +535,8 @@ export class LanguageServerManager {
 
         //collect `brightscript.bsdk` setting value from each workspaceFolder
         const folderResults = vscode.workspace.workspaceFolders?.reduce((acc, workspaceFolder) => {
-            const versionInfo = util.getConfiguration('brightscript', workspaceFolder).get<string>('bsdk');
+            const versionInfo = this.getWorkspaceBsdkInfo(vscode.workspace.workspaceFile)
+
             const parsed = this.parseVersionInfo(versionInfo, workspaceFolder.uri.fsPath);
             if (parsed) {
                 acc.set(parsed.value, parsed);
@@ -563,9 +565,15 @@ export class LanguageServerManager {
      * the .code-workspace file — VSCode does not expand variables like ${workspaceFolder} in this
      * value, so we expand ${workspaceFolder} and ${workspaceFolder:name} ourselves.
      */
-    private workspaceBsdkPath(): string {
-        const rawValue = util.getConfiguration('brightscript', vscode.workspace.workspaceFile).inspect<string>('bsdk')?.workspaceValue?.trim?.();
-        return this.expandWorkspaceBsdkPath(rawValue);
+    private getWorkspaceBsdkInfo(workspaceFolder: vscode.ConfigurationScope) {
+        const rawValue = util.getConfiguration('brightscript', workspaceFolder).inspect<string>('bsdk')?.workspaceValue?.trim?.();
+
+        const hasVariable = /^\$\{/.test(rawValue);
+        if (!hasVariable) {
+            return rawValue;
+        }
+
+        return this.expandWorkspaceBsdkInfo(rawValue);
     }
 
     /**
@@ -573,21 +581,29 @@ export class LanguageServerManager {
      * VSCode does not expand these variables in inspect().workspaceValue, so we do it ourselves.
      * Throws if an unrecognized variable is encountered.
      */
-    private expandWorkspaceBsdkPath(value: string): string {
-        return value?.replace(/\$\{([^}]+)\}/g, (_match, expression) => {
-            const namedFolder = /^workspaceFolder:(.+)$/.exec(expression);
-            if (namedFolder) {
-                const folder = vscode.workspace.workspaceFolders?.find(f => f.name === namedFolder[1]);
-                if (!folder) {
-                    throw new Error(`brightscript.bsdk: unknown workspace folder name "${namedFolder[1]}"`);
-                }
-                return folder.uri.fsPath;
-            }
-            if (expression === 'workspaceFolder') {
-                return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? _match;
-            }
-            throw new Error(`brightscript.bsdk: unsupported variable "\${${expression}}"`);
-        });
+    private expandWorkspaceBsdkInfo(value: string): string {
+        if (!value) { return value; }
+
+        const [ match, workspaceName, relativePath ] = /^\$\{workspaceFolder:?([^}]*)\}(.*)$/.exec(value) ?? [];
+
+        if (!match) {
+            throw new Error(`brightscript.bsdk: unsupported variable in bsdk "${value}"`);
+        }
+
+        // if ${workspaceFolder}, use workspaceFolders[0]
+        let workspaceFolder = vscode.workspace.workspaceFolders?.[ 0 ]
+
+        // if ${workspaceFolder:name}, find by name
+        if (workspaceName) {
+            workspaceFolder = vscode.workspace.workspaceFolders?.find(f => f.name === workspaceName);
+        }
+
+        if (!workspaceFolder) {
+            throw new Error(`brightscript.bsdk: unknown workspace folder name "${workspaceName}"`);
+        }
+
+        const bsdkInfo = path.join(workspaceFolder.uri.fsPath, relativePath)
+        return bsdkInfo ?? '';
     }
 
     private workspaceConfigIncludesBsdkKey() {
