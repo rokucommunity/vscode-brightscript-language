@@ -592,7 +592,7 @@ export class LanguageServerManager {
         }
 
         // if ${workspaceFolder}, use workspaceFolders[0]
-        let workspaceFolder = vscode.workspace.workspaceFolders?.[0]
+        let workspaceFolder = vscode.workspace.workspaceFolders?.[0];
 
         // if ${workspaceFolder:name}, find by name
         if (workspaceName) {
@@ -603,7 +603,7 @@ export class LanguageServerManager {
             throw new Error(`brightscript.bsdk: unknown workspace folder name "${workspaceName}"`);
         }
 
-        const bsdkInfo = path.join(workspaceFolder.uri.fsPath, relativePath)
+        const bsdkInfo = path.join(workspaceFolder.uri.fsPath, relativePath);
         return bsdkInfo ?? '';
     }
 
