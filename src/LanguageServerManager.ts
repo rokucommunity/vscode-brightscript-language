@@ -535,7 +535,7 @@ export class LanguageServerManager {
 
         //collect `brightscript.bsdk` setting value from each workspaceFolder
         const folderResults = vscode.workspace.workspaceFolders?.reduce((acc, workspaceFolder) => {
-            const versionInfo = util.getConfiguration('brightscript', workspaceFolder).get<string>('bsdk');
+            const versionInfo = this.getWorkspaceBsdkInfo(workspaceFolder);
             const parsed = this.parseVersionInfo(versionInfo, workspaceFolder.uri.fsPath);
             if (parsed) {
                 acc.set(parsed.value, parsed);
@@ -565,7 +565,8 @@ export class LanguageServerManager {
      * value, so we expand ${workspaceFolder} and ${workspaceFolder:name} ourselves.
      */
     private getWorkspaceBsdkInfo(workspaceFolder: vscode.ConfigurationScope) {
-        const rawValue = util.getConfiguration('brightscript', workspaceFolder).inspect<string>('bsdk')?.workspaceValue?.trim?.();
+        const config = util.getConfiguration('brightscript', workspaceFolder);
+        const rawValue = config.inspect<string>('bsdk')?.workspaceValue?.trim?.() ?? config.get<string>('bsdk')?.trim?.();
 
         const hasVariable = rawValue?.startsWith('${');
         if (!hasVariable) {
