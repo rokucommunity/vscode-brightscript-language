@@ -20,8 +20,11 @@ const projects = [{
     name: 'brighterscript-formatter',
     dependencies: ['brighterscript']
 }, {
+    name: 'roku-test-automation',
+    dependencies: ['roku-deploy']
+}, {
     name: 'vscode-brightscript-language',
-    dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy']
+    dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy', 'roku-test-automation']
 }] as Project[];
 
 async function main() {
