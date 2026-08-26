@@ -128,41 +128,44 @@
         currentPathBreadcrumbs = buildBreadcrumbsForPath(path);
         currentPath = path;
 
-        if (path === '') {
-            loading = true;
-            // We use an empty path to serve as the top level
-            const {list} = await odc.getVolumeList({});
-            currentPathContentsInfo = list.map((volume) => {
-                return {
-                    name: volume,
-                    path: volume + '/',
-                    type: 'fileSystem'
+        loading = true;
+        try {
+            if (path === '') {
+                // We use an empty path to serve as the top level
+                const {list} = await odc.getVolumeList({});
+                currentPathContentsInfo = list.map((volume) => {
+                    return {
+                        name: volume,
+                        path: volume + '/',
+                        type: 'fileSystem'
+                    }
+                });
+            } else {
+                const {list} = await odc.getDirectoryListing({
+                    path: path
+                });
+
+                currentPathContentsInfo = list.map((name) => {
+                    return {
+                        name: name,
+                        path: path + name
+                    }
+                });
+
+                loading = false;
+
+                for (const [index, info] of currentPathContentsInfo.entries()) {
+                    const statInfo = await odc.statPath({
+                        path: info.path
+                    }) as PathContentsInfo;
+                    currentPathContentsInfo[index] = {...info, ...statInfo};
                 }
-            });
-            loading = false;
-        } else {
-            loading = true;
-
-            const {list} = await odc.getDirectoryListing({
-                path: path
-            });
-
-            currentPathContentsInfo = list.map((name) => {
-                return {
-                    name: name,
-                    path: path + name
-                }
-            });
-
-            loading = false;
-
-
-            for (const [index, info] of currentPathContentsInfo.entries()) {
-                const statInfo = await odc.statPath({
-                    path: info.path
-                }) as PathContentsInfo;
-                currentPathContentsInfo[index] = {...info, ...statInfo};
             }
+        } catch (e) {
+            console.error('Error updating current path', e);
+            currentPathContentsInfo = [];
+        } finally {
+            loading = false;
         }
     }
 

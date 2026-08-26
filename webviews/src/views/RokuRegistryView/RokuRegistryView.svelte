@@ -17,9 +17,15 @@
         odcAvailable = message.context.odcAvailable;
         if (odcAvailable) {
             loading = true;
-            const { values } = await odc.readRegistry();
-            registryValues = registryView.formatValues(values);
-            loading = false;
+            try {
+                const { values } = await odc.readRegistry();
+                registryValues = registryView.formatValues(values);
+            } catch (e) {
+                console.error('Error reading registry', e);
+                registryValues = {};
+            } finally {
+                loading = false;
+            }
         } else {
             registryValues = {}
         }
