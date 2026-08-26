@@ -1,18 +1,21 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as rta from 'roku-test-automation';
-import { isLocalDeviceConfig, isRceDeviceConfig } from 'roku-deploy';
 import type { DeviceConfig } from 'roku-deploy';
 import * as vscode from 'vscode';
 import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { ViewProviderId } from '../viewProviders/ViewProviderId';
 import { vscodeContextManager } from './VscodeContextManager';
 import type { WebviewViewProviderManager } from './WebviewViewProviderManager';
+import type { RceManager } from './RceManager';
+import type { DeviceManager } from '../deviceDiscovery/DeviceManager';
 import { VscodeCommand } from '../commands/VscodeCommand';
 
 export class RtaManager {
     constructor(
-        context: vscode.ExtensionContext
+        private context: vscode.ExtensionContext,
+        private rceManager: RceManager,
+        private deviceManager: DeviceManager
     ) {
         context.subscriptions.push(vscode.commands.registerCommand(VscodeCommand.disconnectFromDevice, () => {
             void this.onDeviceComponent?.shutdown();
@@ -36,32 +39,66 @@ export class RtaManager {
     private webviewViewProviderManager?: WebviewViewProviderManager;
     private lastAppUIResponse: rta.AppUIResponse | undefined;
 
-    public setupRtaWithConfig(config: { device?: DeviceConfig; host?: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
-        //roku-test-automation talks to the device by host over the local network, so a device without
-        //a host (a Roku Cloud Emulator config) cannot back the RDB views yet. A debug session's
-        //launch config addresses the device through `device`; the bare `host` field remains only for
-        //the RDB view's manual-ip flow, and is deliberately ignored whenever any `device` is present
-        //(a non-local session's raw `host` field can hold an unresolved placeholder).
-        this.isRceDebugSession = config.device !== undefined && isRceDeviceConfig(config.device);
-        let host: string | undefined;
-        if (config.device !== undefined) {
-            host = isLocalDeviceConfig(config.device) ? config.device.host : undefined;
-        } else {
-            host = config.host;
+    /**
+     * Set up RTA for a sideloaded channel. The device is never taken from the launch config -
+     * `device`/`host` on a launch config can hold an unresolved placeholder or a config-side
+     * choice that predates a later sideload - so this resolves the device the same way the rest of
+     * the extension does: through the remote-control device key DebugConfigurationProvider updates
+     * on every launch resolve. `config.host` is a fallback for a host the device manager never
+     * discovered (e.g. a hardcoded LAN host with no SSDP presence).
+     */
+    public async setupRtaWithConfig(config: { device?: DeviceConfig; host?: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
+        const remoteControlDeviceKey = this.context.workspaceState.get<string>('remoteControlDeviceKey');
+        const resolvedDevice = remoteControlDeviceKey ? this.deviceManager.getDevice(remoteControlDeviceKey) : undefined;
+
+        this.isRceDebugSession = !!resolvedDevice?.rce;
+
+        let device: rta.DeviceConfigOptions;
+        if (resolvedDevice?.rce) {
+            device = {
+                id: resolvedDevice.rce.id,
+                esn: resolvedDevice.serialNumber,
+                instanceUrl: resolvedDevice.rce.instanceUrl,
+                password: config.password
+            };
+            //the launch config's rceToken is deliberately scrubbed before it reaches here (see
+            //DebugConfigurationProvider), so RtaManager fetches the token itself
+            device.rceToken = await this.rceManager.getToken();
+            if (!device.rceToken) {
+                console.warn('RtaManager: no Cloud Emulator token is available; RTA requests to this device will fail authentication');
+            }
+        } else if (resolvedDevice?.ip) {
+            device = { host: resolvedDevice.ip, password: config.password };
+        } else if (config.host) {
+            device = { host: config.host, password: config.password };
         }
-        if (!host) {
-            //RTA cannot be set up without a host, but the webviews still need to hear about the
-            //device change (an RCE session hides the RTA-driven views behind an unsupported message)
+
+        if (!device) {
+            //RTA cannot be set up without a way to address the device, but the webviews still need to
+            //hear about the device change (an RCE session with no address hides the RTA-driven views
+            //behind an unsupported message)
             this.updateDeviceAvailabilityOnWebViewProviders();
             return;
         }
+
+        this.finishSetup(device, config);
+    }
+
+    /**
+     * Set up RTA against a manually entered host (the RDB view's manual-ip flow). Always uses the
+     * given host - it must never fall back to the remote-control device key, which could point at a
+     * stale device from a previous session.
+     */
+    public setupRtaWithManualHost(config: { host: string; password: string; injectRdbOnDeviceComponent?: boolean }) {
+        this.isRceDebugSession = false;
+        this.finishSetup({ host: config.host, password: config.password }, config);
+    }
+
+    private finishSetup(device: rta.DeviceConfigOptions, config: { logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
         const enableDebugging = ['info', 'debug', 'trace'].includes(config.logLevel);
         const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {
-                devices: [{
-                    host: host,
-                    password: config.password
-                }]
+                devices: [device]
             },
             OnDeviceComponent: {
                 logLevel: enableDebugging ? 'verbose' : undefined,
@@ -114,8 +151,7 @@ export class RtaManager {
     }
 
     public async getAppUI(requestorId: string) {
-        await this.sendOdcRequest(requestorId, 'assignElementIdOnAllNodes', { args: {}, options: {} });
-        this.lastAppUIResponse = await rta.ecp.getAppUI();
+        this.lastAppUIResponse = await rta.ecp.getAppUI(this.onDeviceComponent);
 
         const viewIds = [];
         if (requestorId === ViewProviderId.rokuDeviceView) {

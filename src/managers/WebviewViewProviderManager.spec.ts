@@ -41,8 +41,8 @@ describe('WebviewViewProviderManager', () => {
         let spy;
         before(() => {
             spy = sinon.spy(vscode.window, 'registerWebviewViewProvider');
-            rtaManager = new RtaManager(context);
             rceManager = new RceManager(context);
+            rtaManager = new RtaManager(context, rceManager, deviceManager);
             rceFinder = new RceFinder(rceManager);
             webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, rceManager, rceFinder, deviceManager, brightScriptCommands);
         });
@@ -75,15 +75,15 @@ describe('WebviewViewProviderManager', () => {
                 }
             };
 
-            rtaManager = new RtaManager(context);
             rceManager = new RceManager(context);
+            rtaManager = new RtaManager(context, rceManager, deviceManager);
             rceFinder = new RceFinder(rceManager);
             webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, rceManager, rceFinder, deviceManager, brightScriptCommands);
             rtaManager.setWebviewViewProviderManager(webviewViewProviderManager);
         });
 
         it('calls setupRtaWithConfig', () => {
-            const spy = sinon.stub(rtaManager, 'setupRtaWithConfig').returns(undefined);
+            const spy = sinon.stub(rtaManager, 'setupRtaWithConfig').resolves(undefined);
             webviewViewProviderManager.onChannelPublishedEvent(event);
             expect(spy.calledOnce).to.be.true;
         });

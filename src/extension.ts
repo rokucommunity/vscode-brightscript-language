@@ -135,7 +135,7 @@ export class Extension {
             deviceTargetManager
         );
 
-        this.rtaManager = new RtaManager(context);
+        this.rtaManager = new RtaManager(context, rceManager, this.deviceManager);
         this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, rceManager, rceFinder, this.deviceManager, this.brightScriptCommands);
         this.rtaManager.setWebviewViewProviderManager(this.webviewViewProviderManager);
 

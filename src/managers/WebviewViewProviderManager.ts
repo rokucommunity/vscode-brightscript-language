@@ -94,7 +94,7 @@ export class WebviewViewProviderManager {
     // Notification from extension
     public onChannelPublishedEvent(e: ChannelPublishedEvent) {
         const config = e.body.launchConfiguration as BrightScriptLaunchConfiguration;
-        this.rtaManager.setupRtaWithConfig(config);
+        this.rtaManager.setupRtaWithConfig(config).catch((error: Error) => console.error('Failed to set up RTA from the launch config', error));
 
         for (const webview of this.webviewViews) {
             void webview.provider.onChannelPublishedEvent(e);

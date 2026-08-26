@@ -42,7 +42,7 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
         }
 
         this.addMessageCommandCallback(ViewProviderCommand.setManualIpAddress, (message) => {
-            this.dependencies.rtaManager.setupRtaWithConfig({
+            this.dependencies.rtaManager.setupRtaWithManualHost({
                 ...message.context,
                 injectRdbOnDeviceComponent: true
             });

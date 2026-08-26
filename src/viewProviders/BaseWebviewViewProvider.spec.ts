@@ -33,7 +33,7 @@ describe('BaseWebviewViewProvider', () => {
     let postMessage: sinonImport.SinonStub;
 
     beforeEach(() => {
-        const rtaManager = new RtaManager(vscode.context);
+        const rtaManager = new RtaManager(vscode.context, {} as any, {} as any);
         provider = new TestWebviewViewProvider(vscode.context, {
             rtaManager: rtaManager
         } as any);

@@ -115,7 +115,7 @@ describe('RokuDeviceViewViewProvider', () => {
     let rceFinder: EventEmitter;
 
     function createProvider(): TestRokuDeviceViewViewProvider {
-        const rtaManager = new RtaManager(vscode.context);
+        const rtaManager = new RtaManager(vscode.context, {} as any, {} as any);
         getToken = sinon.stub().resolves('management-api-token');
         getDevice = sinon.stub().returns(undefined);
         getDeviceByDeviceConfig = sinon.stub().returns(undefined);
