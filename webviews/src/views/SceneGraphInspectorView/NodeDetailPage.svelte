@@ -81,10 +81,6 @@
         loading = true;
 
         try {
-            if (inspectNode.base === 'appUI') {
-                await utils.convertAppUIKeyPathToSceneKeyPath(inspectNode);
-            }
-
             const { results } = await odc.getNodesInfo({
                 requests: {
                     request: {
