@@ -135,6 +135,19 @@ describe('RtaManager', () => {
 
             expect(rtaManager.isRceDebugSession).to.be.false;
         });
+
+        it('shuts down an existing ODC connection before re-pointing RTA at a different device', async () => {
+            getDeviceStub.withArgs('s:abc123').returns({ key: 's:abc123', ip: '1.2.3.4' });
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:abc123');
+            await rtaManager.setupRtaWithConfig({ password: 'aaaa', injectRdbOnDeviceComponent: true } as any);
+            const shutdownStub = sinon.stub(rtaManager.onDeviceComponent, 'shutdown').resolves();
+
+            getDeviceStub.withArgs('s:def456').returns({ key: 's:def456', ip: '5.6.7.8' });
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:def456');
+            await rtaManager.setupRtaWithConfig({ password: 'aaaa', injectRdbOnDeviceComponent: true } as any);
+
+            expect(shutdownStub.called).to.be.true;
+        });
     });
 
     describe('setupRtaWithManualHost', () => {
@@ -152,20 +165,44 @@ describe('RtaManager', () => {
     });
 
     describe('onDidTerminateDebugSession', () => {
-        it('clears the RCE debug session state and notifies the webviews', async () => {
+        it('shuts down the ODC connection for an RCE session and flips isRceDebugSession, but leaves the device alone', async () => {
             getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' } });
             await vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
-            await rtaManager.setupRtaWithConfig({ password: 'aaaa' } as any);
+            await rtaManager.setupRtaWithConfig({ password: 'aaaa', injectRdbOnDeviceComponent: true } as any);
+            const shutdownStub = sinon.stub(rtaManager.onDeviceComponent, 'shutdown').resolves();
             const updateDeviceAvailabilityStub = sinon.stub();
             rtaManager.setWebviewViewProviderManager({ getWebviewViewProviders: () => [{ updateDeviceAvailability: updateDeviceAvailabilityStub }] } as any);
+            const device = rtaManager.device;
 
             rtaManager.onDidTerminateDebugSession();
 
+            expect(shutdownStub.called).to.be.true;
+            expect(rtaManager.onDeviceComponent).to.be.undefined;
+            expect(rtaManager.getStoredAppUI()).to.be.undefined;
             expect(rtaManager.isRceDebugSession).to.be.false;
             expect(updateDeviceAvailabilityStub.called).to.be.true;
+            expect(rtaManager.device).to.equal(device);
         });
 
-        it('does nothing when the session was not for an RCE device', async () => {
+        it('shuts down the ODC connection for a LAN session too, leaving the device alone', async () => {
+            getDeviceStub.withArgs('s:abc123').returns({ key: 's:abc123', ip: '1.2.3.4' });
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:abc123');
+            await rtaManager.setupRtaWithConfig({ password: 'aaaa', injectRdbOnDeviceComponent: true } as any);
+            const shutdownStub = sinon.stub(rtaManager.onDeviceComponent, 'shutdown').resolves();
+            const updateDeviceAvailabilityStub = sinon.stub();
+            rtaManager.setWebviewViewProviderManager({ getWebviewViewProviders: () => [{ updateDeviceAvailability: updateDeviceAvailabilityStub }] } as any);
+            const device = rtaManager.device;
+
+            rtaManager.onDidTerminateDebugSession();
+
+            expect(shutdownStub.called).to.be.true;
+            expect(rtaManager.onDeviceComponent).to.be.undefined;
+            expect(rtaManager.isRceDebugSession).to.be.false;
+            expect(updateDeviceAvailabilityStub.called).to.be.true;
+            expect(rtaManager.device).to.equal(device);
+        });
+
+        it('still clears state and notifies the webviews when there was no ODC connection to shut down', async () => {
             getDeviceStub.withArgs('s:abc123').returns({ key: 's:abc123', ip: '1.2.3.4' });
             await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:abc123');
             await rtaManager.setupRtaWithConfig({ password: 'aaaa' } as any);
@@ -174,7 +211,8 @@ describe('RtaManager', () => {
 
             rtaManager.onDidTerminateDebugSession();
 
-            expect(updateDeviceAvailabilityStub.called).to.be.false;
+            expect(rtaManager.onDeviceComponent).to.be.undefined;
+            expect(updateDeviceAvailabilityStub.called).to.be.true;
         });
     });
 });

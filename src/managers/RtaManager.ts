@@ -108,6 +108,10 @@ export class RtaManager {
             }
         };
 
+        //the ODC singleton would otherwise keep sending requests over its existing socket to the
+        //previous device once setConfig re-points it at a new one
+        void this.onDeviceComponent?.shutdown();
+
         rta.odc.setConfig(rtaConfig);
 
         rta.ecp.setConfig(rtaConfig);
@@ -172,14 +176,21 @@ export class RtaManager {
     }
 
     /**
-     * A brightscript debug session ended. An RCE session's unsupported-message state ends with it,
-     * so the RTA-driven views fall back to their normal setup-steps UI.
+     * A brightscript debug session ended. The ODC connection lives inside the sideloaded channel,
+     * which roku-debug kills at session end, so it can never survive the session and must be torn
+     * down here; the device itself stays reachable (ECP, screenshots), so `device` and RTA's ecp
+     * config are left alone. An RCE session's unsupported-message state ends with it too, so the
+     * RTA-driven views fall back to their normal setup-steps UI.
      */
     public onDidTerminateDebugSession() {
-        if (this.isRceDebugSession) {
-            this.isRceDebugSession = false;
-            this.updateDeviceAvailabilityOnWebViewProviders();
-        }
+        void this.onDeviceComponent?.shutdown();
+        this.onDeviceComponent = undefined;
+        this.lastAppUIResponse = undefined;
+        void vscodeContextManager.set('brightscript.isOnDeviceComponentAvailable', false);
+
+        this.isRceDebugSession = false;
+
+        this.updateDeviceAvailabilityOnWebViewProviders();
     }
 
     public setWebviewViewProviderManager(manager: WebviewViewProviderManager) {
