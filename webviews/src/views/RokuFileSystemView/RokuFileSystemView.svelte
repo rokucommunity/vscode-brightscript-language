@@ -2,7 +2,6 @@
 <script lang="ts">
     import { odc, intermediary } from '../../ExtensionIntermediary';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
-    import RceUnsupportedMessage from '../../shared/RceUnsupportedMessage.svelte';
     import { Database, ChevronUp, ChevronDown } from 'svelte-codicons';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import Loader from '../../shared/Loader.svelte';
@@ -231,10 +230,8 @@
     });
 
     let odcAvailable = false;
-    let isRceDebugSession = false;
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
         odcAvailable = message.context.odcAvailable;
-        isRceDebugSession = message.context.isRceDebugSession;
         if (odcAvailable) {
             await refresh();
         }
@@ -275,9 +272,7 @@
     }
 </style>
 <div bind:clientWidth={containerWidth}>
-    {#if isRceDebugSession}
-        <RceUnsupportedMessage />
-    {:else if odcAvailable}
+    {#if odcAvailable}
         {#if loading}
             <Loader />
         {:else}
