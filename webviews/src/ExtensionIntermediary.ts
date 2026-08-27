@@ -4,6 +4,7 @@ import { RequestType } from 'roku-test-automation/dist/types/OnDeviceComponent';
 import type { VscodeCommand } from '../../src/commands/VscodeCommand';
 import { ViewProviderEvent } from '../../src/viewProviders/ViewProviderEvent';
 import { ViewProviderCommand } from '../../src/viewProviders/ViewProviderCommand';
+import { utils } from './utils';
 import type { DeleteEntireRegistrySectionsArgs, DeleteRegistrySectionsArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeArgs, RemoveNodeChildrenArgs, FocusNodeArgs, AppUIResponse } from 'roku-test-automation';
 
 class ExtensionIntermediary {
@@ -83,6 +84,10 @@ class ExtensionIntermediary {
 
     public sendViewReady() {
         this.setupExtensionMessageObserver();
+
+        //purging the deleted manual-connect form's plaintext leftovers
+        utils.deleteStorageValue('manuallySetIpAddress');
+        utils.deleteStorageValue('manuallySetPassword');
 
         this.postMessage({
             command: ViewProviderCommand.viewReady,

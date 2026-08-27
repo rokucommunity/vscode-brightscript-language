@@ -136,7 +136,7 @@ export class Extension {
         );
 
         this.rtaManager = new RtaManager(context, rceManager, this.deviceManager);
-        this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, rceManager, rceFinder, this.deviceManager, this.brightScriptCommands);
+        this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, rceManager, rceFinder, this.deviceManager, this.brightScriptCommands, deviceTargetManager);
         this.rtaManager.setWebviewViewProviderManager(this.webviewViewProviderManager);
 
         PerfettoEditorProvider.register(context);

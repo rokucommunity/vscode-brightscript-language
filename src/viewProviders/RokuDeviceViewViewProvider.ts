@@ -174,6 +174,18 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         delete this.resumeScreenshotCapture;
     }
 
+    /**
+     * The manual "Connect to Device" button just set up RTA against this target. That flow never
+     * starts a stream on its own, so a Cloud Emulator target would otherwise leave this view stuck
+     * retrying the LAN screenshot loop against a device with no sideloaded channel - route it through
+     * the same follow-the-connected-device logic the sideload path uses (a LAN target's screenshot
+     * loop already works, so it just stops any stream left over from a previous Cloud Emulator
+     * device, mirroring the sideload path's symmetry).
+     */
+    protected onDeviceConnected(target: DeviceConfig) {
+        void this.followSideloadedDevice(target);
+    }
+
     public onChannelPublishedEvent(e: ChannelPublishedEvent) {
         this.temporarilyDisableScreenshotCapture = false;
         this.resumeScreenshotCapture?.();

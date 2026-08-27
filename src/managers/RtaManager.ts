@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as rta from 'roku-test-automation';
 import type { DeviceConfig } from 'roku-deploy';
+import { isRceDeviceConfig } from 'roku-deploy';
 import * as vscode from 'vscode';
 import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { ViewProviderId } from '../viewProviders/ViewProviderId';
@@ -29,10 +30,12 @@ export class RtaManager {
     public device?: rta.RokuDevice;
 
     /**
-     * Whether the most recent debug session addressed a Roku Cloud Emulator device. RTA reaches a
-     * device by LAN host, which an RCE device does not have, so the RTA-driven webviews hide their
-     * UI behind an explanatory message while this is true. Cleared when that debug session ends
-     * (see onDidTerminateDebugSession) or when RTA is set up against a LAN device.
+     * Whether RTA is currently pointed at a Roku Cloud Emulator device, set either by a debug
+     * session's sideload (setupRtaWithConfig) or by a manual device-picker connect
+     * (setupRtaWithDeviceTarget) - RTA reaches a device by LAN host, which an RCE device does not
+     * have, so the RTA-driven webviews hide their UI behind an explanatory message while this is
+     * true. Cleared when the debug session ends (see onDidTerminateDebugSession) or when RTA is
+     * subsequently set up against a LAN device.
      */
     public isRceDebugSession = false;
 
@@ -85,13 +88,32 @@ export class RtaManager {
     }
 
     /**
-     * Set up RTA against a manually entered host (the RDB view's manual-ip flow). Always uses the
-     * given host - it must never fall back to the remote-control device key, which could point at a
-     * stale device from a previous session.
+     * Set up RTA against a device resolved through the shared device-picker/password flow (the RDB
+     * views' "Connect to a Device" button). Always uses the given target - it must never fall back
+     * to the remote-control device key, which could point at a stale device from a previous
+     * session.
      */
-    public setupRtaWithManualHost(config: { host: string; password: string; injectRdbOnDeviceComponent?: boolean }) {
-        this.isRceDebugSession = false;
-        this.finishSetup({ host: config.host, password: config.password }, config);
+    public async setupRtaWithDeviceTarget(deviceConfig: DeviceConfig, password: string, config: { injectRdbOnDeviceComponent?: boolean } = {}) {
+        this.isRceDebugSession = isRceDeviceConfig(deviceConfig);
+
+        let device: rta.DeviceConfigOptions;
+        if (isRceDeviceConfig(deviceConfig)) {
+            device = { ...deviceConfig, password: password };
+            if (!device.rceToken) {
+                //the resolved target's device config didn't already carry a token (e.g. it was
+                //scrubbed somewhere upstream), so fetch one directly
+                device.rceToken = await this.rceManager.getToken();
+                if (!device.rceToken) {
+                    throw new Error('No Roku Cloud Emulator token available; cannot connect to this device');
+                }
+            }
+        } else if (deviceConfig.host) {
+            device = { host: deviceConfig.host, password: password };
+        } else {
+            throw new Error('The resolved device target has neither a host nor a Roku Cloud Emulator identity; cannot connect to it');
+        }
+
+        this.finishSetup(device, config);
     }
 
     private finishSetup(device: rta.DeviceConfigOptions, config: { logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {

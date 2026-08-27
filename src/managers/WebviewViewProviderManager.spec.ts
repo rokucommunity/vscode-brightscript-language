@@ -21,6 +21,7 @@ describe('WebviewViewProviderManager', () => {
     let rceFinder: RceFinder;
     const deviceManager = { getDevice: () => undefined } as any;
     const brightScriptCommands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const deviceTargetManager = {} as any;
 
     before(() => {
         context = {
@@ -44,7 +45,7 @@ describe('WebviewViewProviderManager', () => {
             rceManager = new RceManager(context);
             rtaManager = new RtaManager(context, rceManager, deviceManager);
             rceFinder = new RceFinder(rceManager);
-            webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, rceManager, rceFinder, deviceManager, brightScriptCommands);
+            webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, rceManager, rceFinder, deviceManager, brightScriptCommands, deviceTargetManager);
         });
 
         it('initializes webview providers and calls registerWebviewViewProvider for each', () => {
@@ -58,6 +59,7 @@ describe('WebviewViewProviderManager', () => {
                 expect(webviewViewProvider['dependencies']['rceFinder']).to.equal(rceFinder);
                 expect(webviewViewProvider['dependencies']['deviceManager']).to.equal(deviceManager);
                 expect(webviewViewProvider['dependencies']['brightScriptCommands']).to.equal(brightScriptCommands);
+                expect(webviewViewProvider['dependencies']['deviceTargetManager']).to.equal(deviceTargetManager);
             }
             expect(spy.callCount).to.equal(webviewViewProviderManager.getWebviewViewProviders().length);
         });
@@ -78,7 +80,7 @@ describe('WebviewViewProviderManager', () => {
             rceManager = new RceManager(context);
             rtaManager = new RtaManager(context, rceManager, deviceManager);
             rceFinder = new RceFinder(rceManager);
-            webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, rceManager, rceFinder, deviceManager, brightScriptCommands);
+            webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, rceManager, rceFinder, deviceManager, brightScriptCommands, deviceTargetManager);
             rtaManager.setWebviewViewProviderManager(webviewViewProviderManager);
         });
 

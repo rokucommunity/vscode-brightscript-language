@@ -1,6 +1,7 @@
 import * as rta from 'roku-test-automation';
 import type * as vscode from 'vscode';
 import type { RequestType } from 'roku-test-automation';
+import type { DeviceConfig } from 'roku-deploy';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 
@@ -41,12 +42,32 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
             });
         }
 
-        this.addMessageCommandCallback(ViewProviderCommand.setManualIpAddress, (message) => {
-            this.dependencies.rtaManager.setupRtaWithManualHost({
-                ...message.context,
-                injectRdbOnDeviceComponent: true
-            });
-            return Promise.resolve(true);
+        this.addMessageCommandCallback(ViewProviderCommand.connectToDevice, async (message) => {
+            const { deviceTargetManager, rtaManager } = this.dependencies;
+
+            try {
+                const target = await deviceTargetManager.resolveTargetDevice();
+                if (!target) {
+                    this.postOrQueueMessage(this.createResponseMessage(message, { status: 'cancelled' }));
+                    return true;
+                }
+
+                const password = await deviceTargetManager.resolveValidatedPassword(target.device, target.serialNumber, target.label);
+                if (password === undefined) {
+                    this.postOrQueueMessage(this.createResponseMessage(message, { status: 'cancelled' }));
+                    return true;
+                }
+
+                await rtaManager.setupRtaWithDeviceTarget(target.device, password, { injectRdbOnDeviceComponent: true });
+                this.postOrQueueMessage(this.createResponseMessage(message, { status: 'success' }));
+                //fire-and-forget: a stream-start failure for the connected device is this hook's own
+                //problem to surface (see RokuDeviceViewViewProvider's override), not a reason to turn
+                //an otherwise-successful RTA connect into an error response
+                this.onDeviceConnected(target.device);
+            } catch (e) {
+                this.postOrQueueMessage(this.createResponseMessage(message, { status: 'error', message: e?.message }));
+            }
+            return true;
         });
 
         this.addMessageCommandCallback(ViewProviderCommand.getStoredAppUI, (message) => {
@@ -75,5 +96,15 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
     protected onViewReady() {
         // Always post back the device status so we make sure the client doesn't miss it if it got refreshed
         this.updateDeviceAvailability();
+    }
+
+    /**
+     * Called after a manual connectToDevice succeeds, with the device the button just connected RTA
+     * to. No-op by default; RokuDeviceViewViewProvider overrides this to route a Roku Cloud Emulator
+     * target into its video stream, since the button flow only sets up RTA and otherwise leaves that
+     * view stuck on the LAN screenshot loop.
+     */
+    protected onDeviceConnected(target: DeviceConfig) {
+        // no-op by default
     }
 }

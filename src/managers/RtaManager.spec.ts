@@ -150,17 +150,65 @@ describe('RtaManager', () => {
         });
     });
 
-    describe('setupRtaWithManualHost', () => {
-        it('sets up RTA from the given host, ignoring the remote-control device key', () => {
+    describe('setupRtaWithDeviceTarget', () => {
+        it('sets up RTA against a LAN target, ignoring the remote-control device key', async () => {
             getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' } });
             void vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
 
-            rtaManager.setupRtaWithManualHost({ host: '1.2.3.4', password: 'aaaa' } as any);
+            await rtaManager.setupRtaWithDeviceTarget({ host: '1.2.3.4' } as any, 'aaaa');
 
             expect(odcSetConfigStub.calledOnce).to.be.true;
-            expect(odcSetConfigStub.firstCall.args[0].RokuDevice.devices[0].host).to.equal('1.2.3.4');
+            const device = odcSetConfigStub.firstCall.args[0].RokuDevice.devices[0];
+            expect(device.host).to.equal('1.2.3.4');
+            expect(device.password).to.equal('aaaa');
             expect(getDeviceStub.called).to.be.false;
             expect(rtaManager.isRceDebugSession).to.be.false;
+        });
+
+        it('sets up RTA against a Roku Cloud Emulator target, carrying its id and rceToken and marking the session as RCE', async () => {
+            await rtaManager.setupRtaWithDeviceTarget({ id: 83, rceToken: 'device-token' } as any, 'aaaa');
+
+            expect(odcSetConfigStub.calledOnce).to.be.true;
+            const device = odcSetConfigStub.firstCall.args[0].RokuDevice.devices[0];
+            expect(device.id).to.equal(83);
+            expect(device.rceToken).to.equal('device-token');
+            expect(device.password).to.equal('aaaa');
+            expect(rtaManager.isRceDebugSession).to.be.true;
+            expect(getTokenStub.called).to.be.false;
+        });
+
+        it('falls back to RceManager for a token when the RCE target has none', async () => {
+            await rtaManager.setupRtaWithDeviceTarget({ esn: 'ESN123' } as any, 'aaaa');
+
+            expect(getTokenStub.calledOnce).to.be.true;
+            const device = odcSetConfigStub.firstCall.args[0].RokuDevice.devices[0];
+            expect(device.rceToken).to.equal('management-api-token');
+        });
+
+        it('throws when the RCE target has no token and RceManager cannot provide one either', async () => {
+            getTokenStub.resolves(undefined);
+
+            let threw: Error;
+            try {
+                await rtaManager.setupRtaWithDeviceTarget({ esn: 'ESN123' } as any, 'aaaa');
+            } catch (e) {
+                threw = e as Error;
+            }
+
+            expect(threw?.message).to.contain('No Roku Cloud Emulator token available');
+            expect(odcSetConfigStub.called).to.be.false;
+        });
+
+        it('throws when the device target has neither a host nor an RCE identity', async () => {
+            let threw: Error;
+            try {
+                await rtaManager.setupRtaWithDeviceTarget({} as any, 'aaaa');
+            } catch (e) {
+                threw = e as Error;
+            }
+
+            expect(threw?.message).to.contain('neither a host nor a Roku Cloud Emulator identity');
+            expect(odcSetConfigStub.called).to.be.false;
         });
     });
 
