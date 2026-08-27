@@ -7,7 +7,8 @@ import * as vscode from 'vscode';
 import { Cache } from 'brighterscript/dist/Cache';
 import undent from 'undent';
 import { EXTENSION_ID, ROKU_DEBUG_VERSION } from './constants';
-import type { DeviceInfo } from 'roku-deploy';
+import type { DeviceConfig, DeviceInfo } from 'roku-deploy';
+import { isLocalDeviceConfig, isRceDeviceConfigByUrl, isRceDeviceConfigById, isRceDeviceConfigByEsn } from 'roku-deploy';
 import * as request from 'postman-request';
 import type { Response, CoreOptions } from 'request';
 import * as childProcess from 'child_process';
@@ -670,6 +671,33 @@ class Util {
             }
         }
         return false;
+    }
+
+    /**
+     * Describe a roku-deploy device config (a local `{host}` config, or a Roku Cloud Emulator
+     * config addressed by instanceUrl/id/esn) by whichever address field it has, for dialogs and
+     * error messages. A Roku Cloud Emulator config has no host, so the host cannot be printed
+     * directly.
+     * @param device the device config to describe
+     * @param fallback the label to use when the config carries no recognizable address
+     */
+    public describeDevice(device: DeviceConfig | undefined, fallback = 'unknown'): string {
+        if (!device) {
+            return fallback;
+        }
+        if (isLocalDeviceConfig(device)) {
+            return device.host;
+        }
+        if (isRceDeviceConfigByUrl(device)) {
+            return device.instanceUrl;
+        }
+        if (isRceDeviceConfigById(device)) {
+            return String(device.id);
+        }
+        if (isRceDeviceConfigByEsn(device)) {
+            return device.esn;
+        }
+        return fallback;
     }
 }
 

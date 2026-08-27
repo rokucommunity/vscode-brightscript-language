@@ -17,13 +17,14 @@ import {
     loadDeviceFilters
 } from './deviceFilters';
 
-function makeDevice(overrides: { key: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean }): any {
+function makeDevice(overrides: { key: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean; isRce?: boolean }): any {
     return {
         key: overrides.key,
-        ip: '1.2.3.4',
+        ip: overrides.isRce ? undefined : '1.2.3.4',
         deviceState: overrides.deviceState ?? 'online',
         lastDeviceState: overrides.lastDeviceState ?? 'unknown',
         isConfigured: overrides.isConfigured ?? false,
+        rce: overrides.isRce ? { id: 'rce-device-id', status: 'running' } : undefined,
         deviceInfo: {
             'is-tv': overrides.isTv ? 'true' : 'false',
             'is-stick': overrides.isStick ? 'true' : 'false',
@@ -68,6 +69,49 @@ describe('deviceFilters', () => {
             // Showing only offline drops the previously-online pending one and keeps the first-load one
             const offlineOnly = applyDeviceFilters(devices, { ...DEFAULT_DEVICE_FILTERS, online: false, offline: true });
             expect(offlineOnly.map(d => d.key)).to.deep.equal(['pending-first-load']);
+        });
+
+        it('splits devices by kind with the local and cloud facets', () => {
+            const devices = [
+                makeDevice({ key: 'lan-device' }),
+                makeDevice({ key: 'cloud-device', isRce: true })
+            ];
+            //defaults show both kinds
+            expect(applyDeviceFilters(devices, DEFAULT_DEVICE_FILTERS).map(d => d.key)).to.deep.equal(['lan-device', 'cloud-device']);
+            //cloud off hides the rce device only
+            expect(applyDeviceFilters(devices, { ...DEFAULT_DEVICE_FILTERS, cloud: false }).map(d => d.key)).to.deep.equal(['lan-device']);
+            //local off hides the LAN device only
+            expect(applyDeviceFilters(devices, { ...DEFAULT_DEVICE_FILTERS, local: false }).map(d => d.key)).to.deep.equal(['cloud-device']);
+        });
+
+        it('applies the dev-mode facets to RCE devices exactly like LAN devices', () => {
+            const devices = [
+                makeDevice({ key: 'rce-dev-disabled', isRce: true, developerEnabled: 'false' }),
+                makeDevice({ key: 'lan-dev-disabled', developerEnabled: 'false' })
+            ];
+            // Hidden under the default filters (devModeDisabled off), RCE and LAN alike
+            expect(applyDeviceFilters(devices, DEFAULT_DEVICE_FILTERS).map(d => d.key)).to.deep.equal([]);
+
+            // Visible once the devModeDisabled facet is turned on, RCE and LAN alike
+            const devDisabledOnly = applyDeviceFilters(devices, { ...DEFAULT_DEVICE_FILTERS, devModeEnabled: false, devModeDisabled: true });
+            expect(devDisabledOnly.map(d => d.key)).to.deep.equal(['rce-dev-disabled', 'lan-dev-disabled']);
+        });
+
+        it('treats an RCE device with unknown developer-enabled as enabled', () => {
+            const devices = [
+                makeDevice({ key: 'rce-dev-unknown', isRce: true })
+            ];
+            expect(applyDeviceFilters(devices, DEFAULT_DEVICE_FILTERS).map(d => d.key)).to.deep.equal(['rce-dev-unknown']);
+        });
+
+        it('hides a shutdown RCE device under default filters, and shows it with the offline facet on', () => {
+            const devices = [
+                makeDevice({ key: 'rce-shutdown', isRce: true, deviceState: 'offline', lastDeviceState: 'offline' })
+            ];
+            expect(applyDeviceFilters(devices, DEFAULT_DEVICE_FILTERS).map(d => d.key)).to.deep.equal([]);
+
+            const offlineOnly = applyDeviceFilters(devices, { ...DEFAULT_DEVICE_FILTERS, online: false, offline: true });
+            expect(offlineOnly.map(d => d.key)).to.deep.equal(['rce-shutdown']);
         });
 
         it('treats missing developer-enabled as enabled', () => {

@@ -4,6 +4,7 @@
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { intermediary } from '../../ExtensionIntermediary';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
+    import RceUnsupportedMessage from '../../shared/RceUnsupportedMessage.svelte';
     import { utils } from '../../utils';
 
     window.vscode = acquireVsCodeApi();
@@ -13,10 +14,12 @@
     let replError = '';
     let replTimeTaken = -1;
     let odcAvailable = false;
+    let isRceDebugSession = false;
     let replCode = utils.getStorageValue('replCode') ?? '';
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
         loading = false;
         odcAvailable = message.context.odcAvailable;
+        isRceDebugSession = message.context.isRceDebugSession;
     });
 
     function onReplCodeChange() {
@@ -99,6 +102,9 @@
 
 <svelte:window on:keydown={onKeydown} on:keyup={onKeyUp} />
 
+{#if isRceDebugSession}
+    <RceUnsupportedMessage />
+{:else}
 <div id="container">
     {#if odcAvailable}
         <vscode-text-area id="replCode" placeholder="Enter your brightscript code here to run on your device. For example:
@@ -134,3 +140,4 @@ return 1 + 1" rows="10" resize="both" on:input={onReplCodeChange} value={replCod
         <OdcSetupSteps />
     {/if}
 </div>
+{/if}
