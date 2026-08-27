@@ -167,7 +167,8 @@
         "workspaceContains:**/bsconfig.json",
         "onDebug",
         "onDebugDynamicConfigurations:brightscript",
-        "onTaskType:brightscript"
+        "onTaskType:brightscript",
+        "onWebviewPanel:rceVideoView"
     ],
     "contributes": {
         "taskDefinitions": [
