@@ -30,8 +30,15 @@ class Utils {
 
         this.storage = {};
         const state = this.getVscodeApi().getState();
-        if (state) {
-            this.storage = JSON.parse(state);
+        //some views (e.g. RceVideoView) store their own raw object state instead of the
+        //utils-owned JSON string, so only attempt to parse actual strings and tolerate anything
+        //that fails to parse as JSON
+        if (typeof state === 'string') {
+            try {
+                this.storage = JSON.parse(state);
+            } catch (e) {
+                this.storage = {};
+            }
         }
     }
 
@@ -61,6 +68,11 @@ class Utils {
 
     public deleteStorageValue(key: string) {
         this.setupStorage();
+        if (!this.storage.hasOwnProperty(key)) {
+            //nothing changed, so avoid overwriting state a view may have set directly (not
+            //through this utils-owned storage) with an unrelated empty object
+            return;
+        }
         delete this.storage[key];
         this.getVscodeApi().setState(JSON.stringify(this.storage));
     }
