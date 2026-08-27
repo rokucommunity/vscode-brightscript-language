@@ -12,6 +12,12 @@ button {
     justify-content: space-between;
 }
 
+/* Match VS Code's own button rounding (2px, e.g. the Extensions and Live Share views);
+   the toolkit's buttons render harder-edged than the native ones without this */
+vscode-button::part(control) {
+    border-radius: 2px;
+}
+
 .hide {
     display: none;
 }

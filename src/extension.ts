@@ -1,10 +1,16 @@
 import * as vscode from 'vscode';
 import * as prettyBytes from 'pretty-bytes';
 import { extensions } from 'vscode';
+import { isRceDeviceConfig } from 'roku-deploy';
+import type { DeviceConfig } from 'roku-deploy';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
 import { DeviceManager } from './deviceDiscovery/DeviceManager';
+import { ExperimentalFeaturesManager } from './managers/ExperimentalFeaturesManager';
+import { RceFinder } from './deviceDiscovery/RceFinder';
+import { RceManager } from './managers/RceManager';
+import { RceVideoEditorManager } from './managers/RceVideoEditorManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
@@ -22,6 +28,7 @@ import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
+import { DeviceTargetManager } from './managers/DeviceTargetManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
 import type { CustomRequestEvent, ProcessCrashEventData } from 'roku-debug';
 import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent, isProcessStagingDirCustomRequest } from 'roku-debug';
@@ -62,6 +69,19 @@ export class Extension {
         context.subscriptions.push(this);
         const currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version as string;
 
+        //one-time migration: `remoteHost` workspace state is superseded by `remoteControlDeviceKey`, which
+        //tracks the remote-control target for LAN and Cloud Emulator devices alike (distinct from
+        //`activeDeviceKey`, which only the user's Set as Active Device writes). Carry a remembered
+        //LAN host forward as a synthesized ip key, then drop the old state entirely
+        const legacyRemoteHost = context.workspaceState.get<string>('remoteHost');
+        if (legacyRemoteHost !== undefined) {
+            // eslint-disable-next-line no-template-curly-in-string
+            if (legacyRemoteHost && legacyRemoteHost !== '${promptForHost}' && !context.workspaceState.get('remoteControlDeviceKey')) {
+                await context.workspaceState.update('remoteControlDeviceKey', `i:${legacyRemoteHost}`);
+            }
+            await context.workspaceState.update('remoteHost', undefined);
+        }
+
         this.globalStateManager = new GlobalStateManager(context);
         this.whatsNewManager = new WhatsNewManager(this.globalStateManager, currentExtensionVersion);
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
@@ -82,7 +102,20 @@ export class Extension {
         this.telemetryManager.sendStartupEvent();
         this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
         this.extensionOutputChannel.appendLine('Extension startup');
-        this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel);
+        const experimentalFeatures = new ExperimentalFeaturesManager(context);
+
+        //the Roku Cloud Emulator stack is gated by the rokuCloudEmulator experimental feature, but
+        //it toggles live rather than at activation: the RceManager reports "no token" while the
+        //feature is disabled (and re-announces on every toggle), which empties the finder's device
+        //list and idles every consumer; the UI hides through the feature's context key
+        const rceManager = new RceManager(context, experimentalFeatures);
+        rceManager.register(context);
+        const rceFinder = new RceFinder(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
+        context.subscriptions.push(new RceVideoEditorManager(context, rceManager, rceFinder));
+        this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel, rceFinder);
+        //late-bound: lets the experimental features manager recognize cloud devices when it cleans
+        //up the workspace device-identity keys on a feature toggle
+        experimentalFeatures.setDeviceManager(this.deviceManager);
         const credentialStore = new CredentialStore(context);
         let userInputManager = new UserInputManager(
             this.deviceManager,
@@ -90,6 +123,7 @@ export class Extension {
         );
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
+        const deviceTargetManager = new DeviceTargetManager(context, this.deviceManager, userInputManager);
         this.brightScriptCommands = new BrightScriptCommands(
             this.remoteControlManager,
             this.whatsNewManager,
@@ -97,11 +131,12 @@ export class Extension {
             this.deviceManager,
             userInputManager,
             localPackageManager,
-            credentialStore
+            credentialStore,
+            deviceTargetManager
         );
 
         this.rtaManager = new RtaManager(context);
-        this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, this.brightScriptCommands);
+        this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, rceManager, rceFinder, this.deviceManager, this.brightScriptCommands);
         this.rtaManager.setWebviewViewProviderManager(this.webviewViewProviderManager);
 
         PerfettoEditorProvider.register(context);
@@ -179,7 +214,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands, this.deviceManager, credentialStore, rokuProjectProvider);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands, this.deviceManager, credentialStore, rceManager, rokuProjectProvider);
         context.subscriptions.push(
             // Initial: resolveDebugConfiguration — handles launch.json configs and F5 with no launch.json
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider, vscode.DebugConfigurationProviderTriggerKind.Initial),
@@ -189,9 +224,10 @@ export class Extension {
 
         //register a descriptor factory so we can inject process-level env vars into the debug adapter before it starts.
         //this is required for features like DAP protocol logging, which must be configured before the first DAP message arrives.
+        //note: an inline or server-based adapter (no executable) skips env injection entirely; we always spawn an executable today.
         context.subscriptions.push(
             vscode.debug.registerDebugAdapterDescriptorFactory('brightscript', {
-                createDebugAdapterDescriptor: (session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): vscode.ProviderResult<vscode.DebugAdapterDescriptor> => {
+                createDebugAdapterDescriptor: async (session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): Promise<vscode.DebugAdapterDescriptor | undefined> => {
                     if (!executable) {
                         return executable;
                     }
@@ -201,6 +237,18 @@ export class Extension {
                     const dapLogFilePath = (session.configuration as any).debugAdapterProtocolLogFilePath as string | undefined;
                     if (dapLogFilePath) {
                         env.ROKU_DAP_LOG_FILE = dapLogFilePath;
+                    }
+
+                    //hand the Cloud Emulator account token to the adapter as an env var - its only transport;
+                    //the config resolver strips rceToken from the resolved config, which travels through DAP
+                    //traffic/logs and is readable by other extensions. roku-debug hydrates the device option's
+                    //rceToken from ROKU_RCE_TOKEN whenever the launch config did not carry one
+                    const device = session.configuration.device as DeviceConfig | undefined;
+                    if (typeof device === 'object' && isRceDeviceConfig(device)) {
+                        const accountToken = await rceManager.getToken();
+                        if (accountToken) {
+                            env.ROKU_RCE_TOKEN = accountToken;
+                        }
                     }
 
                     return new vscode.DebugAdapterExecutable(executable.command, executable.args, { ...executable.options, env: env });
@@ -237,7 +285,7 @@ export class Extension {
 
         //register all commands for this extension
         this.brightScriptCommands.registerCommands();
-        sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel, userInputManager);
+        sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel, deviceTargetManager);
 
         vscode.debug.onDidStartDebugSession((e) => {
             //if this is a brightscript debug session

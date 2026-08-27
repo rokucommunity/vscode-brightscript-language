@@ -65,11 +65,14 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
         // Re-render when the active device changes so the indicator moves to the correct row
         const unsubscribeContextChange = vscodeContextManager.onChange((key) => {
-            if (key === 'activeHost') {
+            if (key === 'activeDeviceKey') {
                 this.handleDevicesChanged();
             }
         });
         this.context.subscriptions.push({ dispose: unsubscribeContextChange });
+
+        // Seed the context from the persisted active device so the indicator survives a window reload
+        void vscodeContextManager.set('activeDeviceKey', this.context.workspaceState.get('activeDeviceKey') ?? '');
 
         this.deviceManager.on('scanNeeded-changed', () => {
             if (!this.visible) {
@@ -153,12 +156,13 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     /**
-     * Is this device the active device? The active device is tracked by IP in the
-     * `activeHost` context value (set by the setActiveDevice/clearActiveDevice commands).
+     * Is this device the active device? The active device is tracked by its device key in the
+     * `activeDeviceKey` context value (set by the setActiveDevice/clearActiveDevice commands),
+     * which works for LAN and Cloud Emulator devices alike.
      */
     private isActiveDevice(device: RokuDevice): boolean {
-        const activeHost = vscodeContextManager.get<string>('activeHost');
-        return !!activeHost && device.ip === activeHost;
+        const activeDeviceKey = vscodeContextManager.get<string>('activeDeviceKey');
+        return !!activeDeviceKey && device.key === activeDeviceKey;
     }
 
     /**
@@ -196,7 +200,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         device.key,
                         device.deviceInfo
                     );
-                    treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
+                    treeItem.tooltip = `${this.deviceManager.getAddressLabel(device)} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
 
                     // Set resourceUri to enable FileDecorationProvider for text coloring
                     // Use the device key which is serial-based when available, IP-based as fallback
@@ -223,17 +227,19 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 return;
             }
 
+            //both device kinds share one action list: every action addresses the device by key (or
+            //through DeviceManager helpers), so LAN and cloud emulator devices are interchangeable here
             result.push(
                 this.createDeviceInfoTreeItem({
                     label: '🔗 Open device web portal',
                     parent: element,
                     collapsibleState: vscode.TreeItemCollapsibleState.None,
                     tooltip: 'Open the web portal for this device',
-                    description: device.ip,
+                    description: this.deviceManager.getAddressLabel(device),
                     command: {
                         command: 'extension.brightscript.openUrl',
                         title: 'Open',
-                        arguments: [`http://${device.ip}`]
+                        arguments: [this.deviceManager.getWebPortalUrl(device)]
                     }
                 })
             );
@@ -277,11 +283,11 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         parent: element,
                         collapsibleState: vscode.TreeItemCollapsibleState.None,
                         tooltip: 'View the ECP Registry',
-                        description: device.ip,
+                        description: this.deviceManager.getAddressLabel(device),
                         command: {
                             command: 'extension.brightscript.openRegistryInBrowser',
                             title: 'Open',
-                            arguments: [device.ip]
+                            arguments: [{ key: device.key }]
                         }
                     })
                 );
@@ -342,7 +348,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         command: {
                             command: 'extension.brightscript.setActiveDevice',
                             title: 'Set Active Device',
-                            arguments: [device.ip]
+                            arguments: [{ key: device.key }]
                         }
                     })
                 );
@@ -357,10 +363,26 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     command: {
                         command: 'extension.brightscript.captureScreenshot',
                         title: 'Capture Screenshot',
-                        arguments: [device.ip]
+                        arguments: [{ key: device.key }]
                     }
                 })
             );
+
+            if (device.rce) {
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: '🎥 Watch Device',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'Open this device\'s video stream in an editor tab',
+                        command: {
+                            command: 'extension.brightscript.rce.watchDeviceInEditor',
+                            title: 'Watch Device',
+                            arguments: [device.rce.id, this.deviceManager.getDeviceDisplayName(device)]
+                        }
+                    })
+                );
+            }
 
             if (device.deviceInfo?.['is-tv'] === 'true') {
                 result.push(
@@ -373,7 +395,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         command: {
                             command: 'extension.brightscript.changeTvInput',
                             title: 'Switch TV Input',
-                            arguments: [device.ip]
+                            arguments: [{ key: device.key }]
                         }
                     })
                 );
@@ -421,8 +443,15 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      */
     private async buildDeviceContextValue(device: RokuDevice): Promise<string> {
         const tokens = ['device'];
-        tokens.push(device.configuredIn?.includes('user') ? 'inUser' : 'notInUser');
-        tokens.push(device.configuredIn?.includes('workspace') ? 'inWorkspace' : 'notInWorkspace');
+        //cloud vs local gates the menu entries that only make sense for one device kind. The
+        //configuredIn tokens are LAN-only because `brightscript.devices` settings entries are host
+        //entries a cloud device can never appear in; every other capability token applies to both
+        //kinds, since their commands resolve the device by key rather than by ip
+        tokens.push(device.rce ? 'cloud' : 'local');
+        if (!device.rce) {
+            tokens.push(device.configuredIn?.includes('user') ? 'inUser' : 'notInUser');
+            tokens.push(device.configuredIn?.includes('workspace') ? 'inWorkspace' : 'notInWorkspace');
+        }
         if (device.serialNumber) {
             tokens.push(await this.hasStoredPasswordForSerial(device.serialNumber) ? 'hasPassword' : 'noPassword');
         }

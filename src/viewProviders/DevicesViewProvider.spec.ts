@@ -68,10 +68,11 @@ afterEach(() => {
 });
 
 describe('DevicesViewProvider', () => {
-    function makeDevice(overrides: { key: string; ip?: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean; serialNumber?: string; softwareVersion?: string; configuredIn?: string[] }) {
+    function makeDevice(overrides: { key: string; ip?: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean; serialNumber?: string; softwareVersion?: string; configuredIn?: string[]; isRce?: boolean }) {
         return {
             key: overrides.key,
-            ip: overrides.ip ?? '1.2.3.4',
+            ip: overrides.isRce ? undefined : (overrides.ip ?? '1.2.3.4'),
+            rce: overrides.isRce ? { id: 83, status: 'running' } : undefined,
             deviceState: overrides.deviceState ?? 'online',
             lastDeviceState: overrides.lastDeviceState ?? 'unknown',
             isConfigured: overrides.isConfigured ?? false,
@@ -93,6 +94,8 @@ describe('DevicesViewProvider', () => {
             getAllDevices: () => devices,
             getDevice: (key: string) => devices.find(d => d.key === key),
             getDeviceDisplayName: (device: any) => device.key,
+            getAddressLabel: (device: any) => (device.rce ? 'cloud emulator' : device.ip),
+            getWebPortalUrl: (device: any) => (device.rce ? `https://developer.roku.com/cloud-emulator-bff/devices/${device.rce.id}/sideload/` : `http://${device.ip}`),
             getIconPath: () => undefined,
             hasDeviceCache: () => false,
             refresh: () => undefined,
@@ -109,8 +112,10 @@ describe('DevicesViewProvider', () => {
     beforeEach(async () => {
         clearFilters();
         (vscode.workspace as any)._onDidChangeConfigurationEmitter?.removeAllListeners();
-        //make sure no active device leaks in from a previous test (the context manager is a module singleton)
-        await vscodeContextManager.set('activeHost', '');
+        //make sure no active device leaks in from a previous test (the context manager is a module
+        //singleton and the provider seeds it from workspaceState)
+        await vscode.context.workspaceState.update('activeDeviceKey', undefined);
+        await vscodeContextManager.set('activeDeviceKey', '');
     });
 
     describe('applyFilters via getChildren', () => {
@@ -211,21 +216,56 @@ describe('DevicesViewProvider', () => {
             const devices = [makeDevice({ key: 'tv1', isTv: true, softwareVersion: '15.3.4', serialNumber: 'SERIAL1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-notInUser-notInWorkspace-noPassword-isTv-canViewRegistry-canRestart-notActive');
+            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-noPassword-isTv-canViewRegistry-canRestart-notActive');
         });
 
         it('includes hasPassword and configured-in tokens, and gates version-specific tokens', async () => {
             const devices = [makeDevice({ key: 'stb1', softwareVersion: '12.0.0', serialNumber: 'SERIAL2', configuredIn: ['user', 'workspace'] })];
             const { provider } = createProvider(devices, { storedPasswords: { SERIAL2: 'secret' } });
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-inUser-inWorkspace-hasPassword-canViewRegistry-notActive');
+            expect(items[0].contextValue).to.equal('device-local-inUser-inWorkspace-hasPassword-canViewRegistry-notActive');
         });
 
         it('omits password and version-gated tokens when serial number and software version are unknown', async () => {
             const devices = [makeDevice({ key: 'stb1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-notInUser-notInWorkspace-notActive');
+            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-notActive');
+        });
+
+        it('builds a cloud contextValue without the settings tokens', async () => {
+            //an rce tv with a serial + modern firmware: only the save-to-settings tokens are
+            //absent - password, tv-input, registry, and restart capabilities all apply
+            const devices = [makeDevice({ key: 's:ESN1', isRce: true, isTv: true, softwareVersion: '15.2.4', serialNumber: 'ESN1' })];
+            const { provider } = createProvider(devices);
+            const items = await provider.getChildren();
+            expect(items[0].contextValue).to.equal('device-cloud-noPassword-isTv-canViewRegistry-canRestart-notActive');
+        });
+
+        it('lists the cloud action items for an rce device', async () => {
+            const devices = [makeDevice({ key: 's:ESN1', isRce: true, softwareVersion: '15.2.4', serialNumber: 'ESN1' })];
+            const { provider } = createProvider(devices);
+            const [deviceItem] = await provider.getChildren();
+
+            const deviceChildren = await provider.getChildren(deviceItem);
+            expect(deviceChildren.map(child => child.label)).to.deep.equal([
+                '🔗 Open device web portal',
+                '🔁 Restart Device',
+                '🔄 Check for Software Updates',
+                '📋 View Registry',
+                '🔑 Set Device Password',
+                '⭐ Set as Active Device',
+                '📷 Capture Screenshot',
+                '🎥 Watch Device',
+                'Device Info'
+            ]);
+
+            //the web portal points at the developer.roku.com dev-installer page for this device id
+            const webPortalItem = deviceChildren[0] as any;
+            expect(webPortalItem.command.arguments).to.deep.equal(['https://developer.roku.com/cloud-emulator-bff/devices/83/sideload/']);
+            //view registry and set-active address the device by key (there is no ip)
+            expect((deviceChildren[3] as any).command.arguments).to.deep.equal([{ key: 's:ESN1' }]);
+            expect((deviceChildren[5] as any).command.arguments).to.deep.equal([{ key: 's:ESN1' }]);
         });
 
         it('lists the action items followed by an expandable Device Info group holding the info fields', async () => {
@@ -278,7 +318,7 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
                 makeDevice({ key: 'stb2', ip: '2.2.2.2' })
             ];
-            await vscodeContextManager.set('activeHost', '2.2.2.2');
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb2');
             const { provider } = createProvider(devices);
 
             const items = await provider.getChildren();
@@ -292,7 +332,7 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
                 makeDevice({ key: 'stb2', ip: '2.2.2.2' })
             ];
-            await vscodeContextManager.set('activeHost', '2.2.2.2');
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb2');
             const { provider } = createProvider(devices);
             const decorationProvider = provider['decorationProvider'];
 
@@ -309,7 +349,7 @@ describe('DevicesViewProvider', () => {
 
         it('keeps the offline coloring alongside the active badge', async () => {
             const devices = [makeDevice({ key: 'stb1', ip: '1.1.1.1', deviceState: 'offline' })];
-            await vscodeContextManager.set('activeHost', '1.1.1.1');
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb1');
             const { provider } = createProvider(devices);
 
             const decoration = provider['decorationProvider'].provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any);
@@ -322,14 +362,14 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
                 makeDevice({ key: 'stb2', ip: '2.2.2.2' })
             ];
-            await vscodeContextManager.set('activeHost', '1.1.1.1');
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb1');
             const { provider } = createProvider(devices);
             const decorationProvider = provider['decorationProvider'];
 
             let treeChanges = 0;
             provider.onDidChangeTreeData(() => treeChanges++);
 
-            await vscodeContextManager.set('activeHost', '2.2.2.2');
+            await vscodeContextManager.set('activeDeviceKey', 'stb2');
 
             expect(treeChanges).to.equal(1);
             expect(decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any)?.badge).to.be.undefined;
@@ -341,7 +381,7 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
                 makeDevice({ key: 'stb2', ip: '2.2.2.2' })
             ];
-            await vscodeContextManager.set('activeHost', '2.2.2.2');
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb2');
             const { provider } = createProvider(devices);
             const [inactiveItem, activeItem] = await provider.getChildren();
 
@@ -358,7 +398,7 @@ describe('DevicesViewProvider', () => {
 
         it('shows no badge when the active host does not match any device', async () => {
             const devices = [makeDevice({ key: 'stb1', ip: '1.1.1.1' })];
-            await vscodeContextManager.set('activeHost', '9.9.9.9');
+            await vscode.context.workspaceState.update('activeDeviceKey', 's:UNKNOWN');
             const { provider } = createProvider(devices);
 
             const decoration = provider['decorationProvider'].provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any);

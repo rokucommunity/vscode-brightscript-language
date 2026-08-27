@@ -24,7 +24,8 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
     public updateDeviceAvailability() {
         const message = this.createEventMessage(ViewProviderEvent.onDeviceAvailabilityChange, {
             odcAvailable: !!this.dependencies.rtaManager.onDeviceComponent,
-            deviceAvailable: !!this.dependencies.rtaManager.device
+            deviceAvailable: !!this.dependencies.rtaManager.device,
+            isRceDebugSession: !!this.dependencies.rtaManager.isRceDebugSession
         });
 
         this.postOrQueueMessage(message);

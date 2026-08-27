@@ -5,12 +5,16 @@ import type { RequestType } from 'roku-test-automation';
 import type { AsyncSubscription, Event } from '@parcel/watcher';
 import type { ChannelPublishedEvent } from 'roku-debug';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
+import { buildWebviewIndexHtml } from './webviewHtml';
 import type { WebviewViewProviderManager } from '../managers/WebviewViewProviderManager';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import type { VscodeCommand } from '../commands/VscodeCommand';
 import type { RtaManager } from '../managers/RtaManager';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
+import type { RceManager } from '../managers/RceManager';
+import type { RceFinder } from '../deviceDiscovery/RceFinder';
+import type { DeviceManager } from '../deviceDiscovery/DeviceManager';
 
 export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(
@@ -18,6 +22,9 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         protected dependencies: {
             rtaManager: RtaManager;
             brightscriptCommands: BrightScriptCommands;
+            rceManager: RceManager;
+            rceFinder: RceFinder;
+            deviceManager: DeviceManager;
         }
     ) {
         this.webviewBasePath = path.join(extensionContext.extensionPath, 'dist', 'webviews');
@@ -86,6 +93,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return message;
     }
 
+    /**
+     * Whether the webview has reported in as ready (messages post directly rather than being queued)
+     */
+    protected isViewReady() {
+        return this.viewReady;
+    }
+
     public postOrQueueMessage(message) {
         if (this.viewReady) {
             this.postMessage(message);
@@ -105,7 +119,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     }
 
     private postQueuedMessages() {
-        for (const queuedMessage of this.queuedMessages) {
+        //hand off (and clear) the queue before posting: a message queued while no webview existed
+        //must flush exactly once, to the webview that just reported ready - leaving it queued meant
+        //every later webview instance (a closed-and-reopened view) replayed the entire history,
+        //e.g. re-answering a long-dead video stream offer and hanging on 'connecting'
+        const messages = this.queuedMessages;
+        this.queuedMessages = [];
+        for (const queuedMessage of messages) {
             this.postMessage(queuedMessage);
         }
     }
@@ -213,46 +233,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return this.getIndexHtml();
     }
 
-    /**
-    * Get a webview-supported URI for the given path
-    */
-    private asWebviewUri(...parts: string[]) {
-        return this.view?.webview?.asWebviewUri?.(
-            vscode.Uri.file(
-                path.join(...parts)
-            )
-        );
-    }
-
     private getIndexHtml() {
-        let html: string;
-        try {
-            html = fsExtra.readFileSync(this.webviewBasePath + '/index.html').toString();
-        } catch (e) {
-            console.error(e);
-            html = '<h1>Error loading webview</h1>';
-        }
-        //the data that will be replaced in the index.html
-        const data = {
+        return buildWebviewIndexHtml({
+            webview: this.view?.webview ?? this.panel?.webview,
+            webviewBasePath: this.webviewBasePath,
             viewName: this.id,
-            baseHref: `${this.asWebviewUri(this.webviewBasePath)}/`,
-            additionalScriptContents: this.additionalScriptContents().join('\n                        ')
-        };
-        /**
-         * replace placeholders in the html, in one of these formats:
-         * <!--{{thing1}}-->
-         * //{{thing2}}
-         * {{thing3}}
-         */
-        html = html.replace(/(\/\/{{(\w+)}})|({{(\w+)}})|(<!--{{(\w+)}})/gm, (...match: string[]) => {
-            const [, , key1, , key2, , key3] = match;
-            return data[key1] ?? data[key2] ?? data[key3] ?? match[0];
+            additionalScriptContents: this.additionalScriptContents()
         });
-        // remove leading slash for css/js urls so we can make them relative to the baseHref
-        html = html.replace(/((?:href|src)\s*=\s*["'])(\/.*")/g, (...match: string[]) => {
-            return match[1] + match[2]?.replace(/^\/+/, '');
-        });
-        return html;
     }
 
     public async resolveWebviewView(
@@ -261,6 +248,22 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         _token: vscode.CancellationToken
     ) {
         this.view = view;
+        //this webview instance has not reported in yet: without this reset, a provider whose
+        //previous webview already reported ready would direct-post at the new one before its
+        //viewReady arrives, instead of queueing for the flush that follows it
+        this.viewReady = false;
+        //a hidden view destroys its webview and this provider is re-resolved with a fresh one on
+        //reshow. While no webview exists, messages must queue rather than post at the disposed
+        //instance, where they would be silently lost. Optional-called because provider specs
+        //resolve with minimal fake views.
+        view.onDidDispose?.(() => {
+            //a re-resolution can land before this dispose callback fires; only clear state that
+            //still belongs to this instance
+            if (this.view === view) {
+                this.view = undefined;
+                this.viewReady = false;
+            }
+        });
         const webview = view.webview;
         this.setupViewMessageObserver(webview);
 
@@ -316,9 +319,11 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         const packageJsonPath = path.join(this.extensionContext.extensionPath, 'package.json');
         const packageJson = JSON.parse(await fsExtra.readFile(packageJsonPath, 'utf8'));
 
-        for (const view of [...packageJson.contributes.views.debug, ...packageJson.contributes.views['vscode-brightscript-language']]) {
-            if (view.id === viewId) {
-                return view.name;
+        for (const viewContainerId of Object.keys(packageJson.contributes.views)) {
+            for (const view of packageJson.contributes.views[viewContainerId]) {
+                if (view.id === viewId) {
+                    return view.name;
+                }
             }
         }
 
