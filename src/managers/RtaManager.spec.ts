@@ -263,4 +263,41 @@ describe('RtaManager', () => {
             expect(updateDeviceAvailabilityStub.called).to.be.true;
         });
     });
+
+    describe('disconnectFromDevice', () => {
+        it('is a full reset: clears the device, the ODC connection, the RCE flag and the last app UI response, then notifies the webviews', async () => {
+            getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' } });
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
+            await rtaManager.setupRtaWithConfig({ password: 'aaaa', injectRdbOnDeviceComponent: true } as any);
+            const shutdownStub = sinon.stub(rtaManager.onDeviceComponent, 'shutdown').resolves();
+            (rtaManager as any).lastAppUIResponse = { children: [] };
+            const updateDeviceAvailabilityStub = sinon.stub();
+            const onDeviceDisconnectedStub = sinon.stub();
+            rtaManager.setWebviewViewProviderManager({ getWebviewViewProviders: () => [{ updateDeviceAvailability: updateDeviceAvailabilityStub, onDeviceDisconnected: onDeviceDisconnectedStub }] } as any);
+
+            rtaManager.disconnectFromDevice();
+
+            expect(shutdownStub.called).to.be.true;
+            expect(rtaManager.onDeviceComponent).to.be.undefined;
+            expect(rtaManager.device).to.be.undefined;
+            expect(rtaManager.getStoredAppUI()).to.be.undefined;
+            expect(rtaManager.isRceDebugSession).to.be.false;
+            expect(updateDeviceAvailabilityStub.called).to.be.true;
+            expect(onDeviceDisconnectedStub.called).to.be.true;
+        });
+
+        it('still clears state and notifies the webviews when there was no ODC connection to shut down', async () => {
+            getDeviceStub.withArgs('s:abc123').returns({ key: 's:abc123', ip: '1.2.3.4' });
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:abc123');
+            await rtaManager.setupRtaWithConfig({ password: 'aaaa' } as any);
+            const updateDeviceAvailabilityStub = sinon.stub();
+            rtaManager.setWebviewViewProviderManager({ getWebviewViewProviders: () => [{ updateDeviceAvailability: updateDeviceAvailabilityStub }] } as any);
+
+            rtaManager.disconnectFromDevice();
+
+            expect(rtaManager.onDeviceComponent).to.be.undefined;
+            expect(rtaManager.device).to.be.undefined;
+            expect(updateDeviceAvailabilityStub.called).to.be.true;
+        });
+    });
 });

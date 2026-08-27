@@ -19,10 +19,7 @@ export class RtaManager {
         private deviceManager: DeviceManager
     ) {
         context.subscriptions.push(vscode.commands.registerCommand(VscodeCommand.disconnectFromDevice, () => {
-            void this.onDeviceComponent?.shutdown();
-            this.onDeviceComponent = undefined;
-            void vscodeContextManager.set('brightscript.isOnDeviceComponentAvailable', false);
-            this.updateDeviceAvailabilityOnWebViewProviders();
+            this.disconnectFromDevice();
         }));
     }
 
@@ -215,6 +212,25 @@ export class RtaManager {
         this.updateDeviceAvailabilityOnWebViewProviders();
     }
 
+    /**
+     * The "Disconnect from Device" title button. Unlike onDidTerminateDebugSession's ODC-only
+     * teardown, this is an explicit user action to leave the device entirely, so it is a full
+     * reset: the device itself is forgotten too (deviceAvailable goes false), not just the ODC
+     * connection.
+     */
+    public disconnectFromDevice() {
+        void this.onDeviceComponent?.shutdown();
+        this.onDeviceComponent = undefined;
+        this.device = undefined;
+        this.lastAppUIResponse = undefined;
+        void vscodeContextManager.set('brightscript.isOnDeviceComponentAvailable', false);
+
+        this.isRceDebugSession = false;
+
+        this.notifyWebViewProvidersOfDisconnect();
+        this.updateDeviceAvailabilityOnWebViewProviders();
+    }
+
     public setWebviewViewProviderManager(manager: WebviewViewProviderManager) {
         this.webviewViewProviderManager = manager;
     }
@@ -223,6 +239,19 @@ export class RtaManager {
         for (const webviewProvider of this.webviewViewProviderManager.getWebviewViewProviders()) {
             if (typeof webviewProvider.updateDeviceAvailability === 'function') {
                 webviewProvider.updateDeviceAvailability();
+            }
+        }
+    }
+
+    /**
+     * Only disconnectFromDevice's full reset fires this - unlike updateDeviceAvailabilityOnWebViewProviders,
+     * which also runs on normal setup and session termination, where a webview's own device-decoupled
+     * state (e.g. a Cloud Emulator stream watched independently of RTA) must be left alone.
+     */
+    private notifyWebViewProvidersOfDisconnect() {
+        for (const webviewProvider of this.webviewViewProviderManager.getWebviewViewProviders()) {
+            if (typeof webviewProvider.onDeviceDisconnected === 'function') {
+                webviewProvider.onDeviceDisconnected();
             }
         }
     }

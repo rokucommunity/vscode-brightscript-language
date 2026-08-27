@@ -8,6 +8,7 @@ import type { RceStreamRequestConfig } from '../managers/RceManager';
 import { BaseRdbViewProvider } from './BaseRdbViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
+import { ViewProviderEvent } from './ViewProviderEvent';
 import { RceStreamSession } from './RceStreamSession';
 
 export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
@@ -172,6 +173,20 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         this.temporarilyDisableScreenshotCapture = false;
         this.resumeScreenshotCapture?.();
         delete this.resumeScreenshotCapture;
+    }
+
+    /**
+     * RtaManager's "Disconnect from Device" full reset: unlike a session terminating (which
+     * deliberately leaves `device` in place), there is nothing left to stream from here, so a
+     * running Cloud Emulator stream - and its remembered sideloaded device, which would otherwise
+     * resurrect on the next onViewReady - is stopped too.
+     */
+    public onDeviceDisconnected() {
+        this.lastSideloadedRceDevice = undefined;
+        if (this.rceStreamSession.isActive) {
+            this.rceStreamSession.stop();
+            this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRceStreamStopped, {}));
+        }
     }
 
     /**

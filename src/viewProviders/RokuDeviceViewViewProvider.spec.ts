@@ -1043,6 +1043,37 @@ describe('RokuDeviceViewViewProvider', () => {
         });
     });
 
+    describe('onDeviceDisconnected', () => {
+        it('stops an active stream and forgets the remembered sideloaded device', async () => {
+            createProvider();
+            markViewReady();
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: 83, status: 'running' }, deviceInfo: {} });
+            await provider['followSideloadedDevice']({ esn: 'ESN1' } as any);
+            await flushMicrotasks();
+            const client = provider.createdClients[0];
+
+            provider.onDeviceDisconnected();
+
+            expect(client.stop.called).to.be.true;
+            expect(provider['lastSideloadedRceDevice']).to.be.undefined;
+            expect(findEventMessages(ViewProviderEvent.onRceStreamStopped)).to.have.length(1);
+
+            //a later view reopen does not reconnect to the forgotten cloud device
+            resolveStreamRequest.resetHistory();
+            markViewReady();
+            await flushMicrotasks();
+            expect(resolveStreamRequest.called).to.be.false;
+        });
+
+        it('leaves an unrelated stream alone when nothing was active', () => {
+            createProvider();
+
+            provider.onDeviceDisconnected();
+
+            expect(findEventMessages(ViewProviderEvent.onRceStreamStopped)).to.have.length(0);
+        });
+    });
+
     describe('dispose', () => {
         it('stops an active stream session', async () => {
             createProvider();

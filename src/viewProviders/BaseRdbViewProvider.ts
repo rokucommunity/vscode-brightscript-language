@@ -32,6 +32,16 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
         this.postOrQueueMessage(message);
     }
 
+    /**
+     * Called after RtaManager's "Disconnect from Device" full reset (device gone, not just the ODC
+     * connection). No-op by default; RokuDeviceViewViewProvider overrides this to also stop its
+     * Cloud Emulator video stream, which is not implied by device availability the way screenshots
+     * and ODC requests are.
+     */
+    public onDeviceDisconnected() {
+        // no-op by default
+    }
+
     protected setupCommandObservers() {
         for (const command of this.odcCommands) {
             this.addMessageCommandCallback(command, async (message) => {
