@@ -92,7 +92,7 @@ describe('WebviewViewProviderManager', () => {
 
         it('has the correct config values passed from the extension', () => {
             webviewViewProviderManager.onChannelPublishedEvent(event);
-            const deviceConfig = rtaManager.device.getCurrentDeviceConfig();
+            const deviceConfig = rtaManager.device.getCurrentDeviceConfig() as { host?: string; password: string };
             expect(deviceConfig.host).to.equal(config.host);
             expect(deviceConfig.password).to.equal(config.password);
         });

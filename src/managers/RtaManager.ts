@@ -55,18 +55,19 @@ export class RtaManager {
 
         let device: rta.DeviceConfigOptions;
         if (resolvedDevice?.rce) {
+            //the launch config's rceToken is deliberately scrubbed before it reaches here (see
+            //DebugConfigurationProvider), so RtaManager fetches the token itself
+            const rceToken = await this.rceManager.getToken();
+            if (!rceToken) {
+                console.warn('RtaManager: no Cloud Emulator token is available; RTA requests to this device will fail authentication');
+            }
             device = {
                 id: resolvedDevice.rce.id,
                 esn: resolvedDevice.serialNumber,
                 instanceUrl: resolvedDevice.rce.instanceUrl,
+                rceToken: rceToken,
                 password: config.password
             };
-            //the launch config's rceToken is deliberately scrubbed before it reaches here (see
-            //DebugConfigurationProvider), so RtaManager fetches the token itself
-            device.rceToken = await this.rceManager.getToken();
-            if (!device.rceToken) {
-                console.warn('RtaManager: no Cloud Emulator token is available; RTA requests to this device will fail authentication');
-            }
         } else if (resolvedDevice?.ip) {
             device = { host: resolvedDevice.ip, password: config.password };
         } else if (config.host) {
