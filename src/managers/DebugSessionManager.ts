@@ -31,6 +31,15 @@ export class DebugSessionManager {
 
     private liveSessions = new Map<string, vscode.DebugSession>();
 
+    /**
+     * Ids of brightscript-JS sessions that completed their attach (extension.ts confirms them
+     * once `startDebugging` resolves true). A JS attach ATTEMPT that fails still starts and
+     * terminates a session; without this gate its termination would jointly tear down the
+     * healthy parent BRS session while the attach retry loop is still working (the app may not
+     * have its JS runtime listening yet - e.g. still waiting for the BS debugger on launch).
+     */
+    private confirmedJsSessions = new Set<string>();
+
     private startEmitter = new vscode.EventEmitter<vscode.DebugSession>();
     private terminateEmitter = new vscode.EventEmitter<vscode.DebugSession>();
 
@@ -62,6 +71,12 @@ export class DebugSessionManager {
         this.liveSessions.delete(session.id);
         this.terminateEmitter.fire(session);
 
+        // a failed attach attempt only ever stops itself (see confirmedJsSessions)
+        if (this.isBrightScriptJs(session) && !this.confirmedJsSessions.has(session.id)) {
+            return;
+        }
+        this.confirmedJsSessions.delete(session.id);
+
         // Joint teardown: terminating any member of a group tears down the rest, so a Roku
         // app and its attached JS debugger always start and stop together. Derived from the
         // session relationships (not a stored link list), so it stays correct no matter
@@ -71,6 +86,19 @@ export class DebugSessionManager {
                 void vscode.debug.stopDebugging(member).then(undefined, (e) => {
                     console.error(`Error stopping linked debug session with id ${member.id}`, e);
                 });
+            }
+        }
+    }
+
+    /**
+     * Mark the live brightscript-JS session(s) attached to `parentSessionId` as successfully
+     * attached, so their termination participates in joint teardown. Called by extension.ts
+     * once `startDebugging` for the JS attach resolves true.
+     */
+    public confirmJsSessionsFor(parentSessionId: string): void {
+        for (const session of this.sessions) {
+            if (this.isBrightScriptJs(session) && (session.configuration as SessionConfig)._brightscriptParentSessionId === parentSessionId) {
+                this.confirmedJsSessions.add(session.id);
             }
         }
     }

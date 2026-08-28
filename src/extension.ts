@@ -12,6 +12,7 @@ import { RsgSdkPasswordCandidateProvider } from './deviceDiscovery/RsgSdkPasswor
 import { ExperimentalFeaturesManager } from './managers/ExperimentalFeaturesManager';
 import { RceFinder } from './deviceDiscovery/RceFinder';
 import { RceManager } from './managers/RceManager';
+import { JsDebugProxyManager, JS_DEBUG_PORT } from './managers/JsDebugProxyManager';
 import { RceVideoEditorManager } from './managers/RceVideoEditorManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';
@@ -69,6 +70,7 @@ export class Extension {
     private logOutputManager: LogOutputManager;
     private deviceManager: DeviceManager;
     private extensionContext: vscode.ExtensionContext;
+    private jsDebugProxyManager: JsDebugProxyManager;
 
     public async activate(context: vscode.ExtensionContext) {
         //make this entire extension disposable so that all resources will be cleaned up on extension deactivation
@@ -117,6 +119,8 @@ export class Extension {
         //list and idles every consumer; the UI hides through the feature's context key
         const rceManager = new RceManager(context, experimentalFeatures);
         rceManager.register(context);
+        this.jsDebugProxyManager = new JsDebugProxyManager(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
+        context.subscriptions.push(this.jsDebugProxyManager);
         const rceFinder = new RceFinder(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
         context.subscriptions.push(new RceVideoEditorManager(context, rceManager, rceFinder));
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel, rceFinder);
@@ -419,6 +423,7 @@ export class Extension {
             if (config.remoteControlMode?.deactivateOnSessionEnd) {
                 void this.remoteControlManager.setRemoteControlMode(false, 'launch');
             }
+            this.jsDebugProxyManager.stop(debugSession.id);
             this.webviewViewProviderManager.onDidTerminateDebugSession(debugSession);
         }
         this.diagnosticManager.clear();
@@ -430,13 +435,6 @@ export class Extension {
      * first component library with a `tsPath` configured in launch.json.
      */
     private async resolveJsDebugTarget(configuration: BrightScriptLaunchConfiguration): Promise<JsDebugTarget | undefined> {
-        //the node debugger attaches to `configuration.host` over the LAN. A non-local session
-        //(e.g. Roku Cloud Emulator) has no reachable address - its raw `host` may even be an
-        //unresolved `${promptForHost}` placeholder - so the attach retry loop would spin for
-        //the life of the session. applyInspectMode skips these sessions for the same reason.
-        if (configuration.device && !isLocalDeviceConfig(configuration.device)) {
-            return undefined;
-        }
         const appTsPath = configuration.tsPath ?? util.getTsPath(configuration.rootDir);
         if (appTsPath) {
             const workspaceFolders = vscode.workspace.workspaceFolders || [];
@@ -466,6 +464,27 @@ export class Extension {
         //something like ${workspaceFolder}/out/.roku-deploy-staging/source/compiled
         const localRoot = path.normalize(path.join(target.stagingDir, remoteRoot));
 
+        const configuration = parentSession.configuration as BrightScriptLaunchConfiguration;
+        let address: string;
+        let port: number;
+        if (configuration.device && isRceDeviceConfig(configuration.device)) {
+            //an RCE device has no LAN address to attach to directly, so route the node debugger
+            //through a local proxy that tunnels to the device's JS debug port over the instance api
+            try {
+                port = await this.jsDebugProxyManager.start(parentSession.id, configuration.device);
+            } catch (e) {
+                this.extensionOutputChannel.appendLine(`Failed to start JS debug proxy: ${e?.message ?? e}`);
+                return false;
+            }
+            address = '127.0.0.1';
+        } else {
+            //`device` is authoritative when it's a resolved local device config; the raw `host`
+            //field is kept only as a fallback (mirrors the same "device is authoritative, raw host
+            //may be an unresolved placeholder" reasoning as RtaManager.setupRtaWithConfig)
+            address = (configuration.device && isLocalDeviceConfig(configuration.device)) ? configuration.device.host : configuration.host;
+            port = JS_DEBUG_PORT;
+        }
+
         // vscode doesn't trigger the onDidStartDebugSession event until the debugger is actually attached.
         // So there's a window where the parent debug session stops while this is still trying to attach.
         // To more quickly close the node debugger in that situation, we will run much shorter "attach" windows
@@ -492,9 +511,16 @@ export class Extension {
                     name: `${parentSession.configuration.name} (JS)`,
                     request: 'attach',
                     cwd: target.rootDir,
-                    address: (parentSession.configuration as BrightScriptLaunchConfiguration).host,
-                    port: 9999,
+                    address: address,
+                    port: port,
                     timeout: 2_000, // Shorter timeout for retry loop
+                    //TEMP diagnostic: write js-debug's full DAP/CDP log to the VS Code logs dir
+                    trace: true,
+                    //Hermes advertises a "Remote Process" child target; js-debug's node
+                    //process-tree machinery attaches to it with an extra inspector connection,
+                    //which drops the original CDP connection (single debug client). We only ever
+                    //debug the one Hermes runtime, so disable child auto-attach entirely.
+                    autoAttachChildProcesses: false,
                     sourceMaps: true,
                     //this allows us to resolve sourcemaps from ANYWHERE
                     resolveSourceMapLocations: null,
@@ -518,6 +544,9 @@ export class Extension {
 
                 const success = await vscode.debug.startDebugging(workspaceFolders[0], debugConfig);
                 if (success) {
+                    //opt this JS session into joint teardown - unconfirmed (failed) attach
+                    //attempts must not tear down the parent while this loop is still retrying
+                    debugSessionManager.confirmJsSessionsFor(parentSession.id);
                     return true;
                 }
             } catch (e) {

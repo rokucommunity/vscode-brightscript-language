@@ -122,10 +122,10 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(config.packageUploadOverrides).to.be.undefined;
         });
 
-        it('does nothing for a non-local (Cloud Emulator) device session, even for a TypeScript/JS app', () => {
+        it('applies inspect mode for a non-local (Cloud Emulator) device session', () => {
             sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
             const config = applyInspectMode({ rootDir: rootDir, device: { id: 123, rceToken: 'token' } as any });
-            expect(config.packageUploadOverrides).to.be.undefined;
+            expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
         });
 
         it('applies inspect mode when the session targets a local device config', () => {

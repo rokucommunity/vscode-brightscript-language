@@ -209,17 +209,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * `packageUploadOverrides.formData` without clobbering other keys or an explicit `inspect` value.
      */
     private applyInspectMode(config: BrightScriptLaunchConfiguration) {
+        //TEMP diagnostic: skip inspect-mode injection to test whether the RCE render watchdog
+        //still kills the app when Hermes is not held at startup
+        if (Date.now() > 0) {
+            this.extensionOutputChannel.appendLine(`[inspect] TEMP-DISABLED for RCE watchdog test`);
+            return;
+        }
         //escape hatch (launch.json or the `brightscript.debug.waitForJsDebugger` user setting)
         if (config.waitForJsDebugger === false) {
             this.extensionOutputChannel.appendLine(`[inspect] skipped: waitForJsDebugger is false`);
-            return;
-        }
-        //the JS debugger attaches over the LAN, which a non-local session (e.g. Roku Cloud
-        //Emulator) can never satisfy - injecting inspect=1 there would hang app startup waiting
-        //for a debugger that cannot attach. When `device` is omitted the session is local by
-        //definition (roku-debug builds a local device config from `host`).
-        if (config.device && !isLocalDeviceConfig(config.device)) {
-            this.extensionOutputChannel.appendLine(`[inspect] skipped: non-local device session`);
             return;
         }
         //same precedence as `resolveJsDebugTarget` in extension.ts: an explicit `tsPath` in
