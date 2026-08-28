@@ -966,7 +966,8 @@
                                                 "description": "IP address or hostname of the device."
                                             }
                                         },
-                                        "additionalProperties": false
+                                        "additionalProperties": false,
+                                        "errorMessage": "Address the device by exactly one of: host (local network), esn, id, or instanceUrl (Cloud Emulator)."
                                     },
                                     {
                                         "type": "object",
@@ -980,7 +981,8 @@
                                                 "description": "The device's serial number (ESN)."
                                             }
                                         },
-                                        "additionalProperties": false
+                                        "additionalProperties": false,
+                                        "errorMessage": "Address the device by exactly one of: host (local network), esn, id, or instanceUrl (Cloud Emulator)."
                                     },
                                     {
                                         "type": "object",
@@ -994,7 +996,8 @@
                                                 "description": "The Roku Cloud Emulator management-api device id."
                                             }
                                         },
-                                        "additionalProperties": false
+                                        "additionalProperties": false,
+                                        "errorMessage": "Address the device by exactly one of: host (local network), esn, id, or instanceUrl (Cloud Emulator)."
                                     },
                                     {
                                         "type": "object",
@@ -1008,7 +1011,8 @@
                                                 "description": "The running instance's api URL."
                                             }
                                         },
-                                        "additionalProperties": false
+                                        "additionalProperties": false,
+                                        "errorMessage": "Address the device by exactly one of: host (local network), esn, id, or instanceUrl (Cloud Emulator)."
                                     }
                                 ]
                             },

@@ -62,9 +62,7 @@ export class RtaManager {
                 console.warn('RtaManager: no Cloud Emulator token is available; RTA requests to this device will fail authentication');
             }
             device = {
-                id: resolvedDevice.rce.id,
-                esn: resolvedDevice.serialNumber,
-                instanceUrl: resolvedDevice.rce.instanceUrl,
+                ...resolvedDevice.device,
                 rceToken: rceToken,
                 password: config.password
             };
