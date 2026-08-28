@@ -113,14 +113,19 @@ describe('RokuDeviceViewViewProvider', () => {
     let getDeviceByDeviceConfig: sinonImport.SinonStub;
     let resolveStreamRequest: sinonImport.SinonStub;
     let rceFinder: EventEmitter;
+    let resolveTargetDevice: sinonImport.SinonStub;
+    let resolveValidatedPassword: sinonImport.SinonStub;
 
     function createProvider(): TestRokuDeviceViewViewProvider {
-        const rtaManager = new RtaManager(vscode.context);
+        const rtaManager = new RtaManager(vscode.context, {} as any, {} as any);
+        sinon.stub(rtaManager, 'setupRtaWithDeviceTarget').resolves();
         getToken = sinon.stub().resolves('management-api-token');
         getDevice = sinon.stub().returns(undefined);
         getDeviceByDeviceConfig = sinon.stub().returns(undefined);
         resolveStreamRequest = sinon.stub().resolves(createStreamRequest());
         rceFinder = new EventEmitter();
+        resolveTargetDevice = sinon.stub().resolves({ device: { host: '1.2.3.4' }, serialNumber: 'ESN123', label: 'my-device' });
+        resolveValidatedPassword = sinon.stub().resolves('aaaa');
         provider = new TestRokuDeviceViewViewProvider(vscode.context, {
             rtaManager: rtaManager,
             rceManager: { getToken: getToken, resolveStreamRequest: resolveStreamRequest },
@@ -129,6 +134,10 @@ describe('RokuDeviceViewViewProvider', () => {
                 getDevice: getDevice,
                 getDeviceByDeviceConfig: getDeviceByDeviceConfig,
                 getDeviceDisplayName: (device: any) => device.deviceInfo?.['user-device-name'] ?? device.key
+            },
+            deviceTargetManager: {
+                resolveTargetDevice: resolveTargetDevice,
+                resolveValidatedPassword: resolveValidatedPassword
             }
         } as any);
         postOrQueueMessage = sinon.stub(provider as any, 'postOrQueueMessage');
@@ -972,6 +981,96 @@ describe('RokuDeviceViewViewProvider', () => {
             expect(errorMessages).to.have.length(1);
             expect(errorMessages[0].context.message).to.contain('Chris');
             expect(errorMessages[0].context.message).to.contain('device must be running');
+        });
+    });
+
+    describe('connectToDevice command', () => {
+        async function sendConnectToDevice() {
+            const message = { command: ViewProviderCommand.connectToDevice, context: {} };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.connectToDevice](message);
+        }
+
+        it('starts the stream when the connected target is a Cloud Emulator device', async () => {
+            createProvider();
+            markViewReady();
+            resolveTargetDevice.resolves({ device: { esn: 'ESN1' }, serialNumber: 'ESN1', label: 'my-device' });
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: 83, status: 'running' }, deviceInfo: { 'user-device-name': 'Chris' } });
+
+            await sendConnectToDevice();
+            await flushMicrotasks();
+
+            expect(getDeviceByDeviceConfig.calledWith({ esn: 'ESN1' })).to.be.true;
+            expect(resolveStreamRequest.calledWith(83)).to.be.true;
+            expect(provider.createdClients).to.have.length(1);
+        });
+
+        it('does not start a stream when the connected target is a LAN device', async () => {
+            createProvider();
+            markViewReady();
+            resolveTargetDevice.resolves({ device: { host: '192.168.1.100' }, serialNumber: 'ESN1', label: 'my-device' });
+
+            await sendConnectToDevice();
+            await flushMicrotasks();
+
+            expect(resolveStreamRequest.called).to.be.false;
+        });
+
+        it('stops a running Cloud Emulator stream when connecting to a LAN device', async () => {
+            createProvider();
+            markViewReady();
+            resolveTargetDevice.resolves({ device: { esn: 'ESN1' }, serialNumber: 'ESN1', label: 'my-device' });
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: 83, status: 'running' }, deviceInfo: {} });
+            await sendConnectToDevice();
+            await flushMicrotasks();
+            const client = provider.createdClients[0];
+
+            resolveTargetDevice.resolves({ device: { host: '192.168.1.100' }, serialNumber: undefined, label: '192.168.1.100' });
+            await sendConnectToDevice();
+            await flushMicrotasks();
+
+            expect(client.stop.called).to.be.true;
+        });
+
+        it('does not start a stream when the device picker is dismissed', async () => {
+            createProvider();
+            markViewReady();
+            resolveTargetDevice.resolves(undefined);
+
+            await sendConnectToDevice();
+            await flushMicrotasks();
+
+            expect(resolveStreamRequest.called).to.be.false;
+        });
+    });
+
+    describe('onDeviceDisconnected', () => {
+        it('stops an active stream and forgets the remembered sideloaded device', async () => {
+            createProvider();
+            markViewReady();
+            getDeviceByDeviceConfig.returns({ key: 's:ESN1', rce: { id: 83, status: 'running' }, deviceInfo: {} });
+            await provider['followSideloadedDevice']({ esn: 'ESN1' } as any);
+            await flushMicrotasks();
+            const client = provider.createdClients[0];
+
+            provider.onDeviceDisconnected();
+
+            expect(client.stop.called).to.be.true;
+            expect(provider['lastSideloadedRceDevice']).to.be.undefined;
+            expect(findEventMessages(ViewProviderEvent.onRceStreamStopped)).to.have.length(1);
+
+            //a later view reopen does not reconnect to the forgotten cloud device
+            resolveStreamRequest.resetHistory();
+            markViewReady();
+            await flushMicrotasks();
+            expect(resolveStreamRequest.called).to.be.false;
+        });
+
+        it('leaves an unrelated stream alone when nothing was active', () => {
+            createProvider();
+
+            provider.onDeviceDisconnected();
+
+            expect(findEventMessages(ViewProviderEvent.onRceStreamStopped)).to.have.length(0);
         });
     });
 

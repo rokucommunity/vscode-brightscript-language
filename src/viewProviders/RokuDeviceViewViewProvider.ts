@@ -8,6 +8,7 @@ import type { RceStreamRequestConfig } from '../managers/RceManager';
 import { BaseRdbViewProvider } from './BaseRdbViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
+import { ViewProviderEvent } from './ViewProviderEvent';
 import { RceStreamSession } from './RceStreamSession';
 
 export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
@@ -172,6 +173,32 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         this.temporarilyDisableScreenshotCapture = false;
         this.resumeScreenshotCapture?.();
         delete this.resumeScreenshotCapture;
+    }
+
+    /**
+     * RtaManager's "Disconnect from Device" full reset: unlike a session terminating (which
+     * deliberately leaves `device` in place), there is nothing left to stream from here, so a
+     * running Cloud Emulator stream - and its remembered sideloaded device, which would otherwise
+     * resurrect on the next onViewReady - is stopped too.
+     */
+    public onDeviceDisconnected() {
+        this.lastSideloadedRceDevice = undefined;
+        if (this.rceStreamSession.isActive) {
+            this.rceStreamSession.stop();
+            this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRceStreamStopped, {}));
+        }
+    }
+
+    /**
+     * The manual "Connect to Device" button just set up RTA against this target. That flow never
+     * starts a stream on its own, so a Cloud Emulator target would otherwise leave this view stuck
+     * retrying the LAN screenshot loop against a device with no sideloaded channel - route it through
+     * the same follow-the-connected-device logic the sideload path uses (a LAN target's screenshot
+     * loop already works, so it just stops any stream left over from a previous Cloud Emulator
+     * device, mirroring the sideload path's symmetry).
+     */
+    protected onDeviceConnected(target: DeviceConfig) {
+        void this.followSideloadedDevice(target);
     }
 
     public onChannelPublishedEvent(e: ChannelPublishedEvent) {

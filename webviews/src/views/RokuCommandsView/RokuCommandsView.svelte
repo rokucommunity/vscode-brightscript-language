@@ -4,7 +4,6 @@
     import { odc, intermediary } from '../../ExtensionIntermediary';
     import { commandsView } from './RokuCommandsView';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
-    import RceUnsupportedMessage from '../../shared/RceUnsupportedMessage.svelte';
     import { utils } from '../../utils';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
 
@@ -92,11 +91,8 @@
 
     let odcAvailable = true;
 
-    let isRceDebugSession = false;
-
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         odcAvailable = message.context.odcAvailable;
-        isRceDebugSession = message.context.isRceDebugSession;
     });
 
     // Required by any view so we can know that the view is ready to receive messages
@@ -128,9 +124,7 @@
     }
 </style>
 
-{#if isRceDebugSession}
-    <RceUnsupportedMessage />
-{:else if !odcAvailable}
+{#if !odcAvailable}
     <OdcSetupSteps />
 {:else}
     <div id="container">
