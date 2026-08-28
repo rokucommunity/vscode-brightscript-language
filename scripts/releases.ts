@@ -5,7 +5,7 @@
 import * as yargs from 'yargs';
 import * as fsExtra from 'fs-extra';
 import { standardizePath as s } from 'brighterscript';
-import { execSync, exec } from 'child_process';
+import { execSync } from 'child_process';
 import * as chalk from 'chalk';
 import * as semver from 'semver';
 import * as prompt from 'prompt';
