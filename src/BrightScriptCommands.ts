@@ -59,11 +59,17 @@ export class BrightScriptCommands {
 
         //the "Refresh" button in the Devices list
         this.registerCommand('refreshDeviceList', (key: string) => {
-            this.deviceManager.refresh(true);
+            this.deviceManager.submitOrders([
+                { type: 'broadcast', reason: 'refresh-clicked' },
+                { type: 'reconcile', reason: 'refresh-clicked' }
+            ]);
         });
 
         this.registerCommand('rescanDevices', () => {
-            this.deviceManager.refresh(true);
+            this.deviceManager.submitOrders([
+                { type: 'broadcast', reason: 'refresh-clicked' },
+                { type: 'reconcile', reason: 'refresh-clicked' }
+            ]);
         });
 
         // Refresh a single device (inline button on hover in devices panel)
@@ -349,7 +355,7 @@ export class BrightScriptCommands {
 
         this.registerCommand('clearCurrentDeviceList', async () => {
             const toatsPromise = util.showTimedNotification('Clearing device list');
-            await this.deviceManager.clearCurrentDeviceList();
+            this.deviceManager.clearCurrentDeviceList();
             await toatsPromise;
         });
 
