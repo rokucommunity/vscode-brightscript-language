@@ -207,8 +207,12 @@
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
         odcAvailable = message.context.odcAvailable;
         if (odcAvailable) {
-            for (const [index, overlay] of overlays.entries()) {
-                await conditionallyDeployOverlay(overlay, index);
+            try {
+                for (const [index, overlay] of overlays.entries()) {
+                    await conditionallyDeployOverlay(overlay, index);
+                }
+            } catch (e) {
+                console.error('Error deploying overlays', e);
             }
         }
     });

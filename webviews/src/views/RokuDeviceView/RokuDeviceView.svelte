@@ -1,14 +1,15 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
     import { intermediary } from '../../ExtensionIntermediary';
-    import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
+    import ConnectToDeviceButton from '../../shared/ConnectToDeviceButton.svelte';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import type { AppUIResponseChild, AppUIResponse } from 'roku-test-automation';
-    import { utils as rtaUtils } from 'roku-test-automation/client/dist/utils';
+    import { utils as rtaUtils } from 'roku-test-automation/dist/utils';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
+    import RceStreamView from '../../shared/RceStreamView.svelte';
 
     window.vscode = acquireVsCodeApi();
 
@@ -17,6 +18,30 @@
         deviceAvailable = message.context.deviceAvailable;
         requestScreenshot();
     });
+
+    //Roku Cloud Emulator video stream mode: entered when the extension host negotiates a Janus
+    //session and posts its offer here; replaces the screenshot view until Stop is clicked. The
+    //stream itself (peer connection, header, error banner) lives in the shared RceStreamView
+    //component - this view only tracks whether stream mode is active so it can route between the
+    //stream and the screenshot/setup views.
+    let rceStreamActive = false;
+
+    intermediary.observeEvent(ViewProviderEvent.onRceStreamConnecting, () => {
+        rceStreamActive = true;
+    });
+
+    intermediary.observeEvent(ViewProviderEvent.onRceStreamError, () => {
+        //an early failure (before onRceStreamConnecting reached this webview instance) still enters
+        //stream mode so RceStreamView has somewhere to show the error
+        rceStreamActive = true;
+    });
+
+    function onRceStreamStopped() {
+        rceStreamActive = false;
+        if (enableScreenshotCaptureAutoRefresh) {
+            requestScreenshot();
+        }
+    }
 
     let shouldRepositionNodeInfo = false;
 
@@ -230,7 +255,7 @@
 
     let currentlyCapturingScreenshot = false;
     async function requestScreenshot() {
-        if (!deviceAvailable || currentlyCapturingScreenshot) {
+        if (!deviceAvailable || currentlyCapturingScreenshot || rceStreamActive) {
             return;
         }
 
@@ -376,7 +401,10 @@
 
 <svelte:window on:keydown={onKeydown} />
 <div id="container" on:mouseenter="{onMouseEnter}" on:mouseleave="{onMouseLeave}">
-    {#if deviceAvailable}
+    <RceStreamView on:stopped={onRceStreamStopped} />
+    {#if rceStreamActive}
+        <!-- RceStreamView above renders the stream; nothing else shows in stream mode -->
+    {:else if deviceAvailable}
     <div
         id="screenshotContainer"
         class:isInspectingNodes="{isInspectingNodes}"
@@ -400,12 +428,12 @@
     </div>
     {:else}
         <div style="margin: 0 10px">
-            <OdcSetManualIpAddress />
+            <ConnectToDeviceButton caption="Connect to a device to take screenshots" />
         </div>
     {/if}
 </div>
 
-{#if focusedNode}
+{#if focusedNode && !rceStreamActive}
     <div id="nodeInfo" class:reposition={shouldRepositionNodeInfo}>
         {#if currentPositionMatches.length}
             {currentPositionMatchesIndex + 1} of {currentPositionMatches.length} <span class="note">(use arrow keys to see others)</span><br>

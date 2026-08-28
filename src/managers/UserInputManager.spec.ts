@@ -62,6 +62,7 @@ describe('UserInputManager', () => {
             lastDeviceState: 'unknown',
             isDiscovered: true,
             isConfigured: false,
+            device: { host: '1.1.1.1' },
             deviceInfo: {
                 'user-device-name': 'roku1',
                 'serial-number': 'alpha',
@@ -76,6 +77,7 @@ describe('UserInputManager', () => {
             lastDeviceState: 'unknown',
             isDiscovered: true,
             isConfigured: false,
+            device: { host: '1.1.1.2' },
             deviceInfo: {
                 'user-device-name': 'roku2',
                 'serial-number': 'beta',
@@ -90,6 +92,7 @@ describe('UserInputManager', () => {
             lastDeviceState: 'unknown',
             isDiscovered: true,
             isConfigured: false,
+            device: { host: '1.1.1.3' },
             deviceInfo: {
                 'user-device-name': 'roku3',
                 'serial-number': 'charlie',
@@ -154,7 +157,7 @@ describe('UserInputManager', () => {
 
         it('moves active device to the top', () => {
             expect(
-                userInputManager['createHostQuickPickList']([devices[0], devices[1], devices[2]], devices[1].ip).map(x => x.label)
+                userInputManager['createHostQuickPickList']([devices[0], devices[1], devices[2]], devices[1].key).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[1]),
@@ -167,9 +170,56 @@ describe('UserInputManager', () => {
             ]);
         });
 
+        const cloudDevice = {
+            serialNumber: 'XY020078HH5S',
+            key: 's:XY020078HH5S',
+            deviceState: 'online',
+            lastDeviceState: 'unknown',
+            isDiscovered: false,
+            isConfigured: false,
+            device: { id: '83', rceToken: 'secret' },
+            rce: { id: 83, status: 'running' },
+            deviceInfo: {
+                'user-device-name': 'Chris',
+                'serial-number': 'XY020078HH5S',
+                'model-number': '2910X',
+                'software-version': '15.2.4'
+            }
+        } as any;
+
+        it('keeps cloud devices (which have no ip) in the list when no last-used device exists', () => {
+            const labels = userInputManager['createHostQuickPickList']([devices[0], cloudDevice], undefined).map(x => x.label);
+            expect(labels.some(itemLabel => itemLabel.includes('Chris'))).to.be.true;
+            expect(labels).to.include(label(devices[0]));
+        });
+
+        it('keeps cloud devices in the list alongside a last-used LAN device', () => {
+            const labels = userInputManager['createHostQuickPickList']([devices[0], devices[1], cloudDevice], devices[1].key).map(x => x.label);
+            expect(labels.filter(itemLabel => itemLabel.includes('Chris'))).to.have.length(1);
+            expect(labels[0]).to.equal('last used');
+        });
+
+        it('moves a last-used cloud device to the top', () => {
+            const labels = userInputManager['createHostQuickPickList']([devices[0], cloudDevice], cloudDevice.key).map(x => x.label);
+            expect(labels[0]).to.equal('last used');
+            expect(labels[1]).to.include('Chris');
+            expect(labels[2]).to.equal('other devices');
+        });
+
+        it('matches a last-used cloud device whose key drifted from rce id to esn after boot', () => {
+            //the picker stored `rce:{id}` while the instance was booting; once the esn arrived the
+            //device's key became `s:{esn}`, and the DeviceManager resolves the old key to the same device
+            sinon.stub(deviceManager, 'getDevice').callsFake((keyOrLookup: any) => {
+                return keyOrLookup === 'rce:83' ? cloudDevice : undefined;
+            });
+            const labels = userInputManager['createHostQuickPickList']([devices[0], cloudDevice], 'rce:83').map(x => x.label);
+            expect(labels[0]).to.equal('last used');
+            expect(labels[1]).to.include('Chris');
+        });
+
         it('includes action items when "last used" and "other devices" separators are both present', () => {
             expect(
-                userInputManager['createHostQuickPickList'](devices, devices[1].ip).map(x => x.label)
+                userInputManager['createHostQuickPickList'](devices, devices[1].key).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[1]),
@@ -198,7 +248,7 @@ describe('UserInputManager', () => {
 
         it('includes action items when only "last used" separator is present', () => {
             expect(
-                userInputManager['createHostQuickPickList']([devices[0]], devices[0].ip).map(x => x.label)
+                userInputManager['createHostQuickPickList']([devices[0]], devices[0].key).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[0]),
@@ -246,6 +296,130 @@ describe('UserInputManager', () => {
             // Clean up by hiding the quickpick (triggers rejection)
             quickPick?.hide();
             await promptPromise.catch(() => { });
+        });
+
+        it('returns the host and the raw device info for a typed-in IP', async () => {
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            const deviceInfo = {
+                'serial-number': 'abc123',
+                'software-version': '11.5.0'
+            };
+            sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '1.2.3.4', deviceInfo: deviceInfo, device: { host: '1.2.3.4' } } as any);
+
+            const promptPromise = userInputManager.promptForHost();
+
+            //let the picker finish setting up
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            //simulate the user typing an IP and pressing enter
+            quickPick.value = '1.2.3.4';
+            quickPick.emitter.emit('didAccept');
+
+            const result = await promptPromise;
+            expect(result).to.eql({ host: '1.2.3.4', deviceInfo: deviceInfo, device: { host: '1.2.3.4' } });
+        });
+
+        it('resolves with the precomputed device option and rce status for a cloud emulator pick, skipping the LAN health check', async () => {
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+            const healthCheckSpy = sinon.spy(deviceManager, 'healthCheckDevice');
+            const rceDevice = {
+                ip: undefined,
+                key: 'rce:83',
+                deviceState: 'online',
+                lastDeviceState: 'online',
+                deviceInfo: { 'default-device-name': 'Cloud Device' },
+                isDiscovered: true,
+                isConfigured: false,
+                rce: { id: 83, status: 'shutdown' },
+                device: { id: '83', rceToken: 'secret' }
+            } as unknown as RokuDevice;
+
+            const promptPromise = userInputManager.promptForHost();
+
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            //simulate the user selecting the cloud device item
+            quickPick.emitter.emit('didChangeSelection', [{ label: 'Cloud Device', device: rceDevice }]);
+            quickPick.emitter.emit('didAccept');
+
+            const result = await promptPromise;
+
+            expect(healthCheckSpy.called).to.be.false;
+            expect(result).to.eql({
+                host: undefined,
+                deviceInfo: rceDevice.deviceInfo,
+                device: rceDevice.device,
+                rce: { status: 'shutdown' }
+            });
+        });
+
+        it('returns the manually-entered host along with the probed device info', async () => {
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+            const deviceInfo = {
+                'serial-number': 'manual123',
+                'software-version': '11.5.0'
+            };
+            //manual entry probes the device the same way, so the gathered device info comes back too
+            sinon.stub(userInputManager, 'promptForHostManual').resolves({ host: '9.8.7.6', deviceInfo: deviceInfo, device: { host: '9.8.7.6' } });
+
+            const promptPromise = userInputManager.promptForHost();
+
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            //simulate the user selecting the "manual entry" item
+            quickPick.emitter.emit('didChangeSelection', [{ id: manualHostItemId, label: 'Enter manually' }]);
+            quickPick.emitter.emit('didAccept');
+
+            const result = await promptPromise;
+            expect(result).to.eql({ host: '9.8.7.6', deviceInfo: deviceInfo, device: { host: '9.8.7.6' } });
+        });
+    });
+
+    describe('promptForHostManual', () => {
+        it('probes the typed host and returns it with the gathered device info', async () => {
+            sinon.stub(vscode.window, 'showInputBox').resolves('4.3.2.1');
+            const deviceInfo = {
+                'serial-number': 'manual123',
+                'software-version': '11.5.0'
+            };
+            const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '4.3.2.1', deviceInfo: deviceInfo, device: { host: '4.3.2.1' } } as any);
+
+            const result = await userInputManager.promptForHostManual();
+
+            expect(validateStub.calledWith('4.3.2.1')).to.be.true;
+            expect(result).to.eql({ host: '4.3.2.1', deviceInfo: deviceInfo, device: { host: '4.3.2.1' } });
+        });
+
+        it('returns undefined when the user cancels the input box', async () => {
+            sinon.stub(vscode.window, 'showInputBox').resolves(undefined);
+            const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice');
+
+            const result = await userInputManager.promptForHostManual();
+
+            expect(result).to.be.undefined;
+            expect(validateStub.called).to.be.false;
         });
     });
 
@@ -321,7 +495,7 @@ describe('UserInputManager', () => {
             await credentialStore.setPassword('SN-001', 'stored-pw');
             sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: 'SN-001' });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: 'SN-001' });
 
             expect(resolution).to.deep.equal({ status: 'ok', password: 'stored-pw' });
             expect(await credentialStore.getPassword('SN-001')).to.equal('stored-pw');
@@ -332,7 +506,7 @@ describe('UserInputManager', () => {
             stub.onCall(0).resolves('bad-password');
             stub.onCall(1).resolves('ok');
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: 'SN-001', extraCandidates: ['rejected-pw', 'accepted-pw'] });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: 'SN-001', extraCandidates: ['rejected-pw', 'accepted-pw'] });
 
             expect(resolution).to.deep.equal({ status: 'ok', password: 'accepted-pw' });
             expect(stub.callCount).to.equal(2);
@@ -343,7 +517,7 @@ describe('UserInputManager', () => {
             sinon.stub(deviceManager, 'validateDevicePassword').resolves('unreachable');
             const promptStub = sinon.stub(userInputManager as any, 'promptForDevicePassword');
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: 'SN-001' });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: 'SN-001' });
 
             expect(resolution).to.deep.equal({ status: 'unreachable' });
             expect(promptStub.called).to.be.false;
@@ -355,7 +529,7 @@ describe('UserInputManager', () => {
             stub.onSecondCall().resolves('ok');
             (sinon.stub(userInputManager as any, 'promptForDevicePassword') as any).resolves('typed-pw');
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: 'SN-001', extraCandidates: ['rejected-pw'] });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: 'SN-001', extraCandidates: ['rejected-pw'] });
 
             expect(resolution).to.deep.equal({ status: 'ok', password: 'typed-pw' });
         });
@@ -367,7 +541,7 @@ describe('UserInputManager', () => {
             promptStub.onCall(0).resolves('still-wrong');
             promptStub.onCall(1).resolves(undefined);
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: undefined });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: undefined });
 
             expect(resolution).to.deep.equal({ status: 'cancelled' });
             expect(promptStub.callCount).to.equal(2);
@@ -376,7 +550,7 @@ describe('UserInputManager', () => {
         it('does not seed the cred store when no entry exists for the serial', async () => {
             sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
 
-            const resolution = await userInputManager.resolveDevicePassword({ host: '1.2.3.4', serialNumber: 'SN-NEW', extraCandidates: ['winning-pw'] });
+            const resolution = await userInputManager.resolveDevicePassword({ device: { host: '1.2.3.4' }, serialNumber: 'SN-NEW', extraCandidates: ['winning-pw'] });
 
             expect(resolution).to.deep.equal({ status: 'ok', password: 'winning-pw' });
             expect(await credentialStore.getPassword('SN-NEW')).to.be.undefined;

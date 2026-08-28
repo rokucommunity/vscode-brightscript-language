@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 describe('RokuRegistryViewProvider', () => {
-    const rtaManager = new RtaManager(vscode.context);
+    const rtaManager = new RtaManager(vscode.context, {} as any, {} as any);
     const provider = new RokuRegistryViewProvider(vscode.context, {
         rtaManager: rtaManager
     });

@@ -19,6 +19,10 @@
 		{
             "name": "➰brighterscript-formatter",
 			"path": "../brighterscript-formatter"
+		},
+		{
+            "name": "🧪roku-test-automation",
+			"path": "../roku-test-automation"
 		}
 	],
     "settings": {

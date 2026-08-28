@@ -1,19 +1,15 @@
 import * as vscode from 'vscode';
 import type { SceneGraphCommandResponse } from 'roku-debug';
 import { SceneGraphDebugCommandController } from 'roku-debug';
-import { util } from './util';
-import type { UserInputManager } from './managers/UserInputManager';
+import type { DeviceTargetManager } from './managers/DeviceTargetManager';
 
 export class SceneGraphDebugCommands {
     private outputChannel: vscode.OutputChannel;
-    private context: vscode.ExtensionContext;
-    private userInputManager: UserInputManager;
-    private host: string;
+    private deviceTargetManager: DeviceTargetManager;
 
-    public registerCommands(context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel, userInputManager: UserInputManager) {
-        this.context = context;
+    public registerCommands(context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel, deviceTargetManager: DeviceTargetManager) {
         this.outputChannel = outputChannel;
-        this.userInputManager = userInputManager;
+        this.deviceTargetManager = deviceTargetManager;
         let subscriptions = context.subscriptions;
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.bsprofPause', async () => {
@@ -149,8 +145,13 @@ export class SceneGraphDebugCommands {
     }
 
     private async logCommandOutput(callback: (controller: SceneGraphDebugCommandController) => Promise<SceneGraphCommandResponse>) {
-        await this.getRemoteHost();
-        let response = await callback(new SceneGraphDebugCommandController(this.host));
+        //active device first (LAN or Roku Cloud Emulator - the controller accepts either device
+        //config), then the legacy host fallbacks / device picker
+        const target = await this.deviceTargetManager.resolveActiveTargetDevice();
+        if (!target) {
+            return;
+        }
+        let response = await callback(new SceneGraphDebugCommandController(target.device));
 
         this.outputChannel.show();
 
@@ -181,23 +182,6 @@ export class SceneGraphDebugCommands {
         }
 
         return chunks;
-    }
-
-    public async getRemoteHost() {
-        this.host = await this.context.workspaceState.get('remoteHost');
-        if (!this.host) {
-            let config = util.getConfiguration('brightscript.remoteControl');
-            this.host = config.get('host');
-            // eslint-disable-next-line no-template-curly-in-string
-            if (!this.host || this.host === '${promptForHost}') {
-                this.host = await this.userInputManager.promptForHost();
-            }
-        }
-        if (!this.host) {
-            throw new Error('Can\'t send command: host is required.');
-        } else {
-            await this.context.workspaceState.update('remoteHost', this.host);
-        }
     }
 
 }

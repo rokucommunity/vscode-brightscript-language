@@ -6,6 +6,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.68.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.3...v2.68.0) - 2026-08-07
+### Changed
+ - Experimental Roku Cloud Emulator support ([#861](https://github.com/rokucommunity/vscode-brightscript-language/pull/861))
+ - Migrate to roku-deploy v4 ([#860](https://github.com/rokucommunity/vscode-brightscript-language/pull/860))
+ - upgrade to [roku-debug@0.24.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0240---2026-08-07). Notable changes since 0.23.16:
+     - Roku Cloud Emulator support ([#399](https://github.com/rokucommunity/roku-debug/pull/399))
+     - Migrate to roku-deploy v4 ([#398](https://github.com/rokucommunity/roku-debug/pull/398))
+     - Failed to apply breakpoints in component libraries ([#406](https://github.com/rokucommunity/roku-debug/pull/406))
+     - Fix `libary` statement complib postfixes ([#323](https://github.com/rokucommunity/roku-debug/pull/323))
+     - Better ECP limited messaging ([#397](https://github.com/rokucommunity/roku-debug/pull/397))
+     - Make perfettoManager action calls null-safe ([#390](https://github.com/rokucommunity/roku-debug/pull/390))
+ - upgrade to [roku-deploy@4.0.0-alpha.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#400-alpha3---2026-08-07). Notable changes since 3.17.7:
+     - Roku Cloud Emulator support ([#331](https://github.com/rokucommunity/roku-deploy/pull/331))
+     - Unified device option ([#323](https://github.com/rokucommunity/roku-deploy/pull/323))
+     - Enhanced logging levels ([#168](https://github.com/rokucommunity/roku-deploy/pull/168))
+
+
+
+## [2.67.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.2...v2.67.3) - 2026-07-13
+### Added
+ - Indicator for the active device in the Devices panel ([#856](https://github.com/rokucommunity/vscode-brightscript-language/pull/856))
+### Changed
+ - Add device commands to Devices panel right-click context menu and nested device info ([#853](https://github.com/rokucommunity/vscode-brightscript-language/pull/853))
+ - Persist active device by serial number and re-resolve its IP across reloads ([#854](https://github.com/rokucommunity/vscode-brightscript-language/pull/854))
+### Fixed
+ - upgrade to [@rokucommunity/logger@0.4.1](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#041---2026-07-10). Notable changes since 0.4.0:
+     - Serialize Error.cause (recursively) when logging ([#33](https://github.com/rokucommunity/logger/pull/33))
+ - Nested namespace display and nesting in outline ([#848](https://github.com/rokucommunity/vscode-brightscript-language/pull/848))
+
+
+
+## [2.67.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.1...v2.67.2) - 2026-07-07
+### Changed
+ - upgrade to [roku-debug@0.23.16](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02316---2026-07-07). Notable changes since 0.23.15:
+     - Improve ECP access mode error messages with step-by-step navigation ([#386](https://github.com/rokucommunity/roku-debug/pull/386))
+### Fixed
+ - Crash related to move dayjs missing as prod dependency ([#850](https://github.com/rokucommunity/vscode-brightscript-language/pull/850))
+
+
+
+## [2.67.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.0...v2.67.1) - 2026-07-06
+### Changed
+ - Reuse probed device-info for launch and host selection ([#839](https://github.com/rokucommunity/vscode-brightscript-language/pull/839))
+ - Make .env file optional and support loading system env vars ([#842](https://github.com/rokucommunity/vscode-brightscript-language/pull/842))
+ - upgrade to [brighterscript-formatter@1.8.1](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#181---2026-06-30). Notable changes since 1.8.0:
+     - Fix de-indent of multi-line call continuation lines ending with a closing paren ([#147](https://github.com/rokucommunity/brighterscript-formatter/pull/147))
+ - upgrade to [roku-debug@0.23.15](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02315---2026-07-06). Notable changes since 0.23.14:
+     - Accept device-info in the launch config to skip the device-info request ([#381](https://github.com/rokucommunity/roku-debug/pull/381))
+     - Prevent orphaned debug adapter after client disconnect ([#383](https://github.com/rokucommunity/roku-debug/pull/383))
+ - upgrade to [roku-deploy@3.17.7](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3177---2026-07-06). Notable changes since 3.17.6:
+     - Fix: potential crash in normalizeDeviceInfoFieldValue when supplied non-string values ([#301](https://github.com/rokucommunity/roku-deploy/pull/301))
+
+
 ## [2.67.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.66.4...v2.67.0) - 2026-06-29
 ### Added
  - `enablePostfix` option to component library launch schema ([#832](https://github.com/rokucommunity/vscode-brightscript-language/pull/832))

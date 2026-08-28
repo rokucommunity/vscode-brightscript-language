@@ -1,8 +1,8 @@
 import { vscode } from '../mockVscode.spec';
 import { createSandbox } from 'sinon';
 import { CaptureScreenshotCommand } from './CaptureScreenshotCommand';
-import { BrightScriptCommands } from '../BrightScriptCommands';
-import * as rokuDeploy from 'roku-deploy';
+import { DeviceTargetManager } from '../managers/DeviceTargetManager';
+import { rokuDeploy } from 'roku-deploy';
 import { expect } from 'chai';
 import URI from 'vscode-uri';
 import { standardizePath as s } from 'brighterscript';
@@ -12,15 +12,15 @@ const cwd = s`${process.cwd()}`;
 const sinon = createSandbox();
 
 describe('CaptureScreenshotCommand', () => {
-    let brightScriptCommands: BrightScriptCommands;
+    let deviceTargetManager: DeviceTargetManager;
     let command: CaptureScreenshotCommand;
     let context = vscode.context;
     let workspace = vscode.workspace;
 
     beforeEach(() => {
         command = new CaptureScreenshotCommand();
-        brightScriptCommands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
-        command.register(context, brightScriptCommands);
+        deviceTargetManager = new DeviceTargetManager(vscode.context, {} as any, {} as any);
+        command.register(context, deviceTargetManager);
     });
 
     afterEach(() => {
@@ -28,58 +28,79 @@ describe('CaptureScreenshotCommand', () => {
         workspace.workspaceFolders = [];
     });
 
-    it('gets remoteHost and remotePassword when hostParam is not provided', async () => {
-        sinon.stub(brightScriptCommands, 'getRemoteHost').resolves('1.1.1.1');
-        sinon.stub(brightScriptCommands, 'getRemotePassword').resolves('password');
+    /**
+     * Stub the target/password resolution (both delegated to DeviceTargetManager, tested there)
+     * so tests can drive captureScreenshot directly
+     */
+    function stubResolution(device: any = { host: '1.1.1.1' }, label = '1.1.1.1') {
+        const resolveTarget = sinon.stub(deviceTargetManager, 'resolveActiveTargetDevice').resolves({ device: device, serialNumber: 'SN1', label: label });
+        const resolvePassword = sinon.stub(deviceTargetManager, 'resolveValidatedPassword').resolves('password');
+        return { resolveTarget: resolveTarget, resolvePassword: resolvePassword };
+    }
 
-        const { host, password } = await command['getHostAndPassword']();
+    it('passes the reference through to the resolver and the resolved device to rokuDeploy', async () => {
+        const { resolveTarget, resolvePassword } = stubResolution();
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
 
-        expect(host).to.eql('1.1.1.1');
-        expect(password).to.eql('password');
+        await command['captureScreenshot']({ key: 's:SN1' });
+
+        expect(resolveTarget.getCall(0).args[0]).to.eql({ key: 's:SN1' });
+        expect(resolvePassword.getCall(0).args[0]).to.eql({ host: '1.1.1.1' });
+        expect(stub.getCall(0).args[0]).to.eql({ device: { host: '1.1.1.1' }, password: 'password', out: true });
     });
 
-    it('gets remotePassword when hostParam matches remoteHost', async () => {
-        await context.workspaceState.update('remoteHost', '1.1.1.1');
-        await context.workspaceState.update('remotePassword', 'password');
+    it('captures from a cloud emulator device through its device config', async () => {
+        const cloudDevice = { instanceUrl: 'https://rce.example.com/instance', rceToken: 'token' };
+        stubResolution(cloudDevice, 'Chris (cloud emulator)');
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
 
-        const { host, password } = await command['getHostAndPassword']('1.1.1.1');
+        await command['captureScreenshot']({ key: 'rce:83' });
 
-        expect(host).to.eql('1.1.1.1');
-        expect(password).to.eql('password');
+        expect(stub.getCall(0).args[0]).to.eql({ device: cloudDevice, password: 'password', out: true });
     });
 
-    it('prompts for password when hostParam does not match remoteHost', async () => {
-        sinon.stub(vscode.window, 'showInputBox').resolves('password');
+    it('returns early when device resolution is cancelled', async () => {
+        sinon.stub(deviceTargetManager, 'resolveActiveTargetDevice').resolves(undefined);
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot');
 
-        const { host, password } = await command['getHostAndPassword']('1.1.1.1');
+        await command['captureScreenshot']();
 
-        expect(host).to.eql('1.1.1.1');
-        expect(password).to.eql('password');
+        expect(stub.called).to.be.false;
+    });
+
+    it('returns early when password resolution is cancelled', async () => {
+        sinon.stub(deviceTargetManager, 'resolveActiveTargetDevice').resolves({ device: { host: '1.1.1.1' }, serialNumber: 'SN1', label: '1.1.1.1' });
+        sinon.stub(deviceTargetManager, 'resolveValidatedPassword').resolves(undefined);
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot');
+
+        await command['captureScreenshot']();
+
+        expect(stub.called).to.be.false;
     });
 
     it('shows error message when captureScreenshot fails', async () => {
-        const stub = sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        sinon.stub(rokuDeploy, 'takeScreenshot').rejects(new Error('Screenshot failed'));
+        const { resolveTarget } = stubResolution();
+        sinon.stub(rokuDeploy, 'captureScreenshot').rejects(new Error('Screenshot failed'));
         const stubError = sinon.stub(vscode.window, 'showErrorMessage');
 
         await command['captureScreenshot']('1.1.1.1');
 
-        expect(stub.getCall(0).args[0]).to.eql('1.1.1.1');
+        expect(resolveTarget.getCall(0).args[0]).to.eql('1.1.1.1');
         expect(stubError.calledOnce).to.be.true;
     });
 
     it('uses temp dir when screenshotDir is not defined', async () => {
-        sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
+        stubResolution();
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password' });
+        expect(stub.getCall(0).args[0]).to.eql({ device: { host: '1.1.1.1' }, password: 'password', out: true });
     });
 
     it('uses screenshotDir with single workspace', async () => {
-        sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
+        stubResolution();
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
         workspace._configuration = {
             'brightscript.screenshotDir': '${workspaceFolder}/screenshots'
         };
@@ -93,12 +114,12 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace/screenshots` });
+        expect(stub.getCall(0).args[0]).to.eql({ device: { host: '1.1.1.1' }, password: 'password', out: true, screenshotDir: s`${cwd}/workspace/screenshots` });
     });
 
     it('uses relative screenshotDir with single workspace', async () => {
-        sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
+        stubResolution();
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
         workspace._configuration = {
             'brightscript.screenshotDir': 'screenshots'
         };
@@ -112,12 +133,12 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace/screenshots` });
+        expect(stub.getCall(0).args[0]).to.eql({ device: { host: '1.1.1.1' }, password: 'password', out: true, screenshotDir: s`${cwd}/workspace/screenshots` });
     });
 
     it('uses screenshotDir with multiple workspace', async () => {
-        sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
+        stubResolution();
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
         const workspaceFolders = [
             {
                 uri: URI.file(s`${cwd}/workspace1`),
@@ -138,12 +159,12 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace2/screenshots` });
+        expect(stub.getCall(0).args[0]).to.eql({ device: { host: '1.1.1.1' }, password: 'password', out: true, screenshotDir: s`${cwd}/workspace2/screenshots` });
     });
 
     it('uses relative screenshotDir with multiple workspace', async () => {
-        sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
-        const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
+        stubResolution();
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
         const workspaceFolders = [
             {
                 uri: URI.file(s`${cwd}/workspace1`),
@@ -164,6 +185,6 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace2/screenshots` });
+        expect(stub.getCall(0).args[0]).to.eql({ device: { host: '1.1.1.1' }, password: 'password', out: true, screenshotDir: s`${cwd}/workspace2/screenshots` });
     });
 });

@@ -8,7 +8,7 @@
     import Branch from './Branch.svelte';
     import NodeDetailPage from './NodeDetailPage.svelte';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
-    import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
+    import ConnectToDeviceButton from '../../shared/ConnectToDeviceButton.svelte';
     import { SettingsGear, Issues, Refresh, Play, DebugPause, StopCircle } from 'svelte-codicons';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
@@ -174,8 +174,7 @@
             if (node) {
                 node = utils.getShallowCloneOfAppUIResponseChild(node);
 
-                if ((node.base !== 'appUI' && node.base !== selectNode?.base) || node.keyPath !== selectNode?.keyPath) {
-                    // If the focused node is not the same as the currently selected node, we want to inspect it
+                if (node.base !== selectNode?.base || node.keyPath !== selectNode?.keyPath) {
 
                     selectNode = node;
                     expandNode = node;
@@ -403,7 +402,7 @@
             steps, check to make sure you're seeing this line in your device logs
             <span class="codeSnippet">[RTA][INFO] OnDeviceComponent init</span>
             <p><button on:click={userRefresh}>Retry</button></p>
-            <OdcSetManualIpAddress />
+            <ConnectToDeviceButton />
         </div>
     {:else}
         <div id="header" class:hide={inspectNode && !shouldDisplaySideBySide}>

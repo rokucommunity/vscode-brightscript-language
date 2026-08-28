@@ -2,7 +2,8 @@ import { EventEmitter } from 'eventemitter3';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
-import { rokuDeploy, DeviceUnreachableError, type DeviceInfoRaw } from 'roku-deploy';
+import { rokuDeploy, DeviceUnreachableError, isLocalDeviceConfig, isRceDeviceConfigByEsn, isRceDeviceConfigById, isRceDeviceConfigByUrl, type DeviceInfoRaw, type RceDevice, type DeviceStatus, type DeviceConfig, type RceDeviceConfig } from 'roku-deploy';
+import type { RceFinder } from './RceFinder';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
@@ -18,15 +19,99 @@ export class DeviceManager {
     constructor(
         private context: vscode.ExtensionContext,
         private globalStateManager: GlobalStateManager,
-        private extensionOutputChannel?: vscode.OutputChannel
+        private extensionOutputChannel?: vscode.OutputChannel,
+        private rceFinder?: RceFinder
     ) {
         this.networkId = getNetworkHash();
 
         this.setupConfiguration();
         this.setupWindowFocusHandling();
         this.setupMonitors();
+        this.setupRceFinderListeners();
         this.initialize();
         this.context.subscriptions.push(this);
+    }
+
+    /**
+     * Set up event listeners for the (optionally injected) RceFinder, which polls the Roku Cloud
+     * Emulator management api. Every poll returns the full device inventory, so the local list is
+     * replaced rather than accumulated.
+     */
+    private setupRceFinderListeners() {
+        this.rceFinder?.on('devices', (devices: RceDevice[]) => {
+            this.onRceDevices(devices);
+        });
+    }
+
+    /**
+     * Replace the cloud emulator device list with the latest management-api poll results
+     */
+    private onRceDevices(devices: RceDevice[]) {
+        //entries only ever get built from a non-empty devices list, which only happens when the finder
+        //resolved a token for this scan (a token-less scan emits an empty list - see RceFinder.scan()),
+        //so the cached token is expected to be set here
+        const rceToken = this.rceFinder?.getCachedToken();
+        this.rceDevices = devices.map(device => {
+            const instanceUrl = device.running_device?.instance_api_url ?? undefined;
+            //same preference order as RceFinder.getDeviceConfig: a live instance url first, then the
+            //management-api device id
+            const deviceConfig: RceDeviceConfig = instanceUrl
+                ? { instanceUrl: instanceUrl, rceToken: rceToken }
+                : { id: device.id, rceToken: rceToken };
+            return {
+                id: device.id,
+                name: device.name,
+                esn: device.serial_number ?? undefined,
+                status: device.status ?? 'shutdown',
+                instanceUrl: instanceUrl,
+                deviceType: device.device_type,
+                firmwareVersion: device.running_device?.firmware_version_id ?? device.firmware_version_id ?? undefined,
+                device: deviceConfig
+            };
+        });
+        this.emitDevicesChanged();
+        void this.resolveRceDevices();
+    }
+
+    /**
+     * Fetch fresh device-info for running cloud emulator devices (over roku-deploy's RCE path) and
+     * cache it by esn, the same way local devices cache by serial number. Only devices with a live
+     * instance and an esn are probed, and only when the cache is missing or expired.
+     */
+    private async resolveRceDevices() {
+        const candidates = this.rceDevices.filter(entry => {
+            if (!entry.instanceUrl || !entry.esn) {
+                return false;
+            }
+            const cached = this.globalStateManager.getCachedDevice(entry.esn);
+            return !cached || (Date.now() - cached.createdAt) > this.DEVICE_INFO_CACHE_MS;
+        });
+        if (candidates.length === 0) {
+            return;
+        }
+
+        let anyUpdated = false;
+        await Promise.all(candidates.map(async (entry) => {
+            try {
+                const deviceInfo = await rokuDeploy.getDeviceInfo({
+                    device: entry.device,
+                    timeout: DeviceManager.RCE_DEVICE_INFO_TIMEOUT_MS
+                });
+                this.globalStateManager.setCachedDevice(entry.esn, {
+                    serialNumber: entry.esn,
+                    deviceInfo: deviceInfo,
+                    createdAt: Date.now()
+                });
+                anyUpdated = true;
+            } catch (e) {
+                //the instance may have just stopped; keep rendering the synthesized info
+                this.extensionOutputChannel?.appendLine(`Failed to fetch device-info for cloud emulator device ${entry.id}: ${(e as Error).message}`);
+            }
+        }));
+
+        if (anyUpdated) {
+            this.emitDevicesChanged();
+        }
     }
 
     private setupConfiguration() {
@@ -141,8 +226,9 @@ export class DeviceManager {
     // Core state and dependencies
     private configuredDevices: ConfiguredDeviceEntry[] = [];
     private discoveredDevices: DiscoveredDeviceEntry[] = [];
+    private rceDevices: RceDeviceEntry[] = [];
     private scanNeeded = false;
-    private lastUsedDeviceIp: string | undefined = undefined;
+    private lastUsedDeviceKey: string | undefined = undefined;
     private networkId: string;
 
     private emitter = new EventEmitter();
@@ -157,6 +243,8 @@ export class DeviceManager {
     private readonly STALE_DEVICE_AFTER_SCAN_MS = 10_000; // 10 seconds - health check devices with cache older than this after scan
     private readonly OFFLINE_COOLDOWN_MS = 5_000; // 5 seconds - minimum time between resolve attempts for offline devices
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
+    // Cloud emulator device-info goes through the instance's ECP2 websocket, which is slower than LAN ECP
+    public static readonly RCE_DEVICE_INFO_TIMEOUT_MS = 10_000;
 
     // Notifications and event debouncing
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
@@ -202,6 +290,12 @@ export class DeviceManager {
      */
     public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined;
     public getDevice(keyOrLookup: string | { ip?: string; serialNumber?: string }): RokuDevice | undefined {
+        //cloud emulator devices live in their own source array (matched by key, id, or esn)
+        const rceEntry = this.findRceDeviceEntry(keyOrLookup);
+        if (rceEntry) {
+            return this.buildRceDevice(rceEntry);
+        }
+
         const { configured, discovered } = this.findDeviceEntries(keyOrLookup);
         const device = this.buildMergedDevice(configured, discovered);
 
@@ -213,6 +307,29 @@ export class DeviceManager {
         }
 
         return device;
+    }
+
+    /**
+     * Find the RokuDevice matching a roku-deploy device config, for resolving a launch config's
+     * `device` back to a UI-facing RokuDevice (for example to look up its DeviceManager key when
+     * marking it as the active device). A local device is matched by host/ip; a Roku Cloud Emulator
+     * device is matched by whichever of esn/id/instanceUrl the given config carries, among the
+     * currently known cloud emulator devices.
+     */
+    public getDeviceByDeviceConfig(config: DeviceConfig): RokuDevice | undefined {
+        if (isLocalDeviceConfig(config)) {
+            return this.getDevice({ ip: config.host });
+        }
+
+        let matchingEntry: RceDeviceEntry | undefined;
+        if (isRceDeviceConfigByEsn(config)) {
+            matchingEntry = this.rceDevices.find(entry => entry.esn === config.esn);
+        } else if (isRceDeviceConfigById(config)) {
+            matchingEntry = this.rceDevices.find(entry => entry.id === config.id);
+        } else if (isRceDeviceConfigByUrl(config)) {
+            matchingEntry = this.rceDevices.find(entry => entry.instanceUrl === config.instanceUrl);
+        }
+        return matchingEntry ? this.buildRceDevice(matchingEntry) : undefined;
     }
 
     /**
@@ -272,11 +389,39 @@ export class DeviceManager {
     }
 
     /**
+     * Generate a short label describing how the device is addressed (its LAN ip,
+     * or 'cloud emulator' for devices with no ip)
+     * @param device the device containing all the info
+     */
+    public getAddressLabel(device: RokuDevice): string {
+        return device.rce ? 'cloud emulator' : device.ip;
+    }
+
+    /**
+     * The browser url for a device's web portal: the LAN dev web server for a local device, or the
+     * developer.roku.com dev-installer page for a cloud emulator device (the browser carries the
+     * developer.roku.com session that page requires)
+     * @param device the device containing all the info
+     */
+    public getWebPortalUrl(device: RokuDevice): string {
+        return device.rce
+            ? `https://developer.roku.com/cloud-emulator-bff/devices/${device.rce.id}/sideload/`
+            : `http://${device.ip}`;
+    }
+
+    /**
      * Generate the label used when showing "host" entries in a quick picker
      * @param device the device containing all the info
      * @returns a properly formatted host string
      */
     public getIconPath(device: RokuDevice) {
+        //cloud emulator devices always render a cloud icon, dimmed when not running
+        if (device.rce) {
+            return device.deviceState === 'online'
+                ? new vscode.ThemeIcon('cloud')
+                : new vscode.ThemeIcon('cloud', new vscode.ThemeColor('disabledForeground'));
+        }
+
         const hasCache = device.serialNumber && this.hasDeviceCache(device.serialNumber);
 
         if (device.deviceState === 'pending') {
@@ -354,6 +499,15 @@ export class DeviceManager {
                 }
                 mergedDevices.set(device.key, device);
             }
+        }
+
+        // Cloud emulator devices live in their own source array; merge them in by key. On an
+        // s:{esn} collision with a configured/discovered LAN entry, the cloud entry wins - the
+        // same precedence getDevice uses - so a row always displays the device its key-routed
+        // actions resolve to
+        for (const entry of this.rceDevices) {
+            const device = this.buildRceDevice(entry);
+            mergedDevices.set(device.key, device);
         }
 
         // Convert to array and sort
@@ -531,14 +685,11 @@ export class DeviceManager {
         // Clear discovered devices (ephemeral)
         this.discoveredDevices = [];
 
-        // Only clear lastUsedDeviceIp if it belonged to a discovered-only device
-        if (this.lastUsedDeviceIp) {
-            const stillExists = this.configuredDevices.some(
-                d => d.resolvedIp === this.lastUsedDeviceIp || d.host === this.lastUsedDeviceIp
-            );
-            if (!stillExists) {
-                this.lastUsedDeviceIp = undefined;
-            }
+        // Only clear lastUsedDeviceKey if it belonged to a discovered-only device. With the
+        // discovered list already cleared, a key that still resolves points at a configured or
+        // cloud emulator device, which survives the clear.
+        if (this.lastUsedDeviceKey && !this.getDevice(this.lastUsedDeviceKey)) {
+            this.lastUsedDeviceKey = undefined;
         }
 
         //clear the cache for the current list of devices
@@ -583,6 +734,14 @@ export class DeviceManager {
             return false;
         }
 
+        //cloud emulator devices are refreshed through the management api, not a LAN probe. The
+        //post-scan lookup uses the stable rce id: a just-booted device has no esn yet (so a
+        //serial lookup finds nothing), and the key itself changes once an esn appears
+        if (device.rce) {
+            await this.rceFinder?.scan();
+            return this.getDevice(`rce:${device.rce.id}`)?.deviceState === 'online';
+        }
+
         // Cooldown is handled by fetchDeviceInfo cache; force bypasses it
         const isHealthy = await this.resolveDevice(device, doSyntheticDelay, force);
         if (!isHealthy && device.isDiscovered) {
@@ -593,16 +752,17 @@ export class DeviceManager {
     }
 
     /**
-     * Validate a developer password against the device at `host`.
+     * Validate a developer password against a device (any roku-deploy device config, including a
+     * Roku Cloud Emulator config).
      *
      * Returns:
      * - `'ok'` — credentials accepted
      * - `'bad-password'` — device reachable, credentials rejected
      * - `'unreachable'` — device could not be contacted (transient; don't treat as wrong password)
      */
-    public async validateDevicePassword(host: string, password: string): Promise<PasswordValidationResult> {
+    public async validateDevicePassword(device: DeviceConfig, password: string): Promise<PasswordValidationResult> {
         try {
-            const accepted = await rokuDeploy.validateDeveloperPassword({ host: host, password: password });
+            const accepted = await rokuDeploy.validateDeveloperPassword({ device: device, password: password });
             return accepted ? 'ok' : 'bad-password';
         } catch (e) {
             if (e instanceof DeviceUnreachableError) {
@@ -613,12 +773,18 @@ export class DeviceManager {
         }
     }
 
-    public getLastUsedDeviceIp(): string | undefined {
-        return this.lastUsedDeviceIp;
+    /**
+     * The DeviceManager key (`s:{serial}`, `i:{ip}`, or `rce:{id}`) of the device most recently
+     * picked in the device quick pick. Resolve it back to a device with `getDevice(key)`, which
+     * also absorbs a cloud emulator key drifting from `rce:{id}` to `s:{esn}` once the booted
+     * instance reports its esn.
+     */
+    public getLastUsedDeviceKey(): string | undefined {
+        return this.lastUsedDeviceKey;
     }
 
-    public setLastUsedDeviceIp(value: string | undefined) {
-        this.lastUsedDeviceIp = value;
+    public setLastUsedDeviceKey(value: string | undefined) {
+        this.lastUsedDeviceKey = value;
     }
 
     public dispose() {
@@ -626,8 +792,10 @@ export class DeviceManager {
         this.systemSleepMonitor?.dispose?.();
         this.networkChangeMonitor?.dispose?.();
         this.finder?.dispose?.();
+        this.rceFinder?.dispose?.();
         this.configuredDevices = [];
         this.discoveredDevices = [];
+        this.rceDevices = [];
         this.emitter.removeAllListeners();
     }
 
@@ -786,6 +954,12 @@ export class DeviceManager {
     }
 
     private async resolveDevice(device: RokuDevice | { ip: string }, doSyntheticDelay = true, force = false): Promise<boolean> {
+        //cloud emulator devices are never probed over the LAN: their state comes from the management
+        //api and their device-info from resolveRceDevices
+        if ('rce' in device && device.rce) {
+            return device.deviceState === 'online';
+        }
+
         // Extract serial from device if available (for proper state key management)
         const knownSerial = 'serialNumber' in device ? device.serialNumber : undefined;
 
@@ -942,6 +1116,11 @@ export class DeviceManager {
     }
 
     private async healthCheckAllDevices(force = false, doSyntheticDelay = true): Promise<void> {
+        //cloud emulator devices are refreshed through the management api rather than a LAN probe
+        //(the same route as healthCheckDevice's cloud branch); scan() resolves without emitting
+        //when no account is configured, so this is safe to kick unconditionally
+        const rceScan = this.rceFinder?.scan();
+
         // Collect all unique IPs from both sources (same serial at different IPs = different entries to check)
         const discoveredIpSet = new Set(this.discoveredDevices.map(entry => entry.ip));
         const allIps = new Set([
@@ -950,6 +1129,7 @@ export class DeviceManager {
         ]);
 
         if (allIps.size === 0) {
+            await rceScan;
             return;
         }
 
@@ -967,6 +1147,7 @@ export class DeviceManager {
                 needsScan = true;
             }
         }));
+        await rceScan;
 
         if (needsScan) {
             this.discoverAll(this.deviceDiscoveryEnabled);
@@ -1020,8 +1201,8 @@ export class DeviceManager {
     private async fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw> {
         try {
             const info = await rokuDeploy.getDeviceInfo({
-                host: ip,
-                remotePort: port,
+                device: { host: ip },
+                ecpPort: port,
                 timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
             });
             if (info['serial-number']) {
@@ -1048,6 +1229,7 @@ export class DeviceManager {
             this.scanNeeded = false;
             this.lastScanDate = new Date();
             this.finder.scan();
+            void this.rceFinder?.scan();
             return true;
         }
         return false;
@@ -1068,9 +1250,10 @@ export class DeviceManager {
             const oldIdx = this.discoveredDevices.findIndex(d => d.ip !== ip && d.serialNumber === serialNumber);
             if (oldIdx >= 0) {
                 const oldIp = this.discoveredDevices[oldIdx].ip;
-                // Transfer lastUsedDeviceIp to new IP if it was pointing to old IP
-                if (this.lastUsedDeviceIp === oldIp) {
-                    this.lastUsedDeviceIp = ip;
+                // An ip-based last-used key pointing at the old IP moves to the device's stable
+                // serial key (we only get here when the serial is known)
+                if (this.lastUsedDeviceKey === `i:${oldIp}`) {
+                    this.lastUsedDeviceKey = `s:${serialNumber}`;
                 }
                 this.discoveredDevices.splice(oldIdx, 1);
             }
@@ -1106,7 +1289,7 @@ export class DeviceManager {
 
     /**
      * Remove a discovered device by IP. Clears from discoveredDevices array,
-     * clears lastUsedDeviceIp if it matches, and removes from lastSeenDevices cache.
+     * clears lastUsedDeviceKey if it matches, and removes from lastSeenDevices cache.
      */
     private removeDiscoveredDevice(ip: string): void {
         // Find the device first to get its serial number
@@ -1118,9 +1301,12 @@ export class DeviceManager {
         const device = this.discoveredDevices[idx];
         this.discoveredDevices.splice(idx, 1);
 
-        // Clear lastUsedDeviceIp if it matches
-        if (this.lastUsedDeviceIp === ip) {
-            this.lastUsedDeviceIp = undefined;
+        // Clear lastUsedDeviceKey if it points at this device (by ip key or serial key)
+        if (
+            this.lastUsedDeviceKey === `i:${ip}` ||
+            (device.serialNumber && this.lastUsedDeviceKey === `s:${device.serialNumber}`)
+        ) {
+            this.lastUsedDeviceKey = undefined;
         }
 
         // Remove from lastSeenDevices if we have a serial
@@ -1180,6 +1366,78 @@ export class DeviceManager {
     }
 
     /**
+     * Find a cloud emulator device entry by device key (`s:{esn}` or `rce:{id}`) or by a
+     * `{ serialNumber }` lookup object
+     */
+    private findRceDeviceEntry(keyOrLookup: string | { ip?: string; serialNumber?: string }): RceDeviceEntry | undefined {
+        if (typeof keyOrLookup === 'string') {
+            if (keyOrLookup.startsWith('rce:')) {
+                const id = Number(keyOrLookup.slice(4));
+                return this.rceDevices.find(entry => entry.id === id);
+            }
+            if (keyOrLookup.startsWith('s:')) {
+                const serial = keyOrLookup.slice(2);
+                return this.rceDevices.find(entry => entry.esn === serial);
+            }
+            return undefined;
+        }
+        if (keyOrLookup.serialNumber) {
+            return this.rceDevices.find(entry => entry.esn === keyOrLookup.serialNumber);
+        }
+        return undefined;
+    }
+
+    /**
+     * Build a RokuDevice from a cloud emulator device entry. The management api's device `status`
+     * maps directly onto device states (running=online, pending=pending, shutdown=offline), and a
+     * minimal device-info is synthesized from the management-api fields so display names render.
+     */
+    private buildRceDevice(entry: RceDeviceEntry): RceRokuDevice {
+        const stateByStatus: Record<DeviceStatus, DeviceState> = {
+            running: 'online',
+            pending: 'pending',
+            shutdown: 'offline'
+        };
+        const deviceState = stateByStatus[entry.status] ?? 'unknown';
+        //a pending cloud device is booting at the user's request rather than recovering from an
+        //unknown prior state, so report its last known state as online to keep it visible wherever
+        //pending devices are grouped with online ones (e.g. the device filters)
+        const lastDeviceState = deviceState === 'pending' ? 'online' : deviceState;
+        //firmware ids look like `rce-fw:15.2.4-tv_prod`; pull out the version number for display
+        const softwareVersion = /(\d+\.\d+\.\d+)/.exec(entry.firmwareVersion ?? '')?.[1];
+
+        //real device-info fetched from the running instance (see resolveRceDevices) wins over the
+        //synthesized fields, but the management-api device name always wins for display since that
+        //is what the user named the cloud device
+        const cached = entry.esn ? this.globalStateManager.getCachedDevice(entry.esn) : undefined;
+
+        return {
+            ip: undefined,
+            serialNumber: entry.esn,
+            key: entry.esn ? `s:${entry.esn}` : `rce:${entry.id}`,
+            deviceState: deviceState,
+            lastDeviceState: lastDeviceState,
+            deviceInfo: {
+                'serial-number': entry.esn,
+                'default-device-name': entry.name,
+                'is-tv': entry.deviceType === 'tv' ? 'true' : 'false',
+                'is-stick': 'false',
+                ...(softwareVersion ? { 'software-version': softwareVersion } : {}),
+                ...(cached?.deviceInfo ?? {}),
+                'user-device-name': entry.name
+            },
+            isDiscovered: true,
+            isConfigured: false,
+            rce: {
+                id: entry.id,
+                status: entry.status,
+                instanceUrl: entry.instanceUrl
+            },
+            device: entry.device
+        };
+    }
+
+    /**
      * Build a merged RokuDevice from configured and discovered entries.
      * At least one of configured or discovered must be provided.
      */
@@ -1230,7 +1488,9 @@ export class DeviceManager {
             isConfigured: !!configuredEntry,
             configuredIn: configuredEntry?.configuredIn,
             configuredName: configuredEntry?.name,
-            configuredPassword: configuredEntry?.password ?? this.getDefaultPassword()
+            //LocalDeviceConfig has no password field; passwords stay on configuredPassword above
+            configuredPassword: configuredEntry?.password ?? this.getDefaultPassword(),
+            device: { host: ip }
         };
     }
 
@@ -1273,11 +1533,13 @@ export class DeviceManager {
 
     private async activateMonitoring() {
         this.networkChangeMonitor.start();
+        this.rceFinder?.start();
         await this.startRokuFinder();
     }
 
     private deactivateMonitoring() {
         this.networkChangeMonitor.stop();
+        this.rceFinder?.stop();
         this.stopRokuFinder();
     }
 
@@ -1409,6 +1671,36 @@ export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
 export type ConfigurationScope = 'user' | 'workspace';
 
 /**
+ * A resolved host paired with the raw `device-info` gathered while probing it. Returned by the
+ * host-resolution flows (device picker, manual entry, active-host lookup) so callers can reuse the
+ * device info without issuing another request to the device.
+ */
+export interface HostWithDeviceInfo {
+    /**
+     * The resolved LAN host. Undefined for a Roku Cloud Emulator pick, which has no LAN host -
+     * consumers must target those through `device` instead. (strictNullChecks is off, so this is
+     * documentation rather than compiler enforcement.)
+     */
+    host: string | undefined;
+    deviceInfo: DeviceInfoRaw;
+    /**
+     * The resolved device's precomputed roku-deploy-compatible connection option, so callers (for
+     * example DebugConfigurationProvider) can run roku-deploy commands, or hand it straight to
+     * roku-debug's launch config, without re-deriving it. `{host}` for every LAN resolution path;
+     * the Roku Cloud Emulator connection option (instanceUrl/id + rceToken) for a cloud device pick.
+     */
+    device: DeviceConfig;
+    /**
+     * Present only when the resolved device is a Roku Cloud Emulator device, carrying just enough
+     * info for a caller to guard against launching against one that isn't running yet. Undefined
+     * for every LAN resolution path.
+     */
+    rce?: {
+        status: DeviceStatus;
+    };
+}
+
+/**
  * User-configured device from settings (brightscript.devices)
  */
 export interface ConfiguredDevice {
@@ -1451,6 +1743,26 @@ interface ConfiguredDeviceEntry extends ConfiguredDevice {
  * Internal: discovered device from network
  * Removed when device goes offline (ephemeral)
  */
+/**
+ * A cloud emulator device as tracked from RceFinder polls of the RCE management api
+ */
+interface RceDeviceEntry {
+    id: number;
+    name: string;
+    esn?: string;
+    status: DeviceStatus;
+    instanceUrl?: string;
+    deviceType?: string;
+    firmwareVersion?: string;
+    /**
+     * A pre-computed roku-deploy-compatible connection option for this device (instanceUrl when the
+     * device has a live instance, otherwise its management-api id), built at scan time using the
+     * token cached by RceFinder for that scan. Only ever built for entries in a non-empty devices
+     * list, which only happens when a token was available, so this is never optional here.
+     */
+    device: RceDeviceConfig;
+}
+
 interface DiscoveredDeviceEntry {
     /**
      * Current IP from SSDP/resolution
@@ -1487,11 +1799,57 @@ interface DeviceStateEntry {
  * Full device details returned by public API
  * Built on-demand by merging configured and discovered device data
  */
-export interface RokuDevice {
+/**
+ * A device entry: a LAN device addressed by ip, or a Roku Cloud Emulator device addressed through
+ * the RCE management api. `device.rce` (or `device.ip`) narrows to the specific variant, and a
+ * future third device kind slots in as another union member.
+ */
+export type RokuDevice = LocalRokuDevice | RceRokuDevice;
+
+/**
+ * A LAN device, always addressed by IP
+ */
+export interface LocalRokuDevice extends BaseRokuDevice {
     /**
-     * Computed IP from resolution order: discovered > resolvedIp > host
+     * Computed IP from resolution order: discovered > resolvedIp > host.
      */
     ip: string;
+    /**
+     * Never present on a LAN device; declared so a truthy `device.rce` check narrows the
+     * RokuDevice union
+     */
+    rce?: undefined;
+}
+
+/**
+ * A Roku Cloud Emulator device (sourced from the RCE management api), never addressed by IP
+ */
+export interface RceRokuDevice extends BaseRokuDevice {
+    /**
+     * Never present on a cloud emulator device; declared so a truthy `device.ip` check narrows
+     * the RokuDevice union
+     */
+    ip?: undefined;
+    rce: {
+        /**
+         * The management-api device id
+         */
+        id: number;
+        /**
+         * The management-api device status
+         */
+        status: DeviceStatus;
+        /**
+         * The live instance api url, present only while the device is running
+         */
+        instanceUrl?: string;
+    };
+}
+
+/**
+ * The fields every device entry carries regardless of how the device is addressed
+ */
+interface BaseRokuDevice {
     /**
      * Serial number from discovered or configured
      */
@@ -1532,6 +1890,13 @@ export interface RokuDevice {
      * User-provided password from config
      */
     configuredPassword?: string;
+    /**
+     * A roku-deploy-compatible connection option for this device, pre-computed so consumers can run
+     * roku-deploy commands (getDeviceInfo, ecp, and so on) without re-deriving it themselves. A
+     * `{ host }` for LAN devices, or the RCE variant (instanceUrl/id, with rceToken) for cloud
+     * emulator devices - the same field name as the launch-config `device` option.
+     */
+    device: DeviceConfig;
 }
 
 function throttleBounce<T extends (...args: any[]) => void>(

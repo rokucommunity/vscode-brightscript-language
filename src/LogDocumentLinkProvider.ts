@@ -1,5 +1,5 @@
 import * as path from 'path';
-import * as rokuDeploy from 'roku-deploy';
+import { rokuDeploy } from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 import BrightscriptFileUtils from './BrightScriptFileUtils';
@@ -42,7 +42,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         let sourceRootDir = launchConfig.sourceDirs ? launchConfig.sourceDirs : [launchConfig.rootDir];
         let paths = [];
         for (const rootDir of sourceRootDir) {
-            let pathsFromRoot = await this.rokuDeploy.getFilePaths(launchConfig.files, rootDir);
+            let pathsFromRoot = await this.rokuDeploy.getFilePaths({ files: launchConfig.files, rootDir: rootDir });
             paths = paths.concat(pathsFromRoot);
         }
         //get every file used in this project
