@@ -5,7 +5,8 @@ let packages = [
     'roku-debug',
     'roku-deploy',
     'brighterscript',
-    'brighterscript-formatter'
+    'brighterscript-formatter',
+    'roku-test-automation'
 ];
 
 console.log('Loading original package.json from git');

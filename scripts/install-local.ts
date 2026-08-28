@@ -81,12 +81,19 @@ class InstallLocalRunner {
             ]
         },
         {
+            name: 'roku-test-automation',
+            dependencies: [
+                'roku-deploy'
+            ]
+        },
+        {
             name: 'vscode-brightscript-language',
             dependencies: [
                 'roku-deploy',
                 'brighterscript',
                 'roku-debug',
-                'brighterscript-formatter'
+                'brighterscript-formatter',
+                'roku-test-automation'
             ]
         }
     ];
