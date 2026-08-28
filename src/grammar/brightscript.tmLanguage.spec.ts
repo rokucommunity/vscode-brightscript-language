@@ -822,6 +822,60 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    it(`handles standalone comment inside enum block`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             ' This is a standalone comment
+            '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.apostrophe.brs
+
+             value = 1
+            '         ^ constant.numeric.brs
+            '       ^ keyword.operator.assignment.brs
+            '^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it('handles `end sub` preceded by a colon', async () => {
+        await testGrammar(`
+             if true then doSomething() : end sub
+            '                           ^^^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             if true then doSomething() : end function
+            '                           ^^^^^^^^^^^^^ keyword.declaration.function.brs
+        `);
+    });
+
+    it('handles optional keyword in interface fields', async () => {
+        await testGrammar(`
+            interface Person
+                optional name as string
+               '                 ^^^^^^ storage.type.brs
+               '              ^^ keyword.control.as.brs
+               '         ^^^^ variable.object.property.brs
+               '^^^^^^^^ storage.modifier.brs
+        `);
+    });
+
+    it('handles optional keyword in interface functions', async () => {
+        await testGrammar(`
+            interface Person
+                optional sub test() as string
+               '                      ^^^^^^ storage.type.brs
+               '                   ^^ keyword.control.as.brs
+               '             ^^^^ entity.name.function.member.brs
+               '         ^^^ storage.type.function.brs
+               '^^^^^^^^ storage.modifier.brs
+        `);
+    });
+
     it('handles named function declarations', async () => {
         await testGrammar(`
              sub write()
