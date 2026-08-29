@@ -5,7 +5,6 @@
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import NumberField from '../../shared/NumberField.svelte';
-    import RceUnsupportedMessage from '../../shared/RceUnsupportedMessage.svelte';
     import AutoRunsEditor from './AutoRunsEditor.svelte';
 
     window.vscode = acquireVsCodeApi();
@@ -224,11 +223,6 @@
         lastStepDate = Date.now();
     });
 
-    let isRceDebugSession = false;
-    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
-        isRceDebugSession = message.context.isRceDebugSession;
-    });
-
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
 </script>
@@ -278,9 +272,6 @@
 
 <svelte:window on:keydown={onKeydown} />
 
-{#if isRceDebugSession}
-<RceUnsupportedMessage />
-{:else}
 <div id="container">
     <div id="editor">
         <AutoRunsEditor
@@ -359,5 +350,4 @@
         <vscode-button id={0} on:click={clearConfig} appearance="secondary">Clear</vscode-button>
     {/if}
 </div>
-{/if}
 {/if}

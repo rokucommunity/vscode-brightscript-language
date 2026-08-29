@@ -2,6 +2,8 @@ import { expect } from 'chai';
 import { utils } from './utils';
 import * as sinonImport from 'sinon';
 
+type VscodeState = string | Record<string, unknown> | undefined;
+
 describe('Rdb utils', () => {
     describe('isObjectWithProperty', () => {
         it('should return true if the property exist', () => {
@@ -25,14 +27,18 @@ describe('Rdb utils', () => {
     describe('storage', () => {
         const sinon = sinonImport.createSandbox();
         const utilsAccess = utils as any;
-        let getStateReturn = '';
+        let getStateReturn: VscodeState = '';
+        let setStateCalls: VscodeState[] = [];
         beforeEach(() => {
             getStateReturn = '';
+            setStateCalls = [];
             utilsAccess.storage = undefined;
             sinon.stub(utilsAccess, 'getVscodeApi').callsFake(() => {
                 return {
                     getState: () => getStateReturn,
-                    setState: (message) => {}
+                    setState: (message) => {
+                        setStateCalls.push(message);
+                    }
                 };
             });
         });
@@ -93,6 +99,27 @@ describe('Rdb utils', () => {
                 expect(utils.getStorageValue('myValue')).to.equal(value);
                 utils.deleteStorageValue('myValue');
                 expect(utils.getStorageValue('myValue')).to.be.null;
+            });
+
+            it('should not call setState when the key does not exist', () => {
+                getStateReturn = JSON.stringify({ otherValue: 'untouched' });
+                utils.deleteStorageValue('doesNotExist');
+                expect(setStateCalls).to.be.empty;
+            });
+        });
+
+        describe('raw object state (e.g. RceVideoView)', () => {
+            it('should treat storage as empty instead of throwing when state is a raw object', () => {
+                getStateReturn = { deviceId: 1, deviceName: 'my device' };
+                expect(() => utils.getStorageValue('myValue')).to.not.throw();
+                expect(utils.getStorageValue('myValue')).to.be.null;
+            });
+
+            it('should leave a raw object state untouched when deleting absent legacy keys', () => {
+                getStateReturn = { deviceId: 1, deviceName: 'my device' };
+                utils.deleteStorageValue('manuallySetIpAddress');
+                utils.deleteStorageValue('manuallySetPassword');
+                expect(setStateCalls).to.be.empty;
             });
         });
     });
