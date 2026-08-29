@@ -1,4 +1,5 @@
 export enum ViewProviderCommand {
+    connectToDevice = 'connectToDevice',
     createRceDevice = 'createRceDevice',
     createRceSnapshot = 'createRceSnapshot',
     deleteRceSnapshot = 'deleteRceSnapshot',
@@ -22,7 +23,6 @@ export enum ViewProviderCommand {
     sendReplRequest = 'sendReplRequest',
     sendRceStreamAnswer = 'sendRceStreamAnswer',
     sendRceStreamIceCandidate = 'sendRceStreamIceCandidate',
-    setManualIpAddress = 'setManualIpAddress',
     setRceActiveAccount = 'setRceActiveAccount',
     setVscodeContext = 'setVscodeContext',
     startRceDevice = 'startRceDevice',

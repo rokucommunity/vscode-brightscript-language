@@ -96,6 +96,16 @@
         rceStreamError = rceStreamError ?? 'The video stream closed unexpectedly';
     });
 
+    //the extension host stopped this session on its own (e.g. RTA was disconnected from the
+    //device) rather than the user clicking Stop; tear down the same way stopRceStream does, minus
+    //re-sending the command the host already acted on
+    intermediary.observeEvent(ViewProviderEvent.onRceStreamStopped, () => {
+        teardownRceStreamPeer();
+        rceStreamDeviceId = undefined;
+        rceStreamDeviceName = undefined;
+        dispatch('stopped');
+    });
+
     function teardownRceStreamPeer() {
         rceStreamPeer?.stop();
         rceStreamPeer = undefined;

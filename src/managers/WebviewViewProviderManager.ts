@@ -5,6 +5,7 @@ import type { BrightScriptCommands } from '../BrightScriptCommands';
 import type { RceManager } from './RceManager';
 import type { RceFinder } from '../deviceDiscovery/RceFinder';
 import type { DeviceManager } from '../deviceDiscovery/DeviceManager';
+import type { DeviceTargetManager } from './DeviceTargetManager';
 import * as vscode from 'vscode';
 import { RokuCommandsViewProvider } from '../viewProviders/RokuCommandsViewProvider';
 import { RokuDeviceViewViewProvider } from '../viewProviders/RokuDeviceViewViewProvider';
@@ -23,7 +24,8 @@ export class WebviewViewProviderManager {
         rceManager: RceManager,
         rceFinder: RceFinder,
         deviceManager: DeviceManager,
-        brightScriptCommands: BrightScriptCommands
+        brightScriptCommands: BrightScriptCommands,
+        deviceTargetManager: DeviceTargetManager
     ) {
         for (const webview of this.webviewViews) {
             if (!webview.provider) {
@@ -32,7 +34,8 @@ export class WebviewViewProviderManager {
                     rceManager: rceManager,
                     rceFinder: rceFinder,
                     deviceManager: deviceManager,
-                    brightScriptCommands: brightScriptCommands
+                    brightScriptCommands: brightScriptCommands,
+                    deviceTargetManager: deviceTargetManager
                 });
                 vscode.window.registerWebviewViewProvider(webview.provider.id, webview.provider);
 
@@ -94,7 +97,7 @@ export class WebviewViewProviderManager {
     // Notification from extension
     public onChannelPublishedEvent(e: ChannelPublishedEvent) {
         const config = e.body.launchConfiguration as BrightScriptLaunchConfiguration;
-        this.rtaManager.setupRtaWithConfig(config);
+        this.rtaManager.setupRtaWithConfig(config).catch((error: Error) => console.error('Failed to set up RTA from the launch config', error));
 
         for (const webview of this.webviewViews) {
             void webview.provider.onChannelPublishedEvent(e);

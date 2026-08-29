@@ -1,10 +1,11 @@
 /** Acts as a middle man that takes request from our views and sends them through vscode message protocol and waits for replies to simplify usage in code */
 import type * as rta from 'roku-test-automation';
-import { RequestType } from 'roku-test-automation/client/dist/types/OnDeviceComponent';
+import { RequestType } from 'roku-test-automation/dist/types/OnDeviceComponent';
 import type { VscodeCommand } from '../../src/commands/VscodeCommand';
 import { ViewProviderEvent } from '../../src/viewProviders/ViewProviderEvent';
 import { ViewProviderCommand } from '../../src/viewProviders/ViewProviderCommand';
-import type { DeleteEntireRegistrySectionsArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeArgs, RemoveNodeChildrenArgs, FocusNodeArgs, AppUIResponse, ConvertKeyPathToSceneKeyPathArgs } from 'roku-test-automation';
+import { utils } from './utils';
+import type { DeleteEntireRegistrySectionsArgs, DeleteRegistrySectionsArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeArgs, RemoveNodeChildrenArgs, FocusNodeArgs, AppUIResponse } from 'roku-test-automation';
 
 class ExtensionIntermediary {
     private inflightRequests = {};
@@ -83,6 +84,10 @@ class ExtensionIntermediary {
 
     public sendViewReady() {
         this.setupExtensionMessageObserver();
+
+        //purging the deleted manual-connect form's plaintext leftovers
+        utils.deleteStorageValue('manuallySetIpAddress');
+        utils.deleteStorageValue('manuallySetPassword');
 
         this.postMessage({
             command: ViewProviderCommand.viewReady,
@@ -226,10 +231,6 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesWithProperties>>(RequestType.getNodesWithProperties, args, options);
     }
 
-    public async findNodesAtLocation(args: FindNodesAtLocationArgs, options?: RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.findNodesAtLocation>>(RequestType.findNodesAtLocation, args, options);
-    }
-
     public async getVolumeList(args: GetVolumeListArgs, options?: RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.getVolumeList>>(RequestType.getVolumeList, args, options);
     }
@@ -268,10 +269,6 @@ class ODCIntermediary {
 
     public async focusNode(args: FocusNodeArgs, options?: RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.focusNode>>(RequestType.focusNode, args, options);
-    }
-
-    public async convertKeyPathToSceneKeyPath(args: ConvertKeyPathToSceneKeyPathArgs, options?: RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.convertKeyPathToSceneKeyPath>>(RequestType.convertKeyPathToSceneKeyPath, args, options);
     }
 }
 
