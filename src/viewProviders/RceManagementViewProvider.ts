@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { RceDevice, DeviceRun, DeviceStatus, DeviceType, FirmwareVersion, RceDeviceConfig, RceManagementClient, Snapshot } from 'roku-deploy';
+import type { RceDevice, DeviceRun, FirmwareVersion, RceDeviceConfig, RceManagementClient, Snapshot } from 'roku-deploy';
 import { rokuDeploy } from 'roku-deploy';
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import { ViewProviderId } from './ViewProviderId';
@@ -9,6 +9,9 @@ import { WorkspaceStateKey } from './WorkspaceStateKey';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import type { RceManager } from '../managers/RceManager';
 import type { RceFinder } from '../deviceDiscovery/RceFinder';
+import type { RceStateDevice } from './RceManagementViewContract';
+
+export type { RceStateDevice } from './RceManagementViewContract';
 
 export class RceManagementViewProvider extends BaseWebviewViewProvider {
     public readonly id = ViewProviderId.rceManagementView;
@@ -560,30 +563,6 @@ interface RceManagementViewState {
     firmwareVersions?: FirmwareVersion[];
     error?: string;
 }
-
-/* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-/**
- * The device fields the management webview renders - a projection of roku-deploy's RceDevice that
- * leaves the instance's stream credentials behind (see projectDeviceForWebview).
- */
-export interface RceStateDevice {
-    id: number;
-    name: string;
-    note?: string | null;
-    device_type: DeviceType;
-    status?: DeviceStatus;
-    serial_number?: string | null;
-    created_at: string;
-    last_snapshot_id?: number | null;
-    last_snapshot_name?: string | null;
-    snapshots?: number[];
-    firmware_version_id?: string | null;
-    running_device?: {
-        started_at?: string | null;
-        max_runtime: number;
-    } | null;
-}
-/* eslint-enable camelcase */
 
 interface RceDeviceDetailsPayload {
     snapshots: Snapshot[] | undefined;

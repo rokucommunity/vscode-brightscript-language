@@ -2,8 +2,8 @@
     window.vscode = acquireVsCodeApi();
 
     import { onDestroy } from 'svelte';
-    import type { DeviceRun, FirmwareVersionOut, SnapshotOut } from 'roku-deploy';
-    import type { RceStateDevice } from '../../../../src/viewProviders/RceManagementViewProvider';
+    import type { DeviceRun, FirmwareVersion, Snapshot } from 'roku-deploy';
+    import type { RceStateDevice } from '../../../../src/viewProviders/RceManagementViewContract';
     import { ChevronRight, ChevronDown } from 'svelte-codicons';
     import { intermediary } from '../../ExtensionIntermediary';
     import Loader from '../../shared/Loader.svelte';
@@ -64,7 +64,7 @@
     //firmware choices offered when starting a device, filtered per device type at render time.
     //Like the runtime picks, firmware picks live outside DeviceDetailsState so a details refetch
     //does not reset them
-    let firmwareVersions: FirmwareVersionOut[] | undefined = undefined;
+    let firmwareVersions: FirmwareVersion[] | undefined = undefined;
     let selectedFirmwareIdByDeviceId: Record<number, string> = {};
 
     let expandedDeviceId: number | undefined = undefined;
@@ -346,7 +346,7 @@
      * snapshot once the list settles.
      */
     function resolveSelectedSnapshotId(
-        snapshots: SnapshotOut[] | undefined,
+        snapshots: Snapshot[] | undefined,
         preferredSnapshotId: number | undefined,
         latestRunSnapshotId: number | undefined,
         rememberedSnapshotId: number | undefined
@@ -447,7 +447,7 @@
         pickedFirmwareVersionId: string | undefined,
         detailsState: DeviceDetailsState | undefined,
         device: RceStateDevice,
-        firmwareOptions: FirmwareVersionOut[]
+        firmwareOptions: FirmwareVersion[]
     ): string | undefined {
         const availableFirmwareIds = firmwareOptions.map((firmwareVersion) => firmwareVersion.firmware_version_id);
         const selectedSnapshot = (detailsState?.snapshots ?? []).find((snapshot) => snapshot.id === detailsState?.selectedSnapshotId);
@@ -501,7 +501,7 @@
         }
     }
 
-    async function deleteSnapshot(device: RceStateDevice, snapshot: SnapshotOut) {
+    async function deleteSnapshot(device: RceStateDevice, snapshot: Snapshot) {
         deletingSnapshotId = snapshot.id;
         try {
             await intermediary.sendCommand(ViewProviderCommand.deleteRceSnapshot, {
@@ -591,7 +591,7 @@
 
     interface DeviceDetailsState {
         loading: boolean;
-        snapshots: SnapshotOut[] | undefined;
+        snapshots: Snapshot[] | undefined;
         runs: DeviceRun[] | undefined;
         lastUsedSnapshotId: number | undefined;
         error: string | undefined;
