@@ -862,7 +862,7 @@ export class BrightScriptCommands {
         }
 
         if (literalCharacter) {
-            key = 'Lit_' + encodeURIComponent(key);
+            key = 'Lit_' + key;
         }
 
         const device = await this.resolveActiveDeviceConfig(target);

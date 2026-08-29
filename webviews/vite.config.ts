@@ -13,6 +13,10 @@ export default defineConfig({
     build: {
         outDir: '../dist/webviews',
         emptyOutDir: true,
-        minify: false
+        minify: false,
+        commonjsOptions: {
+            //a file:-linked roku-test-automation resolves outside node_modules, escaping the default include
+            include: [/node_modules/, /roku-test-automation/]
+        }
     }
 });

@@ -1,12 +1,12 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
     import { intermediary } from '../../ExtensionIntermediary';
-    import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
+    import ConnectToDeviceButton from '../../shared/ConnectToDeviceButton.svelte';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import type { AppUIResponseChild, AppUIResponse } from 'roku-test-automation';
-    import { utils as rtaUtils } from 'roku-test-automation/client/dist/utils';
+    import { utils as rtaUtils } from 'roku-test-automation/dist/utils';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
     import RceStreamView from '../../shared/RceStreamView.svelte';
@@ -428,7 +428,7 @@
     </div>
     {:else}
         <div style="margin: 0 10px">
-            <OdcSetManualIpAddress />
+            <ConnectToDeviceButton caption="Connect to a device to take screenshots" />
         </div>
     {/if}
 </div>
