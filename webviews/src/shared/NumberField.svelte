@@ -43,4 +43,4 @@
     }
 </style>
 
-<vscode-text-field bind:this={self} {id} class={classProp} {title} {step} {value} on:input={onInputChange} type="number" />
+<vscode-text-field bind:this={self} {id} class={classProp} {title} {step} {value} on:input={onInputChange} type="number"></vscode-text-field>

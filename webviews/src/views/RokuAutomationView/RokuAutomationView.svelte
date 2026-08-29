@@ -314,20 +314,20 @@
                     {/each}
                     </vscode-dropdown>
                 {:else if step.type === stepTypes.sendText.type}
-                    <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value}" />
+                    <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value}"></vscode-text-field>
                 {/if}
             </td>
             <td>
                 {#if currentRunningStep === -1}
                     <vscode-button id="{index}" appearance="icon" title="Delete step" aria-label="Delete step" on:click={deleteStep}><Trash /></vscode-button>
                 {:else if currentRunningStep === index}
-                    <vscode-progress-ring />
+                    <vscode-progress-ring></vscode-progress-ring>
                 {/if}
             </td>
         </tr>
         <tr>
             <td colspan="4">
-                <vscode-divider />
+                <vscode-divider></vscode-divider>
             </td>
         </tr>
     {/each}

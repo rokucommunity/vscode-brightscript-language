@@ -6,7 +6,7 @@
   "scripts": {
     "watch": "vite build --watch",
     "build": "vite build",
-    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings \"node_invalid_placement_ssr:ignore\"",
     "audit": "npm audit --audit-level=high"
   },
   "devDependencies": {

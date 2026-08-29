@@ -311,7 +311,7 @@
             </div>
         {:else}
             <!-- svelte-ignore a11y-media-has-caption -->
-            <video id="rceStreamVideo" bind:this={rceVideoElement} autoplay playsinline muted={rceStreamMuted} />
+            <video id="rceStreamVideo" bind:this={rceVideoElement} autoplay playsinline muted={rceStreamMuted}></video>
         {/if}
     </div>
 {/if}

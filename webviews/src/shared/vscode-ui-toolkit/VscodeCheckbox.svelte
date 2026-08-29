@@ -19,6 +19,6 @@
 <label>
     <vscode-checkbox
         checked={value}
-        onChange={(e) => (value = e.srcElement.checked)} />
+        onChange={(e) => (value = e.srcElement.checked)}></vscode-checkbox>
     <div><slot /></div>
 </label>
