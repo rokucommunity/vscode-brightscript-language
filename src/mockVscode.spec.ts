@@ -191,7 +191,8 @@ export let vscode = {
                 inspect: (name: string) => {
                     return {
                         key: name,
-                        globalValue: store?.[`${configurationName}.${name}`]
+                        globalValue: store?.[`${configurationName}.${name}`],
+                        workspaceValue: store?.[`${configurationName}.${name}`]
                     } as ReturnType<WorkspaceConfiguration['inspect']>;
                 },
                 update: (name: string, value: any) => {
