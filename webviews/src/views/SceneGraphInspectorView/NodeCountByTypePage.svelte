@@ -114,7 +114,7 @@
 
 <svelte:window on:keydown={onKeydown} />
 <div id="container">
-    <div id="background" />
+    <div id="background"></div>
     <div id="header">
         <section style="display: flex; flex-direction:row">
             <vscode-button appearance="icon" title="Back" on:click={close}>
@@ -130,13 +130,13 @@
             <div id={key} class="nodesOfTypeItem" on:click={toggleShowNodes}>
                 <Chevron expanded={!!nodesByType[key]} />
                 <div>{key} ({value})</div>
-                <div style="clear: both" />
+                <div style="clear: both"></div>
             </div>
 
             {#each nodesByType[key] ?? [] as node, i}
                 <vscode-button id="{key}.{i}" class="nodeOfType" appearance="secondary" title={node.keyPath ?? 'No key path available'} on:click={onNodeClicked}>{i}</vscode-button>
             {/each}
-            <div style="clear: both" />
+            <div style="clear: both"></div>
         {/each}
     </div>
 </div>
