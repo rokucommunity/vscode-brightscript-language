@@ -235,6 +235,7 @@ export let vscode = {
     },
     window: {
         registerCustomEditorProvider: () => { },
+        registerWebviewPanelSerializer: () => { },
         withProgress: (options, action) => {
             return action();
         },

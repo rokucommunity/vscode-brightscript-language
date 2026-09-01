@@ -1,12 +1,12 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
     import { intermediary } from '../../ExtensionIntermediary';
-    import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
+    import ConnectToDeviceButton from '../../shared/ConnectToDeviceButton.svelte';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import type { AppUIResponseChild, AppUIResponse } from 'roku-test-automation';
-    import { utils as rtaUtils } from 'roku-test-automation/client/dist/utils';
+    import { utils as rtaUtils } from 'roku-test-automation/dist/utils';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
     import RceStreamView from '../../shared/RceStreamView.svelte';
@@ -414,8 +414,8 @@
         on:mousedown={onMouseDown}
         data-vscode-context={'{"preventDefaultContextMenuItems": true}'}>
 
-        <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
-        <div class:hide={!focusedNode} id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
+        <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;"></div>
+        <div class:hide={!focusedNode} id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px"></div>
 
         <!-- only show image if we have a url to avoid showing as broken image -->
         {#if screenshotUrl}
@@ -428,7 +428,7 @@
     </div>
     {:else}
         <div style="margin: 0 10px">
-            <OdcSetManualIpAddress />
+            <ConnectToDeviceButton caption="Connect to a device to take screenshots" />
         </div>
     {/if}
 </div>

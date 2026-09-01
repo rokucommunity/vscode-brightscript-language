@@ -2,7 +2,6 @@
 <script lang="ts">
     import { odc, intermediary } from '../../ExtensionIntermediary';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
-    import RceUnsupportedMessage from '../../shared/RceUnsupportedMessage.svelte';
     import { Database, ChevronUp, ChevronDown } from 'svelte-codicons';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import Loader from '../../shared/Loader.svelte';
@@ -129,41 +128,44 @@
         currentPathBreadcrumbs = buildBreadcrumbsForPath(path);
         currentPath = path;
 
-        if (path === '') {
-            loading = true;
-            // We use an empty path to serve as the top level
-            const {list} = await odc.getVolumeList({});
-            currentPathContentsInfo = list.map((volume) => {
-                return {
-                    name: volume,
-                    path: volume + '/',
-                    type: 'fileSystem'
+        loading = true;
+        try {
+            if (path === '') {
+                // We use an empty path to serve as the top level
+                const {list} = await odc.getVolumeList({});
+                currentPathContentsInfo = list.map((volume) => {
+                    return {
+                        name: volume,
+                        path: volume + '/',
+                        type: 'fileSystem'
+                    }
+                });
+            } else {
+                const {list} = await odc.getDirectoryListing({
+                    path: path
+                });
+
+                currentPathContentsInfo = list.map((name) => {
+                    return {
+                        name: name,
+                        path: path + name
+                    }
+                });
+
+                loading = false;
+
+                for (const [index, info] of currentPathContentsInfo.entries()) {
+                    const statInfo = await odc.statPath({
+                        path: info.path
+                    }) as PathContentsInfo;
+                    currentPathContentsInfo[index] = {...info, ...statInfo};
                 }
-            });
-            loading = false;
-        } else {
-            loading = true;
-
-            const {list} = await odc.getDirectoryListing({
-                path: path
-            });
-
-            currentPathContentsInfo = list.map((name) => {
-                return {
-                    name: name,
-                    path: path + name
-                }
-            });
-
-            loading = false;
-
-
-            for (const [index, info] of currentPathContentsInfo.entries()) {
-                const statInfo = await odc.statPath({
-                    path: info.path
-                }) as PathContentsInfo;
-                currentPathContentsInfo[index] = {...info, ...statInfo};
             }
+        } catch (e) {
+            console.error('Error updating current path', e);
+            currentPathContentsInfo = [];
+        } finally {
+            loading = false;
         }
     }
 
@@ -231,10 +233,8 @@
     });
 
     let odcAvailable = false;
-    let isRceDebugSession = false;
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
         odcAvailable = message.context.odcAvailable;
-        isRceDebugSession = message.context.isRceDebugSession;
         if (odcAvailable) {
             await refresh();
         }
@@ -275,9 +275,7 @@
     }
 </style>
 <div bind:clientWidth={containerWidth}>
-    {#if isRceDebugSession}
-        <RceUnsupportedMessage />
-    {:else if odcAvailable}
+    {#if odcAvailable}
         {#if loading}
             <Loader />
         {:else}

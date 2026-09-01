@@ -2,8 +2,8 @@
     window.vscode = acquireVsCodeApi();
 
     import { onDestroy } from 'svelte';
-    import type { DeviceRun, FirmwareVersionOut, SnapshotOut } from 'roku-deploy';
-    import type { RceStateDevice } from '../../../../src/viewProviders/RceManagementViewProvider';
+    import type { DeviceRun, FirmwareVersion, Snapshot } from 'roku-deploy';
+    import type { RceStateDevice } from '../../../../src/viewProviders/RceManagementViewContract';
     import { ChevronRight, ChevronDown } from 'svelte-codicons';
     import { intermediary } from '../../ExtensionIntermediary';
     import Loader from '../../shared/Loader.svelte';
@@ -64,7 +64,7 @@
     //firmware choices offered when starting a device, filtered per device type at render time.
     //Like the runtime picks, firmware picks live outside DeviceDetailsState so a details refetch
     //does not reset them
-    let firmwareVersions: FirmwareVersionOut[] | undefined = undefined;
+    let firmwareVersions: FirmwareVersion[] | undefined = undefined;
     let selectedFirmwareIdByDeviceId: Record<number, string> = {};
 
     let expandedDeviceId: number | undefined = undefined;
@@ -346,7 +346,7 @@
      * snapshot once the list settles.
      */
     function resolveSelectedSnapshotId(
-        snapshots: SnapshotOut[] | undefined,
+        snapshots: Snapshot[] | undefined,
         preferredSnapshotId: number | undefined,
         latestRunSnapshotId: number | undefined,
         rememberedSnapshotId: number | undefined
@@ -447,7 +447,7 @@
         pickedFirmwareVersionId: string | undefined,
         detailsState: DeviceDetailsState | undefined,
         device: RceStateDevice,
-        firmwareOptions: FirmwareVersionOut[]
+        firmwareOptions: FirmwareVersion[]
     ): string | undefined {
         const availableFirmwareIds = firmwareOptions.map((firmwareVersion) => firmwareVersion.firmware_version_id);
         const selectedSnapshot = (detailsState?.snapshots ?? []).find((snapshot) => snapshot.id === detailsState?.selectedSnapshotId);
@@ -501,7 +501,7 @@
         }
     }
 
-    async function deleteSnapshot(device: RceStateDevice, snapshot: SnapshotOut) {
+    async function deleteSnapshot(device: RceStateDevice, snapshot: Snapshot) {
         deletingSnapshotId = snapshot.id;
         try {
             await intermediary.sendCommand(ViewProviderCommand.deleteRceSnapshot, {
@@ -591,7 +591,7 @@
 
     interface DeviceDetailsState {
         loading: boolean;
-        snapshots: SnapshotOut[] | undefined;
+        snapshots: Snapshot[] | undefined;
         runs: DeviceRun[] | undefined;
         lastUsedSnapshotId: number | undefined;
         error: string | undefined;
@@ -921,7 +921,7 @@
                 <vscode-toolbar-button icon="trash" title="Remove Account" on:click={() => runAccountCommand('removeAccount')}></vscode-toolbar-button>
             </div>
 
-            <vscode-divider />
+            <vscode-divider></vscode-divider>
 
             {#if stateError}
                 <div class="errorBanner">{stateError}</div>
@@ -941,12 +941,12 @@
 
             {#if showCreateDeviceForm}
                 <div id="createDeviceForm">
-                    <vscode-textfield placeholder="Name" value={newDeviceName} on:input={(event) => (newDeviceName = event.target.value)} />
+                    <vscode-textfield placeholder="Name" value={newDeviceName} on:input={(event) => (newDeviceName = event.target.value)}></vscode-textfield>
                     <vscode-single-select value={newDeviceType} on:change={(event) => (newDeviceType = event.target.value)}>
                         <vscode-option value="tv">tv</vscode-option>
                         <vscode-option value="stb">stb</vscode-option>
                     </vscode-single-select>
-                    <vscode-textfield placeholder="Note (optional)" value={newDeviceNote} on:input={(event) => (newDeviceNote = event.target.value)} />
+                    <vscode-textfield placeholder="Note (optional)" value={newDeviceNote} on:input={(event) => (newDeviceNote = event.target.value)}></vscode-textfield>
                     {#if createDeviceError}
                         <div class="errorBanner">{createDeviceError}</div>
                     {/if}
@@ -973,7 +973,7 @@
                             {#if runtime}
                                 <span class="deviceRuntime">{runtime.label}</span>
                                 <div class="runtimeBarTrack">
-                                    <div class="runtimeBarFill" style="width: {runtime.percent}%" />
+                                    <div class="runtimeBarFill" style="width: {runtime.percent}%"></div>
                                 </div>
                             {/if}
                         </div>
@@ -1048,8 +1048,8 @@
 
                     {#if snapshotFormDeviceId === device.id && device.status === 'running'}
                         <div class="snapshotForm">
-                            <vscode-textfield placeholder="Name" value={newSnapshotName} on:input={(event) => (newSnapshotName = event.target.value)} />
-                            <vscode-textfield placeholder="Note (optional)" value={newSnapshotNote} on:input={(event) => (newSnapshotNote = event.target.value)} />
+                            <vscode-textfield placeholder="Name" value={newSnapshotName} on:input={(event) => (newSnapshotName = event.target.value)}></vscode-textfield>
+                            <vscode-textfield placeholder="Note (optional)" value={newSnapshotNote} on:input={(event) => (newSnapshotNote = event.target.value)}></vscode-textfield>
                             {#if createSnapshotError}
                                 <div class="errorBanner">{createSnapshotError}</div>
                             {/if}
@@ -1095,8 +1095,8 @@
 
                                 {#if editingDeviceId === device.id}
                                     <div class="editFields">
-                                        <vscode-textfield placeholder="Name" value={editName} on:input={(event) => (editName = event.target.value)} />
-                                        <vscode-textfield placeholder="Note" value={editNote} on:input={(event) => (editNote = event.target.value)} />
+                                        <vscode-textfield placeholder="Name" value={editName} on:input={(event) => (editName = event.target.value)}></vscode-textfield>
+                                        <vscode-textfield placeholder="Note" value={editNote} on:input={(event) => (editNote = event.target.value)}></vscode-textfield>
                                         {#if editDeviceError}
                                             <div class="errorBanner">{editDeviceError}</div>
                                         {/if}
@@ -1180,7 +1180,7 @@
                         </div>
                     {/if}
 
-                    <vscode-divider />
+                    <vscode-divider></vscode-divider>
                 {/each}
             {/if}
         {/if}

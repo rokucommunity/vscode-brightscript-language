@@ -6,6 +6,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.69.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.68.0...v2.69.0) - 2026-08-28
+### Added
+ - Support Roku Cloud Emulator devices in the RDB webviews and REPL ([#881](https://github.com/rokucommunity/vscode-brightscript-language/pull/881))
+### Changed
+ - chore: Add roku-test-automation to local dev scripts and workspace ([#880](https://github.com/rokucommunity/vscode-brightscript-language/pull/880))
+ - Security enhancements ([#879](https://github.com/rokucommunity/vscode-brightscript-language/pull/879))
+ - upgrade to [roku-debug@0.24.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0241---2026-08-28). Notable changes since 0.24.0:
+     - Fix debug session dying after a fragmented handshake ([#410](https://github.com/rokucommunity/roku-debug/pull/410))
+ - upgrade to [roku-deploy@4.0.0-alpha.5](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#400-alpha5---2026-08-28). Notable changes since 4.0.0-alpha.3:
+     - Fix pkg download corruption on RCE devices ([#382](https://github.com/rokucommunity/roku-deploy/pull/382))
+     - Tag RCE 502 upgrade rejections as ECONNREFUSED ([#376](https://github.com/rokucommunity/roku-deploy/pull/376))
+     - Encode remote keys when building ECP URLs ([#375](https://github.com/rokucommunity/roku-deploy/pull/375))
+     - Include response headers in EcpResult ([#373](https://github.com/rokucommunity/roku-deploy/pull/373))
+ - upgrade to [roku-test-automation@3.0.0-alpha.1](https://github.com/rokucommunity/roku-test-automation/blob/master/CHANGELOG.md#300-alpha1---2026-08-28). Notable changes since 2.2.2:
+     - Roku Cloud Emulator (RCE) device support ([#177](https://github.com/rokucommunity/roku-test-automation/pull/177))
+     - Remove appUI base now that we can get proper key paths during initial app-ui retrieval ([#156](https://github.com/rokucommunity/roku-test-automation/pull/156))
+### Fixed
+ - Fix RCE auto-connect after sideload failing config validation ([#883](https://github.com/rokucommunity/vscode-brightscript-language/pull/883))
+ - Fix flakey device view reconnect tests ([#876](https://github.com/rokucommunity/vscode-brightscript-language/pull/876))
+ - Carry the picked device config through the rekey and package flows ([#875](https://github.com/rokucommunity/vscode-brightscript-language/pull/875))
+ - Add Closed Beta badge to the Cloud Emulator disclaimer ([#873](https://github.com/rokucommunity/vscode-brightscript-language/pull/873))
+
+
+
 ## [2.68.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.67.3...v2.68.0) - 2026-08-07
 ### Changed
  - Experimental Roku Cloud Emulator support ([#861](https://github.com/rokucommunity/vscode-brightscript-language/pull/861))

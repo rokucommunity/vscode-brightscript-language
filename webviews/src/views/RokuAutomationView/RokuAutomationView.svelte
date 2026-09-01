@@ -5,7 +5,6 @@
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import NumberField from '../../shared/NumberField.svelte';
-    import RceUnsupportedMessage from '../../shared/RceUnsupportedMessage.svelte';
     import AutoRunsEditor from './AutoRunsEditor.svelte';
 
     window.vscode = acquireVsCodeApi();
@@ -224,11 +223,6 @@
         lastStepDate = Date.now();
     });
 
-    let isRceDebugSession = false;
-    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
-        isRceDebugSession = message.context.isRceDebugSession;
-    });
-
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
 </script>
@@ -278,9 +272,6 @@
 
 <svelte:window on:keydown={onKeydown} />
 
-{#if isRceDebugSession}
-<RceUnsupportedMessage />
-{:else}
 <div id="container">
     <div id="editor">
         <AutoRunsEditor
@@ -323,20 +314,20 @@
                     {/each}
                     </vscode-dropdown>
                 {:else if step.type === stepTypes.sendText.type}
-                    <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value}" />
+                    <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value}"></vscode-text-field>
                 {/if}
             </td>
             <td>
                 {#if currentRunningStep === -1}
                     <vscode-button id="{index}" appearance="icon" title="Delete step" aria-label="Delete step" on:click={deleteStep}><Trash /></vscode-button>
                 {:else if currentRunningStep === index}
-                    <vscode-progress-ring />
+                    <vscode-progress-ring></vscode-progress-ring>
                 {/if}
             </td>
         </tr>
         <tr>
             <td colspan="4">
-                <vscode-divider />
+                <vscode-divider></vscode-divider>
             </td>
         </tr>
     {/each}
@@ -359,5 +350,4 @@
         <vscode-button id={0} on:click={clearConfig} appearance="secondary">Clear</vscode-button>
     {/if}
 </div>
-{/if}
 {/if}

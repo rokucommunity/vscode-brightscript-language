@@ -4,7 +4,6 @@
     import RegistryTree from './RegistryTree.svelte';
     import { registryView } from './RokuRegistryView';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
-    import RceUnsupportedMessage from '../../shared/RceUnsupportedMessage.svelte';
     import Loader from '../../shared/Loader.svelte';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
 
@@ -14,16 +13,19 @@
 
     let odcAvailable = false;
 
-    let isRceDebugSession = false;
-
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
         odcAvailable = message.context.odcAvailable;
-        isRceDebugSession = message.context.isRceDebugSession;
         if (odcAvailable) {
             loading = true;
-            const { values } = await odc.readRegistry();
-            registryValues = registryView.formatValues(values);
-            loading = false;
+            try {
+                const { values } = await odc.readRegistry();
+                registryValues = registryView.formatValues(values);
+            } catch (e) {
+                console.error('Error reading registry', e);
+                registryValues = {};
+            } finally {
+                loading = false;
+            }
         } else {
             registryValues = {}
         }
@@ -40,9 +42,7 @@
     intermediary.sendViewReady();
 </script>
 
-{#if isRceDebugSession}
-    <RceUnsupportedMessage />
-{:else if !odcAvailable}
+{#if !odcAvailable}
     <OdcSetupSteps />
 {:else if loading}
     <Loader />

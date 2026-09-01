@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.68.0",
+    "version": "2.69.0",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -26,12 +26,13 @@
     },
     "scripts": {
         "postinstall": "cd webviews && npm install",
-        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous && npm run audit",
+        "preversion": "npm run build && npm run lint && npm run check-webviews && npm run test && npm run check-extraneous && npm run audit",
         "vscode:prepublish": "npm run build",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
         "build": "npm run copy-schema && tsc -p ./ && npm run build-webviews",
         "build-webviews": "cd ./webviews && npm run build && cd ..",
         "lint": "eslint \"./src/**/*.ts\"",
+        "check-webviews": "cd webviews && npm run check",
         "audit": "npm audit --audit-level=high || audit-ci --config ./audit-ci.jsonc && cd webviews && npm run audit",
         "watch": "npm run copy-schema && tsc -w -p ./",
         "watch-webviews": "cd ./webviews && npm run watch",
@@ -79,9 +80,9 @@
         "postman-request": "^2.88.1-postman.48",
         "pretty-bytes": "^5.6.0",
         "resolve": "^1.22.8",
-        "roku-debug": "^0.24.0",
-        "roku-deploy": "^4.0.0-alpha.3",
-        "roku-test-automation": "^2.2.2",
+        "roku-debug": "^0.24.1",
+        "roku-deploy": "^4.0.0-alpha.5",
+        "roku-test-automation": "^3.0.0-alpha.1",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
         "strip-ansi": "^5.2.0",
@@ -167,7 +168,9 @@
         "workspaceContains:**/bsconfig.json",
         "onDebug",
         "onDebugDynamicConfigurations:brightscript",
-        "onTaskType:brightscript"
+        "onTaskType:brightscript",
+        "onWebviewPanel:rceVideoView",
+        "onWebviewPanel:sceneGraphInspectorView"
     ],
     "contributes": {
         "taskDefinitions": [
@@ -965,7 +968,8 @@
                                                 "description": "IP address or hostname of the device."
                                             }
                                         },
-                                        "additionalProperties": false
+                                        "additionalProperties": false,
+                                        "errorMessage": "Address the device by exactly one of: host (local network), esn, id, or instanceUrl (Cloud Emulator)."
                                     },
                                     {
                                         "type": "object",
@@ -979,7 +983,8 @@
                                                 "description": "The device's serial number (ESN)."
                                             }
                                         },
-                                        "additionalProperties": false
+                                        "additionalProperties": false,
+                                        "errorMessage": "Address the device by exactly one of: host (local network), esn, id, or instanceUrl (Cloud Emulator)."
                                     },
                                     {
                                         "type": "object",
@@ -993,7 +998,8 @@
                                                 "description": "The Roku Cloud Emulator management-api device id."
                                             }
                                         },
-                                        "additionalProperties": false
+                                        "additionalProperties": false,
+                                        "errorMessage": "Address the device by exactly one of: host (local network), esn, id, or instanceUrl (Cloud Emulator)."
                                     },
                                     {
                                         "type": "object",
@@ -1007,7 +1013,8 @@
                                                 "description": "The running instance's api URL."
                                             }
                                         },
-                                        "additionalProperties": false
+                                        "additionalProperties": false,
+                                        "errorMessage": "Address the device by exactly one of: host (local network), esn, id, or instanceUrl (Cloud Emulator)."
                                     }
                                 ]
                             },

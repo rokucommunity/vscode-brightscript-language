@@ -1,5 +1,4 @@
-import { odc } from './ExtensionIntermediary';
-import type { AppUIResponseChildWithAppUIKeyPath } from './shared/types';
+import type { AppUIResponseChild } from 'roku-test-automation';
 
 type AllowedStorageTypes = string | number | boolean | Record<string, string | number | boolean>;
 
@@ -31,8 +30,15 @@ class Utils {
 
         this.storage = {};
         const state = this.getVscodeApi().getState();
-        if (state) {
-            this.storage = JSON.parse(state);
+        //some views (e.g. RceVideoView) store their own raw object state instead of the
+        //utils-owned JSON string, so only attempt to parse actual strings and tolerate anything
+        //that fails to parse as JSON
+        if (typeof state === 'string') {
+            try {
+                this.storage = JSON.parse(state);
+            } catch (e) {
+                this.storage = {};
+            }
         }
     }
 
@@ -62,6 +68,11 @@ class Utils {
 
     public deleteStorageValue(key: string) {
         this.setupStorage();
+        if (!this.storage.hasOwnProperty(key)) {
+            //nothing changed, so avoid overwriting state a view may have set directly (not
+            //through this utils-owned storage) with an unrelated empty object
+            return;
+        }
         delete this.storage[key];
         this.getVscodeApi().setState(JSON.stringify(this.storage));
     }
@@ -69,22 +80,8 @@ class Utils {
     /**
      * Helps improve performance by removing the children from the AppUIResponseChild object to make the object being passed around much smaller
      */
-    public getShallowCloneOfAppUIResponseChild(appUIResponseChild: AppUIResponseChildWithAppUIKeyPath) {
+    public getShallowCloneOfAppUIResponseChild(appUIResponseChild: AppUIResponseChild) {
         return { ...appUIResponseChild, children: [] };
-    }
-
-    /** Provides a central spot to convert key path to be scene based to avoid extra appUI calls */
-    public async convertAppUIKeyPathToSceneKeyPath(child: AppUIResponseChildWithAppUIKeyPath) {
-        const { keyPath } = await odc.convertKeyPathToSceneKeyPath({
-            base: child.base,
-            keyPath: child.keyPath
-        });
-
-        // Keeping existing appUI key path to allow more fallback options if needed
-        child.appUIKeyPath = child.keyPath;
-
-        child.base = 'scene';
-        child.keyPath = keyPath;
     }
 }
 

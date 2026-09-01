@@ -8,8 +8,7 @@
     import Branch from './Branch.svelte';
     import NodeDetailPage from './NodeDetailPage.svelte';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
-    import RceUnsupportedMessage from '../../shared/RceUnsupportedMessage.svelte';
-    import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
+    import ConnectToDeviceButton from '../../shared/ConnectToDeviceButton.svelte';
     import { SettingsGear, Issues, Refresh, Play, DebugPause, StopCircle } from 'svelte-codicons';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
@@ -175,8 +174,7 @@
             if (node) {
                 node = utils.getShallowCloneOfAppUIResponseChild(node);
 
-                if ((node.base !== 'appUI' && node.base !== selectNode?.base) || node.keyPath !== selectNode?.keyPath) {
-                    // If the focused node is not the same as the currently selected node, we want to inspect it
+                if (node.base !== selectNode?.base || node.keyPath !== selectNode?.keyPath) {
 
                     selectNode = node;
                     expandNode = node;
@@ -229,11 +227,8 @@
 
     let odcAvailable = false;
 
-    let isRceDebugSession = false;
-
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         odcAvailable = message.context.odcAvailable;
-        isRceDebugSession = message.context.isRceDebugSession;
         if (odcAvailable) {
             refresh(false, false);
         } else {
@@ -381,9 +376,7 @@
         </span>
     {/if}
 
-    {#if isRceDebugSession}
-        <RceUnsupportedMessage />
-    {:else if loading}
+    {#if loading}
         <Loader />
     {:else if !odcAvailable}
         <OdcSetupSteps />
@@ -409,11 +402,11 @@
             steps, check to make sure you're seeing this line in your device logs
             <span class="codeSnippet">[RTA][INFO] OnDeviceComponent init</span>
             <p><button on:click={userRefresh}>Retry</button></p>
-            <OdcSetManualIpAddress />
+            <ConnectToDeviceButton />
         </div>
     {:else}
         <div id="header" class:hide={inspectNode && !shouldDisplaySideBySide}>
-            <div id="drop-shadow-blocker" />
+            <div id="drop-shadow-blocker"></div>
 
             {#if followFocusedNode}
                 <span

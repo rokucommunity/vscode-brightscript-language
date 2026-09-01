@@ -7,6 +7,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
         viewName = '{{viewName}}';
+        // 'sidebar' or 'panel' — the same view component runs in both; views that care
+        // (e.g. Solid Devtools, for per-context layout) read window.webviewContext
+        webviewContext = '{{webviewContext}}';
         // This gets replaced with the actual contents in BaseWebviewViewProvider
         //{{additionalScriptContents}}
     </script>

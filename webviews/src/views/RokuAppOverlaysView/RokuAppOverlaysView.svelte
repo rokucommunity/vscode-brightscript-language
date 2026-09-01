@@ -3,7 +3,6 @@
     import type * as rta from 'roku-test-automation';
     import { odc, intermediary } from '../../ExtensionIntermediary';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
-    import RceUnsupportedMessage from '../../shared/RceUnsupportedMessage.svelte';
     import { NewFile, Trash } from 'svelte-codicons';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
@@ -205,13 +204,15 @@
     });
 
     let odcAvailable = false;
-    let isRceDebugSession = false;
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
         odcAvailable = message.context.odcAvailable;
-        isRceDebugSession = message.context.isRceDebugSession;
         if (odcAvailable) {
-            for (const [index, overlay] of overlays.entries()) {
-                await conditionallyDeployOverlay(overlay, index);
+            try {
+                for (const [index, overlay] of overlays.entries()) {
+                    await conditionallyDeployOverlay(overlay, index);
+                }
+            } catch (e) {
+                console.error('Error deploying overlays', e);
             }
         }
     });
@@ -313,9 +314,7 @@
 </style>
 
 
-{#if isRceDebugSession}
-    <RceUnsupportedMessage />
-{:else if odcAvailable}
+{#if odcAvailable}
     {#if overlays.length }
         {#each overlays as overlay, index}
             <div class="container">
@@ -323,13 +322,13 @@
                     {overlay.sourcePath}
                 </div>
                 <div class="checkbox">
-                    <vscode-checkbox id="{index}" on:change={onOverlayVisibleChange} checked={overlay.visible} />
+                    <vscode-checkbox id="{index}" on:change={onOverlayVisibleChange} checked={overlay.visible}></vscode-checkbox>
                 </div>
                 <div class="image">
-                    <img src="{overlay.imageData}" data-file="{overlay.sourcePath}"/>
+                    <img src="{overlay.imageData}" data-file="{overlay.sourcePath}" alt="{overlay.name}" />
                 </div>
                 <div class="label">
-                    <vscode-text-field id="{index}" on:input={onOverlayNameChange} value="{overlay.name}" />
+                    <vscode-text-field id="{index}" on:input={onOverlayNameChange} value="{overlay.name}"></vscode-text-field>
                 </div>
                 <div class="slider">
                     <input id="{index.toString()}" class="slider-input" type="range" min="0" max="100" value="{overlay.opacity * 100}" on:input={onOverlayOpacityChange}>
@@ -340,7 +339,7 @@
                     </vscode-button>
                 </div>
             </div>
-                <vscode-divider />
+                <vscode-divider></vscode-divider>
         {/each}
     {:else}
         <span style="padding:10px">

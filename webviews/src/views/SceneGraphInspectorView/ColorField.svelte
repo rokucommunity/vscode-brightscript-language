@@ -50,4 +50,4 @@
 <div bind:this={self}
     style="background-color: {hexColor}; color: {textColor};"
     contenteditable="true"
-    bind:innerHTML={hexColor} />
+    bind:innerHTML={hexColor}></div>
