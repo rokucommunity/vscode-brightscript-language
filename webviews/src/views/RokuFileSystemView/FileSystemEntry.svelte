@@ -61,7 +61,7 @@
         {:else if entry.type === 'fileSystem'}
             <Database />
         {:else}
-            <vscode-progress-ring />
+            <vscode-progress-ring></vscode-progress-ring>
         {/if}
     </vscode-data-grid-cell>
     {#if columnsToShow.name}

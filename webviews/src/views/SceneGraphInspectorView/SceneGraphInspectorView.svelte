@@ -406,7 +406,7 @@
         </div>
     {:else}
         <div id="header" class:hide={inspectNode && !shouldDisplaySideBySide}>
-            <div id="drop-shadow-blocker" />
+            <div id="drop-shadow-blocker"></div>
 
             {#if followFocusedNode}
                 <span
