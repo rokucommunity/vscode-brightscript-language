@@ -169,7 +169,8 @@
         "onDebug",
         "onDebugDynamicConfigurations:brightscript",
         "onTaskType:brightscript",
-        "onWebviewPanel:rceVideoView"
+        "onWebviewPanel:rceVideoView",
+        "onWebviewPanel:sceneGraphInspectorView"
     ],
     "contributes": {
         "taskDefinitions": [
