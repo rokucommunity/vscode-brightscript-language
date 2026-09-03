@@ -15,7 +15,7 @@
             "GHSA-w5hq-g745-h8pq": {
                 // Added: 2026-05-22
                 "active": true,
-                "notes": "`uuid` <11.1.1 (via direct dep, `postman-request`, `node-notifier`, and dev-only `nyc>istanbul-lib-processinfo`): vulnerable code path is `v3()`/`v5()`/`v6()` when a caller-provided buffer is passed. Every consumer (including our own `src/viewProviders/RokuAppOverlaysViewViewProvider.ts`) calls only `v4()` with no buffer arg, so the vulnerable path is unreachable. Cannot bump past uuid@9 without also bumping `typescript` past ^4.7.4, since uuid@11's bundled .d.ts uses `export type *` syntax requiring TS 5.0+."
+                "notes": "`uuid` <11.1.1 (via our direct `^9.0.1` dep and `postman-request`; the `node-notifier` and `nyc>istanbul-lib-processinfo` copies are pinned to ^11.1.1 by scoped overrides): vulnerable code path is `v3()`/`v5()`/`v6()` when a caller-provided buffer is passed. Every remaining consumer calls only `v4()` with no buffer arg — ours at `src/viewProviders/RokuAppOverlaysViewViewProvider.ts`, and postman-request's in lib/auth.js, lib/multipart.js and lib/oauth.js — so the vulnerable path is unreachable. Cannot bump the direct dep past uuid@9 without also bumping `typescript` past ^4.7.4 (uuid@11's bundled .d.ts uses `export type *`, needing TS 5.0+), and cannot override `postman-request`'s copy at all: it does `require('uuid/v4')`, a subpath uuid@11 no longer exports."
             }
         }
     ]
