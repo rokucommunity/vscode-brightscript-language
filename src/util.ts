@@ -9,8 +9,6 @@ import undent from 'undent';
 import { EXTENSION_ID, ROKU_DEBUG_VERSION } from './constants';
 import type { DeviceConfig, DeviceInfo } from 'roku-deploy';
 import { isLocalDeviceConfig, isRceDeviceConfigByUrl, isRceDeviceConfigById, isRceDeviceConfigByEsn } from 'roku-deploy';
-import * as request from 'postman-request';
-import type { Response, CoreOptions } from 'request';
 import * as childProcess from 'child_process';
 import * as minimatch from 'minimatch';
 
@@ -372,17 +370,6 @@ class Util {
      */
     public escapeRegex(text: string) {
         return text?.toString().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    }
-
-    /**
-     * Do an http GET request
-     */
-    public httpGet(url: string, options?: CoreOptions) {
-        return new Promise<Response>((resolve, reject) => {
-            request.get(url, options, (err, response) => {
-                return err ? reject(err) : resolve(response);
-            });
-        });
     }
 
     public async openIssueReporter(options: { title?: string; body?: string; deviceInfo?: DeviceInfo }) {
