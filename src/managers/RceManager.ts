@@ -248,25 +248,23 @@ export class RceManager {
         if (device.status !== 'running') {
             throw new RceDeviceNotRunningError(`Device '${device.name}' is not running`, device.status);
         }
-        const runningDevice = device.running_device;
-        //janus_id can legitimately be 0 (a valid stream id), so its presence must be checked
+        const runningDevice = device.runningDevice;
+        //janusId can legitimately be 0 (a valid stream id), so its presence must be checked
         //with a nullish check rather than a truthiness check
-        if (!runningDevice?.janus_websocket_url || runningDevice?.janus_id === undefined || runningDevice?.janus_id === null) {
+        if (!runningDevice?.janusWebsocketUrl || runningDevice?.janusId === undefined || runningDevice?.janusId === null) {
             throw new RceDeviceNotRunningError(`Device '${device.name}' must be running and expose a video stream to watch it`, device.status);
         }
 
-        /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
         return {
             deviceId: device.id,
             deviceName: device.name,
-            deviceType: device.device_type,
-            websocketUrl: runningDevice.janus_websocket_url,
-            streamId: runningDevice.janus_id,
-            pin: runningDevice.janus_pin ?? undefined,
-            janusToken: runningDevice.janus_token ?? undefined,
-            iceServers: runningDevice.janus_ice_servers ?? []
+            deviceType: device.deviceType,
+            websocketUrl: runningDevice.janusWebsocketUrl,
+            streamId: runningDevice.janusId,
+            pin: runningDevice.janusPin ?? undefined,
+            janusToken: runningDevice.janusToken ?? undefined,
+            iceServers: runningDevice.janusIceServers ?? []
         };
-        /* eslint-enable camelcase */
     }
 
     /**

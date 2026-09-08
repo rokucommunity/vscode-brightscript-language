@@ -1328,25 +1328,23 @@ describe('DeviceManager', () => {
         });
     });
 
-    /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
     describe('cloud emulator devices', () => {
         function rceDevice(overrides: Record<string, any> = {}) {
             return {
                 id: 83,
                 name: 'Chris',
-                device_type: 'tv',
-                serial_number: 'XY020078HH5S',
+                deviceType: 'tv',
+                serialNumber: 'XY020078HH5S',
                 status: 'running',
-                created_at: '2026-01-01',
-                running_device: {
-                    instance_api_url: 'https://device.rce.roku.com/instance/abc',
-                    firmware_version_id: 'rce-fw:15.2.4-tv_prod',
-                    instance_uuid: 'uuid-1',
-                    created_at: '2026-01-01',
-                    snapshot_id: 1,
+                createdAt: '2026-01-01',
+                runningDevice: {
+                    instanceApiUrl: 'https://device.rce.roku.com/instance/abc',
+                    firmwareVersionId: 'rce-fw:15.2.4-tv_prod',
+                    instanceUuid: 'uuid-1',
+                    createdAt: '2026-01-01',
+                    snapshotId: 1,
                     id: 1,
-                    device_id: 83,
-                    max_runtime: 3600
+                    maxRuntime: 3600
                 },
                 ...overrides
             };
@@ -1373,7 +1371,7 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             manager['onRceDevices']([
                 rceDevice(),
-                rceDevice({ id: 86, serial_number: 'ESN86', device_type: 'stb', running_device: null })
+                rceDevice({ id: 86, serialNumber: 'ESN86', deviceType: 'stb', runningDevice: null })
             ] as any);
 
             const tvDevice = manager.getAllDevices().find(x => x.key === 's:XY020078HH5S');
@@ -1388,8 +1386,8 @@ describe('DeviceManager', () => {
         it('maps shutdown and pending statuses, and keys by id when the esn is missing', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             manager['onRceDevices']([
-                rceDevice({ id: 84, serial_number: null, status: 'shutdown', running_device: null }),
-                rceDevice({ id: 85, serial_number: 'ESN85', status: 'pending', running_device: null })
+                rceDevice({ id: 84, serialNumber: null, status: 'shutdown', runningDevice: null }),
+                rceDevice({ id: 85, serialNumber: 'ESN85', status: 'pending', runningDevice: null })
             ] as any);
 
             const devices = manager.getAllDevices().filter(x => x.rce);
@@ -1419,7 +1417,7 @@ describe('DeviceManager', () => {
             expect(manager.getDevice('s:XY020078HH5S')?.rce?.id).to.equal(83);
             expect(manager.getDevice({ serialNumber: 'XY020078HH5S' })?.rce?.id).to.equal(83);
 
-            manager['onRceDevices']([rceDevice({ serial_number: null })] as any);
+            manager['onRceDevices']([rceDevice({ serialNumber: null })] as any);
             expect(manager.getDevice('rce:83')?.rce?.id).to.equal(83);
         });
 
@@ -1450,7 +1448,7 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
 
             //a just-booted device that has not reported an esn yet (keyed rce:83)
-            manager['onRceDevices']([rceDevice({ serial_number: null })] as any);
+            manager['onRceDevices']([rceDevice({ serialNumber: null })] as any);
             const device = manager.getAllDevices().find(x => x.rce);
             expect(device.key).to.equal('rce:83');
 
@@ -1458,7 +1456,7 @@ describe('DeviceManager', () => {
             expect(fakeFinder.scan.called).to.be.true;
 
             //the same check reports unhealthy once the rescan shows the device stopped
-            manager['onRceDevices']([rceDevice({ serial_number: null, status: 'shutdown', running_device: null })] as any);
+            manager['onRceDevices']([rceDevice({ serialNumber: null, status: 'shutdown', runningDevice: null })] as any);
             expect(await manager.healthCheckDevice(device)).to.be.false;
         });
 
@@ -1575,8 +1573,8 @@ describe('DeviceManager', () => {
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             manager['onRceDevices']([
-                rceDevice({ status: 'shutdown', running_device: null }),
-                rceDevice({ id: 99, serial_number: null })
+                rceDevice({ status: 'shutdown', runningDevice: null }),
+                rceDevice({ id: 99, serialNumber: null })
             ] as any);
 
             await manager['resolveRceDevices']();
@@ -1606,7 +1604,7 @@ describe('DeviceManager', () => {
             fakeFinder.getCachedToken = () => 'secret';
             manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
 
-            manager['onRceDevices']([rceDevice({ id: 84, status: 'shutdown', running_device: null })] as any);
+            manager['onRceDevices']([rceDevice({ id: 84, status: 'shutdown', runningDevice: null })] as any);
 
             const device = manager.getAllDevices().find(x => x.rce);
             expect(device.device).to.eql({ id: 84, rceToken: 'secret' });
@@ -1643,7 +1641,7 @@ describe('DeviceManager', () => {
                 const testManager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
                 testManager['onRceDevices']([
                     rceDevice(),
-                    rceDevice({ id: 84, serial_number: 'ESN84', status: 'shutdown', running_device: null })
+                    rceDevice({ id: 84, serialNumber: 'ESN84', status: 'shutdown', runningDevice: null })
                 ] as any);
                 return testManager;
             }
@@ -1689,7 +1687,6 @@ describe('DeviceManager', () => {
             });
         });
     });
-    /* eslint-enable camelcase */
 
     describe('getDevice', () => {
         it('returns full device with deviceInfo when found', () => {

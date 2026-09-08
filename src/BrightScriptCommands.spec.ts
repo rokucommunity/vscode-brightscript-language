@@ -286,8 +286,8 @@ describe('BrightScriptFileUtils ', () => {
         let spinAsyncStub: sinon.SinonStub;
         let showTimedNotificationStub: sinon.SinonStub;
         let resolveActiveDeviceConfigStub: sinon.SinonStub;
-        let queryAppsStub: sinon.SinonStub;
-        let queryActiveAppStub: sinon.SinonStub;
+        let getAppsStub: sinon.SinonStub;
+        let getActiveAppStub: sinon.SinonStub;
         let launchAppStub: sinon.SinonStub;
         let exitAppStub: sinon.SinonStub;
         let showErrorStub: sinon.SinonStub;
@@ -304,8 +304,8 @@ describe('BrightScriptFileUtils ', () => {
             spinAsyncStub = sinon.stub(utilProto, 'spinAsync').callsFake((_message: string, callback: () => Promise<any>) => callback());
             sleepStub = sinon.stub(utilProto, 'sleep').resolves();
             showTimedNotificationStub = sinon.stub(utilProto, 'showTimedNotification').resolves();
-            queryAppsStub = sinon.stub(rokuDeploy, 'queryApps').resolves(appsWithDev as any);
-            queryActiveAppStub = sinon.stub(rokuDeploy, 'queryActiveApp').resolves(activeAppDev as any);
+            getAppsStub = sinon.stub(rokuDeploy, 'getApps').resolves(appsWithDev as any);
+            getActiveAppStub = sinon.stub(rokuDeploy, 'getActiveApp').resolves(activeAppDev as any);
             launchAppStub = sinon.stub(rokuDeploy, 'launchApp').resolves();
             exitAppStub = sinon.stub(rokuDeploy, 'exitApp').resolves();
             showErrorStub = sinon.stub(vscode.window, 'showErrorMessage').resolves();
@@ -317,8 +317,8 @@ describe('BrightScriptFileUtils ', () => {
             spinAsyncStub.restore();
             sleepStub.restore();
             showTimedNotificationStub.restore();
-            queryAppsStub.restore();
-            queryActiveAppStub.restore();
+            getAppsStub.restore();
+            getActiveAppStub.restore();
             launchAppStub.restore();
             exitAppStub.restore();
             showErrorStub.restore();
@@ -340,7 +340,7 @@ describe('BrightScriptFileUtils ', () => {
         });
 
         it('shows an error and skips launch when no dev channel is sideloaded', async () => {
-            queryAppsStub.resolves([{ id: '12345', title: 'Netflix' }] as any);
+            getAppsStub.resolves([{ id: '12345', title: 'Netflix' }] as any);
 
             await commands.restartDevApplication();
 
@@ -350,7 +350,7 @@ describe('BrightScriptFileUtils ', () => {
         });
 
         it('warns when the dev app is not foregrounded after launch', async () => {
-            queryActiveAppStub.resolves({ id: '12345', title: 'Netflix' } as any);
+            getActiveAppStub.resolves({ id: '12345', title: 'Netflix' } as any);
 
             await commands.restartDevApplication();
 
@@ -365,7 +365,7 @@ describe('BrightScriptFileUtils ', () => {
 
             assert.isTrue(showErrorStub.calledOnce);
             assert.include(showErrorStub.firstCall.args[0], 'device unreachable');
-            assert.isFalse(queryActiveAppStub.called, 'should not verify the active app after a failed launch');
+            assert.isFalse(getActiveAppStub.called, 'should not verify the active app after a failed launch');
         });
 
         it('resolves the active device config and forwards a cloud device to rokuDeploy', async () => {
@@ -374,10 +374,10 @@ describe('BrightScriptFileUtils ', () => {
 
             await commands.restartDevApplication();
 
-            assert.deepEqual(queryAppsStub.firstCall.args[0], { device: cloudDevice });
+            assert.deepEqual(getAppsStub.firstCall.args[0], { device: cloudDevice });
             assert.deepEqual(exitAppStub.firstCall.args[0], { device: cloudDevice, appId: 'dev', force: true });
             assert.deepEqual(launchAppStub.firstCall.args[0], { device: cloudDevice, appId: 'dev' });
-            assert.deepEqual(queryActiveAppStub.firstCall.args[0], { device: cloudDevice });
+            assert.deepEqual(getActiveAppStub.firstCall.args[0], { device: cloudDevice });
         });
 
         it('does nothing when no device can be resolved', async () => {
@@ -385,7 +385,7 @@ describe('BrightScriptFileUtils ', () => {
 
             await commands.restartDevApplication();
 
-            assert.isFalse(queryAppsStub.called);
+            assert.isFalse(getAppsStub.called);
             assert.isFalse(showErrorStub.called);
         });
     });
