@@ -52,7 +52,7 @@ export class DeviceManager {
         //so the cached token is expected to be set here
         const rceToken = this.rceFinder?.getCachedToken();
         this.rceDevices = devices.map(device => {
-            const instanceUrl = device.running_device?.instance_api_url ?? undefined;
+            const instanceUrl = device.runningDevice?.instanceApiUrl ?? undefined;
             //same preference order as RceFinder.getDeviceConfig: a live instance url first, then the
             //management-api device id
             const deviceConfig: RceDeviceConfig = instanceUrl
@@ -61,11 +61,11 @@ export class DeviceManager {
             return {
                 id: device.id,
                 name: device.name,
-                esn: device.serial_number ?? undefined,
+                esn: device.serialNumber ?? undefined,
                 status: device.status ?? 'shutdown',
                 instanceUrl: instanceUrl,
-                deviceType: device.device_type,
-                firmwareVersion: device.running_device?.firmware_version_id ?? device.firmware_version_id ?? undefined,
+                deviceType: device.deviceType,
+                firmwareVersion: device.runningDevice?.firmwareVersionId ?? device.firmwareVersionId ?? undefined,
                 device: deviceConfig
             };
         });

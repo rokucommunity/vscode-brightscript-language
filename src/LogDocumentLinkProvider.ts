@@ -42,7 +42,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         let sourceRootDir = launchConfig.sourceDirs ? launchConfig.sourceDirs : [launchConfig.rootDir];
         let paths = [];
         for (const rootDir of sourceRootDir) {
-            let pathsFromRoot = await this.rokuDeploy.getFilePaths({ files: launchConfig.files, rootDir: rootDir });
+            let pathsFromRoot = await this.rokuDeploy.resolveFilesArray({ files: launchConfig.files, rootDir: rootDir });
             paths = paths.concat(pathsFromRoot);
         }
         //get every file used in this project

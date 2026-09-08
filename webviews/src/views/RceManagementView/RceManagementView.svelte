@@ -238,12 +238,12 @@
     }
 
     function runtimeInfo(device: RceStateDevice, currentTimestamp: number): { label: string; percent: number } | undefined {
-        const runningDevice = device.running_device;
-        if (!runningDevice?.started_at || !runningDevice?.max_runtime) {
+        const runningDevice = device.runningDevice;
+        if (!runningDevice?.startedAt || !runningDevice?.maxRuntime) {
             return undefined;
         }
-        const elapsedSeconds = Math.max(0, (currentTimestamp - new Date(runningDevice.started_at).getTime()) / 1000);
-        const maxRuntimeSeconds = runningDevice.max_runtime;
+        const elapsedSeconds = Math.max(0, (currentTimestamp - new Date(runningDevice.startedAt).getTime()) / 1000);
+        const maxRuntimeSeconds = runningDevice.maxRuntime;
         return {
             label: formatRuntimeLabel(elapsedSeconds, maxRuntimeSeconds),
             percent: Math.min(100, (elapsedSeconds / maxRuntimeSeconds) * 100)
@@ -279,8 +279,8 @@
         if (typeof run.runtime === 'number') {
             return formatDurationFromSeconds(run.runtime);
         }
-        if (run.started_at && run.ended_at) {
-            const durationSeconds = (new Date(run.ended_at as string).getTime() - new Date(run.started_at as string).getTime()) / 1000;
+        if (run.startedAt && run.endedAt) {
+            const durationSeconds = (new Date(run.endedAt as string).getTime() - new Date(run.startedAt as string).getTime()) / 1000;
             return formatDurationFromSeconds(durationSeconds);
         }
         return 'Unknown';
@@ -291,8 +291,8 @@
             return [];
         }
         return [...runs].sort((firstRun, secondRun) => {
-            const firstTimestamp = firstRun.started_at ? new Date(firstRun.started_at as string).getTime() : 0;
-            const secondTimestamp = secondRun.started_at ? new Date(secondRun.started_at as string).getTime() : 0;
+            const firstTimestamp = firstRun.startedAt ? new Date(firstRun.startedAt as string).getTime() : 0;
+            const secondTimestamp = secondRun.startedAt ? new Date(secondRun.startedAt as string).getTime() : 0;
             return secondTimestamp - firstTimestamp;
         });
     }
@@ -335,7 +335,7 @@
      * actually started from (the run history is the authoritative cross-window record of "last one
      * used"), otherwise the extension's own remembered last-start (covers a missing or lagging run
      * record), otherwise the device's live snapshot, otherwise the first ready snapshot, otherwise
-     * undefined. The api's last_snapshot_id (last CREATED, not last used) is deliberately not
+     * undefined. The api's lastSnapshotId (last CREATED, not last used) is deliberately not
      * consulted. Whatever this lands on is exactly what Start sends: the picker is the single source
      * of truth, the provider never resolves a snapshot itself.
      *
@@ -383,7 +383,7 @@
         });
 
         const preferredSnapshotId = existingUserPickedSnapshotId ? existingSelection : undefined;
-        const latestRunSnapshotId = sortedRuns(details.runs)[0]?.snapshot_id;
+        const latestRunSnapshotId = sortedRuns(details.runs)[0]?.snapshotId;
         const resolvedSnapshotId = resolveSelectedSnapshotId(details.snapshots, preferredSnapshotId, latestRunSnapshotId, details.lastUsedSnapshotId);
         //the pick flag only survives while the picked snapshot is what actually stays selected
         const pickSurvived = preferredSnapshotId !== undefined && resolvedSnapshotId === preferredSnapshotId;
@@ -449,9 +449,9 @@
         device: RceStateDevice,
         firmwareOptions: FirmwareVersion[]
     ): string | undefined {
-        const availableFirmwareIds = firmwareOptions.map((firmwareVersion) => firmwareVersion.firmware_version_id);
+        const availableFirmwareIds = firmwareOptions.map((firmwareVersion) => firmwareVersion.firmwareVersionId);
         const selectedSnapshot = (detailsState?.snapshots ?? []).find((snapshot) => snapshot.id === detailsState?.selectedSnapshotId);
-        const candidateFirmwareIds = [pickedFirmwareVersionId, selectedSnapshot?.firmware_version_id, device.firmware_version_id];
+        const candidateFirmwareIds = [pickedFirmwareVersionId, selectedSnapshot?.firmwareVersionId, device.firmwareVersionId];
         for (const candidateFirmwareId of candidateFirmwareIds) {
             if (candidateFirmwareId && availableFirmwareIds.includes(candidateFirmwareId)) {
                 return candidateFirmwareId;
@@ -969,7 +969,7 @@
                                 <span class="statusDot {statusDotClass(device.status)}" title={device.status ?? 'unknown'}></span>
                                 {device.name}
                             </span>
-                            <span class="deviceMeta">{device.device_type} &middot; {device.status ?? 'unknown'} &middot; {device.last_snapshot_name ?? 'no snapshot'}</span>
+                            <span class="deviceMeta">{device.deviceType} &middot; {device.status ?? 'unknown'} &middot; {device.lastSnapshotName ?? 'no snapshot'}</span>
                             {#if runtime}
                                 <span class="deviceRuntime">{runtime.label}</span>
                                 <div class="runtimeBarTrack">
@@ -978,7 +978,7 @@
                             {/if}
                         </div>
                         {#if device.status === 'shutdown'}
-                            {@const firmwareOptions = (firmwareVersions ?? []).filter((firmwareVersion) => firmwareVersion.device_type === device.device_type)}
+                            {@const firmwareOptions = (firmwareVersions ?? []).filter((firmwareVersion) => firmwareVersion.deviceType === device.deviceType)}
                             <div class="startControl">
                                 <VscodeDropdown
                                     bind:this={snapshotDropdownsByDeviceId[device.id]}
@@ -1008,8 +1008,8 @@
                                         <vscode-option value="">Firmware unavailable</vscode-option>
                                     {:else}
                                         {#each firmwareOptions as firmwareVersion}
-                                            <vscode-option value={firmwareVersion.firmware_version_id}>
-                                                {firmwareVersion.display_name ?? firmwareVersion.firmware_version_id}
+                                            <vscode-option value={firmwareVersion.firmwareVersionId}>
+                                                {firmwareVersion.displayName ?? firmwareVersion.firmwareVersionId}
                                             </vscode-option>
                                         {/each}
                                     {/if}
@@ -1068,9 +1068,9 @@
                                 {/if}
 
                                 <div class="detailsMeta">
-                                    <span>Created: {formatDateTime(device.created_at)}</span>
-                                    {#if device.serial_number}
-                                        <span>Serial number: {device.serial_number}</span>
+                                    <span>Created: {formatDateTime(device.createdAt)}</span>
+                                    {#if device.serialNumber}
+                                        <span>Serial number: {device.serialNumber}</span>
                                     {/if}
                                 </div>
 
@@ -1130,9 +1130,9 @@
                                                         {/if}
                                                     </span>
                                                     <span class="snapshotMeta">
-                                                        {formatDateTime(snapshot.created_at)}
-                                                        {#if snapshot.firmware_version_display_name}
-                                                            &middot; {snapshot.firmware_version_display_name}
+                                                        {formatDateTime(snapshot.createdAt)}
+                                                        {#if snapshot.firmwareVersionDisplayName}
+                                                            &middot; {snapshot.firmwareVersionDisplayName}
                                                         {/if}
                                                         {#if snapshot.note}
                                                             &middot; {snapshot.note}
@@ -1165,8 +1165,8 @@
                                             {#each sortedRuns(detailsState.runs).slice(0, 10) as run}
                                                 <div class="historyRow">
                                                     <div class="historyInfo">
-                                                        <span>{run.creator_username ?? 'Unknown user'} &middot; {run.snapshot_name ?? 'Unknown snapshot'}</span>
-                                                        <span class="historyMeta">{formatDateTime(run.started_at as string)} &middot; {runDuration(run)}</span>
+                                                        <span>{run.creatorUsername ?? 'Unknown user'} &middot; {run.snapshotName ?? 'Unknown snapshot'}</span>
+                                                        <span class="historyMeta">{formatDateTime(run.startedAt as string)} &middot; {runDuration(run)}</span>
                                                     </div>
                                                 </div>
                                             {/each}
