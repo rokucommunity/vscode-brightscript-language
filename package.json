@@ -148,7 +148,7 @@
             "shell-quote": "^1.10.0"
         },
         "brace-expansion": "^2.1.4",
-        "js-yaml": "^4.3.1",
+        "js-yaml": "^4.3.2",
         "@babel/core": "^7.29.7",
         "fast-uri": "^3.1.7",
         "body-parser": "^1.20.6",
