@@ -74,7 +74,7 @@
 </style>
 
 <svelte:window on:keydown={onKeydown} />
-<div id="background" />
+<div id="background"></div>
 <div id="container">
     <div id="header">
         Settings

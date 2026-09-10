@@ -1,5 +1,5 @@
 <script lang="ts">
-    import OdcSetManualIpAddress from './OdcSetManualIpAddress.svelte';
+    import ConnectToDeviceButton from './ConnectToDeviceButton.svelte';
 </script>
 
 <style>
@@ -31,6 +31,5 @@
     <pre><i>[RTA][INFO] OnDeviceComponent init</i></pre>
 
     <hr/>
-    <b>Connect manually:</b>
-    <OdcSetManualIpAddress />
+    <ConnectToDeviceButton />
 </div>

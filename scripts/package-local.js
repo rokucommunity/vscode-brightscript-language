@@ -18,7 +18,8 @@ var projectNames = [
     'roku-deploy',
     'brighterscript',
     'brighterscript-formatter',
-    'roku-debug'
+    'roku-debug',
+    'roku-test-automation'
 ];
 var projects = {};
 

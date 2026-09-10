@@ -11,5 +11,12 @@ export enum ViewProviderEvent {
     onRokuAutomationKeyPressed = 'onRokuAutomationKeyPressed',
     onRokuAppOverlayAdded = 'onRokuAppOverlayAdded',
     onRokuAppOverlayThumbnailsLoaded = 'onRokuAppOverlayThumbnailsLoaded',
-    onVscodeContextSet = 'onVscodeContextSet'
+    onVscodeContextSet = 'onVscodeContextSet',
+    onRceStateChanged = 'onRceStateChanged',
+    onRceStreamConnecting = 'onRceStreamConnecting',
+    onRceStreamOffer = 'onRceStreamOffer',
+    onRceStreamError = 'onRceStreamError',
+    onRceStreamClosed = 'onRceStreamClosed',
+    onRceStreamDeviceStopped = 'onRceStreamDeviceStopped',
+    onRceStreamStopped = 'onRceStreamStopped'
 }

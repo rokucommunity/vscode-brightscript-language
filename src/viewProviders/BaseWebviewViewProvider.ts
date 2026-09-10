@@ -5,12 +5,17 @@ import type { RequestType } from 'roku-test-automation';
 import type { AsyncSubscription, Event } from '@parcel/watcher';
 import type { ChannelPublishedEvent } from 'roku-debug';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
+import { buildWebviewIndexHtml } from './webviewHtml';
 import type { WebviewViewProviderManager } from '../managers/WebviewViewProviderManager';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import type { VscodeCommand } from '../commands/VscodeCommand';
 import type { RtaManager } from '../managers/RtaManager';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
+import type { RceManager } from '../managers/RceManager';
+import type { RceFinder } from '../deviceDiscovery/RceFinder';
+import type { DeviceManager } from '../deviceDiscovery/DeviceManager';
+import type { DeviceTargetManager } from '../managers/DeviceTargetManager';
 
 export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(
@@ -18,6 +23,10 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         protected dependencies: {
             rtaManager: RtaManager;
             brightscriptCommands: BrightScriptCommands;
+            rceManager: RceManager;
+            rceFinder: RceFinder;
+            deviceManager: DeviceManager;
+            deviceTargetManager: DeviceTargetManager;
         }
     ) {
         this.webviewBasePath = path.join(extensionContext.extensionPath, 'dist', 'webviews');
@@ -86,6 +95,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return message;
     }
 
+    /**
+     * Whether the webview has reported in as ready (messages post directly rather than being queued)
+     */
+    protected isViewReady() {
+        return this.viewReady;
+    }
+
     public postOrQueueMessage(message) {
         if (this.viewReady) {
             this.postMessage(message);
@@ -95,17 +111,33 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     }
 
     protected postMessage(message) {
-        this.view?.webview.postMessage(message).then(null, (reason) => {
-            console.log('postMessage failed: ', reason);
-        });
+        // resolve `.webview` lazily inside the guard: accessing it on a DISPOSED view or
+        // panel throws synchronously ("Webview is disposed") — e.g. after the pop-out
+        // editor is closed, or while the sidebar view is hidden behind the panel.
+        this.tryPostMessage(() => this.view?.webview, message);
+        this.tryPostMessage(() => this.panel?.webview, message);
+    }
 
-        this.panel?.webview.postMessage(message).then(null, (reason) => {
+    private tryPostMessage(resolveWebview: () => vscode.Webview | undefined, message) {
+        let webview: vscode.Webview | undefined;
+        try {
+            webview = resolveWebview();
+        } catch {
+            return; // the view/panel was disposed
+        }
+        webview?.postMessage(message).then(null, (reason) => {
             console.log('postMessage failed: ', reason);
         });
     }
 
     private postQueuedMessages() {
-        for (const queuedMessage of this.queuedMessages) {
+        //hand off (and clear) the queue before posting: a message queued while no webview existed
+        //must flush exactly once, to the webview that just reported ready - leaving it queued meant
+        //every later webview instance (a closed-and-reopened view) replayed the entire history,
+        //e.g. re-answering a long-dead video stream offer and hanging on 'connecting'
+        const messages = this.queuedMessages;
+        this.queuedMessages = [];
+        for (const queuedMessage of messages) {
             this.postMessage(queuedMessage);
         }
     }
@@ -185,7 +217,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return [];
     }
 
-    protected async getHtmlForWebview() {
+    protected async getHtmlForWebview(webviewContext: 'sidebar' | 'panel' = 'sidebar') {
         try {
             let watcher;
             try {
@@ -202,57 +234,32 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                     if (
                         events.find(x => (x.type === 'create' || x.type === 'update') && x.path?.toLowerCase()?.endsWith('index.html'))
                     ) {
-                        this.view.webview.html = '';
-                        this.view.webview.html = this.getIndexHtml();
+                        const webview = (this.view ?? this.panel)?.webview;
+                        if (webview) {
+                            webview.html = '';
+                            // the sidebar view takes precedence in (this.view ?? this.panel),
+                            // so reload with the matching context
+                            webview.html = this.getIndexHtml(this.view ? 'sidebar' : 'panel');
+                        }
                     }
                 });
             }
         } catch (e) {
             console.error(e);
         }
-        return this.getIndexHtml();
+        return this.getIndexHtml(webviewContext);
     }
 
-    /**
-    * Get a webview-supported URI for the given path
-    */
-    private asWebviewUri(...parts: string[]) {
-        return this.view?.webview?.asWebviewUri?.(
-            vscode.Uri.file(
-                path.join(...parts)
-            )
-        );
-    }
-
-    private getIndexHtml() {
-        let html: string;
-        try {
-            html = fsExtra.readFileSync(this.webviewBasePath + '/index.html').toString();
-        } catch (e) {
-            console.error(e);
-            html = '<h1>Error loading webview</h1>';
-        }
-        //the data that will be replaced in the index.html
-        const data = {
+    private getIndexHtml(webviewContext: 'sidebar' | 'panel' = 'sidebar') {
+        return buildWebviewIndexHtml({
+            webview: this.view?.webview ?? this.panel?.webview,
+            webviewBasePath: this.webviewBasePath,
             viewName: this.id,
-            baseHref: `${this.asWebviewUri(this.webviewBasePath)}/`,
-            additionalScriptContents: this.additionalScriptContents().join('\n                        ')
-        };
-        /**
-         * replace placeholders in the html, in one of these formats:
-         * <!--{{thing1}}-->
-         * //{{thing2}}
-         * {{thing3}}
-         */
-        html = html.replace(/(\/\/{{(\w+)}})|({{(\w+)}})|(<!--{{(\w+)}})/gm, (...match: string[]) => {
-            const [, , key1, , key2, , key3] = match;
-            return data[key1] ?? data[key2] ?? data[key3] ?? match[0];
+            //lets a view persist/behave differently in the sidebar vs the popped-out
+            //editor panel (the same view component runs in both)
+            webviewContext: webviewContext,
+            additionalScriptContents: this.additionalScriptContents()
         });
-        // remove leading slash for css/js urls so we can make them relative to the baseHref
-        html = html.replace(/((?:href|src)\s*=\s*["'])(\/.*")/g, (...match: string[]) => {
-            return match[1] + match[2]?.replace(/^\/+/, '');
-        });
-        return html;
     }
 
     public async resolveWebviewView(
@@ -261,6 +268,22 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         _token: vscode.CancellationToken
     ) {
         this.view = view;
+        //this webview instance has not reported in yet: without this reset, a provider whose
+        //previous webview already reported ready would direct-post at the new one before its
+        //viewReady arrives, instead of queueing for the flush that follows it
+        this.viewReady = false;
+        //a hidden view destroys its webview and this provider is re-resolved with a fresh one on
+        //reshow. While no webview exists, messages must queue rather than post at the disposed
+        //instance, where they would be silently lost. Optional-called because provider specs
+        //resolve with minimal fake views.
+        view.onDidDispose?.(() => {
+            //a re-resolution can land before this dispose callback fires; only clear state that
+            //still belongs to this instance
+            if (this.view === view) {
+                this.view = undefined;
+                this.viewReady = false;
+            }
+        });
         const webview = view.webview;
         this.setupViewMessageObserver(webview);
 
@@ -272,7 +295,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 vscode.Uri.file(this.webviewBasePath)
             ]
         };
-        webview.html = await this.getHtmlForWebview();
+        webview.html = await this.getHtmlForWebview('sidebar');
     }
 
     protected async createOrRevealWebviewPanel() {
@@ -292,33 +315,79 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         }
 
         if (createPanel) {
-            this.panel = vscode.window.createWebviewPanel(
+            const panel = vscode.window.createWebviewPanel(
                 this.id,
                 await this.getViewNameById(this.id),
                 vscode.ViewColumn.Active,
                 {
                     // Enable javascript in the webview
                     enableScripts: true,
+                    retainContextWhenHidden: this.retainPanelContextWhenHidden,
                     localResourceRoots: [
                         vscode.Uri.file(this.webviewBasePath)
                     ]
                 }
             );
-
-            this.setupViewMessageObserver(this.panel.webview);
-
-            const html = await this.getHtmlForWebview();
-            this.panel.webview.html = html;
+            await this.attachPanel(panel);
         }
+    }
+
+    /** Subclasses may set this to keep the panel's webview state alive while its tab
+     * is in the background (more memory, but no reset on every tab switch). */
+    protected retainPanelContextWhenHidden = false;
+
+    /** Adopt an editor panel (newly created, or restored after a window reload):
+     * wire messaging, (re-)assert webview options, and set the html. */
+    private async attachPanel(panel: vscode.WebviewPanel) {
+        this.panel = panel;
+        // when the pop-out editor is closed, drop the reference so postMessage (and the
+        // dev-watcher reload) stop targeting the disposed panel
+        panel.onDidDispose?.(() => {
+            if (this.panel === panel) {
+                this.panel = undefined;
+            }
+        });
+        this.setupViewMessageObserver(panel.webview);
+        panel.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [
+                vscode.Uri.file(this.webviewBasePath)
+            ]
+        };
+        panel.webview.html = await this.getHtmlForWebview('panel');
+        this.onPanelAttached(panel);
+    }
+
+    /** Called exactly once per editor panel, when it's created or restored after a
+     * window reload (not on reveal) — e.g. to track the panel's lifetime. */
+    protected onPanelAttached(panel: vscode.WebviewPanel) { }
+
+    /**
+     * Restore this provider's editor panel across window reloads — without a
+     * registered serializer VS Code destroys the panel (the tab is forgotten).
+     * Call from the subclass constructor (i.e. during activation) and pair it with
+     * an `onWebviewPanel:<id>` activation event in package.json so the extension
+     * wakes up to revive the panel.
+     */
+    protected enablePanelRestore() {
+        this.extensionContext.subscriptions.push(
+            vscode.window.registerWebviewPanelSerializer(this.id, {
+                deserializeWebviewPanel: async (panel: vscode.WebviewPanel) => {
+                    await this.attachPanel(panel);
+                }
+            })
+        );
     }
 
     private async getViewNameById(viewId) {
         const packageJsonPath = path.join(this.extensionContext.extensionPath, 'package.json');
         const packageJson = JSON.parse(await fsExtra.readFile(packageJsonPath, 'utf8'));
 
-        for (const view of [...packageJson.contributes.views.debug, ...packageJson.contributes.views['vscode-brightscript-language']]) {
-            if (view.id === viewId) {
-                return view.name;
+        for (const viewContainerId of Object.keys(packageJson.contributes.views)) {
+            for (const view of packageJson.contributes.views[viewContainerId]) {
+                if (view.id === viewId) {
+                    return view.name;
+                }
             }
         }
 

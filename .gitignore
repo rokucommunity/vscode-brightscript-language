@@ -9,4 +9,8 @@ coverage
 brsconfig.schema.json
 .history
 .tmp
+.env
 .vsix-building
+
+# Network captures (may contain live session data); never commit
+*.har

@@ -55,12 +55,18 @@ const projects = [{
         'brighterscript'
     ]
 }, {
+    name: 'roku-test-automation',
+    dependencies: [
+        'roku-deploy'
+    ]
+}, {
     name: path.basename(path.resolve(__dirname, '..')),
     dependencies: [
         'roku-deploy',
         'brighterscript',
         'roku-debug',
-        'brighterscript-formatter'
+        'brighterscript-formatter',
+        'roku-test-automation'
     ]
 }].map(x => {
     return {

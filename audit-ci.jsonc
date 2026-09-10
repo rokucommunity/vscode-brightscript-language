@@ -15,14 +15,7 @@
             "GHSA-w5hq-g745-h8pq": {
                 // Added: 2026-05-22
                 "active": true,
-                "notes": "`uuid` <11.1.1 (via direct dep, `postman-request`, `node-notifier`, and dev-only `nyc>istanbul-lib-processinfo`): vulnerable code path is `v3()`/`v5()`/`v6()` when a caller-provided buffer is passed. Every consumer (including our own `src/viewProviders/RokuAppOverlaysViewViewProvider.ts`) calls only `v4()` with no buffer arg, so the vulnerable path is unreachable."
-            }
-        },
-        {
-            "GHSA-q8mj-m7cp-5q26": {
-                // Added: 2026-05-26
-                "active": true,
-                "notes": "`qs` 6.11.1-6.15.1 (via `postman-request`'s `~6.14.1` pin; transitive through `roku-debug`, `roku-deploy`, `roku-test-automation`): DoS in `qs.stringify` triggered only when called with `arrayFormat: 'comma'` + `encodeValuesOnly: true` and null/undefined entries. `postman-request` is used only for local-network Roku HTTP calls and does not invoke `qs.stringify` with that option combo. Latest `postman-request@2.88.1-postman.48` still pins `qs ~6.14.1`, so there is no upstream fix; `npm audit fix` downgrades `postman-request` and `uuid` significantly, which is a worse outcome."
+                "notes": "`uuid` <11.1.1 (via our direct `^9.0.1` dep and `postman-request`; the `node-notifier` copy is pinned to ^11.1.1 by a scoped override, and `nyc` no longer pulls uuid at all now that `istanbul-lib-processinfo` is overridden to ^3.0.1): vulnerable code path is `v3()`/`v5()`/`v6()` when a caller-provided buffer is passed. Every remaining consumer calls only `v4()` with no buffer arg — ours at `src/viewProviders/RokuAppOverlaysViewViewProvider.ts`, and postman-request's in lib/auth.js, lib/multipart.js and lib/oauth.js — so the vulnerable path is unreachable. Cannot bump the direct dep past uuid@9 without also bumping `typescript` past ^4.7.4 (uuid@11's bundled .d.ts uses `export type *`, needing TS 5.0+), and cannot override `postman-request`'s copy at all: it does `require('uuid/v4')`, a subpath uuid@11 no longer exports."
             }
         }
     ]

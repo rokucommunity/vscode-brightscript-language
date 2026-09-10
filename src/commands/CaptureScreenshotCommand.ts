@@ -1,45 +1,17 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as rokuDeploy from 'roku-deploy';
-import type { BrightScriptCommands } from '../BrightScriptCommands';
+import { rokuDeploy } from 'roku-deploy';
+import type { DeviceTargetManager } from '../managers/DeviceTargetManager';
 import { util } from '../util';
 
 export const FILE_SCHEME = 'bs-captureScreenshot';
 
 export class CaptureScreenshotCommand {
-    private context: vscode.ExtensionContext;
-    private brightScriptCommands: BrightScriptCommands;
+    private deviceTargetManager: DeviceTargetManager;
 
-    public register(context: vscode.ExtensionContext, brightScriptCommands: BrightScriptCommands) {
-        this.context = context;
-        this.brightScriptCommands = brightScriptCommands;
+    public register(context: vscode.ExtensionContext, deviceTargetManager: DeviceTargetManager) {
+        this.deviceTargetManager = deviceTargetManager;
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.captureScreenshot', this.captureScreenshot.bind(this)));
-    }
-
-    private async getHostAndPassword(hostParam?: string): Promise<{ host: string; password: string }> {
-        let host: string;
-        let password: string;
-
-        //if a hostParam was not provided, then go the normal flow for getting info
-        if (!hostParam) {
-            host = await this.brightScriptCommands.getRemoteHost();
-            password = await this.brightScriptCommands.getRemotePassword();
-
-            //the host was provided, probably by clicking the "capture screenshot" link in the tree view. Do we have a password stored as well? If not, prompt for one
-        } else {
-            host = hostParam;
-            let remoteHost = await this.context.workspaceState.get('remoteHost');
-            if (host === remoteHost) {
-                password = this.context.workspaceState.get('remotePassword');
-            } else {
-                password = await vscode.window.showInputBox({
-                    placeHolder: `Please enter the developer password for host '${host}'`,
-                    value: ''
-                });
-            }
-        }
-
-        return { host: host, password: password };
     }
 
     private async getScreenshotDir() {
@@ -59,8 +31,17 @@ export class CaptureScreenshotCommand {
         return screenshotDir;
     }
 
-    private async captureScreenshot(hostParam?: string) {
-        const { host, password } = await this.getHostAndPassword(hostParam);
+    private async captureScreenshot(reference?: string | { key?: string }) {
+        //explicit reference (a tree element's device key or a host string) wins, otherwise the
+        //active device - LAN or Roku Cloud Emulator alike, both addressed by their device config
+        const target = await this.deviceTargetManager.resolveActiveTargetDevice(reference);
+        if (!target) {
+            return;
+        }
+        const password = await this.deviceTargetManager.resolveValidatedPassword(target.device, target.serialNumber, target.label);
+        if (password === undefined) {
+            return;
+        }
 
         let start = Date.now();
         const MIN_PROGRESS_TIME = 850; // Minimum time (in ms) that vscode will ensure the withProgress notification is shown.
@@ -72,18 +53,20 @@ export class CaptureScreenshotCommand {
         };
         try {
             const screenshotPath = await vscode.window.withProgress({
-                title: `Capturing screenshot from '${host}'`,
+                title: `Capturing screenshot from '${target.label}'`,
                 location: vscode.ProgressLocation.Notification
             }, async (options) => {
                 const screenshotDir = await this.getScreenshotDir();
 
-                let screenshotPath = await rokuDeploy.takeScreenshot({
-                    host: host,
+                let screenshotResult = await rokuDeploy.captureScreenshot({
+                    device: target.device,
                     password: password,
-                    ...(screenshotDir && { outDir: screenshotDir })
+                    //save the screenshot to disk (in screenshotDir when configured, otherwise the OS temp directory)
+                    out: true,
+                    ...(screenshotDir && { screenshotDir: screenshotDir })
                 });
 
-                return screenshotPath;
+                return screenshotResult.filePath;
             });
 
             if (screenshotPath) {

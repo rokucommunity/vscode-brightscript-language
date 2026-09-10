@@ -14,6 +14,21 @@ beforeEach(() => {
 
 describe('Util', () => {
 
+    describe('describeDevice', () => {
+        it('names devices by whichever address field they carry', () => {
+            expect(util.describeDevice({ host: '1.1.1.1' })).to.equal('1.1.1.1');
+            expect(util.describeDevice({ instanceUrl: 'https://rce.example.com', rceToken: 'token' })).to.equal('https://rce.example.com');
+            expect(util.describeDevice({ id: 83, rceToken: 'token' })).to.equal('83');
+            expect(util.describeDevice({ esn: 'RCE123', rceToken: 'token' })).to.equal('RCE123');
+        });
+
+        it('falls back to the provided label when there is no recognizable address', () => {
+            expect(util.describeDevice(undefined)).to.equal('unknown');
+            expect(util.describeDevice(undefined, 'the target device')).to.equal('the target device');
+            expect(util.describeDevice({ host: '' }, 'the target device')).to.equal('the target device');
+        });
+    });
+
     describe('removeTrailingNewline', () => {
         it('works', () => {
             expect(util.removeTrailingNewline('\r\n')).to.equal('');

@@ -81,10 +81,6 @@
         loading = true;
 
         try {
-            if (inspectNode.base === 'appUI') {
-                await utils.convertAppUIKeyPathToSceneKeyPath(inspectNode);
-            }
-
             const { results } = await odc.getNodesInfo({
                 requests: {
                     request: {
@@ -453,7 +449,7 @@
                     appearance="icon"
                     class="inline"
                     title="Auto Refresh"
-                    on:change={onAutoRefreshClick} />
+                    on:change={onAutoRefreshClick}></vscode-checkbox>
                 <vscode-button
                     appearance="icon"
                     title="Refresh"
@@ -494,7 +490,7 @@
                         expanded={childrenExpanded} />
                     </span>
                     <div id="childrenTitle">children ({children.length})</div>
-                    <div style="clear: both" />
+                    <div style="clear: both"></div>
                     <div class:hide={!childrenExpanded}>
                         {#each children as child, i}
                             <div class="childItem">
@@ -559,7 +555,7 @@
                                 id={id}
                                 class="fieldValue"
                                 checked={field.value}
-                                on:change={onBooleanFieldClick} />
+                                on:change={onBooleanFieldClick}></vscode-checkbox>
                         {:else if field.type === 'roFloat' || field.type === 'roInt'}
                             <NumberField
                                 title="Hold down shift to increment faster"
@@ -592,9 +588,9 @@
                                 class="fieldValue textField"
                                 id={id}
                                 value={field.value}
-                                on:input={onStringFieldChange} />
+                                on:input={onStringFieldChange}></vscode-text-field>
                         {:else}
-                            <vscode-text-field id={id} class="fieldValue" value={field.value} rows="1" disabled />
+                            <vscode-text-field id={id} class="fieldValue" value={field.value} rows="1" disabled></vscode-text-field>
                         {/if}
                         </td>
                     </tr>
@@ -623,7 +619,7 @@
                                         {item.subtype}
                                     </vscode-button>
                                 {:else if typeof item === 'object'}
-                                    <vscode-text-area readonly cols="30" resize="both" value="{JSON.stringify(item)}" />
+                                    <vscode-text-area readonly cols="30" resize="both" value="{JSON.stringify(item)}"></vscode-text-area>
                                 {:else if typeof item === 'number'}
                                     <NumberField
                                         id="{id}.{collectionItemId}"
@@ -632,13 +628,13 @@
                                     <vscode-checkbox
                                         id="{id}.{collectionItemId}"
                                         checked={item}
-                                        on:change={onBooleanFieldClick} />
+                                        on:change={onBooleanFieldClick}></vscode-checkbox>
                                 {:else}
                                     <vscode-text-field
                                         id="{id}.{collectionItemId}"
                                         class="textField"
                                         value={item}
-                                        on:input={onStringFieldChange} />
+                                        on:input={onStringFieldChange}></vscode-text-field>
                                 {/if}
                                 </td>
                             </tr>
@@ -679,9 +675,9 @@
                                     <vscode-checkbox
                                         id="{id}.{collectionItemId}"
                                         checked={item}
-                                        on:change={onBooleanFieldClick} />
+                                        on:change={onBooleanFieldClick}></vscode-checkbox>
                                 {:else if typeof item === 'object'}
-                                    <vscode-text-area readonly cols="30" resize="both" value="{JSON.stringify(item)}" />
+                                    <vscode-text-area readonly cols="30" resize="both" value="{JSON.stringify(item)}"></vscode-text-area>
                                 {:else if typeof item === 'number'}
                                     <NumberField
                                         class="inline"
@@ -692,7 +688,7 @@
                                         id="{id}.{collectionItemId}"
                                         class="textField"
                                         value={item}
-                                        on:input={onStringFieldChange} />
+                                        on:input={onStringFieldChange}></vscode-text-field>
                                 {/if}
                                 </td>
                             </tr>

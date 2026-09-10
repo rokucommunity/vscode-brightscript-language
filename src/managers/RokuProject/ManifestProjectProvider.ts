@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { util as bsUtil } from 'brighterscript';
-import { rokuDeploy } from 'roku-deploy';
+import { util as rokuDeployUtil } from 'roku-deploy';
 import { util } from '../../util';
 import { BrightScriptDebugConfigurationProvider } from '../../DebugConfigurationProvider';
 import type { DiscoveredRokuProject, ProjectBuildResult, ProjectConfigProvider } from './RokuProjectManager';
@@ -48,7 +48,7 @@ export class ManifestProjectProvider implements ProjectConfigProvider {
         for (const [projectDir, configUri] of this.configByProjectDir) {
             // Drive letters must be normalized on both sides — getDestPath does a case-sensitive
             // comparison and Windows uri.fsPath casing isn't always consistent with path.dirname output.
-            if (rokuDeploy.getDestPath(filePath, files, bsUtil.driveLetterToLower(projectDir))) {
+            if (rokuDeployUtil.getDestPath(filePath, files, bsUtil.driveLetterToLower(projectDir))) {
                 matches.push(configUri);
             }
         }

@@ -37,6 +37,7 @@ describe('BrightScriptConfigurationProvider', () => {
     let userInputManager: UserInputManager;
     let deviceManager: DeviceManager;
     let credentialStore: CredentialStore;
+    let rceManager: any;
 
     beforeEach(() => {
         fsExtra.emptyDirSync(tempDir);
@@ -56,6 +57,9 @@ describe('BrightScriptConfigurationProvider', () => {
         deviceManager = new DeviceManager(vscode.context, globalStateManager);
         credentialStore = new CredentialStore(vscode.context);
         userInputManager = new UserInputManager(deviceManager, credentialStore);
+        //default: an active Cloud Emulator account is configured with this token; individual tests
+        //override this to exercise the no-account / token-mismatch paths
+        rceManager = { getToken: sinon.stub().resolves('account-token') };
 
         configProvider = new BrightScriptDebugConfigurationProvider(
             vscode.context,
@@ -64,7 +68,8 @@ describe('BrightScriptConfigurationProvider', () => {
             userInputManager,
             null, // BrightScriptCommands is not used in this test
             deviceManager,
-            credentialStore
+            credentialStore,
+            rceManager
         );
     });
 
@@ -92,6 +97,56 @@ describe('BrightScriptConfigurationProvider', () => {
 
         afterEach(() => {
             (configProvider as any).configDefaults = existingConfigDefaults;
+        });
+
+        it('fetches device-info for a cloud emulator device and skips host and password resolution', async () => {
+            sinon.stub(configProvider, 'getBsConfig').returns({});
+            const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc' };
+
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                type: 'brightscript',
+                device: device,
+                password: 'aaaa'
+            });
+
+            //the device option is passed through for roku-debug to consume, WITHOUT the account token:
+            //the resolver only carries the token internally (it's stripped from the returned config,
+            //which ends up in DAP traffic/logs and other extensions' view of the session) - the debug
+            //adapter receives it through the ROKU_RCE_TOKEN env var instead
+            expect(config.device).to.eql(device);
+            expect(config.password).to.equal('aaaa');
+            //device-info was fetched through roku-deploy's RCE path (no LAN probe/password validation),
+            //with the active account's token injected on the resolver's internal copy
+            const tokenedDevice = { ...device, rceToken: 'account-token' };
+            expect((rokuDeploy.getDeviceInfo as any).calledWith({ device: tokenedDevice, timeout: DeviceManager.RCE_DEVICE_INFO_TIMEOUT_MS })).to.be.true;
+            expect(config.deviceInfo).to.eql({ 'developer-enabled': 'true', 'serial-number': 'SN-TEST' });
+        });
+
+        it('uses the host from a local device config for host resolution', async () => {
+            sinon.stub(configProvider, 'getBsConfig').returns({});
+
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                type: 'brightscript',
+                device: { host: '10.0.0.5' },
+                password: 'aaaa'
+            });
+
+            //the local device config's host takes the place of the top-level host field, and normal probing happens
+            expect(config.host).to.equal('10.0.0.5');
+            expect((rokuDeploy.getDeviceInfo as any).called).to.be.true;
+            expect(config.deviceInfo).to.exist;
+        });
+
+        it('builds the device option from the deprecated host field', async () => {
+            sinon.stub(configProvider, 'getBsConfig').returns({});
+
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                type: 'brightscript',
+                host: '10.0.0.9',
+                password: 'aaaa'
+            });
+
+            expect(config.device).to.eql({ host: '10.0.0.9' });
         });
 
         it('handles loading declared values from .env files', async () => {
@@ -193,6 +248,30 @@ describe('BrightScriptConfigurationProvider', () => {
                 }
             });
 
+            it('names the cloud device instead of an undefined host when the secondary dev-mode check throws', async () => {
+                sinon.stub(configProvider, 'getBsConfig').returns({});
+                const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc' };
+                //no developer-enabled field at all: the non-local flow's own dev-mode check (which
+                //only fires on the literal string 'false') passes, so the secondary check against
+                //the enhanced device-info is the one that throws - and cloud sessions have no host
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'serial-number': 'SN-TEST' });
+
+                let threw: Error | undefined;
+                try {
+                    await configProvider.resolveDebugConfiguration(folder, <any>{
+                        type: 'brightscript',
+                        device: device,
+                        password: 'aaaa'
+                    });
+                } catch (e) {
+                    threw = e as Error;
+                }
+
+                expect(threw?.message).to.contain('developer mode is disabled');
+                expect(threw?.message).to.contain(device.instanceUrl);
+                expect(threw?.message).to.not.contain('undefined');
+            });
+
             it('throws when the probed device returns no device info', async () => {
                 sinon.stub(configProvider, 'getBsConfig').returns({});
                 sinon.stub(deviceManager, 'validateAndAddDevice').resolves({ ip: '1.2.3.4', deviceInfo: {} } as any);
@@ -216,7 +295,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
                 //the picker resolved the host, so the device is already registered
                 (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
-                sinon.stub(userInputManager, 'promptForHost').resolves({ host: '1.2.3.4', deviceInfo: deviceInfo });
+                sinon.stub(userInputManager, 'promptForHost').resolves({ host: '1.2.3.4', deviceInfo: deviceInfo, device: { host: '1.2.3.4' } });
                 const getDeviceStub = sinon.stub(deviceManager, 'getDevice').returns(device);
                 const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves(undefined);
 
@@ -246,14 +325,15 @@ describe('BrightScriptConfigurationProvider', () => {
 
             it('probes the host and attaches its device info when not chosen through the picker', async () => {
                 const deviceInfo = { 'serial-number': 'abc123' };
-                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
-                const getDeviceStub = sinon.stub(deviceManager, 'getDevice');
+                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo, key: 's:abc123' } as any;
+                //getDevice is also used (separately from the probe) to derive the active-device key
+                const getDeviceStub = sinon.stub(deviceManager, 'getDevice').returns(undefined);
                 const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves(device);
 
                 const result = await (configProvider as any).processHostParameter({ host: '1.2.3.4' });
 
                 expect(validateStub.calledWith('1.2.3.4')).to.be.true;
-                expect(getDeviceStub.called).to.be.false;
+                expect(getDeviceStub.calledWith({ ip: '1.2.3.4' })).to.be.true;
                 expect(result.deviceInfo).to.eql(deviceInfo);
             });
 
@@ -269,30 +349,273 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(threw?.message).to.contain('unable to reach device');
             });
 
-            it('forgets the saved active device when it could not be located and the picker resolved a host', async () => {
+            it('resolves a ${promptForHost} placeholder inside a local device config into the device option', async () => {
                 const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
-                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
-                //the active device failed its health check, so the picker was shown
+                const device = { ip: '5.6.7.8', serialNumber: 'abc123', deviceInfo: deviceInfo, key: 's:abc123' } as any;
                 (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
-                sinon.stub(userInputManager, 'promptForHost').resolves({ host: '1.2.3.4', deviceInfo: deviceInfo });
+                sinon.stub(userInputManager, 'promptForHost').resolves({ host: '5.6.7.8', deviceInfo: deviceInfo, device: { host: '5.6.7.8' } });
                 sinon.stub(deviceManager, 'getDevice').returns(device);
-                const forgetStub = sinon.stub(deviceManager, 'forgetActiveDeviceIfDifferent').resolves();
 
-                await (configProvider as any).processHostParameter({ host: '' });
+                const result = await (configProvider as any).processHostParameter({ device: { host: '${promptForHost}' } });
 
-                expect(forgetStub.calledOnceWith('1.2.3.4')).to.be.true;
+                //the device option is rebuilt from the resolved host - roku-debug addresses the device
+                //through `device.host`, so the literal placeholder must never survive there
+                expect(result.host).to.equal('5.6.7.8');
+                expect(result.device).to.eql({ host: '5.6.7.8' });
             });
 
-            it('does not forget the active device when the active host resolved healthy', async () => {
+            it('prompts for the ${promptForHost} placeholder in the top-level host field', async () => {
                 const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
-                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
-                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves({ host: '1.2.3.4', deviceInfo: deviceInfo }) };
+                const device = { ip: '5.6.7.8', serialNumber: 'abc123', deviceInfo: deviceInfo, key: 's:abc123' } as any;
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                const promptStub = sinon.stub(userInputManager, 'promptForHost').resolves({ host: '5.6.7.8', deviceInfo: deviceInfo, device: { host: '5.6.7.8' } });
                 sinon.stub(deviceManager, 'getDevice').returns(device);
-                const forgetStub = sinon.stub(deviceManager, 'forgetActiveDeviceIfDifferent').resolves();
 
-                await (configProvider as any).processHostParameter({ host: '' });
+                const result = await (configProvider as any).processHostParameter({ host: '${promptForHost}' });
 
-                expect(forgetStub.called).to.be.false;
+                expect(promptStub.called).to.be.true;
+                expect(result.host).to.equal('5.6.7.8');
+                expect(result.device).to.eql({ host: '5.6.7.8' });
+            });
+
+            it('resolves ${activeHost} inside a local device config through the active-device lookup', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '5.6.7.8', serialNumber: 'abc123', deviceInfo: deviceInfo, key: 's:abc123' } as any;
+                //the healthy active device answers, so the picker is never shown
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves({ host: '5.6.7.8', deviceInfo: deviceInfo }) };
+                const promptStub = sinon.stub(userInputManager, 'promptForHost');
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+
+                const result = await (configProvider as any).processHostParameter({ device: { host: '${activeHost}' } });
+
+                expect(promptStub.called).to.be.false;
+                expect(result.host).to.equal('5.6.7.8');
+                expect(result.device).to.eql({ host: '5.6.7.8' });
+            });
+
+            it('prompts instead of crashing when a local device config has an empty host and no top-level host exists', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '5.6.7.8', serialNumber: 'abc123', deviceInfo: deviceInfo, key: 's:abc123' } as any;
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                const promptStub = sinon.stub(userInputManager, 'promptForHost').resolves({ host: '5.6.7.8', deviceInfo: deviceInfo, device: { host: '5.6.7.8' } });
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+
+                const result = await (configProvider as any).processHostParameter({ device: { host: '' } });
+
+                expect(promptStub.called).to.be.true;
+                expect(result.device).to.eql({ host: '5.6.7.8' });
+            });
+
+            it('threads a cloud emulator pick from the picker and skips the host requirement', async () => {
+                //the precomputed device option carries the account token, like the real ones built by
+                //the device manager at scan time
+                const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'account-token' };
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                sinon.stub(userInputManager, 'promptForHost').resolves({
+                    host: undefined,
+                    deviceInfo: undefined,
+                    device: device,
+                    rce: { status: 'running' }
+                } as any);
+                const warningStub = sinon.stub(vscode.window, 'showWarningMessage').resolves(undefined);
+                //the beforeEach above already stubbed rokuDeploy.getDeviceInfo; reconfigure the same
+                //stub rather than wrapping it a second time
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
+
+                const result = await (configProvider as any).processHostParameter({ host: '' });
+
+                const expectedDevice = { instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'account-token' };
+                expect(result.device).to.eql(expectedDevice);
+                expect((rokuDeploy.getDeviceInfo as any).calledWith({ device: expectedDevice, timeout: DeviceManager.RCE_DEVICE_INFO_TIMEOUT_MS })).to.be.true;
+                expect(result.deviceInfo).to.eql({ 'developer-enabled': 'true' });
+                //the config adopts a copy, never the device manager's own precomputed object (the
+                //resolver injects/strips the token on the config, and must not reach into the cache)
+                expect(result.device).to.not.equal(device);
+                //the precomputed option's own token must not trip the config-supplied-token warning
+                expect(warningStub.called).to.be.false;
+            });
+
+            it('throws a friendly error when a picked cloud emulator device is not running', async () => {
+                //no rceToken here - it's always injected from the active Cloud Emulator account
+                const device = { id: '84' };
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                sinon.stub(userInputManager, 'promptForHost').resolves({
+                    host: undefined,
+                    deviceInfo: undefined,
+                    device: device,
+                    rce: { status: 'shutdown' }
+                } as any);
+
+                let threw: Error | undefined;
+                try {
+                    await (configProvider as any).processHostParameter({ host: '' });
+                } catch (e) {
+                    threw = e as Error;
+                }
+
+                expect(threw?.message).to.contain('Cloud Emulator panel');
+                //the friendly guard fires before any device-info fetch is attempted
+                expect((rokuDeploy.getDeviceInfo as any).called).to.be.false;
+            });
+
+            it('throws when a config-provided cloud emulator device is unreachable', async () => {
+                //no rceToken here - it's always injected from the active Cloud Emulator account, never
+                //config-supplied (see the dedicated rceToken-injection tests below)
+                const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc' };
+                //the beforeEach above already stubbed rokuDeploy.getDeviceInfo; reconfigure the same
+                //stub rather than wrapping it a second time
+                (rokuDeploy.getDeviceInfo as any).rejects(new Error('socket hang up'));
+
+                let threw: Error | undefined;
+                try {
+                    await (configProvider as any).processHostParameter({ host: '', device: device });
+                } catch (e) {
+                    threw = e as Error;
+                }
+
+                expect(threw?.message).to.contain('unable to reach device');
+                expect(threw?.message).to.contain(device.instanceUrl);
+            });
+
+            it('throws a dev-mode error naming the Cloud Emulator panel when a config-provided cloud device has dev mode disabled', async () => {
+                //no rceToken here - it's always injected from the active Cloud Emulator account, never
+                //config-supplied (see the dedicated rceToken-injection tests below)
+                const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc' };
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'false' });
+
+                let threw: Error | undefined;
+                try {
+                    await (configProvider as any).processHostParameter({ host: '', device: device });
+                } catch (e) {
+                    threw = e as Error;
+                }
+
+                expect(threw?.message).to.contain('developer mode is disabled');
+                expect(threw?.message).to.contain('Cloud Emulator panel');
+            });
+
+            it('injects the active account token into an RCE device config before getDeviceInfo is called', async () => {
+                const device = { esn: 'ESN123' };
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
+
+                await (configProvider as any).processHostParameter({ host: '', device: device });
+
+                expect((rokuDeploy.getDeviceInfo as any).calledWith({
+                    device: { esn: 'ESN123', rceToken: 'account-token' },
+                    timeout: DeviceManager.RCE_DEVICE_INFO_TIMEOUT_MS
+                })).to.be.true;
+            });
+
+            it('overwrites a config-supplied rceToken with the active account token and warns once', async () => {
+                const device = { esn: 'ESN123', rceToken: 'config-supplied-token' };
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
+                const warningStub = sinon.stub(vscode.window, 'showWarningMessage').resolves(undefined);
+
+                const result = await (configProvider as any).processHostParameter({ host: '', device: device });
+
+                expect(result.device.rceToken).to.equal('account-token');
+                expect(warningStub.calledOnce).to.be.true;
+                expect(warningStub.firstCall.args[0]).to.contain('rceToken');
+            });
+
+            it('warns even when the config-supplied rceToken matches the active account token', async () => {
+                //a real token pasted into launch.json is the exact anti-pattern the policy exists to
+                //discourage (it's now a secret in source control), so a matching token must warn too
+                const device = { esn: 'ESN123', rceToken: 'account-token' };
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
+                const warningStub = sinon.stub(vscode.window, 'showWarningMessage').resolves(undefined);
+
+                const result = await (configProvider as any).processHostParameter({ host: '', device: device });
+
+                expect(result.device.rceToken).to.equal('account-token');
+                expect(warningStub.calledOnce).to.be.true;
+                expect(warningStub.firstCall.args[0]).to.contain('rceToken');
+            });
+
+            it('throws mentioning Cloud Emulator account setup when no account token is available', async () => {
+                rceManager.getToken.resolves(undefined);
+                const device = { esn: 'ESN123' };
+
+                let threw: Error | undefined;
+                try {
+                    await (configProvider as any).processHostParameter({ host: '', device: device });
+                } catch (e) {
+                    threw = e as Error;
+                }
+
+                expect(threw?.message).to.contain('Cloud Emulator account');
+                expect((rokuDeploy.getDeviceInfo as any).called).to.be.false;
+            });
+
+            it('never injects a token into a local device config', async () => {
+                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: { 'serial-number': 'abc123' }, key: 's:abc123' } as any;
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+                sinon.stub(deviceManager, 'validateAndAddDevice').resolves(device);
+
+                const result = await (configProvider as any).processHostParameter({ host: '1.2.3.4' });
+
+                expect(rceManager.getToken.called).to.be.false;
+                expect(result.device).to.eql({ host: '1.2.3.4' });
+            });
+
+            it('sets remoteControlDeviceKey for a resolved LAN host, leaving the active device alone', async () => {
+                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: { 'serial-number': 'abc123' }, key: 's:abc123' } as any;
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+                sinon.stub(deviceManager, 'validateAndAddDevice').resolves(device);
+                //the user's explicit active device must not move on a sideload
+                await vscode.context.workspaceState.update('activeDeviceKey', 's:USER-PICK');
+
+                await (configProvider as any).processHostParameter({ host: '1.2.3.4' });
+
+                expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.equal('s:abc123');
+                expect(vscode.context.workspaceState.get('activeDeviceKey')).to.equal('s:USER-PICK');
+            });
+
+            it('sets remoteControlDeviceKey for a config-provided cloud emulator device', async () => {
+                //no rceToken here - it's always injected from the active Cloud Emulator account, never
+                //config-supplied (see the dedicated rceToken-injection tests below)
+                const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc' };
+                //seed the previous session's remote-control device
+                await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:OLD-LAN-DEVICE');
+                sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns({ key: 'rce:83', rce: { id: 83, status: 'running' } } as any);
+
+                await (configProvider as any).processHostParameter({ host: '', device: device });
+
+                expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.equal('rce:83');
+            });
+
+            it('clears remoteControlDeviceKey when a config-provided cloud emulator device is not known to the device manager', async () => {
+                const device = { esn: 'ESN123' };
+                //seed the previous session's remote-control device - it must not survive underneath this one
+                await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:OLD-LAN-DEVICE');
+                sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns(undefined);
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
+
+                await (configProvider as any).processHostParameter({ host: '', device: device });
+
+                expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.equal('');
+            });
+
+            it('sets remoteControlDeviceKey for a cloud emulator pick from the picker, even when it is not running', async () => {
+                //no rceToken here - it's always injected from the active Cloud Emulator account
+                const device = { id: '84' };
+                await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:OLD-LAN-DEVICE');
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                sinon.stub(userInputManager, 'promptForHost').resolves({
+                    host: undefined,
+                    deviceInfo: undefined,
+                    device: device,
+                    rce: { status: 'shutdown' }
+                } as any);
+                sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns({ key: 'rce:84', rce: { id: 84, status: 'shutdown' } } as any);
+
+                try {
+                    await (configProvider as any).processHostParameter({ host: '' });
+                } catch {
+                    // the friendly not-running error is expected; this test only cares about the identity writes
+                }
+
+                expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.equal('rce:84');
             });
         });
 
@@ -501,6 +824,16 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(config.rootDir).to.equal('processValue');
         });
 
+        it('substitutes placeholders nested inside the device object', async () => {
+            //the substitution pass works over the whole config as a JSON string, so nested values
+            //like device.host must resolve the same way top-level fields do
+            sinon.stub(process, 'env').value({ ...process.env, ROKU_DEV_HOST: '1.2.3.4' });
+            const config = await processEnvVariables(folder, {
+                device: { host: '${env:ROKU_DEV_HOST}' }
+            });
+            expect(config.device).to.eql({ host: '1.2.3.4' });
+        });
+
         it('does not mutate process.env', async () => {
             fsExtra.outputFileSync(`${rootDir}/.env`, `SOME_ENV_FILE_VAR=envFileValue`);
             const envBefore = { ...process.env };
@@ -607,6 +940,9 @@ describe('BrightScriptConfigurationProvider', () => {
             if (device?.serialNumber) {
                 (result as any).deviceInfo = { 'serial-number': device.serialNumber };
             }
+            //simulate the state processHostParameter guarantees: `device` is always normalized
+            //before the password flow runs (a LAN host becomes a {host} device config)
+            (result as any).device ??= { host: (result as any).host };
             return (configProvider as any).processPasswordParameter(config, result);
         };
 
@@ -633,6 +969,50 @@ describe('BrightScriptConfigurationProvider', () => {
 
         afterEach(() => {
             delete (vscode.workspace as any)._configuration?.['brightscript.devices'];
+        });
+
+        it('resolves and validates the password for a cloud emulator device through its device config', async () => {
+            const cloudDevice = { instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'account-token' };
+            const resolveStub = sinon.stub(userInputManager, 'resolveDevicePassword').resolves({ status: 'ok', password: 'cloud-pw' });
+
+            const result: any = { device: cloudDevice, password: '${promptForPassword}', deviceInfo: { 'serial-number': 'ESN123' } };
+            const returned = await (configProvider as any).processPasswordParameter({ password: 'config-pw' }, result);
+
+            expect(returned.password).to.equal('cloud-pw');
+            const args = resolveStub.firstCall.args[0];
+            expect(args.device).to.equal(cloudDevice);
+            expect(args.serialNumber).to.equal('ESN123');
+            expect(args.extraCandidates).to.deep.equal(['${promptForPassword}', 'config-pw']);
+            //the accepted password syncs to the global fallback for cloud sessions too - consumers
+            //only ever offer it as a validated candidate, so it can't misfire across device kinds
+            expect(vscode.context.workspaceState['_data'].remotePassword).to.equal('cloud-pw');
+        });
+
+        it('throws with the device label when a cloud emulator device is unreachable during password resolution', async () => {
+            sinon.stub(userInputManager, 'resolveDevicePassword').resolves({ status: 'unreachable' });
+
+            const result: any = { device: { esn: 'ESN123', rceToken: 'account-token' }, deviceInfo: {} };
+            let error: Error | undefined;
+            try {
+                await (configProvider as any).processPasswordParameter({}, result);
+            } catch (e) {
+                error = e as Error;
+            }
+            expect(error?.message).to.contain('ESN123');
+            expect(error?.message).to.contain('unreachable');
+        });
+
+        it('throws when the password prompt is cancelled for a cloud emulator device', async () => {
+            sinon.stub(userInputManager, 'resolveDevicePassword').resolves({ status: 'cancelled' });
+
+            const result: any = { device: { id: '83', rceToken: 'account-token' }, deviceInfo: {} };
+            let error: Error | undefined;
+            try {
+                await (configProvider as any).processPasswordParameter({}, result);
+            } catch (e) {
+                error = e as Error;
+            }
+            expect(error?.message).to.contain('password is required');
         });
 
         it('accepts the first candidate that validates ok and refreshes the existing cred-store entry', async () => {
