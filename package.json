@@ -605,6 +605,16 @@
                     "command": "extension.brightscript.devicesView.deviceMenu.editInWorkspaceSettings",
                     "when": "view == devicesView && viewItem =~ /-inWorkspace\\b/",
                     "group": "5_settings@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.hideDevice",
+                    "when": "view == devicesView && viewItem =~ /-notHidden\\b/",
+                    "group": "6_visibility@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.unhideDevice",
+                    "when": "view == devicesView && viewItem =~ /-isHidden\\b/",
+                    "group": "6_visibility@1"
                 }
             ],
             "explorer/context": [
@@ -730,6 +740,20 @@
                     "command": "extension.brightscript.devicesView.toggleFilter.cloud.active",
                     "when": "brightscript.devicesView.filter.cloud && brightscript.experimental.rokuCloudEmulator",
                     "group": "5_kind@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.hidden",
+                    "when": "!brightscript.devicesView.filter.hidden",
+                    "group": "6_hidden@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.hidden.active",
+                    "when": "brightscript.devicesView.filter.hidden",
+                    "group": "6_hidden@1"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.unhideAllDevices",
+                    "group": "6_hidden@2"
                 },
                 {
                     "command": "extension.brightscript.devicesView.resetFilters",
@@ -903,6 +927,22 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.deviceMenu.editInWorkspaceSettings",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.hideDevice",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.unhideDevice",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.hidden",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.toggleFilter.hidden.active",
                     "when": "false"
                 }
             ]
@@ -2830,6 +2870,12 @@
                         "default": true,
                         "description": "Show Roku Cloud Emulator devices in the Devices view.",
                         "scope": "application"
+                    },
+                    "brightscript.devicesView.filters.hidden": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Show devices you have hidden in the Devices view. Hide a device by right-clicking it and choosing \"Hide Device\".",
+                        "scope": "application"
                     }
                 }
             },
@@ -2901,6 +2947,12 @@
                         "type": "boolean",
                         "default": true,
                         "description": "Show Roku Cloud Emulator devices in the device quick pick.",
+                        "scope": "application"
+                    },
+                    "brightscript.deviceQuickPick.filters.hidden": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Show devices you have hidden in the device quick pick. Hide a device by right-clicking it in the Devices view and choosing \"Hide Device\".",
                         "scope": "application"
                     }
                 }
@@ -4199,6 +4251,21 @@
                 "category": "BrightScript"
             },
             {
+                "command": "extension.brightscript.devicesView.toggleFilter.hidden",
+                "title": "☐ Hidden",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.toggleFilter.hidden.active",
+                "title": "☑ Hidden",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.unhideAllDevices",
+                "title": "Unhide All Devices",
+                "category": "BrightScript"
+            },
+            {
                 "command": "extension.brightscript.devicesView.resetFilters",
                 "title": "Reset Filters",
                 "category": "BrightScript"
@@ -4351,6 +4418,16 @@
             {
                 "command": "extension.brightscript.devicesView.deviceMenu.editInWorkspaceSettings",
                 "title": "📁 Edit in Workspace Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.hideDevice",
+                "title": "🙈 Hide Device",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.devicesView.deviceMenu.unhideDevice",
+                "title": "👁 Unhide Device",
                 "category": "BrightScript"
             },
             {
