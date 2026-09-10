@@ -12,9 +12,6 @@ const projects = [{
     packageName: '@rokucommunity/logger',
     dependencies: []
 }, {
-    name: 'roku-test-automation',
-    dependencies: []
-}, {
     name: 'roku-deploy',
     dependencies: []
 }, {
@@ -26,6 +23,9 @@ const projects = [{
 }, {
     name: 'brighterscript-formatter',
     dependencies: ['brighterscript']
+}, {
+    name: 'roku-test-automation',
+    dependencies: ['roku-deploy', 'brighterscript']
 }, {
     name: 'vscode-brightscript-language',
     dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy', 'logger', 'roku-test-automation']
@@ -91,7 +91,9 @@ async function processProject(project: Project, branch: string, forkOwner: strin
         //install the dependency into this project
         execSync(`npm i ${dependency.packagePath}`, { cwd: project.name });
     }
-    execSync(`npm i && npm run build && npm pack`, {
+    //--force works around peer-dependency conflicts caused by our fake 9001.0.0-... build versions (e.g. bslint's `brighterscript < 1` peer range).
+    //Actual lint/peer compliance is already verified by each project's own CI, so this is safe for a local vsix build.
+    execSync(`npm i --force && npm run build && npm pack`, {
         cwd: project.name
     });
 
