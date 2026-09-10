@@ -353,7 +353,7 @@ export class UserInputManager {
         const refreshList = () => {
             const filters = loadDeviceFilters(DEVICE_QUICK_PICK_FILTERS_SECTION);
             const items = this.createHostQuickPickList(
-                applyDeviceFilters(this.deviceManager.getAllDevices(), filters),
+                applyDeviceFilters(this.deviceManager.getAllDevices(), filters, this.deviceManager.getHiddenDeviceKeys()),
                 this.deviceManager.getLastUsedDeviceKey(),
                 itemCache
             );

@@ -787,6 +787,43 @@ export class DeviceManager {
         this.lastUsedDeviceKey = value;
     }
 
+    /**
+     * The keys of devices the user has hidden, in the shape `applyDeviceFilters` wants.
+     * Backs the `hidden` filter facet.
+     */
+    public getHiddenDeviceKeys(): ReadonlySet<string> {
+        return new Set(this.globalStateManager.getHiddenDeviceKeys());
+    }
+
+    /**
+     * Hide a device from every device list (the Devices view, the device quick pick, ...).
+     * Persisted globally, so it survives restarts and applies in every window.
+     */
+    public async hideDevice(key: string): Promise<void> {
+        await this.globalStateManager.addHiddenDeviceKey(key);
+        this.emitter.emit('devices-changed');
+    }
+
+    /**
+     * Unhide a single previously-hidden device.
+     */
+    public async unhideDevice(key: string): Promise<void> {
+        await this.globalStateManager.removeHiddenDeviceKey(key);
+        this.emitter.emit('devices-changed');
+    }
+
+    /**
+     * Unhide every hidden device at once.
+     */
+    public async unhideAllDevices(): Promise<void> {
+        await this.globalStateManager.setHiddenDeviceKeys([]);
+        this.emitter.emit('devices-changed');
+    }
+
+    public isDeviceHidden(key: string): boolean {
+        return this.globalStateManager.getHiddenDeviceKeys().includes(key);
+    }
+
     public dispose() {
         this.deactivateMonitoring();
         this.systemSleepMonitor?.dispose?.();
@@ -1255,6 +1292,8 @@ export class DeviceManager {
                 if (this.lastUsedDeviceKey === `i:${oldIp}`) {
                     this.lastUsedDeviceKey = `s:${serialNumber}`;
                 }
+                //a device hidden while it was only known by ip stays hidden under its serial key
+                void this.globalStateManager.migrateHiddenDeviceKey(`i:${oldIp}`, `s:${serialNumber}`);
                 this.discoveredDevices.splice(oldIdx, 1);
             }
         }

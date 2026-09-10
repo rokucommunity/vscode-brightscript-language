@@ -141,7 +141,12 @@ describe('DeviceManager', () => {
             clearSerialNumberByIpForNetwork: sinon.stub().callsFake(() => {
                 ipToSerialMap.clear();
             }),
-            clearExpiredEntriesSerialNumberByIpForNetwork: sinon.stub()
+            clearExpiredEntriesSerialNumberByIpForNetwork: sinon.stub(),
+            getHiddenDeviceKeys: sinon.stub().returns([]),
+            setHiddenDeviceKeys: sinon.stub().resolves(),
+            addHiddenDeviceKey: sinon.stub().resolves(),
+            removeHiddenDeviceKey: sinon.stub().resolves(),
+            migrateHiddenDeviceKey: sinon.stub().resolves()
         };
 
         // Mock vscode configuration

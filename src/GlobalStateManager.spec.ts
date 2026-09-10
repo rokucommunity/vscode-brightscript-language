@@ -402,4 +402,61 @@ describe('GlobalStateManager', () => {
             expect(manager.getSerialNumberForIp('10.0.1.100', networkA)).to.equal('LOCAL123');
         });
     });
+
+    describe('hidden device keys', () => {
+        it('returns an empty list when nothing has been hidden', () => {
+            expect(manager.getHiddenDeviceKeys()).to.deep.equal([]);
+        });
+
+        it('ignores a stored value that is not an array of strings', () => {
+            storage['hiddenDeviceKeys'] = 'not-an-array';
+            expect(manager.getHiddenDeviceKeys()).to.deep.equal([]);
+
+            storage['hiddenDeviceKeys'] = ['s:GOOD', 42, null, 's:ALSO_GOOD'];
+            expect(manager.getHiddenDeviceKeys()).to.deep.equal(['s:GOOD', 's:ALSO_GOOD']);
+        });
+
+        it('adds keys without duplicating them', async () => {
+            await manager.addHiddenDeviceKey('s:ONE');
+            await manager.addHiddenDeviceKey('s:TWO');
+            await manager.addHiddenDeviceKey('s:ONE');
+            expect(manager.getHiddenDeviceKeys()).to.deep.equal(['s:ONE', 's:TWO']);
+        });
+
+        it('removes a single key and leaves the rest', async () => {
+            await manager.setHiddenDeviceKeys(['s:ONE', 's:TWO', 's:THREE']);
+            await manager.removeHiddenDeviceKey('s:TWO');
+            expect(manager.getHiddenDeviceKeys()).to.deep.equal(['s:ONE', 's:THREE']);
+        });
+
+        it('clears the stored key entirely when the list becomes empty', async () => {
+            await manager.setHiddenDeviceKeys(['s:ONE']);
+            await manager.setHiddenDeviceKeys([]);
+            expect(storage['hiddenDeviceKeys']).to.be.undefined;
+            expect(manager.getHiddenDeviceKeys()).to.deep.equal([]);
+        });
+
+        it('dedupes on write', async () => {
+            await manager.setHiddenDeviceKeys(['s:ONE', 's:ONE', 's:TWO']);
+            expect(manager.getHiddenDeviceKeys()).to.deep.equal(['s:ONE', 's:TWO']);
+        });
+
+        it('migrates an ip-based key to the serial key once the serial resolves', async () => {
+            await manager.setHiddenDeviceKeys(['i:192.168.1.5', 's:OTHER']);
+            await manager.migrateHiddenDeviceKey('i:192.168.1.5', 's:RESOLVED');
+            expect(manager.getHiddenDeviceKeys()).to.deep.equal(['s:RESOLVED', 's:OTHER']);
+        });
+
+        it('leaves the list alone when migrating a key that is not hidden', async () => {
+            await manager.setHiddenDeviceKeys(['s:ONE']);
+            await manager.migrateHiddenDeviceKey('i:10.0.0.1', 's:TWO');
+            expect(manager.getHiddenDeviceKeys()).to.deep.equal(['s:ONE']);
+        });
+
+        it('is a no-op when the old and new key are the same', async () => {
+            await manager.setHiddenDeviceKeys(['s:ONE']);
+            await manager.migrateHiddenDeviceKey('s:ONE', 's:ONE');
+            expect(manager.getHiddenDeviceKeys()).to.deep.equal(['s:ONE']);
+        });
+    });
 });

@@ -171,4 +171,42 @@ describe('deviceFilters', () => {
             expect(result.online).to.equal(DEFAULT_DEVICE_FILTERS.online);
         });
     });
+
+    describe('hidden facet', () => {
+        const devices = [
+            { key: 's:VISIBLE', deviceState: 'online', isConfigured: false, deviceInfo: {} },
+            { key: 's:HIDDEN', deviceState: 'online', isConfigured: false, deviceInfo: {} }
+        ] as any[];
+
+        it('excludes hidden devices by default', () => {
+            expect(
+                applyDeviceFilters(devices, DEFAULT_DEVICE_FILTERS, new Set(['s:HIDDEN'])).map(d => d.key)
+            ).to.deep.equal(['s:VISIBLE']);
+        });
+
+        it('includes hidden devices when the hidden facet is on', () => {
+            expect(
+                applyDeviceFilters(devices, { ...DEFAULT_DEVICE_FILTERS, hidden: true }, new Set(['s:HIDDEN'])).map(d => d.key)
+            ).to.deep.equal(['s:VISIBLE', 's:HIDDEN']);
+        });
+
+        it('is a no-op when no hidden keys are supplied', () => {
+            expect(applyDeviceFilters(devices, DEFAULT_DEVICE_FILTERS).map(d => d.key)).to.deep.equal(['s:VISIBLE', 's:HIDDEN']);
+            expect(applyDeviceFilters(devices, DEFAULT_DEVICE_FILTERS, new Set()).map(d => d.key)).to.deep.equal(['s:VISIBLE', 's:HIDDEN']);
+        });
+
+        it('still applies the other facets to a hidden device that is being shown', () => {
+            //hidden is strict-AND with the rest: revealing hidden devices doesn't bypass the offline facet
+            const offlineHidden = [
+                { key: 's:HIDDEN', deviceState: 'offline', isConfigured: false, deviceInfo: {} }
+            ] as any[];
+            expect(
+                applyDeviceFilters(offlineHidden, { ...DEFAULT_DEVICE_FILTERS, hidden: true }, new Set(['s:HIDDEN']))
+            ).to.be.empty;
+        });
+
+        it('defaults the hidden facet to off', () => {
+            expect(DEFAULT_DEVICE_FILTERS.hidden).to.be.false;
+        });
+    });
 });
