@@ -20,6 +20,7 @@ import { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
+import { startJsonLanguageClient } from './JsonLanguageClient';
 import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
@@ -121,6 +122,9 @@ export class Extension {
         const logOutputManager = new LogOutputManager(this.outputChannel, context, docLinkProvider, declarationProvider);
 
         const definitionRepo = new DefinitionRepository(declarationProvider);
+
+        //start a dedicated JSON language server for bsconfig.json / brsconfig.json (independent of the BrighterScript LSP)
+        context.subscriptions.push(startJsonLanguageClient(context));
 
         //initialize the LanguageServerManager
         void languageServerManager.init(context, definitionRepo, localPackageManager);
