@@ -8,23 +8,27 @@ const tempDir = s`${__dirname}/../.vsix-building`;
 const orgName = 'rokucommunity';
 const baseUrl = `https://github.com/${orgName}`;
 const projects = [{
+    name: 'logger',
+    packageName: '@rokucommunity/logger',
+    dependencies: []
+}, {
     name: 'roku-deploy',
     dependencies: []
 }, {
     name: 'brighterscript',
-    dependencies: ['roku-deploy']
+    dependencies: ['roku-deploy', 'logger']
 }, {
     name: 'roku-debug',
-    dependencies: ['roku-deploy', 'brighterscript']
+    dependencies: ['roku-deploy', 'brighterscript', 'logger']
 }, {
     name: 'brighterscript-formatter',
     dependencies: ['brighterscript']
 }, {
     name: 'roku-test-automation',
-    dependencies: ['roku-deploy']
+    dependencies: ['roku-deploy', 'brighterscript']
 }, {
     name: 'vscode-brightscript-language',
-    dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy', 'roku-test-automation']
+    dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy', 'logger', 'roku-test-automation']
 }] as Project[];
 
 async function main() {
@@ -121,11 +125,15 @@ async function processProject(project: Project, branch: string, forkOwner: strin
             execSync(`npm i ${dependency.packagePath}`, { cwd: project.name });
         }
     }
-    execSync(`npm i && npm run build && npm pack`, {
+    //--force works around peer-dependency conflicts caused by our fake 9001.0.0-... build versions (e.g. bslint's `brighterscript < 1` peer range).
+    //Actual lint/peer compliance is already verified by each project's own CI, so this is safe for a local vsix build.
+    execSync(`npm i --force && npm run build && npm pack`, {
         cwd: project.name
     });
 
-    project.packagePath = `file:/${tempDir}/${project.name}/${project.name}-${buildVersion}.tgz`;
+    //`npm pack` names the tarball after the package.json `name` field (scopes become dashes, e.g. `@rokucommunity/logger` -> `rokucommunity-logger-<version>.tgz`)
+    const tarballName = (project.packageName ?? project.name).replace(/^@/, '').replace('/', '-');
+    project.packagePath = `file:/${tempDir}/${project.name}/${tarballName}-${buildVersion}.tgz`;
     project.source = ref.source;
     if (ref.sha) {
         project.sha = `[${ref.sha.slice(0, 7)}](${ref.commitUrl})`;
@@ -216,7 +224,14 @@ async function findOpenPr(repoName: string, owner: string, branch: string) {
 }
 
 interface Project {
+    /**
+     * The name of the GitHub repo, e.g. `logger` for https://github.com/rokucommunity/logger
+     */
     name: string;
+    /**
+     * The published npm package name, if different from the repo name, e.g. `@rokucommunity/logger`
+     */
+    packageName?: string;
     dependencies: string[];
     packagePath?: string;
     source?: string;
