@@ -514,8 +514,6 @@ export class Extension {
                     address: address,
                     port: port,
                     timeout: 2_000, // Shorter timeout for retry loop
-                    //TEMP diagnostic: write js-debug's full DAP/CDP log to the VS Code logs dir
-                    trace: true,
                     //Hermes advertises a "Remote Process" child target; js-debug's node
                     //process-tree machinery attaches to it with an extra inspector connection,
                     //which drops the original CDP connection (single debug client). We only ever

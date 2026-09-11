@@ -209,12 +209,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * `packageUploadOverrides.formData` without clobbering other keys or an explicit `inspect` value.
      */
     private applyInspectMode(config: BrightScriptLaunchConfiguration) {
-        //TEMP diagnostic: skip inspect-mode injection to test whether the RCE render watchdog
-        //still kills the app when Hermes is not held at startup
-        if (Date.now() > 0) {
-            this.extensionOutputChannel.appendLine(`[inspect] TEMP-DISABLED for RCE watchdog test`);
-            return;
-        }
         //escape hatch (launch.json or the `brightscript.debug.waitForJsDebugger` user setting)
         if (config.waitForJsDebugger === false) {
             this.extensionOutputChannel.appendLine(`[inspect] skipped: waitForJsDebugger is false`);
