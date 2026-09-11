@@ -89,6 +89,10 @@ describe('DevicesViewProvider', () => {
 
     function createProvider(devices: any[], options?: { storedPasswords?: Record<string, string> }) {
         const emitter = new EventEmitter();
+        //a real pending-set implementation backs the fake so the take/fulfill semantics are
+        //exercised for real; execution routes to the broadcast/reconcile stubs below
+        const pendingBroadcastReasons = new Set<string>();
+        const pendingReconcileReasons = new Set<string>();
         const deviceManager: any = {
             on: (event: string, handler: any) => emitter.on(event, handler),
             getAllDevices: () => devices,
@@ -98,8 +102,36 @@ describe('DevicesViewProvider', () => {
             getWebPortalUrl: (device: any) => (device.rce ? `https://developer.roku.com/cloud-emulator-bff/devices/${device.rce.id}/sideload/` : `http://${device.ip}`),
             getIconPath: () => undefined,
             hasDeviceCache: () => false,
-            refresh: () => undefined,
-            healthCheckDevice: () => Promise.resolve()
+            healthCheckDevice: () => Promise.resolve(true),
+            broadcast: sinon.stub().returns(true),
+            reconcile: sinon.stub(),
+            submitOrders: (orders: Array<{ type: string; reason: string }>) => {
+                for (const order of orders) {
+                    (order.type === 'broadcast' ? pendingBroadcastReasons : pendingReconcileReasons).add(order.reason);
+                    emitter.emit('order-submitted', { ...order, timestamp: Date.now() });
+                }
+            },
+            getPendingBroadcastReasons: () => [...pendingBroadcastReasons],
+            getPendingReconcileReasons: () => [...pendingReconcileReasons],
+            fulfillOrders: (fulfillOptions: { types: string[]; except?: string[] }) => {
+                const taken: Array<{ type: string; reasons: string[] }> = [];
+                for (const type of fulfillOptions.types) {
+                    const set = type === 'broadcast' ? pendingBroadcastReasons : pendingReconcileReasons;
+                    const triggers = [...set].filter(x => !fulfillOptions.except?.includes(x));
+                    if (triggers.length === 0) {
+                        continue;
+                    }
+                    const reasons = [...set];
+                    set.clear();
+                    taken.push({ type: type, reasons: reasons });
+                    if (type === 'broadcast') {
+                        deviceManager.broadcast(reasons);
+                    } else {
+                        deviceManager.reconcile(reasons);
+                    }
+                }
+                return taken;
+            }
         };
         const credentialStore: any = {
             on: () => undefined,
@@ -531,6 +563,132 @@ describe('DevicesViewProvider', () => {
             });
 
             expect(treeChanged.called).to.be.false;
+        });
+    });
+
+    describe('order fulfillment', () => {
+        it('fulfills a live non-stale broadcast order while visible', () => {
+            const { provider, deviceManager } = createProvider([]);
+            provider['visible'] = true;
+
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
+
+            expect(deviceManager.broadcast.calledOnceWith(['network'])).to.be.true;
+            expect(deviceManager.getPendingBroadcastReasons()).to.be.empty;
+        });
+
+        it('fulfills live reconcile orders, passing the reasons through', () => {
+            const { provider, deviceManager } = createProvider([]);
+            provider['visible'] = true;
+
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'config-changed' }]);
+            expect(deviceManager.reconcile.calledOnceWith(['config-changed'])).to.be.true;
+
+            deviceManager.reconcile.resetHistory();
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'refresh-clicked' }]);
+            expect(deviceManager.reconcile.calledOnceWith(['refresh-clicked'])).to.be.true;
+        });
+
+        it('ignores live stale orders while visible, leaving them pending', () => {
+            const { provider, deviceManager } = createProvider([]);
+            provider['visible'] = true;
+
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'stale' }]);
+
+            expect(deviceManager.broadcast.called).to.be.false;
+            expect(deviceManager.reconcile.called).to.be.false;
+            expect(deviceManager.getPendingBroadcastReasons()).to.include('stale');
+            expect(deviceManager.getPendingReconcileReasons()).to.include('stale');
+        });
+
+        it('leaves live orders pending while hidden', () => {
+            const { deviceManager } = createProvider([]);
+
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'sleep' }]);
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'sleep' }]);
+
+            expect(deviceManager.broadcast.called).to.be.false;
+            expect(deviceManager.reconcile.called).to.be.false;
+            expect(deviceManager.getPendingBroadcastReasons()).to.include('sleep');
+            expect(deviceManager.getPendingReconcileReasons()).to.include('sleep');
+        });
+
+        //a minimal TreeView fake: enough for setTreeView to register handlers and for tests to
+        //toggle visibility through the real onDidChangeVisibility path
+        function createTreeView(visible: boolean) {
+            const emitter = new EventEmitter();
+            const treeView = {
+                visible: visible,
+                onDidChangeVisibility: (cb: (e: { visible: boolean }) => void) => emitter.on('visibility', cb),
+                onDidExpandElement: () => undefined
+            } as any;
+            return {
+                treeView: treeView,
+                setVisible: (value: boolean) => {
+                    treeView.visible = value;
+                    emitter.emit('visibility', { visible: value });
+                }
+            };
+        }
+
+        it('fulfills orders queued while hidden when the panel becomes visible (ALL reasons)', () => {
+            const { provider, deviceManager } = createProvider([]);
+            const { treeView, setVisible } = createTreeView(false);
+            provider.setTreeView(treeView);
+
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'refresh-clicked' }]);
+
+            setVisible(true);
+
+            expect(deviceManager.broadcast.calledOnceWith(['network'])).to.be.true;
+            expect(deviceManager.reconcile.calledOnceWith(['refresh-clicked'])).to.be.true;
+            expect(deviceManager.getPendingBroadcastReasons()).to.be.empty;
+            expect(deviceManager.getPendingReconcileReasons()).to.be.empty;
+        });
+
+        it('consumes queued startup orders when the panel is already open at activation', () => {
+            const { provider, deviceManager } = createProvider([]);
+
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'startup' }]);
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'startup' }]);
+
+            //panel already visible when setTreeView runs — the startup sync path fulfills
+            provider.setTreeView(createTreeView(true).treeView);
+
+            expect(deviceManager.broadcast.calledOnceWith(['startup'])).to.be.true;
+            expect(deviceManager.reconcile.calledOnceWith(['startup'])).to.be.true;
+        });
+
+        it('fulfills a queued stale broadcast on open with its reason intact (staleness-gated inside)', () => {
+            const { provider, deviceManager } = createProvider([]);
+            const { treeView, setVisible } = createTreeView(false);
+            provider.setTreeView(treeView);
+
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+
+            setVisible(true);
+
+            expect(deviceManager.broadcast.calledOnceWith(['stale'])).to.be.true;
+        });
+
+        it('accumulated reasons are fulfilled together in one execution', () => {
+            const { provider, deviceManager } = createProvider([]);
+            const { treeView, setVisible } = createTreeView(false);
+            provider.setTreeView(treeView);
+
+            //multiple triggers fire while no view is visible — each queues its own reason
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'sleep' }]);
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
+
+            setVisible(true);
+
+            //one scan satisfies all of them
+            expect(deviceManager.broadcast.calledOnce).to.be.true;
+            expect(deviceManager.broadcast.firstCall.args[0]).to.have.members(['stale', 'sleep', 'network']);
+            expect(deviceManager.getPendingBroadcastReasons()).to.be.empty;
         });
     });
 });

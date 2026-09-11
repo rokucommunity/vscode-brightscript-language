@@ -48,6 +48,12 @@ export class UserInputManager {
         private credentialStore: CredentialStore
     ) { }
 
+    /**
+     * How long the picker waits after open with no broadcast before fulfilling any pending
+     * order (including `stale`) as a routine freshness fallback. Overridable for tests.
+     */
+    private scanTimeoutMs = 7_000;
+
     public async promptForHostManual(): Promise<HostWithDeviceInfo | undefined> {
         while (true) {
             const value = await vscode.window.showInputBox({
@@ -234,25 +240,40 @@ export class UserInputManager {
             setBusy(false);
         }, disposables);
 
-        const scanTimeoutMs = 7_000;
         let scanTimeoutId: NodeJS.Timeout | null = null;
-        let hasScanned = this.deviceManager.scan();
-        this.deviceManager.on('scanNeeded-changed', () => {
-            hasScanned = true;
-            if (scanTimeoutId) {
-                clearTimeout(scanTimeoutId);
-                scanTimeoutId = null;
+
+        //on open: fulfill queued real orders. `stale` is left alone - routine freshness is the
+        //fallback's job (below), so opening the picker never scans the network by itself
+        let hasScanned = this.deviceManager.fulfillOrders({ types: ['broadcast', 'reconcile'], except: ['stale'] })
+            .some(taken => taken.type === 'broadcast');
+
+        this.deviceManager.on('order-submitted', (order) => {
+            //a real broadcast means a scan is happening - the fallback isn't needed
+            if (order.type === 'broadcast' && order.reason !== 'stale') {
+                hasScanned = true;
+                if (scanTimeoutId) {
+                    clearTimeout(scanTimeoutId);
+                    scanTimeoutId = null;
+                }
             }
-            this.deviceManager.scan();
+            this.deviceManager.fulfillOrders({ types: [order.type], except: ['stale'] });
         }, disposables);
+
         scanTimeoutId = setTimeout(() => {
             if (hasScanned) {
                 return;
             }
-            this.deviceManager.scan();
-        }, scanTimeoutMs);
+            //nothing scanned since the picker opened - fulfill any pending broadcast, `stale`
+            //included (its fulfillment is staleness-gated, so this never over-scans)
+            this.deviceManager.fulfillOrders({ types: ['broadcast'] });
+        }, this.scanTimeoutMs);
 
         function dispose() {
+            //the fallback timer must not outlive the picker
+            if (scanTimeoutId) {
+                clearTimeout(scanTimeoutId);
+                scanTimeoutId = null;
+            }
             for (const disposable of disposables) {
                 disposable.dispose();
             }
@@ -266,7 +287,10 @@ export class UserInputManager {
                     if (selectedDevice.label === manualLabel) {
                         deferred.resolve({ manual: true });
                     } else if (selectedDevice.label === scanForDevicesLabel) {
-                        this.deviceManager.refresh(true);
+                        this.deviceManager.submitOrders([
+                            { type: 'broadcast', reason: 'refresh-clicked' },
+                            { type: 'reconcile', reason: 'refresh-clicked' }
+                        ]);
                         return;
                     } else {
                         const device = (selectedDevice as any).device as RokuDevice;
@@ -430,9 +454,12 @@ export class UserInputManager {
 
         quickPick.onDidTriggerButton(button => {
             if (button.tooltip === SCAN_FOR_DEVICES) {
-                this.deviceManager.refresh(true);
+                this.deviceManager.submitOrders([
+                    { type: 'broadcast', reason: 'refresh-clicked' },
+                    { type: 'reconcile', reason: 'refresh-clicked' }
+                ]);
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
-                this.deviceManager.clearCurrentDeviceList().catch(() => { });
+                this.deviceManager.clearCurrentDeviceList();
                 void util.showTimedNotification('Clearing device list');
             } else if (button.tooltip === ENABLE_DEVICE_DISCOVERY) {
                 void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);

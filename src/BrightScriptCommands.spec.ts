@@ -97,6 +97,43 @@ describe('BrightScriptFileUtils ', () => {
         });
     });
 
+    describe('refreshDeviceList / rescanDevices', () => {
+        let capturedCommands: Record<string, (...args: any[]) => any>;
+        let deviceManager: any;
+
+        beforeEach(() => {
+            deviceManager = {
+                submitOrders: sinon.stub(),
+                broadcast: sinon.stub(),
+                reconcile: sinon.stub()
+            };
+            const localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any, {} as any);
+            capturedCommands = {};
+            sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
+                capturedCommands[name] = cb;
+            });
+            localCommands.registerCommands();
+        });
+
+        afterEach(() => {
+            (vscode.commands.registerCommand as any).restore();
+        });
+
+        it('refreshDeviceList submits refresh orders instead of scanning directly', () => {
+            capturedCommands['extension.brightscript.refreshDeviceList']();
+            assert.isTrue(deviceManager.submitOrders.calledOnceWith([{ type: 'broadcast', reason: 'refresh-clicked' }, { type: 'reconcile', reason: 'refresh-clicked' }]));
+            assert.isTrue(deviceManager.broadcast.notCalled);
+            assert.isTrue(deviceManager.reconcile.notCalled);
+        });
+
+        it('rescanDevices submits refresh orders instead of scanning directly', () => {
+            capturedCommands['extension.brightscript.rescanDevices']();
+            assert.isTrue(deviceManager.submitOrders.calledOnceWith([{ type: 'broadcast', reason: 'refresh-clicked' }, { type: 'reconcile', reason: 'refresh-clicked' }]));
+            assert.isTrue(deviceManager.broadcast.notCalled);
+            assert.isTrue(deviceManager.reconcile.notCalled);
+        });
+    });
+
     describe('setDefaultDevicePassword', () => {
         let localCommands: BrightScriptCommands;
         let capturedCommands: Record<string, (...args: any[]) => any>;

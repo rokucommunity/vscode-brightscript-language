@@ -269,9 +269,9 @@ describe('UserInputManager', () => {
     });
 
     describe('promptForHost', () => {
-        it('calls scan() instead of refresh() when picker opens', async () => {
-            const scanSpy = sinon.spy(deviceManager, 'scan');
-            const refreshSpy = sinon.spy(deviceManager, 'refresh');
+        it('does not scan or reconcile on open when no orders are pending', async () => {
+            const broadcastSpy = sinon.spy(deviceManager as any, 'broadcast');
+            const reconcileSpy = sinon.spy(deviceManager as any, 'reconcile');
 
             // Capture the quickPick instance when created
             let quickPick: any;
@@ -289,11 +289,174 @@ describe('UserInputManager', () => {
                 setTimeout(resolve, 10);
             });
 
-            // Verify scan was called, not refresh
-            expect(scanSpy.called).to.be.true;
-            expect(refreshSpy.called).to.be.false;
+            // Opening the picker is not itself a reason to hit the network
+            expect(broadcastSpy.called).to.be.false;
+            expect(reconcileSpy.called).to.be.false;
 
             // Clean up by hiding the quickpick (triggers rejection)
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('fulfills a queued non-stale broadcast order when the picker opens', async () => {
+            //stub (not spy) so no real RokuFinder scan with real timers starts
+            const broadcastStub = sinon.stub(deviceManager as any, 'broadcast').returns(true);
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            //queue a broadcast order as if the network changed while no view was visible
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'network' }]);
+
+            const promptPromise = userInputManager.promptForHost();
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            expect(broadcastStub.calledOnceWith(['network'])).to.be.true;
+            expect(deviceManager.getPendingBroadcastReasons()).to.be.empty;
+
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('leaves a queued stale broadcast untouched on open, then the 7s fallback fulfills it (staleness-gated)', async () => {
+            //stub (not spy): this test is about order consumption, not the scan machinery —
+            //don't start a real RokuFinder scan with real timers
+            const broadcastStub = sinon.stub(deviceManager as any, 'broadcast').returns(false);
+            //shrink the 7s fallback so the test can wait it out with real timers
+            userInputManager['scanTimeoutMs'] = 20;
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            //the 30-minute timer queued a routine freshness order while no view was visible
+            deviceManager.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+
+            const promptPromise = userInputManager.promptForHost();
+
+            //opening the picker does NOT consume the stale order — routine freshness is
+            //the fallback's job, so a fresh open causes no immediate network activity
+            expect(deviceManager.getPendingBroadcastReasons()).to.include('stale');
+            expect(broadcastStub.called).to.be.false;
+
+            //once the picker has been open past the fallback window with no broadcast, the
+            //fallback fulfills everything pending — the queued stale order reaches broadcast
+            //with its reason, so the staleness gate decides whether a scan actually happens
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 50);
+            });
+            expect(deviceManager.getPendingBroadcastReasons()).to.be.empty;
+            expect(broadcastStub.calledOnceWith(['stale'])).to.be.true;
+
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('7s fallback does nothing when no orders are pending', async () => {
+            const broadcastStub = sinon.stub(deviceManager as any, 'broadcast').returns(false);
+            userInputManager['scanTimeoutMs'] = 20;
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            const promptPromise = userInputManager.promptForHost();
+            expect(broadcastStub.called).to.be.false;
+
+            //nothing queued → nothing to fulfill → no network activity
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 50);
+            });
+            expect(broadcastStub.called).to.be.false;
+
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('fulfills a queued non-stale reconcile order when the picker opens', async () => {
+            const reconcileSpy = sinon.spy(deviceManager as any, 'reconcile');
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            //queue a reconcile order as if the network changed while no view was visible
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'network' }]);
+
+            const promptPromise = userInputManager.promptForHost();
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            expect(reconcileSpy.calledOnce).to.be.true;
+            expect(reconcileSpy.firstCall.args[0]).to.eql(['network']);
+            expect(deviceManager.getPendingReconcileReasons()).to.be.empty;
+
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('leaves a queued stale reconcile order untouched when the picker opens', async () => {
+            const reconcileSpy = sinon.spy(deviceManager as any, 'reconcile');
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'stale' }]);
+
+            const promptPromise = userInputManager.promptForHost();
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            expect(reconcileSpy.called).to.be.false;
+            expect(deviceManager.getPendingReconcileReasons()).to.include('stale');
+
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+
+        it('fulfills a live non-stale reconcile order while the picker is open', async () => {
+            const reconcileSpy = sinon.spy(deviceManager as any, 'reconcile');
+
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            const promptPromise = userInputManager.promptForHost();
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+            expect(reconcileSpy.called).to.be.false;
+
+            //a trigger fires while the picker is open
+            deviceManager.submitOrders([{ type: 'reconcile', reason: 'sleep' }]);
+
+            expect(reconcileSpy.calledOnce).to.be.true;
+            expect(deviceManager.getPendingReconcileReasons()).to.be.empty;
+
             quickPick?.hide();
             await promptPromise.catch(() => { });
         });

@@ -74,11 +74,12 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         // Seed the context from the persisted active device so the indicator survives a window reload
         void vscodeContextManager.set('activeDeviceKey', this.context.workspaceState.get('activeDeviceKey') ?? '');
 
-        this.deviceManager.on('scanNeeded-changed', () => {
+        //while visible, fulfill live orders as they arrive (except timer-driven `stale` ones)
+        this.deviceManager.on('order-submitted', (order) => {
             if (!this.visible) {
                 return;
             }
-            this.deviceManager.refresh();
+            this.deviceManager.fulfillOrders({ types: [order.type], except: ['stale'] });
         });
 
         // Re-render when a device's stored password changes so the Clear item appears/disappears
@@ -96,13 +97,21 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private scanProgressResolver: (() => void) | null = null;
 
     public setTreeView(treeView: vscode.TreeView<vscode.TreeItem>) {
+        //on open, fulfill orders queued while hidden (every reason)
         treeView.onDidChangeVisibility(e => {
             this.visible = e.visible;
             if (!this.visible) {
                 return;
             }
-            this.deviceManager.refresh();
+            this.deviceManager.fulfillOrders({ types: ['broadcast', 'reconcile'] });
         });
+
+        //onDidChangeVisibility only fires on changes - if the panel is already open at
+        //activation, sync now and consume any queued startup orders
+        this.visible = treeView.visible;
+        if (this.visible) {
+            this.deviceManager.fulfillOrders({ types: ['broadcast', 'reconcile'] });
+        }
 
         // Health check device when expanded (not on every getChildren/devices-changed)
         treeView.onDidExpandElement(e => {

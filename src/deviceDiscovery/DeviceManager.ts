@@ -7,6 +7,8 @@ import type { RceFinder } from './RceFinder';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
+import { Orders } from './Orders';
+import type { Order, OrderType, SubmittedOrder, TakenOrders, BroadcastReason, ReconcileReason } from './Orders';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
@@ -124,8 +126,10 @@ export class DeviceManager {
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
                 if (this.deviceDiscoveryEnabled) {
-                    //emit that we need a scan (will trigger UI to refresh and show devices as needed when enabled)
-                    this.setScanNeeded(true);
+                    this.submitOrders([
+                        { type: 'broadcast', reason: 'startup' },
+                        { type: 'reconcile', reason: 'startup' }
+                    ]);
                     this.systemSleepMonitor.start();
                     void this.activateMonitoring();
                 } else {
@@ -139,11 +143,11 @@ export class DeviceManager {
                 this.emitDevicesChanged();
             }
 
-            //if the `devices` setting was changed, re-apply configured devices and health check them
+            //if the `devices` setting was changed, re-apply configured devices immediately (cheap,
+            //local) and order a health check for the views to fulfill when one is visible
             if (event?.affectsConfiguration('brightscript.devices')) {
-                this.loadConfiguredDevices().then(() => {
-                    return this.healthCheckAllDevices(false, true);
-                }).catch(() => { });
+                this.loadConfiguredDevices().catch(() => { });
+                this.submitOrders([{ type: 'reconcile', reason: 'config-changed' }]);
             }
 
             //if the `defaultDevicePassword` setting was changed, refresh any device views that rely on it
@@ -171,7 +175,10 @@ export class DeviceManager {
 
     private setupMonitors() {
         this.systemSleepMonitor = new SystemSleepMonitor(() => {
-            this.setScanNeeded();
+            this.submitOrders([
+                { type: 'broadcast', reason: 'sleep' },
+                { type: 'reconcile', reason: 'sleep' }
+            ]);
         });
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
@@ -189,8 +196,10 @@ export class DeviceManager {
 
             this.restartRokuFinder();
 
-            //this is important for telling the devices view to refresh and health check its devices
-            this.setScanNeeded();
+            this.submitOrders([
+                { type: 'broadcast', reason: 'network' },
+                { type: 'reconcile', reason: 'network' }
+            ]);
         });
     }
 
@@ -209,14 +218,13 @@ export class DeviceManager {
             // Sleep monitor runs all the time when enabled (ignores focus state)
             this.systemSleepMonitor.start();
 
-            this.activateMonitoring().then(() => {
-                const lastSeenDeviceIds = this.globalStateManager.getLastSeenDevices(this.networkId);
-                if (lastSeenDeviceIds.length === 0) {
-                    this.refresh();
-                } else {
-                    this.setScanNeeded();
-                }
-            }).catch((e) => {
+            //no proactive scan here, even on a cold cache - orders queue until a view is visible
+            this.submitOrders([
+                { type: 'broadcast', reason: 'startup' },
+                { type: 'reconcile', reason: 'startup' }
+            ]);
+
+            this.activateMonitoring().catch((e) => {
                 console.error(e);
             });
         }
@@ -227,9 +235,15 @@ export class DeviceManager {
     private configuredDevices: ConfiguredDeviceEntry[] = [];
     private discoveredDevices: DiscoveredDeviceEntry[] = [];
     private rceDevices: RceDeviceEntry[] = [];
-    private scanNeeded = false;
     private lastUsedDeviceKey: string | undefined = undefined;
     private networkId: string;
+
+    // Orders (see docs/device-discovery.md "Orders")
+    private orders = new Orders((order, timestamp) => {
+        this.emitter.emit('order-submitted', { ...order, timestamp: timestamp });
+    });
+    private broadcastStaleTimer: ReturnType<typeof setInterval> | undefined;
+    private reconcileStaleTimer: ReturnType<typeof setInterval> | undefined;
 
     private emitter = new EventEmitter();
     private systemSleepMonitor: SystemSleepMonitor;
@@ -250,14 +264,17 @@ export class DeviceManager {
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
     private deviceOnlineNotifiers = new Map<string, ReturnType<typeof debounce>>();
 
-    // Scan state management
+    // Scan state management. STALE_SCAN_THRESHOLD_MS is both the stale-only broadcast gate
+    // and the stale broadcast timer interval
     private readonly STALE_SCAN_THRESHOLD_MS = 30 * 60 * 1_000; // 30 minutes
+    private readonly STALE_RECONCILE_INTERVAL_MS = 5 * 60 * 1_000; // 5 minutes
+    private readonly UNHEALTHY_BROADCAST_MIN_INTERVAL_MS = 60_000; // 1 minute - suppress unhealthy-device orders this soon after a scan
     private lastScanDate: Date | null = null;
 
     public on(eventName: 'devices-changed', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'scan-started', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'scan-ended', handler: () => void, disposables?: Disposable[]): () => void;
-    public on(eventName: 'scanNeeded-changed', handler: () => void, disposables?: Disposable[]): () => void;
+    public on(eventName: 'order-submitted', handler: (order: SubmittedOrder) => void, disposables?: Disposable[]): () => void;
     public on(eventName: string, handler: (payload: any) => void, disposables?: Disposable[]): () => void {
         this.emitter.on(eventName, handler);
         const unsubscribe = () => {
@@ -652,36 +669,90 @@ export class DeviceManager {
         return !!this.globalStateManager.getCachedDevice(serialNumber);
     }
 
+    // #region Orders (docs/device-discovery.md "Orders" / "When are orders submitted?")
     /**
-     * Re-scan the network for devices and health-check existing ones
+     * Submit orders. Emits `order-submitted` so a visible view can fulfill immediately;
+     * hidden views drain the pending sets when they open.
      */
-    public refresh(force = false, doSyntheticDelay = true): boolean {
-        this.healthCheckAllDevices(force, doSyntheticDelay).catch(() => { });
-        // Block automatic scans when device discovery is disabled
-        if (!force && !this.deviceDiscoveryEnabled) {
-            return false;
-        }
-        return this.discoverAll(force);
+    public submitOrders(orders: Order[]): void {
+        this.orders.submit(orders);
+    }
+
+    public getPendingBroadcastReasons(): BroadcastReason[] {
+        return this.orders.getPending('broadcast');
+    }
+
+    public getPendingReconcileReasons(): ReconcileReason[] {
+        return this.orders.getPending('reconcile');
     }
 
     /**
-     * Trigger a network scan for devices without health checking existing devices.
-     * Use this when you just want to discover new devices without verifying existing ones.
-     * @param force - If true, scan even if deviceDiscovery is disabled
-     * @returns true if a scan was started, false otherwise
+     * Atomically consume and execute pending orders (see {@link Orders.take} for the
+     * types/except semantics). Returns what was taken and executed.
      */
-    public scan(force = false): boolean {
-        if (!force && !this.deviceDiscoveryEnabled) {
-            return false;
+    public fulfillOrders(options: { types: OrderType[]; except?: Array<BroadcastReason | ReconcileReason> }): TakenOrders[] {
+        const taken = this.orders.take(options);
+        for (const orders of taken) {
+            if (orders.type === 'broadcast') {
+                this.broadcast(orders.reasons);
+            } else {
+                this.reconcile(orders.reasons);
+            }
         }
-        return this.discoverAll(force);
+        return taken;
     }
+
+    /**
+     * Broadcast an SSDP M-SEARCH to discover devices on the network.
+     * @returns true if a scan was started
+     */
+    private broadcast(reasons: BroadcastReason[]): boolean {
+        //a stale-only fulfillment is just a freshness hint - skip unless discovery is enabled
+        //and the last scan is old
+        const staleOnly = reasons.every(x => x === 'stale');
+        if (staleOnly) {
+            if (!this.deviceDiscoveryEnabled || this.timeSinceLastScan <= this.STALE_SCAN_THRESHOLD_MS) {
+                return false;
+            }
+        }
+        this.lastScanDate = new Date();
+        this.finder.scan();
+        void this.rceFinder?.scan();
+        return true;
+    }
+
+    /**
+     * Health-check every known device (configured + discovered), marking them online/offline.
+     * Only an explicit user refresh bypasses each device's cache trust window.
+     */
+    private reconcile(reasons: ReconcileReason[]): void {
+        //an explicit user refresh demands fresh data (force bypasses the device-info cache)
+        const force = reasons.includes('refresh-clicked');
+        this.healthCheckAllDevices(force).catch((e) => {
+            console.error('[DeviceManager] reconcile health check failed', e);
+        });
+    }
+
+    /**
+     * Submit an `unhealthy-device` broadcast order. Rate-limited - this is the terminating
+     * guard for the scan → health-check → fail → scan feedback loop.
+     */
+    private submitUnhealthyDeviceBroadcast(): void {
+        if (!this.deviceDiscoveryEnabled) {
+            return;
+        }
+        if (this.timeSinceLastScan < this.UNHEALTHY_BROADCAST_MIN_INTERVAL_MS) {
+            return;
+        }
+        this.submitOrders([{ type: 'broadcast', reason: 'unhealthy-device' }]);
+    }
+    // #endregion
 
     /**
      * Clear discovered devices from the device list, keeping configured devices.
      * Useful for refreshing the network scan without losing user-configured devices.
      */
-    public async clearCurrentDeviceList() {
+    public clearCurrentDeviceList(): void {
         // Clear discovered devices (ephemeral)
         this.discoveredDevices = [];
 
@@ -695,9 +766,8 @@ export class DeviceManager {
         //clear the cache for the current list of devices
         this.globalStateManager.setLastSeenDevices(this.networkId, []);
 
-        await this.healthCheckAllDevices(false, false).catch(() => { });
+        this.submitOrders([{ type: 'reconcile', reason: 'refresh-clicked' }]);
         this.emitDevicesChanged();
-
     }
 
     public clearAllCache() {
@@ -721,7 +791,7 @@ export class DeviceManager {
         }
 
         // Clear discovered devices (state goes with them)
-        this.clearCurrentDeviceList().catch(() => { });
+        this.clearCurrentDeviceList();
     }
 
     public async healthCheckDevice(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }, force = false, doSyntheticDelay = true): Promise<boolean> {
@@ -745,8 +815,8 @@ export class DeviceManager {
         // Cooldown is handled by fetchDeviceInfo cache; force bypasses it
         const isHealthy = await this.resolveDevice(device, doSyntheticDelay, force);
         if (!isHealthy && device.isDiscovered) {
-            // force a scan if passive scan is permitted
-            this.refresh(this.deviceDiscoveryEnabled);
+            //a discovered device went dark - order a rescan for the views to fulfill
+            this.submitUnhealthyDeviceBroadcast();
         }
         return isHealthy;
     }
@@ -1150,7 +1220,8 @@ export class DeviceManager {
         await rceScan;
 
         if (needsScan) {
-            this.discoverAll(this.deviceDiscoveryEnabled);
+            //a discovered device went dark - order a rescan for the views to fulfill
+            this.submitUnhealthyDeviceBroadcast();
         }
     }
 
@@ -1220,21 +1291,6 @@ export class DeviceManager {
             return undefined;
         }
     }
-
-    /**
-     * Discover all Roku devices on the network and watch for new ones that connect
-     */
-    private discoverAll(force: boolean): boolean {
-        if (force || this.scanNeeded || this.timeSinceLastScan > this.STALE_SCAN_THRESHOLD_MS) {
-            this.scanNeeded = false;
-            this.lastScanDate = new Date();
-            this.finder.scan();
-            void this.rceFinder?.scan();
-            return true;
-        }
-        return false;
-    }
-
 
     /**
      * Add or update a device in the discoveredDevices array.
@@ -1534,13 +1590,37 @@ export class DeviceManager {
     private async activateMonitoring() {
         this.networkChangeMonitor.start();
         this.rceFinder?.start();
+
+        //periodically submit `stale` orders so long-lived sessions eventually refresh
+        this.stopStaleTimers();
+        this.broadcastStaleTimer = setInterval(() => {
+            this.submitOrders([{ type: 'broadcast', reason: 'stale' }]);
+        }, this.STALE_SCAN_THRESHOLD_MS);
+        this.reconcileStaleTimer = setInterval(() => {
+            this.submitOrders([{ type: 'reconcile', reason: 'stale' }]);
+        }, this.STALE_RECONCILE_INTERVAL_MS);
+        this.broadcastStaleTimer?.unref?.();
+        this.reconcileStaleTimer?.unref?.();
+
         await this.startRokuFinder();
     }
 
     private deactivateMonitoring() {
         this.networkChangeMonitor.stop();
         this.rceFinder?.stop();
+        this.stopStaleTimers();
         this.stopRokuFinder();
+    }
+
+    private stopStaleTimers() {
+        if (this.broadcastStaleTimer) {
+            clearInterval(this.broadcastStaleTimer);
+            this.broadcastStaleTimer = undefined;
+        }
+        if (this.reconcileStaleTimer) {
+            clearInterval(this.reconcileStaleTimer);
+            this.reconcileStaleTimer = undefined;
+        }
     }
 
     /**
@@ -1643,17 +1723,6 @@ export class DeviceManager {
         this.networkChangeMonitor.stop();
     }
 
-    /**
-     * Set the flag indicating a scan is needed. Emits 'scanNeeded-changed' event
-     * when the flag flips from false to true.
-     */
-    private setScanNeeded(force = false): void {
-        if (!this.scanNeeded || force) {
-            this.scanNeeded = true;
-            this.emitter.emit('scanNeeded-changed');
-        }
-    }
-
     private emitDevicesChanged = throttleBounce(() => {
         this.emitter.emit('devices-changed');
     }, this.DEVICES_CHANGED_DEBOUNCE_MS);
@@ -1665,6 +1734,9 @@ export class DeviceManager {
 }
 
 export type DeviceState = 'offline' | 'unknown' | 'pending' | 'online';
+
+//order types live with the Orders class; re-exported here so consumers keep one import site
+export type { Order, OrderType, SubmittedOrder, TakenOrders, BroadcastReason, ReconcileReason } from './Orders';
 
 export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
 
