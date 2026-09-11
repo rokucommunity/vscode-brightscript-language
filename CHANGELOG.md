@@ -6,6 +6,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.69.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.69.0...v2.69.1) - 2026-09-10
+### Changed
+ - Security enhancements ([#887](https://github.com/rokucommunity/vscode-brightscript-language/pull/887), [#890](https://github.com/rokucommunity/vscode-brightscript-language/pull/890), [#891](https://github.com/rokucommunity/vscode-brightscript-language/pull/891), [#892](https://github.com/rokucommunity/vscode-brightscript-language/pull/892), [#888](https://github.com/rokucommunity/vscode-brightscript-language/pull/888))
+ - Harden webview panel lifecycle and restore panels across window reloads ([#886](https://github.com/rokucommunity/vscode-brightscript-language/pull/886))
+ - upgrade to [@rokucommunity/logger@0.4.2](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#042---2026-09-02). Notable changes since 0.4.1:
+     - Security enhancements ([#38](https://github.com/rokucommunity/logger/pull/38), [#39](https://github.com/rokucommunity/logger/pull/39))
+ - upgrade to [brighterscript@0.73.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0733---2026-09-09). Notable changes since 0.73.0:
+     - Modifies default max worker thread logic to be only as much as memory allows ([#1798](https://github.com/rokucommunity/brighterscript/pull/1798))
+     - Security enhancements ([#1763](https://github.com/rokucommunity/brighterscript/pull/1763), [#1764](https://github.com/rokucommunity/brighterscript/pull/1764), [#1766](https://github.com/rokucommunity/brighterscript/pull/1766), [#1773](https://github.com/rokucommunity/brighterscript/pull/1773), [#1774](https://github.com/rokucommunity/brighterscript/pull/1774), [#1775](https://github.com/rokucommunity/brighterscript/pull/1775), [#1782](https://github.com/rokucommunity/brighterscript/pull/1782), [#1796](https://github.com/rokucommunity/brighterscript/pull/1796))
+     - Better error message for wrong-cased XML tags ([#1793](https://github.com/rokucommunity/brighterscript/pull/1793))
+     - Add generic go-to-definition for file path strings in BRS/BS/XML files ([#1648](https://github.com/rokucommunity/brighterscript/pull/1648))
+     - Fix duplicate and crashing "find all references" results ([#1791](https://github.com/rokucommunity/brighterscript/pull/1791))
+     - Fix nested curly braces in template strings ([#1539](https://github.com/rokucommunity/brighterscript/pull/1539))
+     - Recognize regex literals after `${` and `,` ([#1789](https://github.com/rokucommunity/brighterscript/pull/1789))
+     - Reduce per-Token lexer allocation to cut GC pressure while editing ([#1712](https://github.com/rokucommunity/brighterscript/pull/1712))
+     - Keep synthesized Tokens on the lexer's hidden class ([#1781](https://github.com/rokucommunity/brighterscript/pull/1781))
+     - Report mismatched XML element pairs ([#1746](https://github.com/rokucommunity/brighterscript/pull/1746))
+     - Add <field> and <function> completions in xml interfaces ([#1748](https://github.com/rokucommunity/brighterscript/pull/1748))
+     - Cap LSP worker thread pool to fix memory scaling with project count ([#1776](https://github.com/rokucommunity/brighterscript/pull/1776))
+     - Add warning for function names that exceed the truncation limit ([#1777](https://github.com/rokucommunity/brighterscript/pull/1777))
+     - Add SceneGraph XML element and attribute completions ([#1741](https://github.com/rokucommunity/brighterscript/pull/1741))
+ - upgrade to [brighterscript-formatter@1.8.3](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#183---2026-09-09). Notable changes since 1.8.1:
+     - Security enhancements ([#155](https://github.com/rokucommunity/brighterscript-formatter/pull/155), [#157](https://github.com/rokucommunity/brighterscript-formatter/pull/157))
+ - upgrade to [roku-debug@0.24.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0243---2026-09-09). Notable changes since 0.24.1:
+     - Security enhancements ([#412](https://github.com/rokucommunity/roku-debug/pull/412), [#414](https://github.com/rokucommunity/roku-debug/pull/414), [#417](https://github.com/rokucommunity/roku-debug/pull/417))
+     - Replace postman-request with needle ([#415](https://github.com/rokucommunity/roku-debug/pull/415))
+ - upgrade to [roku-test-automation@3.0.0-alpha.3](https://github.com/rokucommunity/roku-test-automation/blob/master/CHANGELOG.md#300-alpha3---2026-09-09). Notable changes since 3.0.0-alpha.1:
+     - Security enhancements ([#183](https://github.com/rokucommunity/roku-test-automation/pull/183), [#186](https://github.com/rokucommunity/roku-test-automation/pull/186), [#188](https://github.com/rokucommunity/roku-test-automation/pull/188))
+
+
+
 ## [2.69.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.68.0...v2.69.0) - 2026-08-28
 ### Added
  - Support Roku Cloud Emulator devices in the RDB webviews and REPL ([#881](https://github.com/rokucommunity/vscode-brightscript-language/pull/881))

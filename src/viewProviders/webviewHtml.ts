@@ -23,6 +23,7 @@ export function buildWebviewIndexHtml(options: BuildWebviewIndexHtmlOptions): st
     //the data that will be replaced in the index.html
     const data = {
         viewName: options.viewName,
+        webviewContext: options.webviewContext ?? 'sidebar',
         baseHref: `${baseUri}/`,
         additionalScriptContents: (options.additionalScriptContents ?? []).join('\n                        ')
     };
@@ -50,6 +51,8 @@ export interface BuildWebviewIndexHtmlOptions {
     webviewBasePath: string;
     /** The client-side view name the bundle should boot (a key in webviews/src/main.ts's views map) */
     viewName: string;
+    /** Where the view is rendering, so it can persist/behave differently in the sidebar vs a popped-out editor panel */
+    webviewContext?: 'sidebar' | 'panel';
     /** Extra script lines injected into the page */
     additionalScriptContents?: string[];
 }

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { RceDevice, DeviceRun, DeviceStatus, DeviceType, FirmwareVersion, RceDeviceConfig, RceManagementClient, Snapshot } from 'roku-deploy';
+import type { RceDevice, DeviceRun, FirmwareVersion, RceDeviceConfig, RceManagementClient, Snapshot } from 'roku-deploy';
 import { rokuDeploy } from 'roku-deploy';
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import { ViewProviderId } from './ViewProviderId';
@@ -9,6 +9,9 @@ import { WorkspaceStateKey } from './WorkspaceStateKey';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import type { RceManager } from '../managers/RceManager';
 import type { RceFinder } from '../deviceDiscovery/RceFinder';
+import type { RceStateDevice } from './RceManagementViewContract';
+
+export type { RceStateDevice } from './RceManagementViewContract';
 
 export class RceManagementViewProvider extends BaseWebviewViewProvider {
     public readonly id = ViewProviderId.rceManagementView;
@@ -65,15 +68,13 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                     throw new Error('No active Cloud Emulator account is configured');
                 }
                 const { name, deviceType, note } = message.context;
-                /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
                 const createdDevice = await managementClient.createDevice({
                     device: {
                         name: name,
-                        device_type: deviceType,
+                        deviceType: deviceType,
                         note: note
                     }
                 });
-                /* eslint-enable camelcase */
                 this.postOrQueueMessage(this.createResponseMessage(message, { device: createdDevice }));
                 this.startTransitionWatch();
             } catch (error) {
@@ -111,26 +112,24 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                 if (!firmwareVersionId) {
                     const snapshots = await managementClient.listSnapshots({ deviceId: deviceId });
                     const chosenSnapshot = snapshots.find((snapshot) => snapshot.id === snapshotId);
-                    firmwareVersionId = chosenSnapshot?.firmware_version_id ?? device.firmware_version_id;
+                    firmwareVersionId = chosenSnapshot?.firmwareVersionId ?? device.firmwareVersionId;
                     if (!firmwareVersionId) {
                         const firmwareVersions = await managementClient.listFirmwareVersions();
-                        firmwareVersionId = firmwareVersions.find((firmwareVersion) => firmwareVersion.device_type === device.device_type)?.firmware_version_id;
+                        firmwareVersionId = firmwareVersions.find((firmwareVersion) => firmwareVersion.deviceType === device.deviceType)?.firmwareVersionId;
                     }
                 }
                 if (!firmwareVersionId) {
-                    throw new Error(`No firmware version is available for device type '${device.device_type}'`);
+                    throw new Error(`No firmware version is available for device type '${device.deviceType}'`);
                 }
 
-                /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
                 const startedDevice = await managementClient.startDevice({
                     deviceId: deviceId,
                     start: {
-                        snapshot_id: snapshotId,
-                        firmware_version_id: firmwareVersionId,
-                        max_runtime: maxRuntimeSeconds
+                        snapshotId: snapshotId,
+                        firmwareVersionId: firmwareVersionId,
+                        maxRuntime: maxRuntimeSeconds
                     }
                 });
-                /* eslint-enable camelcase */
                 //every start records its snapshot as the device's last-used pick, which the picker
                 //pre-selects next time, ahead of the live snapshot
                 await this.rememberSnapshotId(deviceId, snapshotId);
@@ -309,7 +308,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
             throw new Error(`Device ${deviceId} was not found`);
         }
 
-        const instanceApiUrl = device.running_device?.instance_api_url;
+        const instanceApiUrl = device.runningDevice?.instanceApiUrl;
         if (device.status !== 'running' || !instanceApiUrl) {
             throw new Error(`Device '${device.name}' must be running to ${actionDescription}`);
         }
@@ -438,28 +437,26 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         return state;
     }
 
-    //the webview gets only the fields it renders; RceDevice's running_device otherwise carries the
+    //the webview gets only the fields it renders; RceDevice's runningDevice otherwise carries the
     //instance's stream credentials
     private projectDeviceForWebview(device: RceDevice): RceStateDevice {
-        /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
         return {
             id: device.id,
             name: device.name,
             note: device.note,
-            device_type: device.device_type,
+            deviceType: device.deviceType,
             status: device.status,
-            serial_number: device.serial_number,
-            created_at: device.created_at,
-            last_snapshot_id: device.last_snapshot_id,
-            last_snapshot_name: device.last_snapshot_name,
+            serialNumber: device.serialNumber,
+            createdAt: device.createdAt,
+            lastSnapshotId: device.lastSnapshotId,
+            lastSnapshotName: device.lastSnapshotName,
             snapshots: device.snapshots,
-            firmware_version_id: device.firmware_version_id,
-            running_device: device.running_device ? {
-                started_at: device.running_device.started_at,
-                max_runtime: device.running_device.max_runtime
-            } : device.running_device
+            firmwareVersionId: device.firmwareVersionId,
+            runningDevice: device.runningDevice ? {
+                startedAt: device.runningDevice.startedAt,
+                maxRuntime: device.runningDevice.maxRuntime
+            } : device.runningDevice
         };
-        /* eslint-enable camelcase */
     }
 
     /**
@@ -473,7 +470,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         if (this.cachedMaxProjectRuntimeSeconds === undefined) {
             try {
                 const userInfo = await managementClient.getUserInfo();
-                this.cachedMaxProjectRuntimeSeconds = userInfo.organisation?.max_project_runtime;
+                this.cachedMaxProjectRuntimeSeconds = userInfo.organisation?.maxProjectRuntime;
             } catch {
                 //the cap is presentation-only (the api enforces it server-side), so a failed fetch
                 //should never block the rest of the state payload
@@ -535,7 +532,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
     /**
      * The snapshot id this device was last started with, remembered per workspace so the picker
      * pre-selects it across VS Code reloads. This is the extension's own record; the api's
-     * last_snapshot_id is deliberately not consulted anywhere.
+     * lastSnapshotId is deliberately not consulted anywhere.
      */
     private getRememberedSnapshotId(deviceId: number): number | undefined {
         const remembered = this.extensionContext.workspaceState.get<Record<number, number>>(WorkspaceStateKey.rceLastSnapshotByDevice) ?? {};
@@ -560,30 +557,6 @@ interface RceManagementViewState {
     firmwareVersions?: FirmwareVersion[];
     error?: string;
 }
-
-/* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-/**
- * The device fields the management webview renders - a projection of roku-deploy's RceDevice that
- * leaves the instance's stream credentials behind (see projectDeviceForWebview).
- */
-export interface RceStateDevice {
-    id: number;
-    name: string;
-    note?: string | null;
-    device_type: DeviceType;
-    status?: DeviceStatus;
-    serial_number?: string | null;
-    created_at: string;
-    last_snapshot_id?: number | null;
-    last_snapshot_name?: string | null;
-    snapshots?: number[];
-    firmware_version_id?: string | null;
-    running_device?: {
-        started_at?: string | null;
-        max_runtime: number;
-    } | null;
-}
-/* eslint-enable camelcase */
 
 interface RceDeviceDetailsPayload {
     snapshots: Snapshot[] | undefined;
