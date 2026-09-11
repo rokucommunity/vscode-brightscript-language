@@ -40,7 +40,7 @@ describe('CaptureScreenshotCommand', () => {
 
     it('passes the reference through to the resolver and the resolved device to rokuDeploy', async () => {
         const { resolveTarget, resolvePassword } = stubResolution();
-        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png', format: 'jpg' }));
 
         await command['captureScreenshot']({ key: 's:SN1' });
 
@@ -52,7 +52,7 @@ describe('CaptureScreenshotCommand', () => {
     it('captures from a cloud emulator device through its device config', async () => {
         const cloudDevice = { instanceUrl: 'https://rce.example.com/instance', rceToken: 'token' };
         stubResolution(cloudDevice, 'Chris (cloud emulator)');
-        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png', format: 'jpg' }));
 
         await command['captureScreenshot']({ key: 'rce:83' });
 
@@ -91,7 +91,7 @@ describe('CaptureScreenshotCommand', () => {
 
     it('uses temp dir when screenshotDir is not defined', async () => {
         stubResolution();
-        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png', format: 'jpg' }));
 
         await command['captureScreenshot']();
 
@@ -100,7 +100,7 @@ describe('CaptureScreenshotCommand', () => {
 
     it('uses screenshotDir with single workspace', async () => {
         stubResolution();
-        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png', format: 'jpg' }));
         workspace._configuration = {
             'brightscript.screenshotDir': '${workspaceFolder}/screenshots'
         };
@@ -119,7 +119,7 @@ describe('CaptureScreenshotCommand', () => {
 
     it('uses relative screenshotDir with single workspace', async () => {
         stubResolution();
-        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png', format: 'jpg' }));
         workspace._configuration = {
             'brightscript.screenshotDir': 'screenshots'
         };
@@ -138,7 +138,7 @@ describe('CaptureScreenshotCommand', () => {
 
     it('uses screenshotDir with multiple workspace', async () => {
         stubResolution();
-        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png', format: 'jpg' }));
         const workspaceFolders = [
             {
                 uri: URI.file(s`${cwd}/workspace1`),
@@ -164,7 +164,7 @@ describe('CaptureScreenshotCommand', () => {
 
     it('uses relative screenshotDir with multiple workspace', async () => {
         stubResolution();
-        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png' }));
+        const stub = sinon.stub(rokuDeploy, 'captureScreenshot').returns(Promise.resolve({ buffer: Buffer.alloc(0), filePath: 'screenshot.png', format: 'jpg' }));
         const workspaceFolders = [
             {
                 uri: URI.file(s`${cwd}/workspace1`),

@@ -14,5 +14,5 @@
 </style>
 
 <div id="loaderContainer">
-    <vscode-progress-ring />
+    <vscode-progress-ring></vscode-progress-ring>
 </div>

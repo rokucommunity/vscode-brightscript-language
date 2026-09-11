@@ -322,13 +322,13 @@
                     {overlay.sourcePath}
                 </div>
                 <div class="checkbox">
-                    <vscode-checkbox id="{index}" on:change={onOverlayVisibleChange} checked={overlay.visible} />
+                    <vscode-checkbox id="{index}" on:change={onOverlayVisibleChange} checked={overlay.visible}></vscode-checkbox>
                 </div>
                 <div class="image">
-                    <img src="{overlay.imageData}" data-file="{overlay.sourcePath}"/>
+                    <img src="{overlay.imageData}" data-file="{overlay.sourcePath}" alt="{overlay.name}" />
                 </div>
                 <div class="label">
-                    <vscode-text-field id="{index}" on:input={onOverlayNameChange} value="{overlay.name}" />
+                    <vscode-text-field id="{index}" on:input={onOverlayNameChange} value="{overlay.name}"></vscode-text-field>
                 </div>
                 <div class="slider">
                     <input id="{index.toString()}" class="slider-input" type="range" min="0" max="100" value="{overlay.opacity * 100}" on:input={onOverlayOpacityChange}>
@@ -339,7 +339,7 @@
                     </vscode-button>
                 </div>
             </div>
-                <vscode-divider />
+                <vscode-divider></vscode-divider>
         {/each}
     {:else}
         <span style="padding:10px">

@@ -354,7 +354,7 @@
                     {#each runs as run, index}
                         <tr>
                             <td colspan="5">
-                                <vscode-divider />
+                                <vscode-divider></vscode-divider>
                             </td>
                         </tr>
                         <tr class="run-row {dropTargetIndex === index ? 'run-row-dropzone' : ''}"

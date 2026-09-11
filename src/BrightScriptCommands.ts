@@ -399,7 +399,7 @@ export class BrightScriptCommands {
             }
 
             const apps = await util.spinAsync('Fetching app list', async () => {
-                return rokuDeploy.queryApps({ device: deviceConfig });
+                return rokuDeploy.getApps({ device: deviceConfig });
             });
 
             //convert the items to QuickPick items
@@ -751,7 +751,7 @@ export class BrightScriptCommands {
         const deviceLabel = isLocalDeviceConfig(device) ? device.host : 'the active device';
 
         await util.spinAsync('Restarting dev app', async () => {
-            const apps = await rokuDeploy.queryApps({ device: device });
+            const apps = await rokuDeploy.getApps({ device: device });
             const hasDev = apps.some(app => app.id === 'dev');
             if (!hasDev) {
                 await vscode.window.showErrorMessage(`No dev channel sideloaded on ${deviceLabel}. Sideload your project before restarting.`);
@@ -772,7 +772,7 @@ export class BrightScriptCommands {
 
             // give a little bit of time to let the app boot up before checking its status
             await util.sleep(1000);
-            const activeApp = await rokuDeploy.queryActiveApp({ device: device });
+            const activeApp = await rokuDeploy.getActiveApp({ device: device });
             if (activeApp.id === 'dev') {
                 void util.showTimedNotification('Dev app restarted', 2000);
             } else {
