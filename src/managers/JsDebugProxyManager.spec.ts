@@ -61,17 +61,23 @@ describe('JsDebugProxyManager', () => {
         await waitUntil(() => tunnels.length === 1);
         const tunnel = tunnels[0];
 
+        //connections are now piped through JsDebugCdpFilter, which buffers an HTTP request/response
+        //head before forwarding anything (so it can tell a WebSocket upgrade from js-debug's plain
+        //discovery request); a non-upgrade request/response head is required here to reach the pure
+        //pass-through path and observe raw byte-for-byte piping the way this test intends
         const tunnelReceived: Buffer[] = [];
         tunnel.on('tunnelWrite', (chunk: Buffer) => tunnelReceived.push(chunk));
+        client.write('GET /json/list HTTP/1.1\r\nHost: localhost\r\n\r\n');
         client.write('hello from client');
-        await waitUntil(() => tunnelReceived.length > 0);
-        expect(Buffer.concat(tunnelReceived).toString()).to.equal('hello from client');
+        await waitUntil(() => Buffer.concat(tunnelReceived).includes('hello from client'));
+        expect(Buffer.concat(tunnelReceived).toString()).to.equal('GET /json/list HTTP/1.1\r\nHost: localhost\r\n\r\nhello from client');
 
         const clientReceived: Buffer[] = [];
         client.on('data', (chunk: Buffer) => clientReceived.push(chunk));
+        tunnel.push(Buffer.from('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n'));
         tunnel.push(Buffer.from('hello from tunnel'));
-        await waitUntil(() => clientReceived.length > 0);
-        expect(Buffer.concat(clientReceived).toString()).to.equal('hello from tunnel');
+        await waitUntil(() => Buffer.concat(clientReceived).includes('hello from tunnel'));
+        expect(Buffer.concat(clientReceived).toString()).to.equal('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nhello from tunnel');
 
         client.destroy();
     });
@@ -203,6 +209,82 @@ describe('JsDebugProxyManager', () => {
 
         client.destroy();
         await waitUntil(() => manager.getSocketCountForTest('session-9') === 0);
+    });
+
+    it('carries a full WebSocket upgrade handshake and a masked CDP frame through the pipe chain', async () => {
+        const port = await manager.start('session-11', { id: 1 } as any);
+        const client = net.connect(port, '127.0.0.1');
+        await waitForEvent(client, 'connect');
+        await waitUntil(() => tunnels.length === 1);
+        const tunnel = tunnels[0];
+
+        const tunnelReceived: Buffer[] = [];
+        tunnel.on('tunnelWrite', (chunk: Buffer) => tunnelReceived.push(chunk));
+
+        client.write(
+            'GET /json/list HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n' +
+            'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n'
+        );
+        await waitUntil(() => Buffer.concat(tunnelReceived).includes('Upgrade: websocket'));
+
+        const clientReceived: Buffer[] = [];
+        client.on('data', (chunk: Buffer) => clientReceived.push(chunk));
+        tunnel.push(Buffer.from('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n'));
+        await waitUntil(() => Buffer.concat(clientReceived).includes('101 Switching Protocols'));
+
+        //a real masked Runtime.enable frame from the client should reach the tunnel unmodified
+        const maskKey = Buffer.from([0x01, 0x02, 0x03, 0x04]);
+        const payload = Buffer.from(JSON.stringify({ id: 1, method: 'Runtime.enable' }));
+        const maskedPayload = Buffer.alloc(payload.length);
+        for (let index = 0; index < payload.length; index++) {
+            // eslint-disable-next-line no-bitwise
+            maskedPayload[index] = payload[index] ^ maskKey[index % 4];
+        }
+        // eslint-disable-next-line no-bitwise
+        const frame = Buffer.concat([Buffer.from([0x81, 0x80 | payload.length]), maskKey, maskedPayload]);
+
+        tunnelReceived.length = 0;
+        client.write(frame);
+        await waitUntil(() => tunnelReceived.length > 0);
+        expect(Buffer.concat(tunnelReceived)).to.deep.equal(frame);
+
+        client.destroy();
+    });
+
+    it('tears down both sockets without an uncaught exception when the client sends an unmasked frame', async () => {
+        const port = await manager.start('session-12', { id: 1 } as any);
+        const client = net.connect(port, '127.0.0.1');
+        //a socket the proxy forcibly destroys can surface as an ECONNRESET on this end; expected
+        client.on('error', () => { /* expected: proxy destroys this socket after the parse error */ });
+        await waitForEvent(client, 'connect');
+        await waitUntil(() => tunnels.length === 1);
+        const tunnel = tunnels[0];
+
+        let uncaughtException: unknown;
+        const onUncaughtException = (error: unknown) => {
+            uncaughtException = error;
+        };
+        process.on('uncaughtException', onUncaughtException);
+
+        try {
+            client.write('GET /json/list HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n');
+
+            //reviewer's repro: an unmasked (mask bit unset) FIN=1 TEXT frame from the client
+            const payload = Buffer.from(JSON.stringify({ id: 1, method: 'Runtime.enable' }));
+            const unmaskedFrame = Buffer.concat([Buffer.from([0x81, payload.length]), payload]);
+            client.write(unmaskedFrame);
+
+            await waitForEvent(client, 'close');
+            expect(tunnel.destroyed).to.be.true;
+
+            //give any queued uncaughtException handler a tick to fire, if it was going to
+            await new Promise<void>((resolve) => {
+                setTimeout(resolve, 50);
+            });
+            expect(uncaughtException).to.be.undefined;
+        } finally {
+            process.removeListener('uncaughtException', onUncaughtException);
+        }
     });
 
     it('two concurrent start() calls for the same sessionId resolve to the same port', async () => {

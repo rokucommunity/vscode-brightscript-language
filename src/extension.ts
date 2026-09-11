@@ -467,6 +467,14 @@ export class Extension {
         const configuration = parentSession.configuration as BrightScriptLaunchConfiguration;
         let address: string;
         let port: number;
+        //Hermes advertises a "Remote Process" child target; js-debug's node process-tree
+        //machinery attaches to it with an extra inspector connection. Over the RCE proxy that
+        //extra connection duplicates the single tunneled session and kills every client, so child
+        //auto-attach must stay off there (the proxy's CDP filter dedupes `Runtime.enable` on that
+        //one session instead). On LAN, the child attach targets a real per-process port, so the
+        //two `Runtime.enable` calls land on separate sessions harmlessly - leave it at js-debug's
+        //default (enabled) there, matching the historically-working LAN behavior.
+        let autoAttachChildProcesses: boolean | undefined;
         if (configuration.device && isRceDeviceConfig(configuration.device)) {
             //an RCE device has no LAN address to attach to directly, so route the node debugger
             //through a local proxy that tunnels to the device's JS debug port over the instance api
@@ -477,6 +485,7 @@ export class Extension {
                 return false;
             }
             address = '127.0.0.1';
+            autoAttachChildProcesses = false;
         } else {
             //`device` is authoritative when it's a resolved local device config; the raw `host`
             //field is kept only as a fallback (mirrors the same "device is authoritative, raw host
@@ -514,11 +523,10 @@ export class Extension {
                     address: address,
                     port: port,
                     timeout: 2_000, // Shorter timeout for retry loop
-                    //Hermes advertises a "Remote Process" child target; js-debug's node
-                    //process-tree machinery attaches to it with an extra inspector connection,
-                    //which drops the original CDP connection (single debug client). We only ever
-                    //debug the one Hermes runtime, so disable child auto-attach entirely.
-                    autoAttachChildProcesses: false,
+                    //see the `autoAttachChildProcesses` derivation above for why this is only set
+                    //(to false) on the RCE/proxy path; omitted entirely on LAN so js-debug's
+                    //default (child auto-attach on) applies
+                    ...(autoAttachChildProcesses === undefined ? {} : { autoAttachChildProcesses: autoAttachChildProcesses }),
                     sourceMaps: true,
                     //this allows us to resolve sourcemaps from ANYWHERE
                     resolveSourceMapLocations: null,

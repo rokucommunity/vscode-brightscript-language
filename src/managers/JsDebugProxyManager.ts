@@ -3,6 +3,7 @@ import * as getPort from 'get-port';
 import { createRokuDeploySocket } from 'roku-deploy';
 import type { RceDeviceConfig, RokuDeploySocket } from 'roku-deploy';
 import type { RceManager } from './RceManager';
+import { JsDebugCdpFilter } from './JsDebugCdpFilter';
 
 /**
  * The Hermes JS debug port on the Roku device side. Local sessions attach the node debugger to
@@ -191,8 +192,15 @@ export class JsDebugProxyManager {
         });
         tunnel.on('close', teardown);
 
-        client.pipe(tunnel);
-        tunnel.pipe(client);
+        //Hermes on RCE crashes the whole app if it sees a second `Runtime.enable` on this
+        //session (js-debug sends it twice during its attach burst); the filter drops the
+        //duplicate and answers it locally instead of forwarding it to the device
+        const filter = new JsDebugCdpFilter(this.log);
+        filter.upstream.on('error', teardown);
+        filter.downstream.on('error', teardown);
+
+        client.pipe(filter.upstream).pipe(tunnel);
+        tunnel.pipe(filter.downstream).pipe(client);
 
         tunnel.connect();
     }
