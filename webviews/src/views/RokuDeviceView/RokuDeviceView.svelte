@@ -414,8 +414,8 @@
         on:mousedown={onMouseDown}
         data-vscode-context={'{"preventDefaultContextMenuItems": true}'}>
 
-        <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
-        <div class:hide={!focusedNode} id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
+        <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;"></div>
+        <div class:hide={!focusedNode} id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px"></div>
 
         <!-- only show image if we have a url to avoid showing as broken image -->
         {#if screenshotUrl}

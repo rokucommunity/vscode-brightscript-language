@@ -32,9 +32,7 @@ afterEach(() => {
 
 function createFakeManagementClient() {
     return {
-        /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-        getUserInfo: sinon.stub().resolves({ organisation: { max_project_runtime: 172800 } }),
-        /* eslint-enable camelcase */
+        getUserInfo: sinon.stub().resolves({ organisation: { maxProjectRuntime: 172800 } }),
         listDevices: sinon.stub(),
         createDevice: sinon.stub(),
         startDevice: sinon.stub(),
@@ -130,25 +128,23 @@ describe('RceManagementViewProvider', () => {
         it('projects devices to the fields the webview renders, leaving the stream credentials behind', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([{
                 id: 5,
                 name: 'my-device',
-                device_type: 'tv',
+                deviceType: 'tv',
                 status: 'running',
-                created_at: '2026-01-01',
-                firmware_version_id: 'rce-fw:1',
-                running_device: {
-                    started_at: '2026-01-02',
-                    max_runtime: 3600,
-                    janus_token: 'janus-secret',
-                    janus_pin: '1234',
-                    janus_websocket_url: 'wss://device.rce.roku.com/instance/abc/janus',
-                    janus_ice_servers: [{ urls: ['turn:ice.rce.roku.com'], username: 'turn-user', credential: 'turn-secret' }],
-                    instance_api_url: 'https://device.rce.roku.com/instance/abc'
+                createdAt: '2026-01-01',
+                firmwareVersionId: 'rce-fw:1',
+                runningDevice: {
+                    startedAt: '2026-01-02',
+                    maxRuntime: 3600,
+                    janusToken: 'janus-secret',
+                    janusPin: '1234',
+                    janusWebsocketUrl: 'wss://device.rce.roku.com/instance/abc/janus',
+                    janusIceServers: [{ urls: ['turn:ice.rce.roku.com'], username: 'turn-user', credential: 'turn-secret' }],
+                    instanceApiUrl: 'https://device.rce.roku.com/instance/abc'
                 }
             }]);
-            /* eslint-enable camelcase */
 
             createProvider();
 
@@ -157,10 +153,8 @@ describe('RceManagementViewProvider', () => {
 
             const responseMessage = findResponseMessage(ViewProviderCommand.getRceState);
             const device = responseMessage.response.devices[0];
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-            expect(device).to.include({ id: 5, name: 'my-device', status: 'running', firmware_version_id: 'rce-fw:1' });
-            expect(device.running_device).to.eql({ started_at: '2026-01-02', max_runtime: 3600 });
-            /* eslint-enable camelcase */
+            expect(device).to.include({ id: 5, name: 'my-device', status: 'running', firmwareVersionId: 'rce-fw:1' });
+            expect(device.runningDevice).to.eql({ startedAt: '2026-01-02', maxRuntime: 3600 });
             for (const secret of ['janus-secret', '1234', 'turn-user', 'turn-secret', 'instance/abc']) {
                 expect(JSON.stringify(responseMessage)).not.to.contain(secret);
             }
@@ -200,11 +194,9 @@ describe('RceManagementViewProvider', () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
             rceManager.fakeManagementClient.listDevices.resolves([]);
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listFirmwareVersions.resolves([
-                { firmware_version_id: 'rce-fw:1', device_type: 'tv', display_name: '15.2.4 TV' }
+                { firmwareVersionId: 'rce-fw:1', deviceType: 'tv', displayName: '15.2.4 TV' }
             ]);
-            /* eslint-enable camelcase */
 
             createProvider();
 
@@ -213,11 +205,9 @@ describe('RceManagementViewProvider', () => {
             await provider['messageCommandCallbacks'][ViewProviderCommand.getRceState](message);
 
             const responseMessage = findResponseMessage(ViewProviderCommand.getRceState);
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             expect(responseMessage.response.firmwareVersions).to.eql([
-                { firmware_version_id: 'rce-fw:1', device_type: 'tv', display_name: '15.2.4 TV' }
+                { firmwareVersionId: 'rce-fw:1', deviceType: 'tv', displayName: '15.2.4 TV' }
             ]);
-            /* eslint-enable camelcase */
             expect(rceManager.fakeManagementClient.listFirmwareVersions.callCount).to.equal(1);
         });
 
@@ -242,11 +232,9 @@ describe('RceManagementViewProvider', () => {
             await rceManager.addAccount('work', 'token-work');
             await rceManager.addAccount('personal', 'token-personal');
             rceManager.fakeManagementClient.listDevices.resolves([]);
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listFirmwareVersions.resolves([
-                { firmware_version_id: 'rce-fw:1', device_type: 'tv', display_name: '15.2.4 TV' }
+                { firmwareVersionId: 'rce-fw:1', deviceType: 'tv', displayName: '15.2.4 TV' }
             ]);
-            /* eslint-enable camelcase */
 
             createProvider();
 
@@ -284,19 +272,17 @@ describe('RceManagementViewProvider', () => {
         it('responds with an error when no snapshotId is sent, without resolving a fallback snapshot itself', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            //a remembered pick, a live snapshot, and last_snapshot_id all exist, but the picker
+            //a remembered pick, a live snapshot, and lastSnapshotId all exist, but the picker
             //is the single source of truth, so none of them get resolved here
             await vscode.context.workspaceState.update(WorkspaceStateKey.rceLastSnapshotByDevice, { 5: 20 });
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10, 20, 30], firmware_version_id: 'rce-fw:1' }
+                { id: 5, name: 'my-device', deviceType: 'tv', lastSnapshotId: 10, snapshots: [10, 20, 30], firmwareVersionId: 'rce-fw:1' }
             ]);
             rceManager.fakeManagementClient.listSnapshots.resolves([
-                { id: 10, created_at: '2026-01-01', firmware_version_id: 'rce-fw:1', live: false },
-                { id: 20, created_at: '2026-01-02', firmware_version_id: 'rce-fw:2', live: false },
-                { id: 30, created_at: '2026-01-03', firmware_version_id: 'rce-fw:3', live: true }
+                { id: 10, createdAt: '2026-01-01', firmwareVersionId: 'rce-fw:1', live: false },
+                { id: 20, createdAt: '2026-01-02', firmwareVersionId: 'rce-fw:2', live: false },
+                { id: 30, createdAt: '2026-01-03', firmwareVersionId: 'rce-fw:3', live: true }
             ]);
-            /* eslint-enable camelcase */
 
             createProvider();
 
@@ -311,15 +297,13 @@ describe('RceManagementViewProvider', () => {
         it('starts the device with the picker-sent snapshotId and remembers it as the device\'s last-used pick', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10, 20], firmware_version_id: 'rce-fw:1' }
+                { id: 5, name: 'my-device', deviceType: 'tv', lastSnapshotId: 10, snapshots: [10, 20], firmwareVersionId: 'rce-fw:1' }
             ]);
             rceManager.fakeManagementClient.listSnapshots.resolves([
-                { id: 10, created_at: '2026-01-01', firmware_version_id: 'rce-fw:1' },
-                { id: 20, created_at: '2026-01-02', firmware_version_id: 'rce-fw:2' }
+                { id: 10, createdAt: '2026-01-01', firmwareVersionId: 'rce-fw:1' },
+                { id: 20, createdAt: '2026-01-02', firmwareVersionId: 'rce-fw:2' }
             ]);
-            /* eslint-enable camelcase */
             rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
 
             createProvider();
@@ -329,8 +313,8 @@ describe('RceManagementViewProvider', () => {
 
             const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
             expect(startDeviceArgs[0].deviceId).to.equal(5);
-            expect(startDeviceArgs[0].start.snapshot_id).to.equal(20);
-            expect(startDeviceArgs[0].start.firmware_version_id).to.equal('rce-fw:2');
+            expect(startDeviceArgs[0].start.snapshotId).to.equal(20);
+            expect(startDeviceArgs[0].start.firmwareVersionId).to.equal('rce-fw:2');
 
             const remembered = vscode.context.workspaceState.get(WorkspaceStateKey.rceLastSnapshotByDevice);
             expect(remembered[5]).to.equal(20);
@@ -339,11 +323,9 @@ describe('RceManagementViewProvider', () => {
         it('starts the device with the picker-sent firmware version without resolving one itself', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10], firmware_version_id: 'rce-fw:1' }
+                { id: 5, name: 'my-device', deviceType: 'tv', lastSnapshotId: 10, snapshots: [10], firmwareVersionId: 'rce-fw:1' }
             ]);
-            /* eslint-enable camelcase */
             rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
 
             createProvider();
@@ -352,7 +334,7 @@ describe('RceManagementViewProvider', () => {
             await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
 
             const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
-            expect(startDeviceArgs[0].start.firmware_version_id).to.equal('rce-fw:9');
+            expect(startDeviceArgs[0].start.firmwareVersionId).to.equal('rce-fw:9');
             //the fallback resolution never runs when the picker sent a firmware (it always consults
             //the snapshot list first)
             expect(rceManager.fakeManagementClient.listSnapshots.called).to.be.false;
@@ -361,14 +343,12 @@ describe('RceManagementViewProvider', () => {
         it('passes the webview-selected max runtime through to startDevice', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10], firmware_version_id: 'rce-fw:1' }
+                { id: 5, name: 'my-device', deviceType: 'tv', lastSnapshotId: 10, snapshots: [10], firmwareVersionId: 'rce-fw:1' }
             ]);
             rceManager.fakeManagementClient.listSnapshots.resolves([
-                { id: 10, created_at: '2026-01-01', firmware_version_id: 'rce-fw:1' }
+                { id: 10, createdAt: '2026-01-01', firmwareVersionId: 'rce-fw:1' }
             ]);
-            /* eslint-enable camelcase */
             rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
 
             createProvider();
@@ -377,20 +357,18 @@ describe('RceManagementViewProvider', () => {
             await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
 
             const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
-            expect(startDeviceArgs[0].start.max_runtime).to.equal(8 * 3600);
+            expect(startDeviceArgs[0].start.maxRuntime).to.equal(8 * 3600);
         });
 
         it('defaults max runtime to one hour when the message does not carry one', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10], firmware_version_id: 'rce-fw:1' }
+                { id: 5, name: 'my-device', deviceType: 'tv', lastSnapshotId: 10, snapshots: [10], firmwareVersionId: 'rce-fw:1' }
             ]);
             rceManager.fakeManagementClient.listSnapshots.resolves([
-                { id: 10, created_at: '2026-01-01', firmware_version_id: 'rce-fw:1' }
+                { id: 10, createdAt: '2026-01-01', firmwareVersionId: 'rce-fw:1' }
             ]);
-            /* eslint-enable camelcase */
             rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
 
             createProvider();
@@ -399,7 +377,7 @@ describe('RceManagementViewProvider', () => {
             await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
 
             const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
-            expect(startDeviceArgs[0].start.max_runtime).to.equal(3600);
+            expect(startDeviceArgs[0].start.maxRuntime).to.equal(3600);
         });
     });
 
@@ -408,10 +386,8 @@ describe('RceManagementViewProvider', () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
             await vscode.context.workspaceState.update(WorkspaceStateKey.rceLastSnapshotByDevice, { 5: 20 });
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-            rceManager.fakeManagementClient.listSnapshots.resolves([{ id: 20, created_at: '2026-01-01' }]);
-            rceManager.fakeManagementClient.getDeviceRuns.resolves([{ id: 1, instance_id: 1, status: 'completed' }]);
-            /* eslint-enable camelcase */
+            rceManager.fakeManagementClient.listSnapshots.resolves([{ id: 20, createdAt: '2026-01-01' }]);
+            rceManager.fakeManagementClient.getDeviceRuns.resolves([{ id: 1, instanceId: 1, status: 'completed' }]);
 
             createProvider();
 
@@ -447,11 +423,9 @@ describe('RceManagementViewProvider', () => {
         it('does not call deleteSnapshot when the confirmation modal is cancelled', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listSnapshots.resolves([
-                { id: 20, name: 'my-snapshot', created_at: '2026-01-01', live: false, base: false }
+                { id: 20, name: 'my-snapshot', createdAt: '2026-01-01', live: false, base: false }
             ]);
-            /* eslint-enable camelcase */
             sinon.stub(vscode.window, 'showWarningMessage').resolves(undefined);
 
             createProvider();
@@ -467,11 +441,9 @@ describe('RceManagementViewProvider', () => {
         it('calls deleteSnapshot when the deletion is confirmed', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listSnapshots.resolves([
-                { id: 20, name: 'my-snapshot', created_at: '2026-01-01', live: false, base: false }
+                { id: 20, name: 'my-snapshot', createdAt: '2026-01-01', live: false, base: false }
             ]);
-            /* eslint-enable camelcase */
             sinon.stub(vscode.window, 'showWarningMessage').resolves('Delete');
             rceManager.fakeManagementClient.deleteSnapshot.resolves();
 
@@ -486,11 +458,9 @@ describe('RceManagementViewProvider', () => {
         it('refuses to delete the live snapshot without showing the confirm modal', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listSnapshots.resolves([
-                { id: 20, name: 'my-snapshot', created_at: '2026-01-01', live: true, base: false }
+                { id: 20, name: 'my-snapshot', createdAt: '2026-01-01', live: true, base: false }
             ]);
-            /* eslint-enable camelcase */
             const showWarningMessage = sinon.stub(vscode.window, 'showWarningMessage').resolves('Delete');
 
             createProvider();
@@ -508,11 +478,9 @@ describe('RceManagementViewProvider', () => {
         it('refuses to delete the base snapshot without showing the confirm modal', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listSnapshots.resolves([
-                { id: 20, name: 'my-snapshot', created_at: '2026-01-01', live: false, base: true }
+                { id: 20, name: 'my-snapshot', createdAt: '2026-01-01', live: false, base: true }
             ]);
-            /* eslint-enable camelcase */
             const showWarningMessage = sinon.stub(vscode.window, 'showWarningMessage').resolves('Delete');
 
             createProvider();
@@ -549,11 +517,9 @@ describe('RceManagementViewProvider', () => {
         it('responds with an error and sends nothing when the device is not running', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', status: 'shutdown' }
+                { id: 5, name: 'my-device', deviceType: 'tv', status: 'shutdown' }
             ]);
-            /* eslint-enable camelcase */
             const sendDeveloperSettingsCombo = sinon.stub(rokuDeploy, 'sendDeveloperSettingsCombo').resolves();
 
             createProvider();
@@ -566,14 +532,12 @@ describe('RceManagementViewProvider', () => {
             expect(sendDeveloperSettingsCombo.called).to.be.false;
         });
 
-        it('responds with an error and sends nothing when a running device has no instance_api_url', async () => {
+        it('responds with an error and sends nothing when a running device has no instanceApiUrl', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', status: 'running', running_device: {} }
+                { id: 5, name: 'my-device', deviceType: 'tv', status: 'running', runningDevice: {} }
             ]);
-            /* eslint-enable camelcase */
             const sendDeveloperSettingsCombo = sinon.stub(rokuDeploy, 'sendDeveloperSettingsCombo').resolves();
 
             createProvider();
@@ -589,17 +553,15 @@ describe('RceManagementViewProvider', () => {
         it('sends the developer-settings combo to a running device with an instance api url', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([
                 {
                     id: 5,
                     name: 'my-device',
-                    device_type: 'tv',
+                    deviceType: 'tv',
                     status: 'running',
-                    running_device: { instance_api_url: 'https://device.rce.roku.com/instance/abc' }
+                    runningDevice: { instanceApiUrl: 'https://device.rce.roku.com/instance/abc' }
                 }
             ]);
-            /* eslint-enable camelcase */
             const sendDeveloperSettingsCombo = sinon.stub(rokuDeploy, 'sendDeveloperSettingsCombo').resolves();
 
             createProvider();
@@ -691,21 +653,19 @@ describe('RceManagementViewProvider', () => {
         it('registers rceWatchDeviceById as an internal command that resolves and shows the same stream config', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([
                 {
                     id: 5,
                     name: 'my-device',
-                    device_type: 'tv',
+                    deviceType: 'tv',
                     status: 'running',
-                    running_device: {
-                        janus_websocket_url: 'wss://device.rce.roku.com/instance/abc/janus',
-                        janus_id: 7,
-                        janus_ice_servers: []
+                    runningDevice: {
+                        janusWebsocketUrl: 'wss://device.rce.roku.com/instance/abc/janus',
+                        janusId: 7,
+                        janusIceServers: []
                     }
                 }
             ]);
-            /* eslint-enable camelcase */
             const registeredCommands = new Map<string, (...args: any[]) => any>();
             (sinon.stub(vscode.commands, 'registerCommand') as sinon.SinonStub).callsFake((commandId: string, callback: any) => {
                 registeredCommands.set(commandId, callback);
@@ -726,11 +686,9 @@ describe('RceManagementViewProvider', () => {
         it('rejects from rceWatchDeviceById when the device is not running, without posting a response', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             rceManager.fakeManagementClient.listDevices.resolves([
-                { id: 5, name: 'my-device', device_type: 'tv', status: 'shutdown' }
+                { id: 5, name: 'my-device', deviceType: 'tv', status: 'shutdown' }
             ]);
-            /* eslint-enable camelcase */
             const registeredCommands = new Map<string, (...args: any[]) => any>();
             (sinon.stub(vscode.commands, 'registerCommand') as sinon.SinonStub).callsFake((commandId: string, callback: any) => {
                 registeredCommands.set(commandId, callback);
@@ -807,11 +765,9 @@ describe('RceManagementViewProvider', () => {
 
             createProvider();
 
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             const emittedDevices: RceDevice[] = [
-                { id: 5, name: 'my-device', device_type: 'tv', status: 'running', created_at: '2026-01-01' }
+                { id: 5, name: 'my-device', deviceType: 'tv', status: 'running', createdAt: '2026-01-01' }
             ];
-            /* eslint-enable camelcase */
             rceFinder.emit('devices', emittedDevices);
             await flushMicrotasks();
 
@@ -819,9 +775,7 @@ describe('RceManagementViewProvider', () => {
             expect(eventMessages.length).to.be.greaterThan(0);
             const pushedDevices = eventMessages[eventMessages.length - 1].context.devices;
             expect(pushedDevices).to.have.length(1);
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-            expect(pushedDevices[0]).to.include({ id: 5, name: 'my-device', device_type: 'tv', status: 'running', created_at: '2026-01-01' });
-            /* eslint-enable camelcase */
+            expect(pushedDevices[0]).to.include({ id: 5, name: 'my-device', deviceType: 'tv', status: 'running', createdAt: '2026-01-01' });
             expect(rceManager.fakeManagementClient.listDevices.called).to.be.false;
         });
     });
@@ -832,14 +786,12 @@ describe('RceManagementViewProvider', () => {
             try {
                 rceManager = new TestRceManager(vscode.context as any);
                 await rceManager.addAccount('work', 'token-work');
-                /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
                 rceManager.fakeManagementClient.listDevices.resolves([
-                    { id: 5, name: 'my-device', device_type: 'tv', last_snapshot_id: 10, snapshots: [10], firmware_version_id: 'rce-fw:1' }
+                    { id: 5, name: 'my-device', deviceType: 'tv', lastSnapshotId: 10, snapshots: [10], firmwareVersionId: 'rce-fw:1' }
                 ]);
                 rceManager.fakeManagementClient.listSnapshots.resolves([
-                    { id: 10, created_at: '2026-01-01', firmware_version_id: 'rce-fw:1' }
+                    { id: 10, createdAt: '2026-01-01', firmwareVersionId: 'rce-fw:1' }
                 ]);
-                /* eslint-enable camelcase */
                 rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
 
                 createProvider();
@@ -871,9 +823,7 @@ describe('RceManagementViewProvider', () => {
 
                 //stopTransitionWatchIfSettled runs synchronously inside handleFinderDevices, so the
                 //watch is already stopped by the time this call returns; no need to await anything
-                /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-                provider['handleFinderDevices']([{ id: 5, name: 'my-device', device_type: 'tv', status: 'running', created_at: '2026-01-01' }]);
-                /* eslint-enable camelcase */
+                provider['handleFinderDevices']([{ id: 5, name: 'my-device', deviceType: 'tv', status: 'running', createdAt: '2026-01-01' }]);
 
                 clock.tick(RceManagementViewProvider['transitionWatchIntervalMs'] * 2);
                 expect(rceFinder.scan.callCount).to.equal(1);
@@ -892,9 +842,7 @@ describe('RceManagementViewProvider', () => {
                 clock.tick(RceManagementViewProvider['transitionWatchIntervalMs']);
                 expect(rceFinder.scan.callCount).to.equal(1);
 
-                /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-                provider['handleFinderDevices']([{ id: 5, name: 'my-device', device_type: 'tv', status: 'pending', created_at: '2026-01-01' }]);
-                /* eslint-enable camelcase */
+                provider['handleFinderDevices']([{ id: 5, name: 'my-device', deviceType: 'tv', status: 'pending', createdAt: '2026-01-01' }]);
 
                 clock.tick(RceManagementViewProvider['transitionWatchIntervalMs']);
                 expect(rceFinder.scan.callCount).to.equal(2);
@@ -948,9 +896,7 @@ describe('RceManagementViewProvider', () => {
 
                 postOrQueueMessage.resetHistory();
                 //dispose() already removed the 'devices' listener, so this emit reaches no handler at all
-                /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-                rceFinder.emit('devices', [{ id: 5, name: 'my-device', device_type: 'tv', status: 'running', created_at: '2026-01-01' }]);
-                /* eslint-enable camelcase */
+                rceFinder.emit('devices', [{ id: 5, name: 'my-device', deviceType: 'tv', status: 'running', createdAt: '2026-01-01' }]);
 
                 expect(postOrQueueMessage.called).to.be.false;
             } finally {
