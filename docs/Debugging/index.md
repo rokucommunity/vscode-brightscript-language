@@ -59,6 +59,54 @@ then you would need change `rootDir` in your launch config to look like this:
 
 When launching a debug session, this extension will first read all configurations from `bsconfig.json`. Then, it will overwrite any options from the selected configuration from `launch.json`. So, it is advised to keep all common settings in `bsconfig.json`, and only add values you wish to override in `launch.json`.
 
+## Using `brsconfig.json` for standard BrightScript projects
+
+`brsconfig.json` is a lightweight config file for **standard BrightScript** projects (i.e., projects that do **not** use BrighterScript). It is not a compiler config — it describes project structure so the language server and debugger can understand your project. See [Editing: brsconfig.json](../Editing/index.md#brsconfigjson) for how the same file drives the language server (intellisense, navigation, diagnostics).
+
+> **Note:** `brsconfig.json` is distinct from `bsconfig.json`. `bsconfig.json` is the BrighterScript compiler config. `brsconfig.json` has no compiler; it only carries project-structure metadata for plain `.brs` projects.
+
+### Supported properties
+
+| Property | Description |
+|---|---|
+| `files` | File globs describing which files belong to the project. Used by the LSP and merged into the launch config when `brsconfigPath` is set. |
+| `rootDir` | The root directory of the project (must contain `manifest`); resolved relative to the `brsconfig.json` file's location. |
+| `logLevel` | Logging verbosity: `off`, `error`, `warn`, `log`, `info`, `debug`, or `trace`. |
+| `extends` | Path to another `brsconfig.json` to inherit from. Comments and trailing commas (JSONC) are also supported. |
+
+### Avoiding duplication with `brsconfigPath`
+
+Set `brsconfigPath` in your `launch.json` to pull `files`, `rootDir`, and `logLevel` from your `brsconfig.json` automatically. Values explicitly set in `launch.json` always win.
+
+```json
+// brsconfig.json
+{
+  "rootDir": "src",
+  "files": ["manifest", "source/**/*.brs", "components/**/*"]
+}
+```
+
+```json
+// launch.json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "brightscript",
+      "request": "launch",
+      "name": "BrightScript Debug: Launch",
+      "host": "192.168.1.17",
+      "password": "rokudev",
+      "brsconfigPath": "${workspaceFolder}/brsconfig.json"
+    }
+  ]
+}
+```
+
+The merge order from lowest to highest priority is: extension defaults → `brsconfig.json` (via `brsconfigPath`) → `launch.json`.
+
+> **Note:** When `brsconfigPath` is set, `bsconfig.json` is **not** auto-loaded. `brsconfigPath` is an explicit opt-in for standard BrightScript projects, so the extension uses `brsconfig.json` exclusively and skips the usual `bsconfig.json` lookup.
+
 ## Breakpoints
 
 Roku devices currently do not have a way to dynamically insert breakpoints during a running application. So, in order to use breakpoints, this extension will inject a `STOP` statement into the code for each breakpoint before the app is deployed. This means that anytime you add/remove a breakpoint, you will need to stop your current debug session and start a new one.
