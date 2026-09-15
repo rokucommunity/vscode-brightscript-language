@@ -122,30 +122,12 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                     }
                 }
 
-                //the fallback chain below only covers a start whose firmware list never loaded in
-                //the webview: the chosen snapshot's own firmware, then the device's, then the first
-                //one available for the device's type
-                let firmwareVersionId: string | null | undefined = message.context.firmwareVersionId;
-                if (!firmwareVersionId) {
-                    const snapshots = await managementClient.listSnapshots({ deviceId: deviceId });
-                    const chosenSnapshot = snapshots.find((snapshot) => snapshot.id === snapshotId);
-                    firmwareVersionId = chosenSnapshot?.firmwareVersionId ?? device.firmwareVersionId;
-                    if (!firmwareVersionId) {
-                        const firmwareVersions = await managementClient.listFirmwareVersions();
-                        firmwareVersionId = firmwareVersions.find((firmwareVersion) => firmwareVersion.deviceType === device.deviceType)?.firmwareVersionId;
-                    }
-                }
-                if (!firmwareVersionId) {
-                    throw new Error(`No firmware version is available for device type '${device.deviceType}'`);
-                }
-
-                const startedDevice = await managementClient.startDevice({
-                    deviceId: deviceId,
-                    start: {
-                        snapshotId: snapshotId,
-                        firmwareVersionId: firmwareVersionId,
-                        maxRuntime: maxRuntimeSeconds
-                    }
+                const startedDevice = await this.startDeviceCore({
+                    managementClient: managementClient,
+                    device: device,
+                    snapshotId: snapshotId,
+                    firmwareVersionId: message.context.firmwareVersionId,
+                    maxRuntimeSeconds: maxRuntimeSeconds
                 });
                 this.postOrQueueMessage(this.createResponseMessage(message, { device: startedDevice }));
                 this.startTransitionWatch();
@@ -162,8 +144,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                 if (!managementClient) {
                     throw new Error('No active Cloud Emulator account is configured');
                 }
-                const deviceId = message.context.deviceId;
-                const stoppedDevice = await managementClient.stopDevice({ deviceId: deviceId });
+                const stoppedDevice = await this.stopDeviceCore(managementClient, message.context.deviceId);
                 this.postOrQueueMessage(this.createResponseMessage(message, { device: stoppedDevice }));
                 this.startTransitionWatch();
             } catch (error) {
@@ -304,6 +285,18 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
             const streamRequest = await this.rceManager.resolveStreamRequest(deviceId);
             await vscode.commands.executeCommand(VscodeCommand.rokuDeviceViewShowRceStream, streamRequest);
         });
+
+        //internal commands (no package.json contribution): the video editor tab and the Roku Device
+        //View's stream controls both start/stop a device by id through these, since neither webview
+        //can reach this provider directly. Unlike the webview handlers above, these throw on failure
+        //so the calling surface can render the error itself.
+        this.registerCommand(VscodeCommand.rceStartDeviceById, async (deviceId: number) => {
+            await this.startDeviceById(deviceId);
+        });
+
+        this.registerCommand(VscodeCommand.rceStopDeviceById, async (deviceId: number) => {
+            await this.stopDeviceById(deviceId);
+        });
     }
 
     /**
@@ -329,6 +322,107 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
 
         const token = await this.rceManager.getToken();
         return { instanceUrl: instanceApiUrl, rceToken: token };
+    }
+
+    /**
+     * Shared start logic: resolves firmware (the chosen snapshot's own firmware, then the device's,
+     * then the first one available for the device's type) when the caller does not already have
+     * one, then calls the management api. Callers own confirmation, transition watch, and pushState.
+     */
+    private async startDeviceCore(options: StartDeviceCoreOptions): Promise<RceDevice> {
+        const { managementClient, device, snapshotId, maxRuntimeSeconds } = options;
+        let resolvedFirmwareVersionId = options.firmwareVersionId;
+        if (!resolvedFirmwareVersionId) {
+            const snapshots = await managementClient.listSnapshots({ deviceId: device.id });
+            const chosenSnapshot = snapshots.find((snapshot) => snapshot.id === snapshotId);
+            resolvedFirmwareVersionId = chosenSnapshot?.firmwareVersionId ?? device.firmwareVersionId;
+            if (!resolvedFirmwareVersionId) {
+                const firmwareVersions = await managementClient.listFirmwareVersions();
+                resolvedFirmwareVersionId = firmwareVersions.find((firmwareVersion) => firmwareVersion.deviceType === device.deviceType)?.firmwareVersionId;
+            }
+        }
+        if (!resolvedFirmwareVersionId) {
+            throw new Error(`No firmware version is available for device type '${device.deviceType}'`);
+        }
+
+        return managementClient.startDevice({
+            deviceId: device.id,
+            start: {
+                snapshotId: snapshotId,
+                firmwareVersionId: resolvedFirmwareVersionId,
+                maxRuntime: maxRuntimeSeconds
+            }
+        });
+    }
+
+    private async stopDeviceCore(managementClient: RceManagementClient, deviceId: number): Promise<RceDevice> {
+        return managementClient.stopDevice({ deviceId: deviceId });
+    }
+
+    /**
+     * Starts a device by id from its own live-or-fallback snapshot: the ready live snapshot, else
+     * the first ready snapshot, mirroring the management view's primary play button (no confirmation
+     * modal there either, since it is the same live-or-first-ready resolution). Always runs the
+     * transition watch and pushes state, even on failure, then rethrows for the caller to render.
+     */
+    private async startDeviceById(deviceId: number): Promise<void> {
+        try {
+            const managementClient = await this.rceManager.getClient();
+            if (!managementClient) {
+                throw new Error('No active Cloud Emulator account is configured');
+            }
+            const devices = await managementClient.listDevices();
+            const device = devices.find((candidateDevice) => candidateDevice.id === deviceId);
+            if (!device) {
+                throw new Error(`Device ${deviceId} was not found`);
+            }
+
+            const snapshots = await managementClient.listSnapshots({ deviceId: deviceId });
+            const startSnapshot = snapshots.find((snapshot) => snapshot.live && snapshot.ready !== false) ??
+                snapshots.find((snapshot) => snapshot.ready !== false);
+            if (!startSnapshot) {
+                throw new Error(`Device '${device.name}' has no ready snapshot to start from`);
+            }
+
+            //the snapshot is already in hand, so its own firmware is passed through directly
+            //instead of letting startDeviceCore re-fetch the snapshot list to find it again
+            await this.startDeviceCore({
+                managementClient: managementClient,
+                device: device,
+                snapshotId: startSnapshot.id,
+                firmwareVersionId: startSnapshot.firmwareVersionId,
+                maxRuntimeSeconds: RceManagementViewProvider.defaultMaxRuntimeSeconds
+            });
+            this.startTransitionWatch();
+        } finally {
+            await this.pushStateIgnoringErrors();
+        }
+    }
+
+    private async stopDeviceById(deviceId: number): Promise<void> {
+        try {
+            const managementClient = await this.rceManager.getClient();
+            if (!managementClient) {
+                throw new Error('No active Cloud Emulator account is configured');
+            }
+            await this.stopDeviceCore(managementClient, deviceId);
+            this.startTransitionWatch();
+        } finally {
+            await this.pushStateIgnoringErrors();
+        }
+    }
+
+    /**
+     * pushState(), but swallowed: used from a `finally` around a by-id start/stop so a state-rebuild
+     * failure can never mask (or overwrite the response of) the actual start/stop error the caller
+     * is about to throw.
+     */
+    private async pushStateIgnoringErrors(): Promise<void> {
+        try {
+            await this.pushState();
+        } catch (error) {
+            console.error('Failed to push RCE state', error);
+        }
     }
 
     private rceManager: RceManager;
@@ -559,4 +653,12 @@ interface RceDeviceDetailsPayload {
     snapshots: Snapshot[] | undefined;
     runs: DeviceRun[] | undefined;
     error?: string;
+}
+
+interface StartDeviceCoreOptions {
+    managementClient: RceManagementClient;
+    device: RceDevice;
+    snapshotId: number;
+    firmwareVersionId: string | null | undefined;
+    maxRuntimeSeconds: number;
 }

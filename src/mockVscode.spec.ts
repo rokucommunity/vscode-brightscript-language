@@ -88,10 +88,10 @@ export let vscode = {
     },
     subscriptions: [],
     commands: {
-        registerCommand: () => {
+        registerCommand: (command: string, ...args: any[]) => {
 
         },
-        executeCommand: () => {
+        executeCommand: (command: string, ...args: any[]) => {
 
         }
     },

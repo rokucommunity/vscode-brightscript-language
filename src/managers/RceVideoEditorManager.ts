@@ -4,6 +4,7 @@ import type { RceVideoSignalingConfig, RceVideoSignalingClientOptions } from 'ro
 import { RceVideoSignalingClient, rokuDeploy } from 'roku-deploy';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { ViewProviderCommand } from '../viewProviders/ViewProviderCommand';
+import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { RceStreamSession } from '../viewProviders/RceStreamSession';
 import { buildWebviewIndexHtml } from '../viewProviders/webviewHtml';
 import type { RceDevice } from 'roku-deploy';
@@ -58,14 +59,15 @@ export class RceVideoEditorManager implements vscode.Disposable {
     private editorPanelsByDeviceId = new Map<number, RceVideoEditorPanel>();
 
     /**
-     * Relay each streamed device's current status (from an RceFinder poll emission) into its tab's
-     * stream session. Bound so `on`/`off` see the same function reference.
+     * Relay each streamed device's current status and runtime (from an RceFinder poll emission)
+     * into its tab. Bound so `on`/`off` see the same function reference.
      */
     private handleFinderDevices = (devices: RceDevice[]) => {
         for (const [deviceId, editorPanel] of this.editorPanelsByDeviceId) {
             const device = devices.find((candidateDevice) => candidateDevice.id === deviceId);
             if (device) {
                 editorPanel.handleDeviceStatusChanged(device.status);
+                editorPanel.handleDeviceRuntimeChanged(device.runningDevice?.startedAt, device.runningDevice?.maxRuntime);
             }
         }
     };
@@ -193,6 +195,11 @@ class RceVideoEditorPanel implements vscode.Disposable {
             try {
                 await this.handleWebviewMessage(message);
             } catch (e) {
+                //the awaited work above can outlive the tab; a disposed panel throws on any
+                //property access, including .webview, so there is nothing left to report to
+                if (this.disposed) {
+                    return;
+                }
                 this.panel.webview.postMessage({
                     ...message,
                     error: {
@@ -272,6 +279,31 @@ class RceVideoEditorPanel implements vscode.Disposable {
     }
 
     /**
+     * Posts the device's current runtime (undefined fields when it is not running, so the webview
+     * clears its display) to the webview, but only when it actually changed since the last post -
+     * every finder emission (every few seconds) would otherwise queue an identical message for
+     * every still-not-ready webview.
+     */
+    public handleDeviceRuntimeChanged(startedAt: string | null | undefined, maxRuntime: number | null | undefined): void {
+        if (this.hasPostedRuntime && this.lastPostedRuntimeStartedAt === startedAt && this.lastPostedRuntimeMaxRuntime === maxRuntime) {
+            return;
+        }
+        this.hasPostedRuntime = true;
+        this.lastPostedRuntimeStartedAt = startedAt;
+        this.lastPostedRuntimeMaxRuntime = maxRuntime;
+        this.postOrQueueMessage({
+            event: ViewProviderEvent.onRceDeviceRuntimeChanged,
+            context: { deviceId: this.deviceId, startedAt: startedAt, maxRuntime: maxRuntime }
+        });
+    }
+
+    //tracked separately from the memoized values below (both undefined at rest, same as a genuine
+    //not-running device) so the very first "not running" state still posts once
+    private hasPostedRuntime = false;
+    private lastPostedRuntimeStartedAt: string | null | undefined;
+    private lastPostedRuntimeMaxRuntime: number | null | undefined;
+
+    /**
      * Resolve this panel's device to its current stream details, keeping the tab title in sync with
      * the device's name. Shared by watch() and the session's automatic reconnect loop.
      */
@@ -321,6 +353,25 @@ class RceVideoEditorPanel implements vscode.Disposable {
             //the emulated display; the stream itself keeps running either way)
             const rceToken = await this.rceManager.getToken();
             await rokuDeploy.keyPress({ device: { id: this.deviceId, rceToken: rceToken }, key: 'Power' });
+            //the tab can close while either await above was in flight; the panel (and its webview)
+            //are gone by then, so posting would throw
+            if (this.disposed) {
+                return;
+            }
+            this.postOrQueueMessage({ ...message, response: { success: true } });
+        } else if (command === ViewProviderCommand.startRceDevice) {
+            //this tab is pinned to one device, so any deviceId in the message is ignored
+            await vscode.commands.executeCommand(VscodeCommand.rceStartDeviceById, this.deviceId);
+            //a start can take a while server-side; the tab may have closed by the time it resolves
+            if (this.disposed) {
+                return;
+            }
+            this.postOrQueueMessage({ ...message, response: { success: true } });
+        } else if (command === ViewProviderCommand.stopRceDevice) {
+            await vscode.commands.executeCommand(VscodeCommand.rceStopDeviceById, this.deviceId);
+            if (this.disposed) {
+                return;
+            }
             this.postOrQueueMessage({ ...message, response: { success: true } });
         } else {
             console.warn('Did not handle rce video editor message', message);

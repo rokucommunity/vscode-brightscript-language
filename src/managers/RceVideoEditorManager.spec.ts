@@ -9,6 +9,7 @@ import { RceVideoEditorManager } from './RceVideoEditorManager';
 import { RceDeviceNotRunningError } from './RceManager';
 import { ViewProviderCommand } from '../viewProviders/ViewProviderCommand';
 import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
+import { VscodeCommand } from '../commands/VscodeCommand';
 
 let Module = require('module');
 const { require: oldRequire } = Module.prototype;
@@ -262,6 +263,61 @@ describe('RceVideoEditorManager', () => {
 
         const response = fakePanel.postedMessages.find((posted) => posted.command === ViewProviderCommand.pressRceDevicePowerButton);
         expect(response?.error?.message).to.contain('is not running');
+    });
+
+    it('starts this tab\'s device by id when the webview sends startRceDevice', async () => {
+        const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves();
+        createManager();
+        await manager.open(5, 'my-device');
+        const fakePanel = manager.createdPanels[0];
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.startRceDevice, context: { deviceId: 999 } });
+
+        //the deviceId in the message is ignored; this tab is pinned to its own device
+        expect(executeCommand.calledOnceWith(VscodeCommand.rceStartDeviceById, 5)).to.be.true;
+        const response = fakePanel.postedMessages.find((posted) => posted.command === ViewProviderCommand.startRceDevice);
+        expect(response?.response).to.eql({ success: true });
+    });
+
+    it('relays a start failure back to the webview as an error response', async () => {
+        sinon.stub(vscode.commands, 'executeCommand').rejects(new Error('no ready snapshot'));
+        createManager();
+        await manager.open(5, 'my-device');
+        const fakePanel = manager.createdPanels[0];
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.startRceDevice, context: {} });
+
+        const response = fakePanel.postedMessages.find((posted) => posted.command === ViewProviderCommand.startRceDevice);
+        expect(response?.error?.message).to.contain('no ready snapshot');
+    });
+
+    it('stops this tab\'s device by id when the webview sends stopRceDevice', async () => {
+        const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves();
+        createManager();
+        await manager.open(5, 'my-device');
+        const fakePanel = manager.createdPanels[0];
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.stopRceDevice, context: {} });
+
+        expect(executeCommand.calledOnceWith(VscodeCommand.rceStopDeviceById, 5)).to.be.true;
+        const response = fakePanel.postedMessages.find((posted) => posted.command === ViewProviderCommand.stopRceDevice);
+        expect(response?.response).to.eql({ success: true });
+    });
+
+    it('relays a stop failure back to the webview as an error response', async () => {
+        sinon.stub(vscode.commands, 'executeCommand').rejects(new Error('No active Cloud Emulator account is configured'));
+        createManager();
+        await manager.open(5, 'my-device');
+        const fakePanel = manager.createdPanels[0];
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+        await fakePanel.receiveMessage({ command: ViewProviderCommand.stopRceDevice, context: {} });
+
+        const response = fakePanel.postedMessages.find((posted) => posted.command === ViewProviderCommand.stopRceDevice);
+        expect(response?.error?.message).to.contain('No active Cloud Emulator account');
     });
 
     it('negotiates a fresh session when a reloaded webview reports ready after the offer was delivered (tab moved to another window)', async () => {
@@ -523,6 +579,34 @@ describe('RceVideoEditorManager', () => {
             expect(findEventMessages(panelForDevice6, ViewProviderEvent.onRceStreamDeviceStopped).length).to.equal(0);
             expect(manager.createdClients[1].stop.called).to.be.false;
             expect(panelForDevice5.disposed).to.be.false;
+        });
+
+        it('posts the device runtime from the finder emission', async () => {
+            createManager();
+            await manager.open(5, 'my-device');
+            const fakePanel = manager.createdPanels[0];
+            await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+            rceFinder.emit('devices', [
+                { id: 5, status: 'running', runningDevice: { startedAt: '2026-01-01T00:00:00Z', maxRuntime: 3600 } }
+            ]);
+
+            const runtimeMessages = findEventMessages(fakePanel, ViewProviderEvent.onRceDeviceRuntimeChanged);
+            expect(runtimeMessages.length).to.equal(1);
+            expect(runtimeMessages[0].context).to.eql({ deviceId: 5, startedAt: '2026-01-01T00:00:00Z', maxRuntime: 3600 });
+        });
+
+        it('posts a cleared runtime payload once the device is no longer running', async () => {
+            createManager();
+            await manager.open(5, 'my-device');
+            const fakePanel = manager.createdPanels[0];
+            await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+            rceFinder.emit('devices', [{ id: 5, status: 'shutdown' }]);
+
+            const runtimeMessages = findEventMessages(fakePanel, ViewProviderEvent.onRceDeviceRuntimeChanged);
+            expect(runtimeMessages.length).to.equal(1);
+            expect(runtimeMessages[0].context).to.eql({ deviceId: 5, startedAt: undefined, maxRuntime: undefined });
         });
 
         it('resumes the tab stream by itself when the device starts again', async () => {

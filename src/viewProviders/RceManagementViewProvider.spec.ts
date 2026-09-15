@@ -761,6 +761,156 @@ describe('RceManagementViewProvider', () => {
         });
     });
 
+    describe('rceStartDeviceById', () => {
+        function stubRegisterCommand() {
+            const registeredCommands = new Map<string, (...args: any[]) => any>();
+            (sinon.stub(vscode.commands, 'registerCommand') as sinon.SinonStub).callsFake((commandId: string, callback: any) => {
+                registeredCommands.set(commandId, callback);
+                return { dispose: () => { } };
+            });
+            return registeredCommands;
+        }
+
+        it('starts from the ready live snapshot without showing a confirmation modal', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', deviceType: 'tv', firmwareVersionId: 'rce-fw:1' }
+            ]);
+            rceManager.fakeManagementClient.listSnapshots.resolves([
+                { id: 10, createdAt: '2026-01-01', firmwareVersionId: 'rce-fw:1', live: false, ready: true },
+                { id: 20, createdAt: '2026-01-02', firmwareVersionId: 'rce-fw:2', live: true, ready: true }
+            ]);
+            rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
+            const showWarningMessage = sinon.stub(vscode.window, 'showWarningMessage');
+            const registeredCommands = stubRegisterCommand();
+
+            createProvider();
+
+            await registeredCommands.get(VscodeCommand.rceStartDeviceById)(5);
+
+            const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
+            expect(startDeviceArgs[0].start.snapshotId).to.equal(20);
+            expect(startDeviceArgs[0].start.firmwareVersionId).to.equal('rce-fw:2');
+            expect(showWarningMessage.called).to.be.false;
+        });
+
+        it('falls back to the first ready snapshot when the live snapshot is not ready', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', deviceType: 'tv', firmwareVersionId: 'rce-fw:1' }
+            ]);
+            rceManager.fakeManagementClient.listSnapshots.resolves([
+                { id: 10, createdAt: '2026-01-01', firmwareVersionId: 'rce-fw:1', live: false, ready: true },
+                { id: 20, createdAt: '2026-01-02', firmwareVersionId: 'rce-fw:2', live: true, ready: false }
+            ]);
+            rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
+            const registeredCommands = stubRegisterCommand();
+
+            createProvider();
+
+            await registeredCommands.get(VscodeCommand.rceStartDeviceById)(5);
+
+            const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
+            expect(startDeviceArgs[0].start.snapshotId).to.equal(10);
+        });
+
+        it('throws when the device has no ready snapshot, without calling startDevice', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', deviceType: 'tv', firmwareVersionId: 'rce-fw:1' }
+            ]);
+            rceManager.fakeManagementClient.listSnapshots.resolves([
+                { id: 10, createdAt: '2026-01-01', firmwareVersionId: 'rce-fw:1', live: true, ready: false }
+            ]);
+            const registeredCommands = stubRegisterCommand();
+
+            createProvider();
+
+            let caughtError: Error;
+            try {
+                await registeredCommands.get(VscodeCommand.rceStartDeviceById)(5);
+            } catch (error) {
+                caughtError = error as Error;
+            }
+            expect(caughtError?.message).to.contain('no ready snapshot');
+            expect(rceManager.fakeManagementClient.startDevice.called).to.be.false;
+        });
+
+        it('starts the finder transition watch on success', async () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                rceManager = new TestRceManager(vscode.context as any);
+                await rceManager.addAccount('work', 'token-work');
+                rceManager.fakeManagementClient.listDevices.resolves([
+                    { id: 5, name: 'my-device', deviceType: 'tv', firmwareVersionId: 'rce-fw:1' }
+                ]);
+                rceManager.fakeManagementClient.listSnapshots.resolves([
+                    { id: 10, createdAt: '2026-01-01', firmwareVersionId: 'rce-fw:1', live: true, ready: true }
+                ]);
+                rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
+                const registeredCommands = stubRegisterCommand();
+
+                createProvider();
+
+                await registeredCommands.get(VscodeCommand.rceStartDeviceById)(5);
+
+                clock.tick(RceManagementViewProvider['transitionWatchIntervalMs']);
+                expect(rceFinder.scan.callCount).to.equal(1);
+            } finally {
+                clock.restore();
+            }
+        });
+    });
+
+    describe('rceStopDeviceById', () => {
+        it('stops the device by id and starts the finder transition watch', async () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                rceManager = new TestRceManager(vscode.context as any);
+                await rceManager.addAccount('work', 'token-work');
+                rceManager.fakeManagementClient.stopDevice.resolves({ id: 5 });
+                const registeredCommands = new Map<string, (...args: any[]) => any>();
+                (sinon.stub(vscode.commands, 'registerCommand') as sinon.SinonStub).callsFake((commandId: string, callback: any) => {
+                    registeredCommands.set(commandId, callback);
+                    return { dispose: () => { } };
+                });
+
+                createProvider();
+
+                await registeredCommands.get(VscodeCommand.rceStopDeviceById)(5);
+
+                expect(rceManager.fakeManagementClient.stopDevice.calledWith({ deviceId: 5 })).to.be.true;
+
+                clock.tick(RceManagementViewProvider['transitionWatchIntervalMs']);
+                expect(rceFinder.scan.callCount).to.equal(1);
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('throws when no account is configured', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            const registeredCommands = new Map<string, (...args: any[]) => any>();
+            (sinon.stub(vscode.commands, 'registerCommand') as sinon.SinonStub).callsFake((commandId: string, callback: any) => {
+                registeredCommands.set(commandId, callback);
+                return { dispose: () => { } };
+            });
+
+            createProvider();
+
+            let caughtError: Error;
+            try {
+                await registeredCommands.get(VscodeCommand.rceStopDeviceById)(5);
+            } catch (error) {
+                caughtError = error as Error;
+            }
+            expect(caughtError?.message).to.contain('No active Cloud Emulator account');
+        });
+    });
+
     describe('runRceAccountCommand', () => {
         it('executes the matching rce vscode command', async () => {
             rceManager = new TestRceManager(vscode.context as any);
