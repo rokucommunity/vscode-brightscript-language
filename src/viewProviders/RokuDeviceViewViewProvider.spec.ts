@@ -890,7 +890,7 @@ describe('RokuDeviceViewViewProvider', () => {
             createProvider();
             const client = await startFirstSession();
             const rtaManager = provider['dependencies'].rtaManager;
-            rtaManager.device = { getRokuDeployDevice: () => ({ id: 5, rceToken: 'management-api-token' }) };
+            rtaManager.device = { getRokuDeployDevice: () => ({ id: 5, rceToken: 'management-api-token' }) } as any;
             const disconnectFromDevice = sinon.stub(rtaManager, 'disconnectFromDevice');
 
             const message = { command: ViewProviderCommand.stopRceStream, context: {} };
@@ -907,7 +907,7 @@ describe('RokuDeviceViewViewProvider', () => {
             const client = await startFirstSession();
             const rtaManager = provider['dependencies'].rtaManager;
             //a LAN device unrelated to the streamed cloud device (id 5) - this must never be forgotten
-            rtaManager.device = { getRokuDeployDevice: () => ({ host: '1.2.3.4' }) };
+            rtaManager.device = { getRokuDeployDevice: () => ({ host: '1.2.3.4' }) } as any;
             const disconnectFromDevice = sinon.stub(rtaManager, 'disconnectFromDevice');
 
             const message = { command: ViewProviderCommand.stopRceStream, context: {} };

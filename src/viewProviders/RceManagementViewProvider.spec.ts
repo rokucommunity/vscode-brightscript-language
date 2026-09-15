@@ -414,7 +414,7 @@ describe('RceManagementViewProvider', () => {
             };
             await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
 
-            expect(rceManager.fakeManagementClient.startDevice.calledWith(sinon.match({ deviceId: 5, start: sinon.match({ snapshotId: 10 }) }))).to.be.true;
+            expect(rceManager.fakeManagementClient.startDevice.calledWith(sinonImport.match({ deviceId: 5, start: sinonImport.match({ snapshotId: 10 }) }))).to.be.true;
         });
 
         it('does not show the confirm modal when replacesLiveSnapshot is not sent', async () => {
