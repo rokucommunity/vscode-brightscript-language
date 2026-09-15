@@ -870,7 +870,7 @@
         min-width: min-content;
     }
 
-    /* the firmware floor (70) + runtime floor (62) + split button (~75) + gaps: the start cluster
+    /* the firmware floor (70) + runtime floor (62) + labeled split button (~115) + gaps: the start cluster
        claims its one-line minimum so it wraps below the title BEFORE breaking up internally; the
        split button only drops to its own line when a full row can't fit all three. Shutdown rows
        only, so the smaller stop/snapshot clusters never claim width they don't use. Capped at the
@@ -879,7 +879,7 @@
         /* matches deviceInfo's factor so the shutdown row still splits the line evenly and the
            firmware select keeps stretching inline */
         flex: 999 1 0%;
-        min-width: min(220px, 100%);
+        min-width: min(260px, 100%);
         /* only the start cluster may break internally (the split button drops to its own line);
            the stop/snapshot cluster stays atomic and wraps below the title as one unit */
         flex-wrap: wrap;
@@ -1110,11 +1110,10 @@
                                 <div class="splitButtonWrapper" bind:this={splitButtonElementsByDeviceId[device.id]}>
                                     <vscode-button-group>
                                         <vscode-button
-                                            icon="play"
-                                            icon-only
+                                            // icon="play"
                                             title={startTitle}
                                             disabled={deviceActionsInFlight[device.id] || isFirstDetailsLoad(detailsState) || !startSnapshot}
-                                            on:click={() => { snapshotMenuDeviceId = undefined; void startDevice(device, startSnapshot?.id, readDisplayedFirmwareVersionId(device.id)); }}></vscode-button>
+                                            on:click={() => { snapshotMenuDeviceId = undefined; void startDevice(device, startSnapshot?.id, readDisplayedFirmwareVersionId(device.id)); }}>Start</vscode-button>
                                         <vscode-button
                                             icon="chevron-down"
                                             icon-only
@@ -1152,10 +1151,9 @@
                                 {/if}
                                 <vscode-button
                                     icon="debug-stop"
-                                    icon-only
                                     title="Stop device"
                                     disabled={deviceActionsInFlight[device.id]}
-                                    on:click={() => stopDevice(device)}></vscode-button>
+                                    on:click={() => stopDevice(device)}>Stop</vscode-button>
                             {/if}
                         </div>
                         {#if runtime}
