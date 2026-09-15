@@ -1246,7 +1246,7 @@
                                             secondary
                                             disabled={enablingDevModeInFlight[device.id]}
                                             on:click={() => enableDevMode(device)}>
-                                            Enable Dev Mode
+                                            Show Dev Mode Installer
                                         </vscode-button>
                                     </div>
                                     {#if detailsState.devModeEnabledHintVisible}
