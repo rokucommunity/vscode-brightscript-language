@@ -8,7 +8,6 @@ import { RceManager } from '../managers/RceManager';
 import { RceManagementViewProvider } from './RceManagementViewProvider';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
-import { WorkspaceStateKey } from './WorkspaceStateKey';
 import { VscodeCommand } from '../commands/VscodeCommand';
 
 let Module = require('module');
@@ -272,9 +271,8 @@ describe('RceManagementViewProvider', () => {
         it('responds with an error when no snapshotId is sent, without resolving a fallback snapshot itself', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            //a remembered pick, a live snapshot, and lastSnapshotId all exist, but the picker
-            //is the single source of truth, so none of them get resolved here
-            await vscode.context.workspaceState.update(WorkspaceStateKey.rceLastSnapshotByDevice, { 5: 20 });
+            //a live snapshot and lastSnapshotId both exist, but the picker is the single source
+            //of truth, so neither gets resolved here
             rceManager.fakeManagementClient.listDevices.resolves([
                 { id: 5, name: 'my-device', deviceType: 'tv', lastSnapshotId: 10, snapshots: [10, 20, 30], firmwareVersionId: 'rce-fw:1' }
             ]);
@@ -294,7 +292,7 @@ describe('RceManagementViewProvider', () => {
             expect(rceManager.fakeManagementClient.startDevice.called).to.be.false;
         });
 
-        it('starts the device with the picker-sent snapshotId and remembers it as the device\'s last-used pick', async () => {
+        it('starts the device with the picker-sent snapshotId', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
             rceManager.fakeManagementClient.listDevices.resolves([
@@ -315,9 +313,6 @@ describe('RceManagementViewProvider', () => {
             expect(startDeviceArgs[0].deviceId).to.equal(5);
             expect(startDeviceArgs[0].start.snapshotId).to.equal(20);
             expect(startDeviceArgs[0].start.firmwareVersionId).to.equal('rce-fw:2');
-
-            const remembered = vscode.context.workspaceState.get(WorkspaceStateKey.rceLastSnapshotByDevice);
-            expect(remembered[5]).to.equal(20);
         });
 
         it('starts the device with the picker-sent firmware version without resolving one itself', async () => {
@@ -382,10 +377,9 @@ describe('RceManagementViewProvider', () => {
     });
 
     describe('getRceDeviceDetails', () => {
-        it('returns snapshots, runs, and the remembered snapshot id', async () => {
+        it('returns snapshots and runs', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
-            await vscode.context.workspaceState.update(WorkspaceStateKey.rceLastSnapshotByDevice, { 5: 20 });
             rceManager.fakeManagementClient.listSnapshots.resolves([{ id: 20, createdAt: '2026-01-01' }]);
             rceManager.fakeManagementClient.getDeviceRuns.resolves([{ id: 1, instanceId: 1, status: 'completed' }]);
 
@@ -397,7 +391,6 @@ describe('RceManagementViewProvider', () => {
             const responseMessage = findResponseMessage(ViewProviderCommand.getRceDeviceDetails);
             expect(responseMessage.response.snapshots).to.have.length(1);
             expect(responseMessage.response.runs).to.have.length(1);
-            expect(responseMessage.response.lastUsedSnapshotId).to.equal(20);
         });
     });
 

@@ -5,7 +5,6 @@ import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
-import { WorkspaceStateKey } from './WorkspaceStateKey';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import type { RceManager } from '../managers/RceManager';
 import type { RceFinder } from '../deviceDiscovery/RceFinder';
@@ -130,9 +129,6 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                         maxRuntime: maxRuntimeSeconds
                     }
                 });
-                //every start records its snapshot as the device's last-used pick, which the picker
-                //pre-selects next time, ahead of the live snapshot
-                await this.rememberSnapshotId(deviceId, snapshotId);
                 this.postOrQueueMessage(this.createResponseMessage(message, { device: startedDevice }));
                 this.startTransitionWatch();
             } catch (error) {
@@ -507,8 +503,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
     private async buildDeviceDetailsPayload(deviceId: number): Promise<RceDeviceDetailsPayload> {
         const details: RceDeviceDetailsPayload = {
             snapshots: undefined,
-            runs: undefined,
-            lastUsedSnapshotId: this.getRememberedSnapshotId(deviceId)
+            runs: undefined
         };
 
         try {
@@ -528,22 +523,6 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
 
         return details;
     }
-
-    /**
-     * The snapshot id this device was last started with, remembered per workspace so the picker
-     * pre-selects it across VS Code reloads. This is the extension's own record; the api's
-     * lastSnapshotId is deliberately not consulted anywhere.
-     */
-    private getRememberedSnapshotId(deviceId: number): number | undefined {
-        const remembered = this.extensionContext.workspaceState.get<Record<number, number>>(WorkspaceStateKey.rceLastSnapshotByDevice) ?? {};
-        return remembered[deviceId];
-    }
-
-    private async rememberSnapshotId(deviceId: number, snapshotId: number): Promise<void> {
-        const remembered = this.extensionContext.workspaceState.get<Record<number, number>>(WorkspaceStateKey.rceLastSnapshotByDevice) ?? {};
-        remembered[deviceId] = snapshotId;
-        await this.extensionContext.workspaceState.update(WorkspaceStateKey.rceLastSnapshotByDevice, remembered);
-    }
 }
 
 interface RceManagementViewState {
@@ -561,6 +540,5 @@ interface RceManagementViewState {
 interface RceDeviceDetailsPayload {
     snapshots: Snapshot[] | undefined;
     runs: DeviceRun[] | undefined;
-    lastUsedSnapshotId: number | undefined;
     error?: string;
 }

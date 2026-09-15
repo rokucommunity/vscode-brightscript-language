@@ -8,6 +8,7 @@
     import { intermediary } from '../../ExtensionIntermediary';
     import Loader from '../../shared/Loader.svelte';
     import VscodeDropdown from '../../shared/vscode-ui-toolkit/VscodeDropdown.svelte';
+    import DeviceTypeIcon from './DeviceTypeIcon.svelte';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
 
@@ -69,9 +70,23 @@
 
     let expandedDeviceId: number | undefined = undefined;
     let deviceDetailsByDeviceId: Record<number, DeviceDetailsState> = {};
-    let snapshotDropdownsByDeviceId: Record<number, VscodeDropdown | null> = {};
     let firmwareDropdownsByDeviceId: Record<number, VscodeDropdown | null> = {};
     let historyExpandedByDeviceId: Record<number, boolean> = {};
+
+    //only one device's start-from-snapshot flyout may be open at a time
+    let snapshotMenuDeviceId: number | undefined = undefined;
+    let splitButtonElementsByDeviceId: Record<number, HTMLDivElement | undefined> = {};
+
+    function handleWindowClick(event: MouseEvent) {
+        if (snapshotMenuDeviceId === undefined) {
+            return;
+        }
+        const openSplitButtonElement = splitButtonElementsByDeviceId[snapshotMenuDeviceId];
+        if (openSplitButtonElement?.contains(event.target as Node)) {
+            return;
+        }
+        snapshotMenuDeviceId = undefined;
+    }
 
     let editingDeviceId: number | undefined = undefined;
     let editName = '';
@@ -114,9 +129,10 @@
     }
 
     /**
-     * Eagerly loads details for stopped devices so every row's snapshot picker has names without
-     * expanding the device. State re-applies on every finder poll, so this only fetches when the
-     * cache is missing or the device's snapshot id list no longer matches what was cached.
+     * Eagerly loads details for stopped devices so every row's split button and flyout menu have
+     * snapshot names without expanding the device. State re-applies on every finder poll, so this
+     * only fetches when the cache is missing or the device's snapshot id list no longer matches
+     * what was cached.
      */
     function ensureRowSnapshotDetails(currentDevices: RceStateDevice[] | undefined) {
         for (const device of currentDevices ?? []) {
@@ -204,6 +220,15 @@
         } finally {
             deviceActionsInFlight = { ...deviceActionsInFlight, [device.id]: false };
         }
+    }
+
+    function toggleSnapshotMenu(deviceId: number) {
+        snapshotMenuDeviceId = snapshotMenuDeviceId === deviceId ? undefined : deviceId;
+    }
+
+    function startFromSnapshotMenu(device: RceStateDevice, snapshot: Snapshot) {
+        snapshotMenuDeviceId = undefined;
+        void startDevice(device, snapshot.id, resolveFirmwareVersionIdForSnapshot(device, snapshot));
     }
 
     async function stopDevice(device: RceStateDevice) {
@@ -330,41 +355,15 @@
     }
 
     /**
-     * Resolves which snapshot the Start picker should have selected: the user's own in-session pick
-     * when it still exists in the refreshed list, otherwise the snapshot the device's most recent run
-     * actually started from (the run history is the authoritative cross-window record of "last one
-     * used"), otherwise the extension's own remembered last-start (covers a missing or lagging run
-     * record), otherwise the device's live snapshot, otherwise the first ready snapshot, otherwise
-     * undefined. The api's lastSnapshotId (last CREATED, not last used) is deliberately not
-     * consulted. Whatever this lands on is exactly what Start sends: the picker is the single source
-     * of truth, the provider never resolves a snapshot itself.
-     *
-     * Only a deliberate pick may ride through as preferredSnapshotId. A stop rewrites the snapshot
-     * list (the live flag moves to the just-saved state) across several transition-watch refetches,
-     * and if a resolved default were fed back in as the preferred candidate, one mid-transition
-     * resolution landing on live would stick there forever instead of returning to the last-started
-     * snapshot once the list settles.
+     * The snapshot a start defaults to when the user does not pick one from the flyout menu: the
+     * device's ready live snapshot, otherwise the first ready snapshot, otherwise undefined.
      */
-    function resolveSelectedSnapshotId(
-        snapshots: Snapshot[] | undefined,
-        preferredSnapshotId: number | undefined,
-        latestRunSnapshotId: number | undefined,
-        rememberedSnapshotId: number | undefined
-    ): number | undefined {
-        const availableSnapshotIds = new Set((snapshots ?? []).map((snapshot) => snapshot.id));
-        const liveSnapshotId = (snapshots ?? []).find((snapshot) => snapshot.live)?.id;
-        const candidateSnapshotIds = [preferredSnapshotId, latestRunSnapshotId, rememberedSnapshotId, liveSnapshotId];
-        for (const candidateSnapshotId of candidateSnapshotIds) {
-            if (candidateSnapshotId !== undefined && availableSnapshotIds.has(candidateSnapshotId)) {
-                return candidateSnapshotId;
-            }
-        }
-        return (snapshots ?? []).find((snapshot) => snapshot.ready !== false)?.id;
+    function resolveStartSnapshot(detailsState: DeviceDetailsState | undefined): Snapshot | undefined {
+        const snapshots = detailsState?.snapshots ?? [];
+        return snapshots.find((snapshot) => snapshot.live && snapshot.ready !== false) ?? snapshots.find((snapshot) => snapshot.ready !== false);
     }
 
     async function loadDeviceDetails(deviceId: number) {
-        const existingSelection = deviceDetailsByDeviceId[deviceId]?.selectedSnapshotId;
-        const existingUserPickedSnapshotId = deviceDetailsByDeviceId[deviceId]?.userPickedSnapshotId ?? false;
         //preserved across the refetch: the onRceStateChanged push that follows a successful
         //enableRceDevMode call would otherwise refetch details immediately and wipe this out before
         //the user ever sees it. It is cleared explicitly instead, when the device is collapsed or
@@ -373,7 +372,7 @@
         deviceDetailsByDeviceId = {
             ...deviceDetailsByDeviceId,
             [deviceId]: {
-                ...(deviceDetailsByDeviceId[deviceId] ?? { snapshots: undefined, runs: undefined, lastUsedSnapshotId: undefined, error: undefined, selectedSnapshotId: undefined, userPickedSnapshotId: false, devModeEnabledHintVisible: false }),
+                ...(deviceDetailsByDeviceId[deviceId] ?? { snapshots: undefined, runs: undefined, error: undefined, devModeEnabledHintVisible: false }),
                 loading: true
             }
         };
@@ -382,22 +381,13 @@
             deviceId: deviceId
         });
 
-        const preferredSnapshotId = existingUserPickedSnapshotId ? existingSelection : undefined;
-        const latestRunSnapshotId = sortedRuns(details.runs)[0]?.snapshotId;
-        const resolvedSnapshotId = resolveSelectedSnapshotId(details.snapshots, preferredSnapshotId, latestRunSnapshotId, details.lastUsedSnapshotId);
-        //the pick flag only survives while the picked snapshot is what actually stays selected
-        const pickSurvived = preferredSnapshotId !== undefined && resolvedSnapshotId === preferredSnapshotId;
-
         deviceDetailsByDeviceId = {
             ...deviceDetailsByDeviceId,
             [deviceId]: {
                 loading: false,
                 snapshots: details.snapshots,
                 runs: details.runs,
-                lastUsedSnapshotId: details.lastUsedSnapshotId,
                 error: details.error,
-                selectedSnapshotId: resolvedSnapshotId,
-                userPickedSnapshotId: pickSurvived,
                 devModeEnabledHintVisible: existingDevModeEnabledHintVisible
             }
         };
@@ -417,31 +407,10 @@
     }
 
     /**
-     * The snapshot Start actually uses: read from the dropdown itself at click time, so what starts
-     * is exactly what the user sees, even if the element's internal selection ever drifts from our
-     * state mirror. The state mirror is only the fallback for a dropdown with no readable value.
-     */
-    function readDisplayedSnapshotId(deviceId: number): number | undefined {
-        const rawValue = snapshotDropdownsByDeviceId[deviceId]?.readDisplayedValue();
-        if (rawValue) {
-            return Number(rawValue);
-        }
-        return deviceDetailsByDeviceId[deviceId]?.selectedSnapshotId;
-    }
-
-    function updateSelectedSnapshot(deviceId: number, rawSnapshotId: string) {
-        const snapshotId = rawSnapshotId ? Number(rawSnapshotId) : undefined;
-        deviceDetailsByDeviceId = {
-            ...deviceDetailsByDeviceId,
-            [deviceId]: { ...deviceDetailsByDeviceId[deviceId], selectedSnapshotId: snapshotId, userPickedSnapshotId: snapshotId !== undefined }
-        };
-    }
-
-    /**
      * Resolves which firmware the start control's firmware picker should show: the user's own
-     * in-session pick when the option list still offers it, otherwise the selected snapshot's own
-     * firmware, otherwise the device's current firmware, otherwise the first option for the
-     * device's type. Until the user picks one explicitly, the selection follows the snapshot pick.
+     * in-session pick when the option list still offers it, otherwise the default start snapshot's
+     * own firmware, otherwise the device's current firmware, otherwise the first option for the
+     * device's type.
      */
     function resolveFirmwareVersionId(
         pickedFirmwareVersionId: string | undefined,
@@ -450,8 +419,8 @@
         firmwareOptions: FirmwareVersion[]
     ): string | undefined {
         const availableFirmwareIds = firmwareOptions.map((firmwareVersion) => firmwareVersion.firmwareVersionId);
-        const selectedSnapshot = (detailsState?.snapshots ?? []).find((snapshot) => snapshot.id === detailsState?.selectedSnapshotId);
-        const candidateFirmwareIds = [pickedFirmwareVersionId, selectedSnapshot?.firmwareVersionId, device.firmwareVersionId];
+        const startSnapshot = resolveStartSnapshot(detailsState);
+        const candidateFirmwareIds = [pickedFirmwareVersionId, startSnapshot?.firmwareVersionId, device.firmwareVersionId];
         for (const candidateFirmwareId of candidateFirmwareIds) {
             if (candidateFirmwareId && availableFirmwareIds.includes(candidateFirmwareId)) {
                 return candidateFirmwareId;
@@ -461,12 +430,30 @@
     }
 
     /**
-     * The firmware Start actually uses: read from the dropdown itself at click time, mirroring
-     * readDisplayedSnapshotId. Undefined (a start whose firmware list never loaded) defers to the
-     * provider's own fallback resolution.
+     * The firmware Start actually uses: read from the dropdown itself at click time, so what starts
+     * is exactly what the user sees. Undefined (a start whose firmware list never loaded) defers to
+     * the provider's own fallback resolution.
      */
     function readDisplayedFirmwareVersionId(deviceId: number): string | undefined {
         return firmwareDropdownsByDeviceId[deviceId]?.readDisplayedValue() ?? selectedFirmwareIdByDeviceId[deviceId];
+    }
+
+    /**
+     * The firmware a flyout-picked snapshot should start with: the user's explicit pick when the
+     * device's firmware options still offer it, otherwise the picked snapshot's own firmware when
+     * it's offered, otherwise the displayed default.
+     */
+    function resolveFirmwareVersionIdForSnapshot(device: RceStateDevice, snapshot: Snapshot): string | undefined {
+        const firmwareOptions = (firmwareVersions ?? []).filter((firmwareVersion) => firmwareVersion.deviceType === device.deviceType);
+        const availableFirmwareIds = firmwareOptions.map((firmwareVersion) => firmwareVersion.firmwareVersionId);
+        const pickedFirmwareVersionId = selectedFirmwareIdByDeviceId[device.id];
+        if (pickedFirmwareVersionId && availableFirmwareIds.includes(pickedFirmwareVersionId)) {
+            return pickedFirmwareVersionId;
+        }
+        if (snapshot.firmwareVersionId && availableFirmwareIds.includes(snapshot.firmwareVersionId)) {
+            return snapshot.firmwareVersionId;
+        }
+        return readDisplayedFirmwareVersionId(device.id);
     }
 
     function updateSelectedFirmware(deviceId: number, firmwareVersionId: string) {
@@ -593,16 +580,7 @@
         loading: boolean;
         snapshots: Snapshot[] | undefined;
         runs: DeviceRun[] | undefined;
-        lastUsedSnapshotId: number | undefined;
         error: string | undefined;
-        /** What the Start picker shows, and therefore exactly what Start will send */
-        selectedSnapshotId: number | undefined;
-        /**
-         * Whether selectedSnapshotId is a deliberate in-session dropdown pick. Gates whether the
-         * selection is fed back into resolveSelectedSnapshotId as the preferred candidate on the
-         * next refetch; never sent to the provider (Start always sends selectedSnapshotId as-is)
-         */
-        userPickedSnapshotId: boolean;
         /** Shown after a successful enableRceDevMode call, until the details are next refetched */
         devModeEnabledHintVisible: boolean;
     }
@@ -611,7 +589,7 @@
 <style>
     /* vscode-single-select and vscode-textfield ship a fixed 320px host width (the VS Code
        settings-page convention); this view sizes them with its own flex/stretch layout instead.
-       :global because the snapshot/firmware selects render inside the VscodeDropdown wrapper */
+       :global because the firmware select renders inside the VscodeDropdown wrapper */
     :global(vscode-single-select),
     :global(vscode-textfield) {
         width: auto;
@@ -709,7 +687,7 @@
         align-items: center;
         gap: 8px;
         padding: 6px 0;
-        /* the start control wraps under the device info when the sidebar is too narrow for one line */
+        /* rowControls wraps under deviceInfo as one unit when the sidebar is too narrow for one line */
         flex-wrap: wrap;
     }
 
@@ -727,6 +705,11 @@
         display: flex;
         align-items: center;
         gap: 2px;
+    }
+
+    .watchButton {
+        margin-left: auto;
+        flex-shrink: 0;
     }
 
     .expandCaret {
@@ -770,11 +753,6 @@
 
     .indented {
         margin-left: 20px;
-    }
-
-    .deviceMeta {
-        opacity: 0.7;
-        font-size: 0.9em;
     }
 
     .deviceRuntime {
@@ -836,21 +814,26 @@
         gap: 6px;
     }
 
-    .startControl {
+    /* everything after deviceInfo (start/stop/snapshot/watch controls) as one flex child, so the
+       whole cluster wraps below deviceInfo together instead of the watch button wrapping alone */
+    .rowControls {
         display: flex;
         align-items: center;
         gap: 6px;
         flex: 1;
+        /* min-content keeps the wrap threshold equal to the controls' real minimum width, so the
+           group wraps below deviceInfo instead of overflowing the panel and causing h-scroll */
+        min-width: min-content;
     }
 
-    /* :global because the snapshot/firmware selects render inside the VscodeDropdown wrapper
-       component, so they never carry this component's scoping class */
-    .startControl :global(vscode-single-select) {
+    /* :global because the firmware select renders inside the VscodeDropdown wrapper
+       component, so it never carries this component's scoping class */
+    .rowControls :global(vscode-single-select) {
         flex: 1;
         min-width: 100px;
     }
 
-    .startControl .runtimeDropdown {
+    .rowControls .runtimeDropdown {
         flex: 0 0 auto;
         min-width: 62px;
     }
@@ -859,6 +842,43 @@
     vscode-toolbar-button.disabled {
         pointer-events: none;
         opacity: 0.4;
+    }
+
+    .splitButtonWrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+    }
+
+    .snapshotMenu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 10;
+        min-width: 160px;
+        max-width: 220px;
+        background-color: var(--vscode-menu-background, var(--vscode-dropdown-background));
+        border: 1px solid var(--vscode-menu-border, var(--vscode-dropdown-border));
+        border-radius: 2px;
+        padding: 2px 0;
+    }
+
+    .snapshotMenuItem {
+        padding: 4px 8px;
+        font-size: 0.9em;
+        cursor: pointer;
+        overflow-wrap: anywhere;
+    }
+
+    .snapshotMenuItem:hover {
+        background-color: var(--vscode-list-hoverBackground);
+    }
+
+    .snapshotMenuItem.disabled {
+        opacity: 0.5;
+        cursor: default;
+        pointer-events: none;
     }
 
     .snapshotRow, .historyRow {
@@ -892,6 +912,8 @@
         font-size: 0.85em;
     }
 </style>
+
+<svelte:window on:click={handleWindowClick} />
 
 {#if loading}
     <Loader />
@@ -967,9 +989,15 @@
                                     {#if expandedDeviceId === device.id}<ChevronDown />{:else}<ChevronRight />{/if}
                                 </span>
                                 <span class="statusDot {statusDotClass(device.status)}" title={device.status ?? 'unknown'}></span>
+                                <DeviceTypeIcon deviceType={device.deviceType} />
                                 {device.name}
+                                <vscode-toolbar-button
+                                    class="watchButton"
+                                    icon="eye"
+                                    title="Watch device"
+                                    class:disabled={watchingDeviceInFlight[device.id]}
+                                    on:click|stopPropagation={() => watchDevice(device)}></vscode-toolbar-button>
                             </span>
-                            <span class="deviceMeta">{device.deviceType} &middot; {device.status ?? 'unknown'} &middot; {device.lastSnapshotName ?? 'no snapshot'}</span>
                             {#if runtime}
                                 <span class="deviceRuntime">{runtime.label}</span>
                                 <div class="runtimeBarTrack">
@@ -977,27 +1005,11 @@
                                 </div>
                             {/if}
                         </div>
-                        {#if device.status === 'shutdown'}
-                            {@const firmwareOptions = (firmwareVersions ?? []).filter((firmwareVersion) => firmwareVersion.deviceType === device.deviceType)}
-                            <div class="startControl">
-                                <VscodeDropdown
-                                    bind:this={snapshotDropdownsByDeviceId[device.id]}
-                                    title="Snapshot to start from"
-                                    disabled={isFirstDetailsLoad(detailsState)}
-                                    value={detailsState?.selectedSnapshotId !== undefined ? String(detailsState.selectedSnapshotId) : undefined}
-                                    on:change={(event) => updateSelectedSnapshot(device.id, (event.target as HTMLElement & { value: string }).value)}>
-                                    {#if isFirstDetailsLoad(detailsState)}
-                                        <vscode-option value="">Loading...</vscode-option>
-                                    {:else if (detailsState?.snapshots ?? []).length === 0}
-                                        <vscode-option value="">No snapshots</vscode-option>
-                                    {:else}
-                                        {#each detailsState?.snapshots ?? [] as snapshot}
-                                            <vscode-option value={String(snapshot.id)} disabled={snapshot.ready === false}>
-                                                {snapshot.name ?? `Snapshot ${snapshot.id}`}{snapshot.ready === false ? ' (not ready)' : ''}
-                                            </vscode-option>
-                                        {/each}
-                                    {/if}
-                                </VscodeDropdown>
+                        <div class="rowControls">
+                            {#if device.status === 'shutdown'}
+                                {@const firmwareOptions = (firmwareVersions ?? []).filter((firmwareVersion) => firmwareVersion.deviceType === device.deviceType)}
+                                {@const startSnapshot = resolveStartSnapshot(detailsState)}
+                                {@const startTitle = startSnapshot ? (startSnapshot.live ? 'Start device (live snapshot)' : `Start device (${startSnapshot.name ?? `Snapshot ${startSnapshot.id}`})`) : 'Start device'}
                                 <VscodeDropdown
                                     bind:this={firmwareDropdownsByDeviceId[device.id]}
                                     title="Firmware version"
@@ -1023,27 +1035,55 @@
                                         <vscode-option value={String(hours)}>{hours}h</vscode-option>
                                     {/each}
                                 </vscode-single-select>
+                                <div class="splitButtonWrapper" bind:this={splitButtonElementsByDeviceId[device.id]}>
+                                    <vscode-button-group>
+                                        <vscode-button
+                                            icon="play"
+                                            icon-only
+                                            title={startTitle}
+                                            disabled={deviceActionsInFlight[device.id] || isFirstDetailsLoad(detailsState) || !startSnapshot}
+                                            on:click={() => { snapshotMenuDeviceId = undefined; void startDevice(device, startSnapshot?.id, readDisplayedFirmwareVersionId(device.id)); }}></vscode-button>
+                                        <vscode-button
+                                            icon="chevron-down"
+                                            icon-only
+                                            title="Start from snapshot..."
+                                            disabled={deviceActionsInFlight[device.id] || isFirstDetailsLoad(detailsState)}
+                                            on:click={() => toggleSnapshotMenu(device.id)}></vscode-button>
+                                    </vscode-button-group>
+                                    {#if snapshotMenuDeviceId === device.id}
+                                        <div class="snapshotMenu">
+                                            {#if (detailsState?.snapshots ?? []).length === 0}
+                                                <div class="snapshotMenuItem disabled">No snapshots</div>
+                                            {:else}
+                                                {#each detailsState?.snapshots ?? [] as snapshot (snapshot.id)}
+                                                    {@const snapshotMenuItemDisabled = snapshot.ready === false || deviceActionsInFlight[device.id]}
+                                                    <div
+                                                        class="snapshotMenuItem"
+                                                        class:disabled={snapshotMenuItemDisabled}
+                                                        on:click={() => !snapshotMenuItemDisabled && startFromSnapshotMenu(device, snapshot)}>
+                                                        {snapshot.name ?? `Snapshot ${snapshot.id}`}{snapshot.live ? ' (live)' : ''}{snapshot.base ? ' (base)' : ''}{snapshot.ready === false ? ' (not ready)' : ''}
+                                                    </div>
+                                                {/each}
+                                            {/if}
+                                        </div>
+                                    {/if}
+                                </div>
+                            {:else if device.status === 'running' || device.status === 'pending'}
+                                {#if device.status === 'running'}
+                                    <vscode-button
+                                        icon={snapshotFormDeviceId === device.id ? '' : 'save'}
+                                        secondary={snapshotFormDeviceId === device.id}
+                                        on:click={() => toggleSnapshotForm(device)}>
+                                        {snapshotFormDeviceId === device.id ? 'Cancel' : 'Snapshot'}
+                                    </vscode-button>
+                                {/if}
                                 <vscode-toolbar-button
-                                    icon="play"
-                                    title="Start device"
-                                    class:disabled={deviceActionsInFlight[device.id] || !detailsState?.selectedSnapshotId}
-                                    on:click={() => startDevice(device, readDisplayedSnapshotId(device.id), readDisplayedFirmwareVersionId(device.id))}></vscode-toolbar-button>
-                            </div>
-                        {:else if device.status === 'running' || device.status === 'pending'}
-                            {#if device.status === 'running'}
-                                <vscode-button
-                                    icon={snapshotFormDeviceId === device.id ? '' : 'save'}
-                                    secondary={snapshotFormDeviceId === device.id}
-                                    on:click={() => toggleSnapshotForm(device)}>
-                                    {snapshotFormDeviceId === device.id ? 'Cancel' : 'Snapshot'}
-                                </vscode-button>
+                                    icon="debug-stop"
+                                    title="Stop device"
+                                    class:disabled={deviceActionsInFlight[device.id]}
+                                    on:click={() => stopDevice(device)}></vscode-toolbar-button>
                             {/if}
-                            <vscode-toolbar-button
-                                icon="debug-stop"
-                                title="Stop device"
-                                class:disabled={deviceActionsInFlight[device.id]}
-                                on:click={() => stopDevice(device)}></vscode-toolbar-button>
-                        {/if}
+                        </div>
                     </div>
 
                     {#if snapshotFormDeviceId === device.id && device.status === 'running'}
@@ -1076,11 +1116,6 @@
 
                                 {#if device.status === 'running'}
                                     <div class="editRow">
-                                        <vscode-button
-                                            disabled={watchingDeviceInFlight[device.id]}
-                                            on:click={() => watchDevice(device)}>
-                                            Watch
-                                        </vscode-button>
                                         <vscode-button
                                             secondary
                                             disabled={enablingDevModeInFlight[device.id]}
