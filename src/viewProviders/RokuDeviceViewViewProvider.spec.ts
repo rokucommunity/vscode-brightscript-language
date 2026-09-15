@@ -592,6 +592,19 @@ describe('RokuDeviceViewViewProvider', () => {
             expect(provider['rceStreamSession'].isActive).to.be.false;
         });
 
+        it('posts the streamed device runtime from the finder emission, ignoring other devices', async () => {
+            createProvider();
+            await startFirstSession();
+
+            rceFinder.emit('devices', [{ id: 99, status: 'running', runningDevice: { startedAt: '2026-01-01T00:00:00Z', maxRuntime: 1800 } }]);
+            expect(findEventMessages(ViewProviderEvent.onRceDeviceRuntimeChanged)).to.have.length(0);
+
+            rceFinder.emit('devices', [{ id: 5, status: 'running', runningDevice: { startedAt: '2026-01-01T00:00:00Z', maxRuntime: 3600 } }]);
+            const runtimeMessages = findEventMessages(ViewProviderEvent.onRceDeviceRuntimeChanged);
+            expect(runtimeMessages).to.have.length(1);
+            expect(runtimeMessages[0].context).to.eql({ deviceId: 5, startedAt: '2026-01-01T00:00:00Z', maxRuntime: 3600 });
+        });
+
         it('moves to waiting when the streamed device is pending (restarting), then reconnects', async () => {
             createProvider();
             const client = await startFirstSession();
@@ -800,6 +813,68 @@ describe('RokuDeviceViewViewProvider', () => {
         });
     });
 
+    describe('startRceDevice command', () => {
+        it('starts the device by id through the internal command and responds with success', async () => {
+            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves();
+            createProvider();
+
+            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
+
+            expect(executeCommand.calledOnceWith(VscodeCommand.rceStartDeviceById, 5)).to.be.true;
+            const response = postOrQueueMessage.getCalls().map((call) => call.args[0]).find((posted) => posted.command === ViewProviderCommand.startRceDevice);
+            expect(response?.response).to.eql({ success: true });
+        });
+
+        it('propagates a rejection from the internal command instead of swallowing it', async () => {
+            sinon.stub(vscode.commands, 'executeCommand').rejects(new Error('no ready snapshot'));
+            createProvider();
+
+            //this handler has no try/catch of its own (like pressRceDevicePowerButton); the base
+            //class's message-received wrapper is what turns a rejection like this into an error
+            //response, so the direct-invocation style used throughout this file just asserts the
+            //rejection reaches the caller rather than getting lost
+            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5 } };
+            let caughtError: Error;
+            try {
+                await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
+            } catch (error) {
+                caughtError = error as Error;
+            }
+            expect(caughtError?.message).to.contain('no ready snapshot');
+            expect(postOrQueueMessage.called).to.be.false;
+        });
+    });
+
+    describe('stopRceDevice command', () => {
+        it('stops the device by id through the internal command and responds with success', async () => {
+            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').resolves();
+            createProvider();
+
+            const message = { command: ViewProviderCommand.stopRceDevice, context: { deviceId: 5 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.stopRceDevice](message);
+
+            expect(executeCommand.calledOnceWith(VscodeCommand.rceStopDeviceById, 5)).to.be.true;
+            const response = postOrQueueMessage.getCalls().map((call) => call.args[0]).find((posted) => posted.command === ViewProviderCommand.stopRceDevice);
+            expect(response?.response).to.eql({ success: true });
+        });
+
+        it('propagates a rejection from the internal command instead of swallowing it', async () => {
+            sinon.stub(vscode.commands, 'executeCommand').rejects(new Error('No active Cloud Emulator account is configured'));
+            createProvider();
+
+            const message = { command: ViewProviderCommand.stopRceDevice, context: { deviceId: 5 } };
+            let caughtError: Error;
+            try {
+                await provider['messageCommandCallbacks'][ViewProviderCommand.stopRceDevice](message);
+            } catch (error) {
+                caughtError = error as Error;
+            }
+            expect(caughtError?.message).to.contain('No active Cloud Emulator account');
+            expect(postOrQueueMessage.called).to.be.false;
+        });
+    });
+
     describe('stopRceStream command', () => {
         it('stops the active client', async () => {
             createProvider();
@@ -808,6 +883,37 @@ describe('RokuDeviceViewViewProvider', () => {
             const message = { command: ViewProviderCommand.stopRceStream, context: {} };
             await provider['messageCommandCallbacks'][ViewProviderCommand.stopRceStream](message);
 
+            expect(client.stop.calledOnce).to.be.true;
+        });
+
+        it('performs a full RTA disconnect (device forgotten) when RTA is holding the streamed cloud device', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            const rtaManager = provider['dependencies'].rtaManager;
+            rtaManager.device = { getRokuDeployDevice: () => ({ id: 5, rceToken: 'management-api-token' }) } as any;
+            const disconnectFromDevice = sinon.stub(rtaManager, 'disconnectFromDevice');
+
+            const message = { command: ViewProviderCommand.stopRceStream, context: {} };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.stopRceStream](message);
+
+            expect(disconnectFromDevice.calledOnce).to.be.true;
+            //the full reset (which itself stops the session via onDeviceDisconnected) is stubbed
+            //here, so this asserts only that the session was NOT stopped directly a second way
+            expect(client.stop.called).to.be.false;
+        });
+
+        it('only stops the session, leaving RTA alone, when RTA is holding an unrelated device', async () => {
+            createProvider();
+            const client = await startFirstSession();
+            const rtaManager = provider['dependencies'].rtaManager;
+            //a LAN device unrelated to the streamed cloud device (id 5) - this must never be forgotten
+            rtaManager.device = { getRokuDeployDevice: () => ({ host: '1.2.3.4' }) } as any;
+            const disconnectFromDevice = sinon.stub(rtaManager, 'disconnectFromDevice');
+
+            const message = { command: ViewProviderCommand.stopRceStream, context: {} };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.stopRceStream](message);
+
+            expect(disconnectFromDevice.called).to.be.false;
             expect(client.stop.calledOnce).to.be.true;
         });
     });

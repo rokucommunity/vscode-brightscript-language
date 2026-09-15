@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
-    import { Close, DebugStop, Mute, Plug, Unmute } from 'svelte-codicons';
+    import { createEventDispatcher, onDestroy } from 'svelte';
+    import { Close, DebugStop, Mute, Play, Plug, Unmute } from 'svelte-codicons';
     import { intermediary } from '../ExtensionIntermediary';
     import { ViewProviderEvent } from '../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../src/viewProviders/ViewProviderCommand';
@@ -16,6 +16,11 @@
     //onRceStreamConnecting (or an early onRceStreamError).
     const dispatch = createEventDispatcher();
 
+    //only the sidebar Roku Device View passes this: it is the sole way to leave stream mode and
+    //return to the LAN screenshot flow, since it has no tab to close. The video editor tab has no
+    //such exit (Chris's call) - it closes via the tab itself.
+    export let showCloseButton = false;
+
     let rceStreamDeviceId: number | undefined = undefined;
     let rceStreamDeviceName: string | undefined = undefined;
     let rceStreamDeviceType: string | undefined = undefined;
@@ -29,18 +34,49 @@
     let rceVideoElement: HTMLVideoElement;
     let rceStreamMuted = true;
 
+    //the current device's max-runtime progress, mirroring RceManagementView's runtime label/bar.
+    //undefined (rather than 0) means "not running", which hides the whole runtime line
+    let rceDeviceRuntimeStartedAt: string | undefined = undefined;
+    let rceDeviceRuntimeMaxRuntime: number | undefined = undefined;
+
+    //recomputed on an interval so the runtime label/bar stay current without a fresh event
+    let nowTimestamp = Date.now();
+    const runtimeTickIntervalId = setInterval(() => {
+        nowTimestamp = Date.now();
+    }, 30000);
+    onDestroy(() => {
+        clearInterval(runtimeTickIntervalId);
+    });
+
     $: if (rceVideoElement) {
         rceVideoElement.srcObject = rceMediaStream ?? null;
     }
 
+    $: rceDeviceRuntimeInfo = rceDeviceRuntimeStartedAt !== undefined && rceDeviceRuntimeMaxRuntime !== undefined
+        ? runtimeInfo(rceDeviceRuntimeStartedAt, rceDeviceRuntimeMaxRuntime, nowTimestamp)
+        : undefined;
+
     $: rceStreamStatusLabel =
-        rceStreamStatus === 'reconnecting' && rceStreamReconnectAttempt !== undefined
-            ? `reconnecting (${rceStreamReconnectAttempt}/${rceStreamReconnectAttemptLimit})`
-            : rceStreamStatus === 'waiting'
-                ? 'waiting for the device to start'
-                : rceStreamStatus === 'stopped'
-                    ? 'device stopped'
-                    : rceStreamStatus;
+        deviceStartRequested && (rceStreamStatus === 'stopped' || rceStreamStatus === 'waiting')
+            ? 'device starting'
+            : rceStreamStatus === 'reconnecting' && rceStreamReconnectAttempt !== undefined
+                ? `reconnecting (${rceStreamReconnectAttempt}/${rceStreamReconnectAttemptLimit})`
+                : rceStreamStatus === 'waiting'
+                    ? 'waiting for the device to start'
+                    : rceStreamStatus === 'stopped'
+                        ? 'device stopped'
+                        : rceStreamStatus;
+
+    //a successful start flips the controls to the starting/stop presentation immediately (like the
+    //management view) instead of waiting for the stream to notice; cleared once the stream progresses
+    $: if (rceStreamStatus !== 'stopped' && rceStreamStatus !== 'waiting') {
+        deviceStartRequested = false;
+    }
+
+    //a stream that actually starts flowing again means the Start/Stop banner is stale
+    $: if (rceStreamStatus === 'streaming') {
+        deviceActionError = undefined;
+    }
 
     //posted at the very start of the extension host's negotiation, before it has anything else to
     //report (even before it knows whether an account token is available) - this is what makes any
@@ -49,6 +85,10 @@
     //recovery after a dropped stream) arrive as this same event with a reconnectAttempt counter.
     intermediary.observeEvent(ViewProviderEvent.onRceStreamConnecting, (message) => {
         const isRetry = message.context.reconnectAttempt !== undefined || message.context.waitingForDevice === true;
+        //a fresh (non-retry) connect means whatever the Start/Stop buttons were doing is done with
+        if (!isRetry) {
+            deviceActionError = undefined;
+        }
         //a retry keeps the user's mute choice; a fresh watch starts muted again
         enterRceStreamMode(message.context.deviceId, message.context.deviceName, { preserveMute: isRetry, deviceType: message.context.deviceType });
         if (message.context.waitingForDevice) {
@@ -70,12 +110,26 @@
         }
         teardownRceStreamPeer();
         rceStreamStatus = 'stopped';
+        //a genuine stopped push means the device is not starting anymore
+        deviceStartRequested = false;
         rceStreamError = undefined;
         rceStreamStoppedMessage = message.context.message ?? `Device '${rceStreamDeviceName}' is no longer running`;
+        rceDeviceRuntimeStartedAt = undefined;
+        rceDeviceRuntimeMaxRuntime = undefined;
     });
 
     intermediary.observeEvent(ViewProviderEvent.onRceStreamOffer, (message) => {
         startRceStreamPeer(message.context);
+    });
+
+    //empty startedAt/maxRuntime (the device isn't running) clears the runtime line the same way a
+    //present pair fills it in; other devices' updates are ignored
+    intermediary.observeEvent(ViewProviderEvent.onRceDeviceRuntimeChanged, (message) => {
+        if (message.context.deviceId !== rceStreamDeviceId) {
+            return;
+        }
+        rceDeviceRuntimeStartedAt = message.context.startedAt ?? undefined;
+        rceDeviceRuntimeMaxRuntime = message.context.maxRuntime ?? undefined;
     });
 
     intermediary.observeEvent(ViewProviderEvent.onRceStreamError, (message) => {
@@ -97,8 +151,8 @@
     });
 
     //the extension host stopped this session on its own (e.g. RTA was disconnected from the
-    //device) rather than the user clicking Stop; tear down the same way stopRceStream does, minus
-    //re-sending the command the host already acted on
+    //device) rather than the user stopping it here, so this tears down without re-sending a
+    //stop the host already acted on
     intermediary.observeEvent(ViewProviderEvent.onRceStreamStopped, () => {
         teardownRceStreamPeer();
         rceStreamDeviceId = undefined;
@@ -117,9 +171,14 @@
     function enterRceStreamMode(deviceId: number | undefined, deviceName: string, options: { preserveMute?: boolean; deviceType?: string } = {}) {
         teardownRceStreamPeer();
 
+        //a reconnect/fresh-connect on the SAME device keeps its last-known runtime showing (the
+        //next finder poll refreshes it); only a genuinely different device clears it, otherwise the
+        //bar flickers out and back on every connect
+        const isSameDevice = deviceId !== undefined && deviceId === rceStreamDeviceId;
+
         //events on paths that don't carry the device type (a reconnect, the device-stopped state)
         //keep the type already known for this device; a different device starts unknown again
-        rceStreamDeviceType = options.deviceType ?? (deviceId !== undefined && deviceId === rceStreamDeviceId ? rceStreamDeviceType : undefined);
+        rceStreamDeviceType = options.deviceType ?? (isSameDevice ? rceStreamDeviceType : undefined);
         rceStreamDeviceId = deviceId;
         rceStreamDeviceName = deviceName;
         rceStreamStatus = 'connecting';
@@ -127,6 +186,10 @@
         rceStreamStoppedMessage = undefined;
         rceStreamReconnectAttempt = undefined;
         rceStreamReconnectAttemptLimit = undefined;
+        if (!isSameDevice) {
+            rceDeviceRuntimeStartedAt = undefined;
+            rceDeviceRuntimeMaxRuntime = undefined;
+        }
         if (!options.preserveMute) {
             rceStreamMuted = true;
         }
@@ -208,6 +271,71 @@
             powerKeyInFlight = false;
         }
     }
+
+    let deviceActionInFlight = false;
+    let deviceActionError: string | undefined = undefined;
+    let deviceStartRequested = false;
+
+    async function startStreamedDevice() {
+        if (rceStreamDeviceId === undefined || deviceActionInFlight) {
+            return;
+        }
+        deviceActionInFlight = true;
+        deviceActionError = undefined;
+        try {
+            await intermediary.sendCommand(ViewProviderCommand.startRceDevice, { deviceId: rceStreamDeviceId });
+            deviceStartRequested = true;
+        } catch (error) {
+            //'waiting' can also mean the device is already pending startup, in which case this
+            //fails server-side and lands here rather than actually starting anything
+            deviceActionError = error.message;
+        } finally {
+            deviceActionInFlight = false;
+        }
+    }
+
+    async function stopStreamedDevice() {
+        if (rceStreamDeviceId === undefined || deviceActionInFlight) {
+            return;
+        }
+        deviceActionInFlight = true;
+        deviceActionError = undefined;
+        try {
+            await intermediary.sendCommand(ViewProviderCommand.stopRceDevice, { deviceId: rceStreamDeviceId });
+            deviceStartRequested = false;
+        } catch (error) {
+            deviceActionError = error.message;
+        } finally {
+            deviceActionInFlight = false;
+        }
+    }
+
+    //runtime label/bar math, duplicated from RceManagementView.svelte rather than importing across
+    //view folders for a few small helpers
+    function formatHoursCompact(totalSeconds: number): string {
+        const hours = Math.round((totalSeconds / 3600) * 10) / 10;
+        const value = Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1);
+        return `${value}h`;
+    }
+
+    function formatMinutesCompact(totalSeconds: number): string {
+        return `${Math.floor(totalSeconds / 60)}m`;
+    }
+
+    function formatRuntimeLabel(elapsedSeconds: number, maxRuntimeSeconds: number): string {
+        if (elapsedSeconds >= 3600) {
+            return `${formatHoursCompact(elapsedSeconds)} / ${formatHoursCompact(maxRuntimeSeconds)}`;
+        }
+        return `${formatMinutesCompact(elapsedSeconds)} / ${formatMinutesCompact(maxRuntimeSeconds)}`;
+    }
+
+    function runtimeInfo(startedAt: string, maxRuntimeSeconds: number, currentTimestamp: number): { label: string; percent: number } {
+        const elapsedSeconds = Math.max(0, (currentTimestamp - new Date(startedAt).getTime()) / 1000);
+        return {
+            label: formatRuntimeLabel(elapsedSeconds, maxRuntimeSeconds),
+            percent: Math.min(100, (elapsedSeconds / maxRuntimeSeconds) * 100)
+        };
+    }
 </script>
 
 <style>
@@ -239,7 +367,7 @@
         font-size: 0.9em;
     }
 
-    #rceStreamErrorBanner {
+    .rceStreamErrorBanner {
         color: var(--vscode-debugConsole-errorForeground);
         padding: 10px;
         display: flex;
@@ -247,24 +375,89 @@
         gap: 8px;
     }
 
-    #rceStreamStoppedBanner {
-        padding: 10px;
+    /* takes exactly the height left over in the column after the header/error banners, and stacks
+       its own content (video, runtime, controls) top-aligned so leftover space lands at the
+       bottom, not around the video; container-type: size feeds the cq units below */
+    .rceStreamStage {
+        flex: 1;
+        min-height: 0;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        align-items: center;
+        justify-content: flex-start;
+        container-type: size;
     }
 
-    #rceStreamStoppedHint {
+    .rceStreamAspectBox {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        /* the largest 16:9 box that fits the stage's height, minus the ~80px the runtime and
+           controls rows below it take up, capped at the stage's width */
+        width: min(100%, calc((100cqh - 80px) * 16 / 9));
+        background-color: black;
+        overflow: hidden;
+    }
+
+    #rceStreamVideo {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+
+    .rceStreamPlaceholder {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        color: white;
+        text-align: center;
+        padding: 10px;
+    }
+
+    .rceStreamPlaceholderHint {
         opacity: 0.7;
         font-size: 0.9em;
     }
 
-    #rceStreamVideo {
-        max-width: 100vw;
-        max-height: 100vh;
-        margin-left: auto;
-        margin-right: auto;
-        background-color: black;
+    .rceStreamControls {
+        display: flex;
+        justify-content: center;
+        padding: 8px 10px;
+    }
+
+    .buttonIcon {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .rceStreamRuntime {
+        /* matches the aspect box's width so the bar lines up with the video above it */
+        width: min(100%, calc((100cqh - 80px) * 16 / 9));
+        box-sizing: border-box;
+        padding: 4px 10px 0;
+    }
+
+    .rceStreamRuntimeLabel {
+        opacity: 0.7;
+        font-size: 0.85em;
+    }
+
+    .rceStreamRuntimeBarTrack {
+        margin-top: 2px;
+        width: 100%;
+        height: 3px;
+        background-color: var(--vscode-scrollbarSlider-background);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .rceStreamRuntimeBarFill {
+        height: 100%;
+        background-color: var(--vscode-progressBar-background);
     }
 </style>
 
@@ -287,31 +480,66 @@
                     {/if}
                 </vscode-button>
             {/if}
-            <!-- with nothing streaming there is nothing to "stop", but this is still the only
-                in-view exit (the Device View leaves stream mode, a video tab closes), so it stays
-                with a tooltip matching what it does -->
-            <vscode-button appearance="icon" title={rceStreamStatus === 'stopped' ? 'Close' : 'Stop'} on:click={stopRceStream}>
-                {#if rceStreamStatus === 'stopped'}
-                    <Close />
-                {:else}
-                    <DebugStop />
-                {/if}
-            </vscode-button>
+            {#if showCloseButton}
+                <!-- with nothing streaming there is nothing to "stop", but this is still the sidebar's
+                    only in-view exit back to the LAN screenshot flow, so it stays with a tooltip
+                    matching what it does -->
+                <vscode-button appearance="icon" title={rceStreamStatus === 'stopped' ? 'Close' : 'Stop'} on:click={stopRceStream}>
+                    {#if rceStreamStatus === 'stopped'}
+                        <Close />
+                    {:else}
+                        <DebugStop />
+                    {/if}
+                </vscode-button>
+            {/if}
         </div>
         {#if rceStreamError}
-            <div id="rceStreamErrorBanner">
+            <div class="rceStreamErrorBanner">
                 <span>{rceStreamError}</span>
                 <vscode-button appearance="secondary" on:click={retryRceStream}>Retry</vscode-button>
             </div>
         {/if}
-        {#if rceStreamStatus === 'stopped'}
-            <div id="rceStreamStoppedBanner">
-                <span>{rceStreamStoppedMessage}</span>
-                <span id="rceStreamStoppedHint">The stream will resume automatically when the device starts</span>
+        <div class="rceStreamStage">
+            <div class="rceStreamAspectBox">
+                <!-- svelte-ignore a11y-media-has-caption -->
+                <video id="rceStreamVideo" bind:this={rceVideoElement} autoplay playsinline muted={rceStreamMuted}></video>
+                {#if rceStreamStatus === 'stopped' && !deviceStartRequested}
+                    <div class="rceStreamPlaceholder">
+                        <span>{rceStreamStoppedMessage}</span>
+                        <span class="rceStreamPlaceholderHint">The stream will resume automatically when the device starts</span>
+                    </div>
+                {:else if rceStreamStatus !== 'streaming'}
+                    <div class="rceStreamPlaceholder">
+                        <span>{rceStreamStatusLabel}</span>
+                    </div>
+                {/if}
             </div>
-        {:else}
-            <!-- svelte-ignore a11y-media-has-caption -->
-            <video id="rceStreamVideo" bind:this={rceVideoElement} autoplay playsinline muted={rceStreamMuted}></video>
+            {#if rceDeviceRuntimeInfo}
+                <div class="rceStreamRuntime">
+                    <span class="rceStreamRuntimeLabel">{rceDeviceRuntimeInfo.label}</span>
+                    <div class="rceStreamRuntimeBarTrack">
+                        <div class="rceStreamRuntimeBarFill" style="width: {rceDeviceRuntimeInfo.percent}%"></div>
+                    </div>
+                </div>
+            {/if}
+            <div class="rceStreamControls">
+                {#if (rceStreamStatus === 'stopped' || rceStreamStatus === 'waiting') && !deviceStartRequested}
+                    <vscode-button appearance="primary" disabled={deviceActionInFlight} on:click={startStreamedDevice}>
+                        <span slot="start" class="buttonIcon"><Play /></span>
+                        Start Device
+                    </vscode-button>
+                {:else}
+                    <vscode-button disabled={deviceActionInFlight} on:click={stopStreamedDevice}>
+                        <span slot="start" class="buttonIcon"><DebugStop /></span>
+                        Stop Device
+                    </vscode-button>
+                {/if}
+            </div>
+        </div>
+        {#if deviceActionError}
+            <div class="rceStreamErrorBanner">
+                <span>{deviceActionError}</span>
+            </div>
         {/if}
     </div>
 {/if}
