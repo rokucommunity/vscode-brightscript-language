@@ -981,6 +981,32 @@ describe('RceManagementViewProvider', () => {
             expect(pushedDevices[0]).to.include({ id: 5, name: 'my-device', deviceType: 'tv', status: 'running', createdAt: '2026-01-01' });
             expect(rceManager.fakeManagementClient.listDevices.called).to.be.false;
         });
+
+        it('posts refreshing true on scanStarted and refreshing false once devices arrive', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+
+            createProvider();
+
+            rceFinder.emit('scanStarted');
+            const refreshingMessages = findEventMessages(ViewProviderEvent.onRceRefreshingChanged);
+            expect(refreshingMessages.map((message) => message.context.refreshing)).to.eql([true]);
+
+            rceFinder.emit('devices', []);
+            await flushMicrotasks();
+
+            expect(findEventMessages(ViewProviderEvent.onRceRefreshingChanged).map((message) => message.context.refreshing)).to.eql([true, false]);
+        });
+
+        it('posts refreshing false when the finder reports a scan error', () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            createProvider();
+
+            rceFinder.emit('scanStarted');
+            rceFinder.emit('error', new Error('boom'));
+
+            expect(findEventMessages(ViewProviderEvent.onRceRefreshingChanged).map((message) => message.context.refreshing)).to.eql([true, false]);
+        });
     });
 
     describe('transition watch', () => {

@@ -34,6 +34,11 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         //poll loop, and keeps it in sync with whatever else is driving the finder (the Devices tree view)
         this.rceFinder.on('devices', this.handleFinderDevices);
 
+        //lets the webview's refresh button spin for a poll it did not itself trigger too (a
+        //background poll, or another view's manual refresh), not just its own click
+        this.rceFinder.on('scanStarted', this.handleFinderScanStarted);
+        this.rceFinder.on('error', this.handleFinderScanError);
+
         this.addMessageCommandCallback(ViewProviderCommand.getRceState, async (message) => {
             const state = await this.buildStatePayload();
             this.postOrQueueMessage(this.createResponseMessage(message, state));
@@ -457,13 +462,33 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
      * field (rather than a method) so the exact same reference can be removed in dispose().
      */
     private handleFinderDevices = (devices: RceDevice[]) => {
+        this.postRefreshingChanged(false);
         void this.pushState(devices);
         this.stopTransitionWatchIfSettled(devices);
     };
 
+    /**
+     * Bound fields (like handleFinderDevices above) so the exact same references can be removed
+     * in dispose(). A completed scan always emits 'devices' or 'error', never both, so exactly one
+     * of handleFinderDevices/handleFinderScanError clears what handleFinderScanStarted set.
+     */
+    private handleFinderScanStarted = () => {
+        this.postRefreshingChanged(true);
+    };
+
+    private handleFinderScanError = () => {
+        this.postRefreshingChanged(false);
+    };
+
+    private postRefreshingChanged(refreshing: boolean) {
+        this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRceRefreshingChanged, { refreshing: refreshing }));
+    }
+
     public dispose() {
         this.unsubscribeFromTokenChanged?.();
         this.rceFinder.off('devices', this.handleFinderDevices);
+        this.rceFinder.off('scanStarted', this.handleFinderScanStarted);
+        this.rceFinder.off('error', this.handleFinderScanError);
         this.stopTransitionWatch();
         super.dispose();
     }

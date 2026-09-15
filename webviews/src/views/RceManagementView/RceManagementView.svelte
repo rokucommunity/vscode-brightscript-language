@@ -112,8 +112,14 @@
     const runtimeTickIntervalId = setInterval(() => {
         nowTimestamp = Date.now();
     }, 30000);
+
+    //debounces the refresh button's spinner for a finder-driven poll; see the finderRefreshing
+    //declaration below
+    let finderRefreshingTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
     onDestroy(() => {
         clearInterval(runtimeTickIntervalId);
+        clearTimeout(finderRefreshingTimeoutId);
     });
 
     function applyState(state) {
@@ -155,9 +161,33 @@
         }
     }
 
+    let refreshingState = false;
+
+    //a background finder poll also spins the refresh button, but only once it has run long enough
+    //to notice (routine fast polls stay quiet); cleared on whichever of refreshing true/false
+    //arrives first after the timeout, so the spinner can never stick
+    let finderRefreshing = false;
+
+    intermediary.observeEvent(ViewProviderEvent.onRceRefreshingChanged, (message) => {
+        clearTimeout(finderRefreshingTimeoutId);
+        if (message.context.refreshing) {
+            finderRefreshingTimeoutId = setTimeout(() => {
+                finderRefreshing = true;
+            }, 300);
+        } else {
+            finderRefreshingTimeoutId = undefined;
+            finderRefreshing = false;
+        }
+    });
+
     async function loadState() {
-        const state = await intermediary.sendCommand(ViewProviderCommand.getRceState);
-        applyState(state);
+        refreshingState = true;
+        try {
+            const state = await intermediary.sendCommand(ViewProviderCommand.getRceState);
+            applyState(state);
+        } finally {
+            refreshingState = false;
+        }
     }
 
     intermediary.observeEvent(ViewProviderEvent.onRceStateChanged, (message) => {
@@ -910,6 +940,18 @@
         opacity: 0.4;
     }
 
+    /* the icon lives in the button's shadow root, so the whole host spins while refreshing */
+    vscode-toolbar-button.spinning {
+        animation: refreshSpin 1s linear infinite;
+        pointer-events: none;
+    }
+
+    @keyframes refreshSpin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
     .splitButtonWrapper {
         position: relative;
         display: flex;
@@ -1033,7 +1075,11 @@
 
             <div id="devicesHeader">
                 <span class="sectionTitle">Devices</span>
-                <vscode-toolbar-button icon="refresh" title="Refresh" on:click={loadState}></vscode-toolbar-button>
+                <vscode-toolbar-button
+                    icon={refreshingState || finderRefreshing ? 'loading' : 'refresh'}
+                    title="Refresh"
+                    class:spinning={refreshingState || finderRefreshing}
+                    on:click={loadState}></vscode-toolbar-button>
                 <vscode-button secondary={showCreateDeviceForm} on:click={toggleCreateDeviceForm}>
                     {showCreateDeviceForm ? 'Cancel' : 'New Device'}
                 </vscode-button>

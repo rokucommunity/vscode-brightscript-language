@@ -19,5 +19,6 @@ export enum ViewProviderEvent {
     onRceStreamClosed = 'onRceStreamClosed',
     onRceStreamDeviceStopped = 'onRceStreamDeviceStopped',
     onRceStreamStopped = 'onRceStreamStopped',
-    onRceDeviceRuntimeChanged = 'onRceDeviceRuntimeChanged'
+    onRceDeviceRuntimeChanged = 'onRceDeviceRuntimeChanged',
+    onRceRefreshingChanged = 'onRceRefreshingChanged'
 }
