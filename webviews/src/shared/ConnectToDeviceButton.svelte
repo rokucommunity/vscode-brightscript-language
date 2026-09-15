@@ -3,6 +3,8 @@
     import { intermediary } from '../ExtensionIntermediary';
 
     export let caption = 'Connect to an active session (the on-device component needs to already be installed and running)';
+    //RokuDeviceView's connect view sits under its own reserved-space box and drops this text entirely
+    export let showCaption = true;
 
     let connecting = false;
     let errorMessage: string | undefined;
@@ -34,7 +36,9 @@
 </style>
 
 <div id="connectToDevice">
-    {caption}<br />
+    {#if showCaption}
+        {caption}<br />
+    {/if}
     <vscode-button disabled={connecting} on:click={onConnectClicked}>Connect to a Device</vscode-button>
     {#if errorMessage}
         <div id="connectToDeviceError">{errorMessage}</div>
