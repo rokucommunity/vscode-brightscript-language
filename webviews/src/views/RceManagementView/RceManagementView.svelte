@@ -205,7 +205,12 @@
         }
     }
 
-    async function startDevice(device: RceStateDevice, snapshotId: number | undefined = undefined, firmwareVersionId: string | undefined = undefined) {
+    async function startDevice(
+        device: RceStateDevice,
+        snapshotId: number | undefined = undefined,
+        firmwareVersionId: string | undefined = undefined,
+        confirmation: StartDeviceConfirmation | undefined = undefined
+    ) {
         deviceActionError = undefined;
         deviceActionsInFlight = { ...deviceActionsInFlight, [device.id]: true };
         try {
@@ -213,7 +218,9 @@
                 deviceId: device.id,
                 snapshotId: snapshotId,
                 firmwareVersionId: firmwareVersionId,
-                maxRuntimeSeconds: resolveRuntimeHours(selectedRuntimeHoursByDeviceId[device.id], runtimeHourOptions) * 3600
+                maxRuntimeSeconds: resolveRuntimeHours(selectedRuntimeHoursByDeviceId[device.id], runtimeHourOptions) * 3600,
+                snapshotName: confirmation?.snapshotName,
+                replacesLiveSnapshot: confirmation?.replacesLiveSnapshot
             });
         } catch (error) {
             deviceActionError = error.message;
@@ -228,7 +235,12 @@
 
     function startFromSnapshotMenu(device: RceStateDevice, snapshot: Snapshot) {
         snapshotMenuDeviceId = undefined;
-        void startDevice(device, snapshot.id, resolveFirmwareVersionIdForSnapshot(device, snapshot));
+        //only a non-live pick would overwrite the live snapshot's current state on this run
+        const confirmation: StartDeviceConfirmation | undefined = snapshot.live === true ? undefined : {
+            snapshotName: snapshot.name ?? `Snapshot ${snapshot.id}`,
+            replacesLiveSnapshot: true
+        };
+        void startDevice(device, snapshot.id, resolveFirmwareVersionIdForSnapshot(device, snapshot), confirmation);
     }
 
     async function stopDevice(device: RceStateDevice) {
@@ -584,6 +596,12 @@
         /** Shown after a successful enableRceDevMode call, until the details are next refetched */
         devModeEnabledHintVisible: boolean;
     }
+
+    /** Tells startDevice the picked snapshot isn't live, so the provider must confirm before starting */
+    interface StartDeviceConfirmation {
+        snapshotName: string;
+        replacesLiveSnapshot: true;
+    }
 </script>
 
 <style>
@@ -609,25 +627,33 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        flex-wrap: wrap;
         margin-bottom: 10px;
     }
 
+    /* shrinks and truncates like the device-row dropdowns so the account buttons never wrap */
     #accountSection vscode-single-select {
         flex: 1;
-        min-width: 120px;
+        min-width: 70px;
     }
 
     #devicesHeader {
         display: flex;
         align-items: center;
         gap: 6px;
+        /* the New Device button drops to its own line when the header can't fit it */
+        flex-wrap: wrap;
         margin: 10px 0 6px 0;
     }
 
     #devicesHeader .sectionTitle {
-        flex: 1;
+        /* out-grows the New Device button so inline free space goes to the title, not the button */
+        flex: 999 1 auto;
         margin-bottom: 0;
+    }
+
+    /* content-sized inline (the title's grow factor dwarfs this), full width once wrapped alone */
+    #devicesHeader vscode-button {
+        flex: 1 0 auto;
     }
 
     #createDeviceForm, .snapshotForm {
@@ -684,7 +710,9 @@
 
     .deviceRow {
         display: flex;
-        align-items: center;
+        /* top-aligned so the controls stay level with the title line even when the runtime
+           label and progress bar stack below it */
+        align-items: flex-start;
         gap: 8px;
         padding: 6px 0;
         /* rowControls wraps under deviceInfo as one unit when the sidebar is too narrow for one line */
@@ -692,7 +720,9 @@
     }
 
     .deviceInfo {
-        flex: 1;
+        /* out-grows the stop/snapshot cluster so it stays compact inline; the start cluster
+           carries the same factor, keeping the shutdown row's half-and-half split */
+        flex: 999 1 0%;
         min-width: 140px;
         display: flex;
         flex-direction: column;
@@ -701,10 +731,19 @@
 
     .deviceName {
         font-weight: bold;
-        overflow-wrap: anywhere;
         display: flex;
         align-items: center;
         gap: 2px;
+        /* matches the controls' height so the top-aligned row centers title and controls together */
+        min-height: 26px;
+    }
+
+    .deviceNameText {
+        flex: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .watchButton {
@@ -755,6 +794,11 @@
         margin-left: 20px;
     }
 
+    /* always its own full-width line at the bottom of the row, below title and controls */
+    .deviceRuntimeBlock {
+        flex-basis: 100%;
+    }
+
     .deviceRuntime {
         opacity: 0.7;
         font-size: 0.85em;
@@ -764,7 +808,6 @@
     .runtimeBarTrack {
         margin-top: 2px;
         width: 100%;
-        max-width: 160px;
         height: 3px;
         /* the details panel behind this bar is sideBar-background, so the track needs a
            contrasting color of its own or the fill has nothing to read against */
@@ -819,18 +862,41 @@
     .rowControls {
         display: flex;
         align-items: center;
+        /* right-aligned so every status's action cluster hugs the same row edge */
+        justify-content: flex-end;
         gap: 6px;
-        flex: 1;
-        /* min-content keeps the wrap threshold equal to the controls' real minimum width, so the
-           group wraps below deviceInfo instead of overflowing the panel and causing h-scroll */
+        /* content-sized inline (deviceInfo's grow factor dwarfs this), full width once wrapped */
+        flex: 1 0 auto;
         min-width: min-content;
+    }
+
+    /* the firmware floor (70) + runtime floor (62) + split button (~75) + gaps: the start cluster
+       claims its one-line minimum so it wraps below the title BEFORE breaking up internally; the
+       split button only drops to its own line when a full row can't fit all three. Shutdown rows
+       only, so the smaller stop/snapshot clusters never claim width they don't use. Capped at the
+       row width so a panel narrower than the floor forces the internal wrap instead of clipping */
+    .rowControls.startCluster {
+        /* matches deviceInfo's factor so the shutdown row still splits the line evenly and the
+           firmware select keeps stretching inline */
+        flex: 999 1 0%;
+        min-width: min(220px, 100%);
+        /* only the start cluster may break internally (the split button drops to its own line);
+           the stop/snapshot cluster stays atomic and wraps below the title as one unit */
+        flex-wrap: wrap;
+    }
+
+    /* absorbs the cluster's width once the cluster wraps to its own full-width line */
+    .snapshotButton {
+        flex: 1 0 auto;
     }
 
     /* :global because the firmware select renders inside the VscodeDropdown wrapper
        component, so it never carries this component's scoping class */
     .rowControls :global(vscode-single-select) {
-        flex: 1;
-        min-width: 100px;
+        /* out-grows the split button wrapper so inline free space goes to the select, not the button */
+        flex: 999 1 0%;
+        /* low floor so the firmware label gives up space (truncating to an ellipsis) before buttons clip */
+        min-width: 70px;
     }
 
     .rowControls .runtimeDropdown {
@@ -848,7 +914,19 @@
         position: relative;
         display: flex;
         align-items: center;
-        flex: 0 0 auto;
+        /* content-sized inline (the select's grow factor dwarfs this), full width once wrapped alone */
+        flex: 1 0 auto;
+    }
+
+    /* auto basis (not 0) so the group's real width feeds the wrap calculation; basis 0 would
+       let the row think the split button fits and clip it instead of wrapping */
+    .splitButtonWrapper :global(vscode-button-group) {
+        flex: 1 1 auto;
+    }
+
+    /* the play button absorbs the group's extra width; the chevron stays fixed */
+    .splitButtonWrapper :global(vscode-button-group vscode-button:first-child) {
+        flex: 1 1 auto;
     }
 
     .snapshotMenu {
@@ -957,7 +1035,7 @@
                 <span class="sectionTitle">Devices</span>
                 <vscode-toolbar-button icon="refresh" title="Refresh" on:click={loadState}></vscode-toolbar-button>
                 <vscode-button secondary={showCreateDeviceForm} on:click={toggleCreateDeviceForm}>
-                    {showCreateDeviceForm ? 'Cancel' : 'Create Device'}
+                    {showCreateDeviceForm ? 'Cancel' : 'New Device'}
                 </vscode-button>
             </div>
 
@@ -990,7 +1068,7 @@
                                 </span>
                                 <span class="statusDot {statusDotClass(device.status)}" title={device.status ?? 'unknown'}></span>
                                 <DeviceTypeIcon deviceType={device.deviceType} />
-                                {device.name}
+                                <span class="deviceNameText" title={device.name}>{device.name}</span>
                                 <vscode-toolbar-button
                                     class="watchButton"
                                     icon="eye"
@@ -998,14 +1076,8 @@
                                     class:disabled={watchingDeviceInFlight[device.id]}
                                     on:click|stopPropagation={() => watchDevice(device)}></vscode-toolbar-button>
                             </span>
-                            {#if runtime}
-                                <span class="deviceRuntime">{runtime.label}</span>
-                                <div class="runtimeBarTrack">
-                                    <div class="runtimeBarFill" style="width: {runtime.percent}%"></div>
-                                </div>
-                            {/if}
                         </div>
-                        <div class="rowControls">
+                        <div class="rowControls" class:startCluster={device.status === 'shutdown'}>
                             {#if device.status === 'shutdown'}
                                 {@const firmwareOptions = (firmwareVersions ?? []).filter((firmwareVersion) => firmwareVersion.deviceType === device.deviceType)}
                                 {@const startSnapshot = resolveStartSnapshot(detailsState)}
@@ -1071,19 +1143,29 @@
                             {:else if device.status === 'running' || device.status === 'pending'}
                                 {#if device.status === 'running'}
                                     <vscode-button
+                                        class="snapshotButton"
                                         icon={snapshotFormDeviceId === device.id ? '' : 'save'}
-                                        secondary={snapshotFormDeviceId === device.id}
+                                        secondary
                                         on:click={() => toggleSnapshotForm(device)}>
                                         {snapshotFormDeviceId === device.id ? 'Cancel' : 'Snapshot'}
                                     </vscode-button>
                                 {/if}
-                                <vscode-toolbar-button
+                                <vscode-button
                                     icon="debug-stop"
+                                    icon-only
                                     title="Stop device"
-                                    class:disabled={deviceActionsInFlight[device.id]}
-                                    on:click={() => stopDevice(device)}></vscode-toolbar-button>
+                                    disabled={deviceActionsInFlight[device.id]}
+                                    on:click={() => stopDevice(device)}></vscode-button>
                             {/if}
                         </div>
+                        {#if runtime}
+                            <div class="deviceRuntimeBlock">
+                                <span class="deviceRuntime">{runtime.label}</span>
+                                <div class="runtimeBarTrack">
+                                    <div class="runtimeBarFill" style="width: {runtime.percent}%"></div>
+                                </div>
+                            </div>
+                        {/if}
                     </div>
 
                     {#if snapshotFormDeviceId === device.id && device.status === 'running'}

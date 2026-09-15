@@ -104,6 +104,24 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
                     throw new Error(`Device '${device.name}' has no snapshot to start from; create a snapshot before starting it`);
                 }
 
+                //the webview only sets this when the picked snapshot isn't the live one, since only
+                //that start would overwrite the live snapshot's current state
+                if (message.context.replacesLiveSnapshot) {
+                    const confirmationLabel = 'Continue';
+                    const confirmedLabel = await vscode.window.showWarningMessage(
+                        'Overwrite your live snapshot?',
+                        {
+                            modal: true,
+                            detail: `Starting '${device.name}' with the snapshot "${message.context.snapshotName}" will cause your live snapshot to be overwritten.`
+                        },
+                        confirmationLabel
+                    );
+                    if (confirmedLabel !== confirmationLabel) {
+                        this.postOrQueueMessage(this.createResponseMessage(message, { started: false }));
+                        return true;
+                    }
+                }
+
                 //the fallback chain below only covers a start whose firmware list never loaded in
                 //the webview: the chosen snapshot's own firmware, then the device's, then the first
                 //one available for the device's type

@@ -374,6 +374,66 @@ describe('RceManagementViewProvider', () => {
             const startDeviceArgs = rceManager.fakeManagementClient.startDevice.getCall(0).args;
             expect(startDeviceArgs[0].start.maxRuntime).to.equal(3600);
         });
+
+        it('does not call startDevice when a replaces-live-snapshot confirmation is declined', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', deviceType: 'tv', lastSnapshotId: 10, snapshots: [10], firmwareVersionId: 'rce-fw:1' }
+            ]);
+            sinon.stub(vscode.window, 'showWarningMessage').resolves(undefined);
+
+            createProvider();
+
+            const message = {
+                command: ViewProviderCommand.startRceDevice,
+                context: { deviceId: 5, snapshotId: 10, snapshotName: 'my-snapshot', replacesLiveSnapshot: true }
+            };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
+
+            expect(rceManager.fakeManagementClient.startDevice.called).to.be.false;
+            const responseMessage = findResponseMessage(ViewProviderCommand.startRceDevice);
+            expect(responseMessage.response.started).to.be.false;
+            expect(responseMessage.error).to.be.undefined;
+        });
+
+        it('calls startDevice when a replaces-live-snapshot confirmation is confirmed', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', deviceType: 'tv', lastSnapshotId: 10, snapshots: [10], firmwareVersionId: 'rce-fw:1' }
+            ]);
+            sinon.stub(vscode.window, 'showWarningMessage').resolves('Continue');
+            rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
+
+            createProvider();
+
+            const message = {
+                command: ViewProviderCommand.startRceDevice,
+                context: { deviceId: 5, snapshotId: 10, snapshotName: 'my-snapshot', replacesLiveSnapshot: true }
+            };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
+
+            expect(rceManager.fakeManagementClient.startDevice.calledWith(sinon.match({ deviceId: 5, start: sinon.match({ snapshotId: 10 }) }))).to.be.true;
+        });
+
+        it('does not show the confirm modal when replacesLiveSnapshot is not sent', async () => {
+            rceManager = new TestRceManager(vscode.context as any);
+            await rceManager.addAccount('work', 'token-work');
+            rceManager.fakeManagementClient.listDevices.resolves([
+                { id: 5, name: 'my-device', deviceType: 'tv', lastSnapshotId: 10, snapshots: [10], firmwareVersionId: 'rce-fw:1' }
+            ]);
+            const showWarningMessage = sinon.stub(vscode.window, 'showWarningMessage');
+            rceManager.fakeManagementClient.startDevice.resolves({ id: 5 });
+
+            createProvider();
+
+            const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5, snapshotId: 10 } };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
+
+            expect(showWarningMessage.called).to.be.false;
+            expect(rceManager.fakeManagementClient.startDevice.called).to.be.true;
+        });
     });
 
     describe('getRceDeviceDetails', () => {
