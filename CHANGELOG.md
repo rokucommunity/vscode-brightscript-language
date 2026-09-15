@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.69.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.69.1...v2.69.2) - 2026-09-15
 ### Changed
- - RCE device management and stream view UI rework ([#895](https://github.com/rokucommunity/vscode-brightscript-language/pull/895))
+ - RCE device management UI and stream view UI rework ([#895](https://github.com/rokucommunity/vscode-brightscript-language/pull/895))
 
 
 
