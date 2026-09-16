@@ -108,7 +108,7 @@
 <div id="container">
     {#if odcAvailable}
         <vscode-text-area id="replCode" placeholder="Enter your brightscript code here to run on your device. For example:
-return 1 + 1" rows="10" resize="both" on:input={onReplCodeChange} value={replCode} />
+return 1 + 1" rows="10" resize="both" on:input={onReplCodeChange} value={replCode}></vscode-text-area>
 
         <table>
             <tbody>
@@ -119,7 +119,7 @@ return 1 + 1" rows="10" resize="both" on:input={onReplCodeChange} value={replCod
                     <td>&nbsp;&nbsp;&nbsp;</td>
                     <td>
                         {#if loading}
-                            <vscode-progress-ring />
+                            <vscode-progress-ring></vscode-progress-ring>
                         {:else}
                             {replTimeTaken >= 0 ? `Last run took ${replTimeTaken}ms` : ''}
                         {/if}
@@ -129,7 +129,7 @@ return 1 + 1" rows="10" resize="both" on:input={onReplCodeChange} value={replCod
         </table>
 
         {#if !loading && (replResponse !== undefined || replError !== '')}
-            <vscode-divider />
+            <vscode-divider></vscode-divider>
             {#if replResponse !== undefined}
                 <strong id="replOutputHeader">Returned value:</strong>
                 <pre id="replOutput">{replResponse}</pre>

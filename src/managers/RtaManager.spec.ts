@@ -51,16 +51,18 @@ describe('RtaManager', () => {
             await rtaManager.setupRtaWithConfig({ host: '9.9.9.9', password: 'aaaa' } as any);
 
             expect(odcSetConfigStub.calledOnce).to.be.true;
-            expect(odcSetConfigStub.firstCall.args[0].RokuDevice.devices[0].host).to.equal('1.2.3.4');
+            const device = odcSetConfigStub.firstCall.args[0].RokuDevice.devices[0];
+            expect(device).to.deep.equal({ host: '1.2.3.4', password: 'aaaa' });
             expect(rtaManager.device).to.exist;
             expect(rtaManager.isRceDebugSession).to.be.false;
         });
 
-        it('resolves a cloud emulator device through the remote-control device key, fetching a token from RceManager', async () => {
+        it('resolves a running cloud emulator device (instanceUrl) through the remote-control device key, fetching a token from RceManager', async () => {
             getDeviceStub.withArgs('rce:83').returns({
                 key: 'rce:83',
                 serialNumber: 'ESN123',
-                rce: { id: 83, status: 'running', instanceUrl: 'https://rce.example.com' }
+                rce: { id: 83, status: 'running', instanceUrl: 'https://rce.example.com' },
+                device: { instanceUrl: 'https://rce.example.com', rceToken: 'stale-token' }
             });
             await vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
 
@@ -68,10 +70,32 @@ describe('RtaManager', () => {
 
             expect(odcSetConfigStub.calledOnce).to.be.true;
             const device = odcSetConfigStub.firstCall.args[0].RokuDevice.devices[0];
-            expect(device.id).to.equal(83);
-            expect(device.esn).to.equal('ESN123');
-            expect(device.instanceUrl).to.equal('https://rce.example.com');
-            expect(device.rceToken).to.equal('management-api-token');
+            expect(device).to.deep.equal({
+                instanceUrl: 'https://rce.example.com',
+                rceToken: 'management-api-token',
+                password: 'aaaa'
+            });
+            expect(rtaManager.isRceDebugSession).to.be.true;
+        });
+
+        it('resolves a non-running cloud emulator device (id) through the remote-control device key, fetching a token from RceManager', async () => {
+            getDeviceStub.withArgs('rce:83').returns({
+                key: 'rce:83',
+                serialNumber: 'ESN123',
+                rce: { id: 83, status: 'shutdown' },
+                device: { id: 83, rceToken: 'stale-token' }
+            });
+            await vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
+
+            await rtaManager.setupRtaWithConfig({ password: 'aaaa' } as any);
+
+            expect(odcSetConfigStub.calledOnce).to.be.true;
+            const device = odcSetConfigStub.firstCall.args[0].RokuDevice.devices[0];
+            expect(device).to.deep.equal({
+                id: 83,
+                rceToken: 'management-api-token',
+                password: 'aaaa'
+            });
             expect(rtaManager.isRceDebugSession).to.be.true;
         });
 
@@ -80,7 +104,8 @@ describe('RtaManager', () => {
             getDeviceStub.withArgs('rce:83').returns({
                 key: 'rce:83',
                 serialNumber: 'ESN123',
-                rce: { id: 83, status: 'running' }
+                rce: { id: 83, status: 'running' },
+                device: { id: 83 }
             });
             getTokenStub.resolves(undefined);
             await vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
@@ -115,7 +140,7 @@ describe('RtaManager', () => {
         it('marks an RCE debug session and notifies the webviews so they can show the unsupported message', async () => {
             const updateDeviceAvailabilityStub = sinon.stub();
             rtaManager.setWebviewViewProviderManager({ getWebviewViewProviders: () => [{ updateDeviceAvailability: updateDeviceAvailabilityStub }] } as any);
-            getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' } });
+            getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' }, device: { id: 83 } });
             await vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
 
             await rtaManager.setupRtaWithConfig({ password: 'aaaa' } as any);
@@ -125,7 +150,7 @@ describe('RtaManager', () => {
         });
 
         it('clears the RCE debug session flag when RTA is subsequently set up against a LAN device', async () => {
-            getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' } });
+            getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' }, device: { id: 83 } });
             await vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
             await rtaManager.setupRtaWithConfig({ password: 'aaaa' } as any);
 
@@ -152,7 +177,7 @@ describe('RtaManager', () => {
 
     describe('setupRtaWithDeviceTarget', () => {
         it('sets up RTA against a LAN target, ignoring the remote-control device key', async () => {
-            getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' } });
+            getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' }, device: { id: 83 } });
             void vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
 
             await rtaManager.setupRtaWithDeviceTarget({ host: '1.2.3.4' } as any, 'aaaa');
@@ -214,7 +239,7 @@ describe('RtaManager', () => {
 
     describe('onDidTerminateDebugSession', () => {
         it('shuts down the ODC connection for an RCE session and flips isRceDebugSession, but leaves the device alone', async () => {
-            getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' } });
+            getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' }, device: { id: 83 } });
             await vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
             await rtaManager.setupRtaWithConfig({ password: 'aaaa', injectRdbOnDeviceComponent: true } as any);
             const shutdownStub = sinon.stub(rtaManager.onDeviceComponent, 'shutdown').resolves();
@@ -266,7 +291,7 @@ describe('RtaManager', () => {
 
     describe('disconnectFromDevice', () => {
         it('is a full reset: clears the device, the ODC connection, the RCE flag and the last app UI response, then notifies the webviews', async () => {
-            getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' } });
+            getDeviceStub.withArgs('rce:83').returns({ key: 'rce:83', serialNumber: 'ESN123', rce: { id: 83, status: 'running' }, device: { id: 83 } });
             await vscode.context.workspaceState.update('remoteControlDeviceKey', 'rce:83');
             await rtaManager.setupRtaWithConfig({ password: 'aaaa', injectRdbOnDeviceComponent: true } as any);
             const shutdownStub = sinon.stub(rtaManager.onDeviceComponent, 'shutdown').resolves();

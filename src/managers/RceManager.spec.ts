@@ -239,9 +239,7 @@ describe('RceManager', () => {
 
         it('throws the typed not-running error, carrying the device status, when the device is not running', async () => {
             await manager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             manager.devices = [{ id: 5, name: 'my-device', status: 'shutdown' }];
-            /* eslint-enable camelcase */
 
             let caughtError: Error;
             try {
@@ -269,10 +267,9 @@ describe('RceManager', () => {
             expect((caughtError as RceDeviceNotRunningError).deviceStatus).to.equal('pending');
         });
 
-        it('throws when a running device has no janus_websocket_url or no janus_id', async () => {
+        it('throws when a running device has no janusWebsocketUrl or no janusId', async () => {
             await manager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
-            manager.devices = [{ id: 5, name: 'my-device', status: 'running', running_device: {} }];
+            manager.devices = [{ id: 5, name: 'my-device', status: 'running', runningDevice: {} }];
 
             let caughtError: Error;
             try {
@@ -282,8 +279,7 @@ describe('RceManager', () => {
             }
             expect(caughtError.message).to.contain('must be running');
 
-            manager.devices = [{ id: 5, name: 'my-device', status: 'running', running_device: { janus_websocket_url: 'wss://x/janus', janus_id: null } }];
-            /* eslint-enable camelcase */
+            manager.devices = [{ id: 5, name: 'my-device', status: 'running', runningDevice: { janusWebsocketUrl: 'wss://x/janus', janusId: null } }];
             caughtError = undefined;
             try {
                 await manager.resolveStreamRequest(5);
@@ -293,23 +289,21 @@ describe('RceManager', () => {
             expect(caughtError.message).to.contain('must be running');
         });
 
-        it('resolves the full stream config for a running device, treating a janus_id of 0 as valid', async () => {
+        it('resolves the full stream config for a running device, treating a janusId of 0 as valid', async () => {
             await manager.addAccount('work', 'token-work');
-            /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
             manager.devices = [{
                 id: 5,
                 name: 'my-device',
-                device_type: 'tv',
+                deviceType: 'tv',
                 status: 'running',
-                running_device: {
-                    janus_websocket_url: 'wss://device.rce.roku.com/instance/abc/janus',
-                    janus_id: 0,
-                    janus_pin: '1234',
-                    janus_token: 'janus-secret',
-                    janus_ice_servers: [{ urls: ['stun:stun.example.com'] }]
+                runningDevice: {
+                    janusWebsocketUrl: 'wss://device.rce.roku.com/instance/abc/janus',
+                    janusId: 0,
+                    janusPin: '1234',
+                    janusToken: 'janus-secret',
+                    janusIceServers: [{ urls: ['stun:stun.example.com'] }]
                 }
             }];
-            /* eslint-enable camelcase */
 
             const streamRequest = await manager.resolveStreamRequest(5);
             expect(streamRequest).to.eql({
