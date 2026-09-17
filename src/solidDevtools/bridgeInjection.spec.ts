@@ -145,15 +145,17 @@ describe('bridgeInjection', () => {
         expect(bundle.split('\n').length).to.equal(bridgeCode.split('\n').length - 1 + bundleCode.split('\n').length);
     });
 
-    it('still prepends the bridge (without connect) when the DevHooks marker is missing', async () => {
+    it('leaves the bundle untouched when the DevHooks marker is missing (not a solid dev build)', async () => {
+        //no DevHooks means solid's production build was bundled (`solidDevMode` is off), so the
+        //bridge has nothing to attach to - injecting it would ship ~1100 lines of dead code
         const noMarkerBundle = '(function(){var x=1;})();';
         writeStagedApp({ bundle: noMarkerBundle });
         const result = await inject();
-        expect(result.injected).to.be.true;
+        expect(result.injected).to.be.false;
         expect(result.connected).to.be.false;
-        expect(result.reason).to.include('DevHooks marker not found');
+        expect(result.reason).to.include('solidDevMode');
         const bundle = fsExtra.readFileSync(bundlePath, 'utf8');
-        expect(bundle).to.equal(bridgeCode + noMarkerBundle);
+        expect(bundle).to.equal(noMarkerBundle);
     });
 
     it('does not double-inject', async () => {
