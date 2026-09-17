@@ -70,12 +70,6 @@ export class JsDebugPathTrace {
                 `[jsPathTrace] localRoot            = ${JSON.stringify(summary.localRoot)}`,
                 `[jsPathTrace] outFiles             = ${JSON.stringify(summary.outFiles)}`
             ];
-            if (summary.localRootCandidates) {
-                lines.push(`[jsPathTrace] localRoot candidates = ${JSON.stringify(summary.localRootCandidates.map(candidate => `${candidate === summary.localRoot ? '[HIT] ' : '[miss] '}${candidate}`), undefined, 4)}`);
-            }
-            if (summary.sourceMapPathOverrides) {
-                lines.push(`[jsPathTrace] sourcemap overrides  = ${JSON.stringify(summary.sourceMapPathOverrides, undefined, 4)}`);
-            }
             if (summary.jsDebugTraceFile) {
                 lines.push(
                     `[jsPathTrace] js-debug wire log    = ${summary.jsDebugTraceFile}`,
@@ -157,10 +151,6 @@ export interface JsDebugStartupSummary {
     remoteRoot: string;
     localRoot: string;
     outFiles: string[];
-    /** Every local directory probed for the compiled bundle, in probe order (staging dir first). */
-    localRootCandidates?: string[];
-    /** The `sourceMapPathOverrides` built for the attach config. */
-    sourceMapPathOverrides?: Record<string, string>;
     /** The path js-debug will write its own wire log to, when tracing is enabled. */
     jsDebugTraceFile?: string;
 }
