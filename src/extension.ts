@@ -14,6 +14,8 @@ import { RceFinder } from './deviceDiscovery/RceFinder';
 import { RceManager } from './managers/RceManager';
 import { JsDebugProxyManager, JS_DEBUG_PORT } from './managers/JsDebugProxyManager';
 import { JsDebugPathTrace } from './managers/JsDebugPathTrace';
+import { JsDebugTargetResolver } from './managers/JsDebugTargetResolver';
+import type { JsDebugTarget } from './managers/JsDebugTargetResolver';
 import { RceVideoEditorManager } from './managers/RceVideoEditorManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';
@@ -73,6 +75,7 @@ export class Extension {
     private extensionContext: vscode.ExtensionContext;
     private jsDebugProxyManager: JsDebugProxyManager;
     private jsDebugPathTrace: JsDebugPathTrace;
+    private jsDebugTargetResolver: JsDebugTargetResolver;
 
     public async activate(context: vscode.ExtensionContext) {
         //make this entire extension disposable so that all resources will be cleaned up on extension deactivation
@@ -125,6 +128,7 @@ export class Extension {
         context.subscriptions.push(this.jsDebugProxyManager);
         this.jsDebugPathTrace = new JsDebugPathTrace((message) => this.extensionOutputChannel.appendLine(message));
         this.jsDebugPathTrace.register(context);
+        this.jsDebugTargetResolver = new JsDebugTargetResolver((message) => this.extensionOutputChannel.appendLine(message));
         const rceFinder = new RceFinder(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
         context.subscriptions.push(new RceVideoEditorManager(context, rceManager, rceFinder));
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel, rceFinder);
@@ -410,7 +414,7 @@ export class Extension {
             this.webviewViewProviderManager.onDidStartDebugSession(debugSession);
             const configuration = debugSession.configuration as BrightScriptLaunchConfiguration;
 
-            this.resolveJsDebugTarget(configuration).then(target => {
+            this.jsDebugTargetResolver.resolveJsDebugTarget(configuration).then(target => {
                 if (target) {
                     return this.attachJsDebugger(debugSession, target);
                 }
@@ -433,48 +437,19 @@ export class Extension {
         this.diagnosticManager.clear();
     }
 
-    /**
-     * Find the compiled JS bundle this session should attach the node debugger to (if any).
-     * A top-level `tsPath` in launch.json wins, then the app manifest's `ts_path`, then the
-     * first component library with a `tsPath` configured in launch.json.
-     */
-    private async resolveJsDebugTarget(configuration: BrightScriptLaunchConfiguration): Promise<JsDebugTarget | undefined> {
-        const appTsPath = configuration.tsPath ?? util.getTsPath(configuration.rootDir);
-        if (appTsPath) {
-            const workspaceFolders = vscode.workspace.workspaceFolders || [];
-            //use the stagingDir if provided, otherwise default to what we think it will probably be (hasn't changed in years...)
-            const stagingDir = configuration.stagingDir ?? configuration.stagingFolderPath ?? `${workspaceFolders[0].uri.fsPath}/out/.roku-deploy-staging`;
-            return { tsPath: appTsPath, rootDir: configuration.rootDir, stagingDir: stagingDir };
-        }
-
-        for (const library of configuration.componentLibraries ?? []) {
-            if (!library.tsPath) {
-                continue;
-            }
-            //roku-debug stages each component library in its own folder at `${outDir}/component-libraries/<outFile minus extension>`,
-            //where outFile may contain `${var}` placeholders resolved from the library's manifest. Recreate that path here.
-            const manifestValues = await util.convertManifestToObject(path.join(library.rootDir, 'manifest')) ?? {};
-            const outFileName = library.outFile.replace(/\$\{([\w\d_]+)\}/g, (wholeMatch, name) => (manifestValues[name] ?? wholeMatch).trim());
-            const stagingDir = s`${configuration.outDir}/component-libraries/${path.basename(outFileName, path.extname(outFileName))}`;
-            return { tsPath: library.tsPath, rootDir: library.rootDir, stagingDir: stagingDir };
-        }
-    }
-
     private async attachJsDebugger(parentSession: vscode.DebugSession, target: JsDebugTarget) {
-        const tsPath = target.tsPath.replace(/\s*(?:lib)?pkg:/, '');
         const workspaceFolders = vscode.workspace.workspaceFolders || [];
-        //something like ${rootDir}/source/compiled
-        const remoteRoot = path.normalize(path.dirname(tsPath));
-        //something like ${workspaceFolder}/out/.roku-deploy-staging/source/compiled
-        const localRoot = path.normalize(path.join(target.stagingDir, remoteRoot));
+        const targetPaths = this.jsDebugTargetResolver.resolveTargetPaths(target);
 
         const jsDebugTraceConfig = this.jsDebugPathTrace.getJsDebugTraceConfig(workspaceFolders[0]?.uri.fsPath ?? target.rootDir);
         this.jsDebugPathTrace.logStartupSummary({
             platform: process.platform,
-            tsPath: tsPath,
-            remoteRoot: remoteRoot,
-            localRoot: localRoot,
-            outFiles: [`${localRoot}/*.js`],
+            tsPath: targetPaths.tsPath,
+            remoteRoot: targetPaths.remoteRoot,
+            localRoot: targetPaths.localRoot,
+            outFiles: targetPaths.outFiles,
+            localRootCandidates: targetPaths.localRootCandidates,
+            sourceMapPathOverrides: targetPaths.sourceMapPathOverrides,
             jsDebugTraceFile: jsDebugTraceConfig?.logFile
         });
 
@@ -545,11 +520,15 @@ export class Extension {
                     //this allows us to resolve sourcemaps from ANYWHERE
                     resolveSourceMapLocations: null,
                     // If source maps are enabled, these glob patterns specify the generated JavaScript files. If a pattern starts with `!` the files are excluded. If not specified, the generated code is expected in the same directory as its source.
-                    outFiles: [`${localRoot}/*.js`],
+                    outFiles: targetPaths.outFiles,
                     //Absolute path to the remote directory containing the program. (what path the debugger will send to US, which will be translated to localRoot by the node debugger)
-                    remoteRoot: remoteRoot,
+                    remoteRoot: targetPaths.remoteRoot,
                     // where the currently-running javascript (bundled) files live on this system
-                    localRoot: localRoot,
+                    localRoot: targetPaths.localRoot,
+
+                    // Re-anchor the sourcemap's original sources onto the real files on disk, and
+                    // restate js-debug's own defaults (see JsDebugTargetResolver.resolveTargetPaths).
+                    sourceMapPathOverrides: targetPaths.sourceMapPathOverrides,
 
                     // don't pause on the first line when attaching
                     stopOnEntry: parentSession.configuration?.stopOnEntry ?? false,
@@ -812,19 +791,3 @@ export async function activate(context: vscode.ExtensionContext) {
     await extension.activate(context);
 }
 
-// ---- types ----
-
-interface JsDebugTarget {
-    /**
-     * Device path to the compiled JS bundle (a `ts_path`-style value, e.g. 'pkg:/source/compiled/main.js')
-     */
-    tsPath: string;
-    /**
-     * rootDir of the project the bundle was built from (the app's rootDir, or the component library's)
-     */
-    rootDir: string;
-    /**
-     * The staging directory the debugger copied this project's files into (where the staged .js and .map files live)
-     */
-    stagingDir: string;
-}
