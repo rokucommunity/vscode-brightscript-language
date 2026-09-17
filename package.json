@@ -3012,6 +3012,12 @@
                         "description": "Diagnostic logging for TS/JS (Hermes) debugging. Logs the computed remoteRoot/localRoot, the CDP proxy's activity, and every path-bearing DAP message to the extension output channel, and writes the full js-debug CDP wire log (including its sourcemap path-mapping decisions) to `<workspace>/logs/`. Enable this when breakpoints don't bind, when a stop opens a duplicate/phantom tab, or when you see \"Could not load source ... Unable to retrieve source content\".",
                         "scope": "resource"
                     },
+                    "brightscript.debug.forceJsDebugRelay": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Forces the local JS-debug relay for LAN devices on every platform. The relay is always used for RCE devices, and on Windows where it corrects js-debug's malformed four-slash file:// breakpoint urls. This setting is primarily for testing the relay path from macOS/Linux.",
+                        "scope": "resource"
+                    },
                     "brightscript.debug.enableSourceMaps": {
                         "type": "boolean",
                         "default": true,

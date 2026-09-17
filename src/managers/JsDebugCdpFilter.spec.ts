@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { JsDebugCdpFilter } from './JsDebugCdpFilter';
+import { JsDebugCdpFilter, normalizeFileUrl } from './JsDebugCdpFilter';
 
 describe('JsDebugCdpFilter', () => {
     let logMessages: string[];
@@ -325,6 +325,333 @@ describe('JsDebugCdpFilter', () => {
         const output = await endAndCollect(filter.upstream, [partialRequest]);
         expect(output).to.deep.equal(partialRequest);
     });
+
+    describe('Host/Origin validation', () => {
+        it('rejects an upgrade request with a foreign Host header', async () => {
+            const request = Buffer.from(
+                'GET /json/list HTTP/1.1\r\nHost: evil.example\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n'
+            );
+            const errorPromise = new Promise<Error>((resolve) => {
+                filter.upstream.once('error', resolve);
+            });
+            filter.upstream.write(request);
+            const caughtError = await errorPromise;
+            expect(caughtError.message).to.match(/host/i);
+        });
+
+        it('rejects a request carrying an Origin header, even with a valid Host', async () => {
+            const request = Buffer.from(
+                'GET /json/list HTTP/1.1\r\nHost: localhost\r\nOrigin: http://evil.example\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n'
+            );
+            const errorPromise = new Promise<Error>((resolve) => {
+                filter.upstream.once('error', resolve);
+            });
+            filter.upstream.write(request);
+            const caughtError = await errorPromise;
+            expect(caughtError.message).to.match(/origin/i);
+        });
+
+        it('accepts Host: 127.0.0.1:9229 and Host: localhost', async () => {
+            const requestWithPort = Buffer.from(
+                'GET /json/list HTTP/1.1\r\nHost: 127.0.0.1:9229\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n'
+            );
+            const output = await writeAndCollect(filter.upstream, [requestWithPort]);
+            expect(output.length).to.be.greaterThan(0);
+
+            const secondFilter = new JsDebugCdpFilter(() => { /* noop log */ });
+            const requestWithLocalhost = Buffer.from(
+                'GET /json/list HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n'
+            );
+            const secondOutput = await writeAndCollect(secondFilter.upstream, [requestWithLocalhost]);
+            expect(secondOutput.length).to.be.greaterThan(0);
+        });
+
+        it('rejects a request with no Host header at all', async () => {
+            const request = Buffer.from('GET /json/list HTTP/1.1\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n');
+            const errorPromise = new Promise<Error>((resolve) => {
+                filter.upstream.once('error', resolve);
+            });
+            filter.upstream.write(request);
+            const caughtError = await errorPromise;
+            expect(caughtError.message).to.match(/host/i);
+        });
+
+        it('rejects a non-upgrade /json/list request with a bad Host too', async () => {
+            const request = Buffer.from('GET /json/list HTTP/1.1\r\nHost: evil.example\r\n\r\n');
+            const errorPromise = new Promise<Error>((resolve) => {
+                filter.upstream.once('error', resolve);
+            });
+            filter.upstream.write(request);
+            const caughtError = await errorPromise;
+            expect(caughtError.message).to.match(/host/i);
+        });
+    });
+
+    describe('setBreakpointByUrl rewrite (masked-frame re-encode)', () => {
+        it('rewrites a four-slash url on Debugger.setBreakpointByUrl and logs both urls', async () => {
+            await completeUpgradeHandshake(filter);
+
+            const originalUrl = 'file:////source/compiled/index.js';
+            const message = { id: 5, method: 'Debugger.setBreakpointByUrl', params: { url: originalUrl, lineNumber: 42 } };
+            const frame = buildMaskedTextFrameFromPayload(Buffer.from(JSON.stringify(message)));
+
+            const output = await writeAndCollect(filter.upstream, [frame]);
+            expect(output).to.not.deep.equal(frame);
+
+            const parsed = parseMaskedTextFrame(output);
+            expect(parsed).to.deep.equal({ id: 5, method: 'Debugger.setBreakpointByUrl', params: { url: 'file:///source/compiled/index.js', lineNumber: 42 } });
+
+            expect(logMessages.some((message) => message.includes(originalUrl) && message.includes('file:///source/compiled/index.js'))).to.be.true;
+        });
+
+        it('leaves an already-correct three-slash url byte-identical, with no rewrite log', async () => {
+            await completeUpgradeHandshake(filter);
+
+            const message = { id: 6, method: 'Debugger.setBreakpointByUrl', params: { url: 'file:///source/compiled/index.js', lineNumber: 1 } };
+            const frame = buildMaskedTextFrameFromPayload(Buffer.from(JSON.stringify(message)));
+
+            const output = await writeAndCollect(filter.upstream, [frame]);
+            expect(output).to.deep.equal(frame);
+            expect(logMessages.some((message) => message.includes('rewrote'))).to.be.false;
+        });
+
+        it('leaves a four-slash url on a different method byte-identical', async () => {
+            await completeUpgradeHandshake(filter);
+
+            const message = { id: 7, method: 'Debugger.getPossibleBreakpoints', params: { url: 'file:////source/compiled/index.js' } };
+            const frame = buildMaskedTextFrameFromPayload(Buffer.from(JSON.stringify(message)));
+
+            const output = await writeAndCollect(filter.upstream, [frame]);
+            expect(output).to.deep.equal(frame);
+        });
+
+        it('leaves a non-Debugger method (first Runtime.enable) byte-identical', async () => {
+            await completeUpgradeHandshake(filter);
+
+            const frame = buildMaskedTextFrame({ id: 1, method: 'Runtime.enable' });
+            const output = await writeAndCollect(filter.upstream, [frame]);
+            expect(output).to.deep.equal(frame);
+        });
+
+        it('leaves setBreakpointByUrl with only urlRegex (no url) byte-identical', async () => {
+            await completeUpgradeHandshake(filter);
+
+            const message = { id: 8, method: 'Debugger.setBreakpointByUrl', params: { urlRegex: 'file:////source/.*\\.js', lineNumber: 1 } };
+            const frame = buildMaskedTextFrameFromPayload(Buffer.from(JSON.stringify(message)));
+
+            const output = await writeAndCollect(filter.upstream, [frame]);
+            expect(output).to.deep.equal(frame);
+        });
+
+        it('re-encodes correctly when the rewritten payload crosses the 125/126-byte header boundary', async () => {
+            await completeUpgradeHandshake(filter);
+
+            //padding lengths picked (once, offline) so the ORIGINAL (four-slash) payload lands at
+            //exactly 126/65536 bytes and the REWRITTEN (three-slash, one byte shorter) payload
+            //lands at exactly 125/65535 - the 4-byte-header/2-byte-header and 10-byte/4-byte
+            //header-encoding boundaries respectively
+            const originalUrlSmall = `file:////source/${'x'.repeat(34)}/index.js`;
+            const messageSmall = { id: 9, method: 'Debugger.setBreakpointByUrl', params: { url: originalUrlSmall } };
+            const payloadSmall = Buffer.from(JSON.stringify(messageSmall));
+            expect(payloadSmall.length).to.equal(126);
+            expect(Buffer.from(JSON.stringify({ ...messageSmall, params: { url: normalizeFileUrl(originalUrlSmall) } })).length).to.equal(125);
+
+            const frameSmall = buildMaskedTextFrameFromPayload(payloadSmall);
+            const outputSmall = await writeAndCollect(filter.upstream, [frameSmall]);
+            const parsedSmall = parseMaskedTextFrame(outputSmall);
+            expect(parsedSmall.params.url).to.equal(normalizeFileUrl(originalUrlSmall));
+
+            //header-encoding proof: 125 fits the 7-bit length field directly (a 2-byte header),
+            //not the 126 extended-length encoding (a 4-byte header) the ORIGINAL payload would need
+            // eslint-disable-next-line no-bitwise
+            expect(outputSmall[1] & 0x7F).to.equal(125);
+            // eslint-disable-next-line no-bitwise
+            expect(outputSmall[1] & 0x80).to.equal(0x80); // mask bit still set
+            expect(outputSmall.subarray(2, 6)).to.deep.equal(DEFAULT_TEST_MASK_KEY);
+            expect(outputSmall.length).to.equal(2 + 4 + 125); // 2-byte header + 4-byte mask key + payload
+
+            const originalUrlLarge = `file:////source/${'x'.repeat(65_443)}/index.js`;
+            const messageLarge = { id: 10, method: 'Debugger.setBreakpointByUrl', params: { url: originalUrlLarge } };
+            const payloadLarge = Buffer.from(JSON.stringify(messageLarge));
+            expect(payloadLarge.length).to.equal(65_536);
+            expect(Buffer.from(JSON.stringify({ ...messageLarge, params: { url: normalizeFileUrl(originalUrlLarge) } })).length).to.equal(65_535);
+
+            const frameLarge = buildMaskedTextFrameFromPayload(payloadLarge);
+            const outputLarge = await writeAndCollect(filter.upstream, [frameLarge]);
+            const parsedLarge = parseMaskedTextFrame(outputLarge);
+            expect(parsedLarge.params.url).to.equal(normalizeFileUrl(originalUrlLarge));
+
+            //header-encoding proof: 65535 fits the 16-bit extended-length encoding (a 4-byte
+            //header), not the 64-bit encoding (a 10-byte header) the ORIGINAL payload would need
+            // eslint-disable-next-line no-bitwise
+            expect(outputLarge[1] & 0x7F).to.equal(126);
+            expect(outputLarge.readUInt16BE(2)).to.equal(65_535);
+            expect(outputLarge.subarray(4, 8)).to.deep.equal(DEFAULT_TEST_MASK_KEY);
+            expect(outputLarge.length).to.equal(4 + 4 + 65_535); // 4-byte header + 4-byte mask key + payload
+        });
+
+        it('rewrites a setBreakpointByUrl url and dedupes a duplicate Runtime.enable on the same connection', async () => {
+            await completeUpgradeHandshake(filter);
+
+            const downstreamCollector = new BufferCollector(filter.downstream);
+
+            const firstEnable = buildMaskedTextFrame({ id: 1, method: 'Runtime.enable' });
+            expect(await writeAndCollect(filter.upstream, [firstEnable])).to.deep.equal(firstEnable);
+
+            const rewriteMessage = { id: 2, method: 'Debugger.setBreakpointByUrl', params: { url: 'file:////source/compiled/index.js' } };
+            const rewriteFrame = buildMaskedTextFrameFromPayload(Buffer.from(JSON.stringify(rewriteMessage)));
+            const rewriteOutput = await writeAndCollect(filter.upstream, [rewriteFrame]);
+            expect(parseMaskedTextFrame(rewriteOutput).params.url).to.equal('file:///source/compiled/index.js');
+
+            const secondEnable = buildMaskedTextFrame({ id: 3, method: 'Runtime.enable' });
+            expect((await writeAndCollect(filter.upstream, [secondEnable])).length).to.equal(0);
+            expect(parseUnmaskedTextFrame(downstreamCollector.take())).to.deep.equal({ id: 3, result: {} });
+
+            downstreamCollector.dispose();
+        });
+    });
+
+    describe('fin tracking (message-boundary-only synthetic injection)', () => {
+        it('only injects a synthetic frame after a fragmented downstream message fully completes', async () => {
+            await completeUpgradeHandshake(filter);
+            await writeAndCollect(filter.upstream, [buildMaskedTextFrame({ id: 1, method: 'Runtime.enable' })]);
+
+            const downstreamCollector = new BufferCollector(filter.downstream);
+
+            //a fragmented device message: fin=0 text frame, then a fin=1 continuation
+            const firstFragmentPayload = Buffer.from('first-half');
+            const firstFragment = buildFrameHeaderForTest(0x1, firstFragmentPayload.length, false, false);
+            filter.downstream.write(Buffer.concat([firstFragment, firstFragmentPayload]));
+            await tick();
+            downstreamCollector.take();
+
+            //a duplicate Runtime.enable is detected while the message is still open (mid-fragment,
+            //not mid-frame) - the synthetic must NOT be spliced in here
+            const droppedFrame = buildMaskedTextFrame({ id: 2, method: 'Runtime.enable' });
+            await writeAndCollect(filter.upstream, [droppedFrame]);
+            expect(downstreamCollector.take().length).to.equal(0);
+
+            const continuationPayload = Buffer.from('second-half');
+            const continuationHeader = buildFrameHeaderForTest(0x0, continuationPayload.length, false, true);
+            filter.downstream.write(Buffer.concat([continuationHeader, continuationPayload]));
+            await tick();
+            const afterContinuation = downstreamCollector.take();
+
+            expect(afterContinuation.subarray(0, continuationHeader.length + continuationPayload.length))
+                .to.deep.equal(Buffer.concat([continuationHeader, continuationPayload]));
+            const synthetic = parseUnmaskedTextFrame(afterContinuation.subarray(continuationHeader.length + continuationPayload.length));
+            expect(synthetic).to.deep.equal({ id: 2, result: {} });
+
+            downstreamCollector.dispose();
+        });
+
+        it('does not treat a control frame interleaved between fragments as a message boundary', async () => {
+            await completeUpgradeHandshake(filter);
+            await writeAndCollect(filter.upstream, [buildMaskedTextFrame({ id: 1, method: 'Runtime.enable' })]);
+
+            const downstreamCollector = new BufferCollector(filter.downstream);
+
+            //RFC 6455 §5.4 permits control frames (always FIN=1) interleaved between the fragments
+            //of a still-open data message - a ping here must not be mistaken for a message boundary
+            const firstFragmentPayload = Buffer.from('first-half');
+            const firstFragment = buildFrameHeaderForTest(0x1, firstFragmentPayload.length, false, false);
+            filter.downstream.write(Buffer.concat([firstFragment, firstFragmentPayload]));
+            await tick();
+            downstreamCollector.take();
+
+            const pingPayload = Buffer.from('ping-payload');
+            const pingFrame = buildFrameHeaderForTest(0x9, pingPayload.length, false, true);
+            filter.downstream.write(Buffer.concat([pingFrame, pingPayload]));
+            await tick();
+            downstreamCollector.take();
+
+            //a duplicate Runtime.enable is detected right after the ping - the message is still
+            //open (only a control frame has completed since the fin=0 fragment), so the synthetic
+            //must NOT be spliced in yet
+            const droppedFrame = buildMaskedTextFrame({ id: 2, method: 'Runtime.enable' });
+            await writeAndCollect(filter.upstream, [droppedFrame]);
+            expect(downstreamCollector.take().length).to.equal(0);
+
+            const continuationPayload = Buffer.from('second-half');
+            const continuationHeader = buildFrameHeaderForTest(0x0, continuationPayload.length, false, true);
+            filter.downstream.write(Buffer.concat([continuationHeader, continuationPayload]));
+            await tick();
+            const afterContinuation = downstreamCollector.take();
+
+            expect(afterContinuation.subarray(0, continuationHeader.length + continuationPayload.length))
+                .to.deep.equal(Buffer.concat([continuationHeader, continuationPayload]));
+            const synthetic = parseUnmaskedTextFrame(afterContinuation.subarray(continuationHeader.length + continuationPayload.length));
+            expect(synthetic).to.deep.equal({ id: 2, result: {} });
+
+            downstreamCollector.dispose();
+        });
+    });
+
+    describe('bounded parser state (security hardening caps)', () => {
+        it('still dedupes a Runtime.enable whose sessionId exceeds the length cap, via a hashed key', async () => {
+            await completeUpgradeHandshake(filter);
+
+            const downstreamCollector = new BufferCollector(filter.downstream);
+
+            const overlongSessionId = 'x'.repeat(300);
+            const firstFrame = buildMaskedTextFrame({ id: 1, method: 'Runtime.enable', sessionId: overlongSessionId });
+            const secondFrame = buildMaskedTextFrame({ id: 2, method: 'Runtime.enable', sessionId: overlongSessionId });
+
+            //the first is forwarded (first-seen for this sessionId); the duplicate is still
+            //dropped with a synthetic response, exactly as a normal-length sessionId would be -
+            //an overlong sessionId is hashed down to a fixed-width dedupe key, not exempted from
+            //dedupe entirely (which would re-arm the crash this filter exists to prevent)
+            expect(await writeAndCollect(filter.upstream, [firstFrame])).to.deep.equal(firstFrame);
+            expect((await writeAndCollect(filter.upstream, [secondFrame])).length).to.equal(0);
+            expect(parseUnmaskedTextFrame(downstreamCollector.take())).to.deep.equal({ id: 2, result: {}, sessionId: overlongSessionId });
+
+            expect(logMessages.some((message) => message.includes('exceeded') && message.includes('chars'))).to.be.true;
+
+            downstreamCollector.dispose();
+        });
+
+        it('suppresses log output after the per-connection cap and emits one final notice', async () => {
+            await completeUpgradeHandshake(filter);
+
+            //each iteration logs one line via the oversized-frame skip path, cheaply exercising the
+            //rate limiter without needing 200 distinct Runtime.enable sessions
+            const oversizedPayload = Buffer.concat([Buffer.from(JSON.stringify({ method: 'Other.method' })), Buffer.alloc(300 * 1024, 'x')]);
+            const oversizedFrame = buildMaskedTextFrameFromPayload(oversizedPayload);
+
+            for (let index = 0; index < 205; index++) {
+                await writeAndCollect(filter.upstream, [oversizedFrame]);
+            }
+
+            expect(logMessages.length).to.be.lessThan(205);
+            expect(logMessages[logMessages.length - 1]).to.match(/suppressed/i);
+        });
+    });
+});
+
+describe('normalizeFileUrl', () => {
+    it('collapses the four-slash form js-debug produces on windows', () => {
+        expect(normalizeFileUrl('file:////source/compiled/index.js')).to.equal('file:///source/compiled/index.js');
+    });
+
+    it('collapses more than one extra slash too', () => {
+        expect(normalizeFileUrl('file://////source/compiled/index.js')).to.equal('file:///source/compiled/index.js');
+    });
+
+    it('leaves a correct three-slash url alone', () => {
+        expect(normalizeFileUrl('file:///source/compiled/index.js')).to.equal('file:///source/compiled/index.js');
+    });
+
+    it('leaves a normal windows file url alone', () => {
+        expect(normalizeFileUrl('file:///c:/projects/app/index.js')).to.equal('file:///c:/projects/app/index.js');
+    });
+
+    it('leaves a scheme-less posix url alone', () => {
+        expect(normalizeFileUrl('/source/compiled/index.js')).to.equal('/source/compiled/index.js');
+    });
+
+    it('does not touch slashes elsewhere in the path', () => {
+        expect(normalizeFileUrl('file:///source//compiled/index.js')).to.equal('file:///source//compiled/index.js');
+    });
 });
 
 async function completeUpgradeHandshake(filter: JsDebugCdpFilter): Promise<void> {
@@ -435,17 +762,19 @@ function buildMaskedTextFrameFromPayload(payload: Buffer): Buffer {
     return buildMaskedFrame(0x1, payload, true);
 }
 
+/** The fixed mask key every masked test fixture uses, so re-encoded output frames are predictable to assert on. */
+const DEFAULT_TEST_MASK_KEY = Buffer.from([0x12, 0x34, 0x56, 0x78]);
+
 /** Builds an RFC 6455 client-to-server frame: masked, with the mask key XORed into the payload. */
 function buildMaskedFrame(opcode: number, payload: Buffer, fin = true): Buffer {
-    const maskKey = Buffer.from([0x12, 0x34, 0x56, 0x78]);
     const maskedPayload = Buffer.alloc(payload.length);
     for (let index = 0; index < payload.length; index++) {
         // eslint-disable-next-line no-bitwise
-        maskedPayload[index] = payload[index] ^ maskKey[index % 4];
+        maskedPayload[index] = payload[index] ^ DEFAULT_TEST_MASK_KEY[index % 4];
     }
 
     const header = buildFrameHeaderForTest(opcode, payload.length, true, fin);
-    return Buffer.concat([header, maskKey, maskedPayload]);
+    return Buffer.concat([header, DEFAULT_TEST_MASK_KEY, maskedPayload]);
 }
 
 /** Builds an RFC 6455 server-to-client frame: unmasked, as Hermes on the device would send it. */
@@ -499,4 +828,35 @@ function parseUnmaskedTextFrame(frame: Buffer): any {
 
     const payload = frame.subarray(offset, offset + payloadLength);
     return JSON.parse(payload.toString('utf8'));
+}
+
+/**
+ * Parses a masked client-to-device text frame (as the filter's re-encoded `setBreakpointByUrl`
+ * rewrites are) back into its JSON payload, reading the mask key out of the frame itself rather
+ * than requiring the caller to already know it.
+ */
+function parseMaskedTextFrame(frame: Buffer): any {
+    // eslint-disable-next-line no-bitwise
+    const lengthIndicator = frame[1] & 0x7F;
+    let offset = 2;
+    let payloadLength = lengthIndicator;
+
+    if (lengthIndicator === 126) {
+        payloadLength = frame.readUInt16BE(2);
+        offset = 4;
+    } else if (lengthIndicator === 127) {
+        payloadLength = Number(frame.readBigUInt64BE(2));
+        offset = 10;
+    }
+
+    const maskKey = frame.subarray(offset, offset + 4);
+    offset += 4;
+
+    const maskedPayload = frame.subarray(offset, offset + payloadLength);
+    const unmaskedPayload = Buffer.alloc(maskedPayload.length);
+    for (let index = 0; index < maskedPayload.length; index++) {
+        // eslint-disable-next-line no-bitwise
+        unmaskedPayload[index] = maskedPayload[index] ^ maskKey[index % 4];
+    }
+    return JSON.parse(unmaskedPayload.toString('utf8'));
 }

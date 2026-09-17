@@ -1,29 +1,40 @@
 import * as net from 'net';
-import * as getPort from 'get-port';
-import { createRokuDeploySocket } from 'roku-deploy';
-import type { RceDeviceConfig, RokuDeploySocket } from 'roku-deploy';
+import { createRokuDeploySocket, isLocalDeviceConfig, isRceDeviceConfig } from 'roku-deploy';
+import type { DeviceConfig, LocalDeviceConfig, RokuDeploySocket } from 'roku-deploy';
 import type { RceManager } from './RceManager';
 import { JsDebugCdpFilter } from './JsDebugCdpFilter';
 
-/**
- * The Hermes JS debug port on the Roku device side. Local sessions attach the node debugger to
- * this port directly over the LAN; RCE sessions attach to a local proxy port instead (see
- * `JsDebugProxyManager`) that tunnels to this same device-side port.
- */
+/** The device-side Hermes debug port; relayed sessions attach to a local proxy port that tunnels here. */
 export const JS_DEBUG_PORT = 9999;
 
 /**
- * Bridges the node debugger to a Roku Cloud Emulator (RCE) device's JS (Hermes) debug port, which
- * has no LAN address the debugger could attach to directly. For each debug session, this opens a
- * local `net.Server` and tunnels every connection made to it through `createRokuDeploySocket()`
- * (the same websocket-backed transport used for RCE's telnet consoles), so the node debugger can
- * attach to `127.0.0.1:<proxyPort>` exactly as it would attach to a local device.
+ * Caps repeated local connects from driving unbounded authenticated cloud tunnels. js-debug's own
+ * steady state is ~3 sockets (2 pooled discovery + 1 CDP).
+ */
+const MAX_PROXY_CONNECTIONS = 8;
+
+/**
+ * Idle timer for connections with no established websocket session. Must NOT apply once a session
+ * exists - CDP has no heartbeat, so a paused session sits silent indefinitely.
+ */
+const DEFAULT_IDLE_WITHOUT_SESSION_TIMEOUT_MS = 30_000;
+
+/**
+ * Bridges the node debugger to a Roku device's JS (Hermes) debug port, tunneling each local
+ * connection through `createRokuDeploySocket()` (a plain tcp `LocalSocket` for a LAN device, an
+ * authenticated websocket `RceSocket` for an RCE one).
+ *
+ * The pass-through `/json/list` discovery relay depends on shipped js-debug forcibly rewriting the
+ * discovered `webSocketDebuggerUrl`'s host to the address it attached to - undocumented VS
+ * Code-internal behavior. If that ever changes, the relayed response would advertise the device's
+ * own address and js-debug would bypass this proxy entirely.
  */
 export class JsDebugProxyManager {
     constructor(
         private rceManager: RceManager,
         private log: (message: string) => void,
-        private socketFactory: (options: { device: RceDeviceConfig; port: number }) => RokuDeploySocket = createRokuDeploySocket
+        private socketFactory: (options: { device: DeviceConfig; port: number }) => RokuDeploySocket = createRokuDeploySocket,
+        private idleWithoutSessionTimeoutMs: number = DEFAULT_IDLE_WITHOUT_SESSION_TIMEOUT_MS
     ) {
     }
 
@@ -34,7 +45,7 @@ export class JsDebugProxyManager {
      * should attach to. Idempotent: a second call for the same session (even one made before the
      * first has finished binding) returns the same port instead of standing up a second server.
      */
-    public async start(sessionId: string, device: RceDeviceConfig): Promise<number> {
+    public async start(sessionId: string, device: DeviceConfig): Promise<number> {
         const existingProxy = this.proxiesBySessionId.get(sessionId);
         if (existingProxy) {
             return existingProxy.portPromise;
@@ -51,8 +62,7 @@ export class JsDebugProxyManager {
         return proxy.portPromise;
     }
 
-    private async bindServer(sessionId: string, device: RceDeviceConfig, proxy: JsDebugProxy): Promise<number> {
-        const port = await getPort();
+    private async bindServer(sessionId: string, device: DeviceConfig, proxy: JsDebugProxy): Promise<number> {
         const server = net.createServer((client) => {
             this.handleConnection(sessionId, device, client).catch((error: Error) => {
                 this.log(`[js-debug-proxy] connection handler failed: ${error?.message}`);
@@ -61,12 +71,19 @@ export class JsDebugProxyManager {
                 }
             });
         });
+        server.maxConnections = MAX_PROXY_CONNECTIONS;
+        //Node never runs the connection listener for dropped connections; log or the client just sees ECONNRESET
+        server.on('drop', () => {
+            this.log(`[js-debug-proxy] dropped a connection for session '${sessionId}': already at the ${MAX_PROXY_CONNECTIONS}-connection cap`);
+        });
         proxy.server = server;
 
-        await new Promise<void>((resolve, reject) => {
+        //atomic ephemeral-port bind; avoids get-port's check-then-bind race
+        const port = await new Promise<number>((resolve, reject) => {
             const onListening = () => {
                 server.removeListener('error', onError);
-                resolve();
+                const address = server.address();
+                resolve(typeof address === 'object' && address !== null ? address.port : 0);
             };
             const onError = (error: Error) => {
                 server.removeListener('listening', onListening);
@@ -74,11 +91,10 @@ export class JsDebugProxyManager {
             };
             server.once('listening', onListening);
             server.once('error', onError);
-            server.listen(port, '127.0.0.1');
+            server.listen(0, '127.0.0.1');
         });
 
-        //a persistent error listener for the lifetime of the server, distinct from the one-shot
-        //listener above that only guards the initial bind
+        //persistent listener, distinct from the one-shot bind guard above
         server.on('error', (error: Error) => {
             this.log(`[js-debug-proxy] server error for session '${sessionId}': ${error?.message}`);
             this.stop(sessionId);
@@ -130,7 +146,58 @@ export class JsDebugProxyManager {
         }
     }
 
-    private async handleConnection(sessionId: string, device: RceDeviceConfig, client: net.Socket) {
+    /**
+     * Pure/vscode-free: decides whether (and how) to route the node debugger through this proxy.
+     * RCE always relays (no LAN address to attach to directly). LAN relays only on win32
+     * (js-debug's four-slash file-url bug is client-side) or when forced via the setting.
+     * `device.host` wins over `fallbackHost` because the raw configured host may be an unresolved
+     * placeholder.
+     */
+    public resolveRoute(input: {
+        device: DeviceConfig | undefined;
+        fallbackHost: string | undefined;
+        platform: NodeJS.Platform;
+        forceLanRelay: boolean;
+    }): JsDebugRoute {
+        if (input.device && isRceDeviceConfig(input.device)) {
+            return {
+                useRelay: true,
+                device: input.device,
+                summary: 'relay mode: rce'
+            };
+        }
+
+        //isLocalDeviceConfig dereferences config.host - guard undefined
+        const lanHost = (input.device !== undefined && isLocalDeviceConfig(input.device)) ? input.device.host : input.fallbackHost;
+        if (lanHost) {
+            if (input.platform === 'win32') {
+                return {
+                    useRelay: true,
+                    device: { host: lanHost } as LocalDeviceConfig,
+                    summary: 'relay mode: lan (win32)'
+                };
+            }
+            if (input.forceLanRelay) {
+                return {
+                    useRelay: true,
+                    device: { host: lanHost } as LocalDeviceConfig,
+                    summary: 'relay mode: lan (forced by brightscript.debug.forceJsDebugRelay)'
+                };
+            }
+            return {
+                useRelay: false,
+                host: lanHost,
+                summary: 'direct attach: lan'
+            };
+        }
+
+        return {
+            useRelay: false,
+            summary: 'direct attach: no device and no fallback host - attach will fail downstream'
+        };
+    }
+
+    private async handleConnection(sessionId: string, device: DeviceConfig, client: net.Socket) {
         const proxy = this.proxiesBySessionId.get(sessionId);
         //`stop()` may have already torn this session down between the server accepting the
         //connection and this handler running
@@ -158,33 +225,44 @@ export class JsDebugProxyManager {
                 }
             }
         };
-        //attached synchronously (before the `await` below) so a client-side error/close occurring
-        //while we're still waiting on the token can't leak the connection or crash the extension
-        //host with an unhandled 'error' event
+        //attach before the await so an early client error can't leak the connection
         client.on('error', teardown);
         client.on('close', teardown);
 
-        //fetched fresh per connection (rather than once in `start()`) so an account/token change
-        //mid-session is picked up by the extension's attach retry loop on its next attempt
-        const rceToken = await this.rceManager.getToken();
+        //disarmed below once the filter confirms a session established
+        client.setTimeout(this.idleWithoutSessionTimeoutMs, () => {
+            this.log(`[js-debug-proxy] closed an idle connection for session '${sessionId}' with no active websocket session (benign for js-debug's pooled discovery sockets)`);
+            teardown();
+        });
 
-        //re-check after the await: `stop()` may have run while we were waiting on the token, or
-        //the client may have already disconnected
-        if (client.destroyed || this.proxiesBySessionId.get(sessionId) !== proxy) {
-            if (!client.destroyed) {
-                client.destroy();
+        //a LAN device needs no token; fetching one unconditionally would hard-fail LAN relays while signed out of RCE
+        let rceToken: string | undefined;
+        if (isRceDeviceConfig(device)) {
+            //fetched fresh per connection so a token change is picked up by the next attach attempt
+            rceToken = await this.rceManager.getToken();
+
+            //stop() may have run, or the client disconnected, while we were waiting on the token
+            if (client.destroyed || this.proxiesBySessionId.get(sessionId) !== proxy) {
+                if (!client.destroyed) {
+                    client.destroy();
+                }
+                return;
             }
-            return;
+
+            if (!rceToken) {
+                this.log('[js-debug-proxy] no active Cloud Emulator account token; JS debugger cannot reach the device');
+                client.destroy();
+                return;
+            }
         }
 
-        if (!rceToken) {
-            this.log('[js-debug-proxy] no active Cloud Emulator account token; JS debugger cannot reach the device');
-            client.destroy();
-            return;
-        }
-
-        tunnel = this.socketFactory({ device: { ...device, rceToken: rceToken }, port: JS_DEBUG_PORT });
+        const tunnelDevice: DeviceConfig = rceToken === undefined ? device : { ...device, rceToken: rceToken };
+        tunnel = this.socketFactory({ device: tunnelDevice, port: JS_DEBUG_PORT });
         proxy.sockets.add(tunnel);
+        tunnel.setTimeout(this.idleWithoutSessionTimeoutMs, () => {
+            this.log(`[js-debug-proxy] closed an idle tunnel connection for session '${sessionId}' with no active websocket session (benign for js-debug's pooled discovery sockets)`);
+            teardown();
+        });
 
         tunnel.on('error', (error: Error) => {
             this.log(`[js-debug-proxy] tunnel error: ${error?.message}`);
@@ -192,10 +270,13 @@ export class JsDebugProxyManager {
         });
         tunnel.on('close', teardown);
 
-        //Hermes on RCE crashes the whole app if it sees a second `Runtime.enable` on this
-        //session (js-debug sends it twice during its attach burst); the filter drops the
-        //duplicate and answers it locally instead of forwarding it to the device
-        const filter = new JsDebugCdpFilter(this.log);
+        //Hermes on RCE crashes the whole app on a second `Runtime.enable` on this session; the
+        //filter drops the duplicate and answers it locally instead of forwarding it to the device
+        const filter = new JsDebugCdpFilter(this.log, () => {
+            //disarm the idle-without-session timer now that a session has formed
+            client.setTimeout(0);
+            tunnel?.setTimeout(0);
+        });
         filter.upstream.on('error', teardown);
         filter.downstream.on('error', teardown);
 
@@ -210,23 +291,23 @@ export class JsDebugProxyManager {
 
 interface JsDebugProxy {
     server: net.Server | undefined;
-    /**
-     * Resolves once the server is bound and listening, to the port the node debugger should
-     * attach to. Stored (rather than a plain resolved `port` field) so a second `start()` call
-     * for the same sessionId made before binding finishes can just await this instead of racing
-     * a second `getPort()`/`createServer()`.
-     */
+    /** Resolves to the bound port; lets a concurrent `start()` call await instead of racing a second bind. */
     portPromise: Promise<number>;
     sockets: Set<DestroyableSocket>;
     /** Set by `stop()`; lets a still-in-flight bind detect it should tear itself down. */
     stopped: boolean;
 }
 
-/**
- * The subset of `net.Socket` / `RokuDeploySocket` that `stop()` needs to forcibly tear down live
- * connections, without committing to either concrete socket type.
- */
+/** Minimal `net.Socket`/`RokuDeploySocket` surface `stop()` needs to tear down a connection. */
 interface DestroyableSocket {
     readonly destroyed: boolean;
     destroy: (error?: Error) => unknown;
+}
+
+/** The result of `JsDebugProxyManager.resolveRoute`. */
+interface JsDebugRoute {
+    useRelay: boolean;
+    device?: DeviceConfig;
+    host?: string;
+    summary: string;
 }

@@ -303,6 +303,174 @@ describe('JsDebugProxyManager', () => {
         firstClient.destroy();
         secondClient.destroy();
     });
+
+    describe('LAN devices', () => {
+        it('passes a LocalDeviceConfig to the socketFactory and never calls getToken', async () => {
+            let getTokenCallCount = 0;
+            manager = new JsDebugProxyManager(
+                { getToken: () => {
+                    getTokenCallCount++;
+                    return Promise.resolve('should-not-be-used');
+                } } as unknown as RceManager,
+                () => { /* noop log */ },
+                (options) => {
+                    factoryCalls.push(options);
+                    const tunnel = new FakeTunnel();
+                    tunnels.push(tunnel);
+                    return tunnel as any;
+                }
+            );
+            openServers.push(manager);
+
+            const port = await manager.start('lan-session-1', { host: '192.168.1.50' });
+            const client = net.connect(port, '127.0.0.1');
+            await waitForEvent(client, 'connect');
+            await waitUntil(() => factoryCalls.length === 1);
+
+            expect(factoryCalls[0].device).to.deep.equal({ host: '192.168.1.50' });
+            expect(getTokenCallCount).to.equal(0);
+
+            client.destroy();
+        });
+
+        it('stop() closes the server and destroys sockets for a LAN relay too', async () => {
+            const port = await manager.start('lan-session-2', { host: '192.168.1.50' });
+            const client = net.connect(port, '127.0.0.1');
+            await waitForEvent(client, 'connect');
+            await waitUntil(() => tunnels.length === 1);
+
+            manager.stop('lan-session-2');
+
+            await waitForEvent(client, 'close');
+            expect(tunnels[0].destroyed).to.be.true;
+        });
+    });
+
+    describe('resolveRoute', () => {
+        it('relays for an RCE device', () => {
+            const route = manager.resolveRoute({
+                device: { id: 1 } as any,
+                fallbackHost: undefined,
+                platform: 'darwin',
+                forceLanRelay: false
+            });
+            expect(route.useRelay).to.be.true;
+            expect(route.device).to.deep.equal({ id: 1 });
+            expect(route.summary).to.equal('relay mode: rce');
+        });
+
+        it('relays a LAN device on win32', () => {
+            const route = manager.resolveRoute({
+                device: { host: '192.168.1.50' },
+                fallbackHost: undefined,
+                platform: 'win32',
+                forceLanRelay: false
+            });
+            expect(route.useRelay).to.be.true;
+            expect(route.device).to.deep.equal({ host: '192.168.1.50' });
+        });
+
+        it('attaches directly to a LAN device on darwin', () => {
+            const route = manager.resolveRoute({
+                device: { host: '192.168.1.50' },
+                fallbackHost: undefined,
+                platform: 'darwin',
+                forceLanRelay: false
+            });
+            expect(route.useRelay).to.be.false;
+            expect(route.host).to.equal('192.168.1.50');
+        });
+
+        it('relays a LAN device on darwin when forced', () => {
+            const route = manager.resolveRoute({
+                device: { host: '192.168.1.50' },
+                fallbackHost: undefined,
+                platform: 'darwin',
+                forceLanRelay: true
+            });
+            expect(route.useRelay).to.be.true;
+            expect(route.device).to.deep.equal({ host: '192.168.1.50' });
+        });
+
+        it('relays a bare fallbackHost (no device) on win32', () => {
+            const route = manager.resolveRoute({
+                device: undefined,
+                fallbackHost: '192.168.1.50',
+                platform: 'win32',
+                forceLanRelay: false
+            });
+            expect(route.useRelay).to.be.true;
+            expect(route.device).to.deep.equal({ host: '192.168.1.50' });
+        });
+
+        it('attaches directly with no device and no fallback host, noting the missing host', () => {
+            const route = manager.resolveRoute({
+                device: undefined,
+                fallbackHost: undefined,
+                platform: 'darwin',
+                forceLanRelay: false
+            });
+            expect(route.useRelay).to.be.false;
+            expect(route.summary).to.match(/no.*host/i);
+        });
+    });
+
+    describe('handshake timeout', () => {
+        it('destroys a client that connects and sends nothing within the timeout window', async () => {
+            manager = new JsDebugProxyManager(makeRceManagerFake(), () => { /* noop log */ }, (options) => {
+                factoryCalls.push(options);
+                const tunnel = new FakeTunnel();
+                tunnels.push(tunnel);
+                return tunnel as any;
+            }, 50);
+            openServers.push(manager);
+
+            const port = await manager.start('timeout-session-1', { id: 1 } as any);
+            const client = net.connect(port, '127.0.0.1');
+            client.on('error', () => { /* expected: proxy destroys this socket on timeout */ });
+            await waitForEvent(client, 'connect');
+
+            await waitForEvent(client, 'close');
+        });
+
+        it('does not destroy a client after a completed handshake, once the timeout window passes', async () => {
+            manager = new JsDebugProxyManager(makeRceManagerFake(), () => { /* noop log */ }, (options) => {
+                factoryCalls.push(options);
+                const tunnel = new FakeTunnel();
+                tunnels.push(tunnel);
+                return tunnel as any;
+            }, 50);
+            openServers.push(manager);
+
+            const port = await manager.start('timeout-session-2', { id: 1 } as any);
+            const client = net.connect(port, '127.0.0.1');
+            await waitForEvent(client, 'connect');
+            await waitUntil(() => tunnels.length === 1);
+            const tunnel = tunnels[0];
+
+            const tunnelReceived: Buffer[] = [];
+            tunnel.on('tunnelWrite', (chunk: Buffer) => tunnelReceived.push(chunk));
+
+            const request = 'GET /json/list HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n';
+            client.write(request);
+            //wait for the actual request bytes to arrive at the tunnel, rather than an
+            //always-true condition that races the 50ms idle timer configured above
+            await waitUntil(() => Buffer.concat(tunnelReceived).includes(request));
+            tunnel.push(Buffer.from('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n'));
+
+            let closed = false;
+            client.on('close', () => {
+                closed = true;
+            });
+
+            await new Promise<void>((resolve) => {
+                setTimeout(resolve, 150);
+            });
+            expect(closed).to.be.false;
+
+            client.destroy();
+        });
+    });
 });
 
 function waitForEvent(emitter: NodeJS.EventEmitter, eventName: string): Promise<void> {
@@ -333,6 +501,19 @@ function waitUntil(condition: () => boolean, timeoutMilliseconds = 2000): Promis
  */
 class FakeTunnel extends stream.Duplex {
     public connect(): this {
+        return this;
+    }
+
+    /**
+     * `RokuDeploySocket` (and therefore the production code's handshake-timeout wiring) requires
+     * `setTimeout()` - a plain `stream.Duplex` doesn't have one. Tests that exercise the timeout
+     * itself do so through the real client socket instead, so this only needs to satisfy the
+     * interface, not actually fire.
+     */
+    public setTimeout(timeoutMilliseconds: number, timeoutListener?: () => void): this {
+        if (timeoutListener) {
+            this.once('timeout', timeoutListener);
+        }
         return this;
     }
 

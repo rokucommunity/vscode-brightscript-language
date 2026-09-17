@@ -1,6 +1,7 @@
 /* eslint-disable no-bitwise */
 import { Transform } from 'stream';
 import type { TransformCallback } from 'stream';
+import { createHash } from 'crypto';
 
 /**
  * Sits between the js-debug client and the device tunnel inside `JsDebugProxyManager`'s single
@@ -29,7 +30,9 @@ import type { TransformCallback } from 'stream';
  */
 export class JsDebugCdpFilter {
     constructor(
-        private logFn: (message: string) => void
+        private logFn: (message: string) => void,
+        /** Invoked once a real WebSocket session is confirmed established - see `confirmWebsocketSession`. */
+        private onSessionEstablished?: () => void
     ) {
         this.upstream = new UpstreamFilterTransform(this);
         this.downstream = new DownstreamFilterTransform(this);
@@ -38,7 +41,19 @@ export class JsDebugCdpFilter {
     public readonly upstream: UpstreamFilterTransform;
     public readonly downstream: DownstreamFilterTransform;
 
+    /** Lines emitted so far on this connection - caps unbounded output from the fail-open log lines below. */
+    private loggedLineCount = 0;
+
     public log(message: string): void {
+        if (this.loggedLineCount > MAX_LOG_LINES_PER_CONNECTION) {
+            return;
+        }
+        if (this.loggedLineCount === MAX_LOG_LINES_PER_CONNECTION) {
+            this.loggedLineCount++;
+            this.logFn('[js-debug-proxy] further log lines suppressed for this connection');
+            return;
+        }
+        this.loggedLineCount++;
         this.logFn(message);
     }
 
@@ -60,6 +75,8 @@ export class JsDebugCdpFilter {
         const established = this.upstreamSawUpgradeRequest && deviceRespondedWith101;
         if (!established) {
             this.upstream.forcePassthrough();
+        } else {
+            this.onSessionEstablished?.();
         }
         return established;
     }
@@ -72,10 +89,28 @@ export class JsDebugCdpFilter {
     private admittedRuntimeEnableSessionIds = new Set<string>();
 
     public shouldForwardRuntimeEnable(sessionId: string | undefined): boolean {
-        const key = sessionId ?? '';
+        const rawKey = sessionId ?? '';
+
+        //hash an overlong sessionId to a fixed-width key rather than skipping dedupe, which would
+        //re-arm the Hermes crash this filter exists to prevent
+        const isOverlong = rawKey.length > MAX_SESSION_ID_LENGTH;
+        const key = isOverlong ? createHash('sha256').update(rawKey).digest('hex') : rawKey;
+
         if (this.admittedRuntimeEnableSessionIds.has(key)) {
             return false;
         }
+
+        if (isOverlong) {
+            this.log(`[js-debug-proxy] sessionId exceeded ${MAX_SESSION_ID_LENGTH} chars; deduping on a hashed key instead`);
+        }
+
+        if (this.admittedRuntimeEnableSessionIds.size >= MAX_ADMITTED_SESSION_IDS) {
+            //fail open past the cap: subsequent duplicates on an untracked sessionId will also
+            //forward, re-arming the crash this filter exists to prevent
+            this.log(`[js-debug-proxy] Runtime.enable dedupe tracking is full (${MAX_ADMITTED_SESSION_IDS} sessions); forwarding un-tracked`);
+            return true;
+        }
+
         this.admittedRuntimeEnableSessionIds.add(key);
         return true;
     }
@@ -89,6 +124,13 @@ export class JsDebugCdpFilter {
     private pendingSyntheticFrames: Buffer[] = [];
 
     public enqueueSyntheticResponse(requestId: number, sessionId: string | undefined): void {
+        if (this.pendingSyntheticFrames.length >= MAX_PENDING_SYNTHETIC_FRAMES) {
+            //js-debug has no per-request timeout, so the dropped request just never resolves,
+            //rather than hanging the whole stream
+            this.log(`[js-debug-proxy] dropped synthetic Runtime.enable response (id ${requestId}) - pending queue is full`);
+            return;
+        }
+
         this.log(`[js-debug-proxy] dropped duplicate Runtime.enable (id ${requestId}${sessionId !== undefined ? `, sessionId ${sessionId}` : ''}) — crashes Hermes on RCE`);
 
         const responseMessage: { id: number; result: Record<string, never>; sessionId?: string } = { id: requestId, result: {} };
@@ -129,6 +171,28 @@ const MAX_FRAME_PAYLOAD_LENGTH = 16 * 1024 * 1024;
 /** Bounds how long either half will buffer an HTTP head before giving up and erroring out. */
 const MAX_HTTP_HEAD_SIZE = 64 * 1024;
 
+/**
+ * Cap on `admittedRuntimeEnableSessionIds`'s size - see `shouldForwardRuntimeEnable`. A real debug
+ * session juggles a handful of CDP target sessions at most; this is far beyond that.
+ */
+const MAX_ADMITTED_SESSION_IDS = 100;
+
+/** Cap on an individual CDP `sessionId`'s length - see `shouldForwardRuntimeEnable`. */
+const MAX_SESSION_ID_LENGTH = 256;
+
+/** Cap on `pendingSyntheticFrames`'s size - see `enqueueSyntheticResponse`. */
+const MAX_PENDING_SYNTHETIC_FRAMES = 32;
+
+/** Cap on log lines emitted per connection - see `JsDebugCdpFilter.log`. */
+const MAX_LOG_LINES_PER_CONNECTION = 200;
+
+/** Attacker-influenced content (a rewritten url, say) is truncated to this length before logging. */
+const MAX_LOGGED_VALUE_LENGTH = 300;
+
+function truncateForLog(value: string): string {
+    return value.length > MAX_LOGGED_VALUE_LENGTH ? `${value.slice(0, MAX_LOGGED_VALUE_LENGTH)}…` : value;
+}
+
 const HTTP_HEAD_TERMINATOR = Buffer.from('\r\n\r\n');
 
 function isWebSocketUpgradeRequest(headText: string): boolean {
@@ -138,6 +202,37 @@ function isWebSocketUpgradeRequest(headText: string): boolean {
 function isSwitchingProtocolsResponse(headText: string): boolean {
     const statusLine = headText.split('\r\n', 1)[0];
     return /^HTTP\/\d\.\d\s+101\b/.test(statusLine);
+}
+
+/**
+ * Requires a loopback `Host` and rejects any `Origin` header on an upstream HTTP head - a browser
+ * always sends Origin, curl and js-debug never do, so this blocks drive-by-browser/DNS-rebinding access.
+ */
+function validateHttpHead(headText: string): void {
+    const headerLines = headText.split('\r\n').slice(1);
+
+    let hostHeaderValue: string | undefined;
+    let hasOriginHeader = false;
+    for (const line of headerLines) {
+        const colonIndex = line.indexOf(':');
+        if (colonIndex === -1) {
+            continue;
+        }
+        const headerName = line.slice(0, colonIndex).trim().toLowerCase();
+        if (headerName === 'host') {
+            hostHeaderValue = line.slice(colonIndex + 1).trim();
+        } else if (headerName === 'origin') {
+            hasOriginHeader = true;
+        }
+    }
+
+    if (hasOriginHeader) {
+        throw new Error('[js-debug-proxy] rejected an HTTP request carrying an Origin header - a browser always sends one, curl and js-debug never do');
+    }
+
+    if (hostHeaderValue === undefined || !/^(127\.0\.0\.1|localhost)(:\d+)?$/i.test(hostHeaderValue)) {
+        throw new Error(`[js-debug-proxy] rejected an HTTP request with an invalid Host header (${JSON.stringify(hostHeaderValue)})`);
+    }
 }
 
 /**
@@ -217,6 +312,8 @@ class UpstreamFilterTransform extends Transform {
             this.isHttpPhase = false;
 
             const headText = head.toString('latin1');
+            validateHttpHead(headText);
+
             if (!isWebSocketUpgradeRequest(headText)) {
                 //not a WebSocket upgrade (e.g. js-debug's GET /json/list discovery request) -
                 //forward verbatim and become a pure pass-through for the rest of the connection
@@ -406,6 +503,8 @@ function buildSyntheticTextFrame(payloadText: string): Buffer {
  * the length field - the proxy only ever synthesizes server-style (unmasked) frames, but the
  * length-encoding logic is written generally since a tiny synthetic payload always takes the
  * 7-bit path while still being correct if that ever changes.
+ *
+ * FOOTGUN: `masked` only sets the mask bit - the caller must still append the 4-byte mask key itself.
  */
 function buildFrameHeader(opcode: number, payloadLength: number, masked: boolean): Buffer {
     const maskBit = masked ? 0x80 : 0x00;
@@ -424,6 +523,32 @@ function buildFrameHeader(opcode: number, payloadLength: number, masked: boolean
         header.writeBigUInt64BE(BigInt(payloadLength), 2);
         return header;
     }
+}
+
+/**
+ * Collapse `file:///` followed by one or more EXTRA slashes down to exactly `file:///` plus a
+ * single path slash, e.g. `file:////source/compiled/index.js` -> `file:///source/compiled/index.js`.
+ *
+ * Returns the input unchanged when the extra-slash pattern isn't present, so a correct three-slash
+ * url (`file:///source/...`) and a normal Windows url (`file:///c:/...`) both pass through
+ * untouched. Only the authority-position slashes are considered — slashes elsewhere in the path
+ * are none of our business.
+ */
+export function normalizeFileUrl(url: string): string {
+    return url.replace(/^(file:\/\/\/)\/+/i, '$1');
+}
+
+/**
+ * Re-encodes a masked client-to-device TEXT frame from scratch, sized for the rewritten payload
+ * (which may cross a length-encoding boundary). `maskKey` is copied since the caller's is a view
+ * into a buffer that gets reused.
+ */
+function buildMaskedTextFrame(payloadText: string, maskKey: Buffer): Buffer {
+    const payload = Buffer.from(payloadText, 'utf8');
+    const header = buildFrameHeader(0x1, payload.length, true);
+    const maskKeyCopy = Buffer.from(maskKey);
+    const maskedPayload = unmask(payload, maskKeyCopy); //XOR is symmetric - unmask() doubles as the masker
+    return Buffer.concat([header, maskKeyCopy, maskedPayload]);
 }
 
 /**
@@ -514,7 +639,7 @@ class FrameParser {
             const maskedPayload = frameBytes.subarray(parsedHeader.headerLength, totalFrameLength);
             const unmaskedPayload = unmask(maskedPayload, maskKey);
 
-            const filteredFrame = this.filterRuntimeEnable(frameBytes, unmaskedPayload, owner);
+            const filteredFrame = this.inspectClientTextFrame(frameBytes, unmaskedPayload, maskKey, owner);
             if (filteredFrame) {
                 outputChunks.push(filteredFrame);
             }
@@ -536,10 +661,10 @@ class FrameParser {
     }
 
     /**
-     * Returns the bytes to forward for this frame (its original bytes, unless it's a duplicate
-     * `Runtime.enable` in which case `undefined` is returned to drop it).
+     * Inspects one complete client-to-device CDP text frame: drops a duplicate `Runtime.enable`,
+     * rewrites a `Debugger.setBreakpointByUrl` url if needed, or forwards the original bytes unchanged.
      */
-    private filterRuntimeEnable(originalFrameBytes: Buffer, unmaskedPayload: Buffer, owner: JsDebugCdpFilter): Buffer | undefined {
+    private inspectClientTextFrame(originalFrameBytes: Buffer, unmaskedPayload: Buffer, maskKey: Buffer, owner: JsDebugCdpFilter): Buffer | undefined {
         let parsedMessage: any;
         try {
             parsedMessage = JSON.parse(unmaskedPayload.toString('utf8'));
@@ -547,25 +672,43 @@ class FrameParser {
             return originalFrameBytes;
         }
 
-        if (!parsedMessage || typeof parsedMessage !== 'object' || parsedMessage.method !== 'Runtime.enable') {
+        if (!parsedMessage || typeof parsedMessage !== 'object') {
             return originalFrameBytes;
         }
 
-        const sessionId: string | undefined = typeof parsedMessage.sessionId === 'string' ? parsedMessage.sessionId : undefined;
+        if (parsedMessage.method === 'Runtime.enable') {
+            //shouldForwardRuntimeEnable mutates state on read - call at most once per message
+            const sessionId: string | undefined = typeof parsedMessage.sessionId === 'string' ? parsedMessage.sessionId : undefined;
 
-        if (owner.shouldForwardRuntimeEnable(sessionId)) {
-            return originalFrameBytes;
+            if (owner.shouldForwardRuntimeEnable(sessionId)) {
+                return originalFrameBytes;
+            }
+
+            if (typeof parsedMessage.id !== 'number') {
+                //can't answer a request we can't identify - forwarding it unmodified is the lesser
+                //evil (protocol-garbage {"result":{}} with no id is worse), and this is unreachable
+                //in practice since js-debug always assigns a numeric id
+                return originalFrameBytes;
+            }
+
+            owner.enqueueSyntheticResponse(parsedMessage.id, sessionId);
+            return undefined;
         }
 
-        if (typeof parsedMessage.id !== 'number') {
-            //can't answer a request we can't identify - forwarding it unmodified is the lesser
-            //evil (protocol-garbage {"result":{}} with no id is worse), and this is unreachable in
-            //practice since js-debug always assigns a numeric id
-            return originalFrameBytes;
+        if (parsedMessage.method === 'Debugger.setBreakpointByUrl' && typeof parsedMessage.params?.url === 'string') {
+            const originalUrl: string = parsedMessage.params.url;
+            const normalizedUrl = normalizeFileUrl(originalUrl);
+            if (normalizedUrl === originalUrl) {
+                return originalFrameBytes;
+            }
+
+            //shipped js-debug on Windows sends this url four-slashed, which Hermes never matches
+            parsedMessage.params.url = normalizedUrl;
+            owner.log(`[js-debug-proxy] rewrote setBreakpointByUrl url from '${truncateForLog(originalUrl)}' to '${truncateForLog(normalizedUrl)}'`);
+            return buildMaskedTextFrame(JSON.stringify(parsedMessage), maskKey);
         }
 
-        owner.enqueueSyntheticResponse(parsedMessage.id, sessionId);
-        return undefined;
+        return originalFrameBytes;
     }
 }
 
@@ -598,8 +741,15 @@ class FrameBoundaryTracker {
     private buffer = Buffer.alloc(0);
     private remainingPayloadBytes = 0;
 
+    /**
+     * `fin` of the most recently completed DATA frame (opcode 0x0/0x1/0x2), so a fragmented
+     * message doesn't look like a boundary mid-fragment. Control frames (opcode >= 0x8) never
+     * update this - RFC 6455 §5.4 lets them interleave between fragments, always with FIN=1.
+     */
+    private lastFrameFin = true;
+
     public isAtBoundary(): boolean {
-        return this.remainingPayloadBytes === 0 && this.buffer.length === 0;
+        return this.remainingPayloadBytes === 0 && this.buffer.length === 0 && this.lastFrameFin;
     }
 
     public process(chunk: Buffer): Buffer {
@@ -622,6 +772,10 @@ class FrameBoundaryTracker {
             const parsedHeader = parseFrameHeader(this.buffer);
             if (!parsedHeader) {
                 break;
+            }
+            if (parsedHeader.opcode < 0x8) {
+                //only data opcodes count toward message-boundary tracking - see `lastFrameFin`
+                this.lastFrameFin = parsedHeader.fin;
             }
 
             const availableAfterHeader = this.buffer.length - parsedHeader.headerLength;

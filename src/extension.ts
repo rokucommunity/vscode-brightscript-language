@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as prettyBytes from 'pretty-bytes';
 import { extensions } from 'vscode';
-import { isLocalDeviceConfig, isRceDeviceConfig } from 'roku-deploy';
+import { isRceDeviceConfig } from 'roku-deploy';
 import type { DeviceConfig } from 'roku-deploy';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
@@ -456,30 +456,38 @@ export class Extension {
         const configuration = parentSession.configuration as BrightScriptLaunchConfiguration;
         let address: string;
         let port: number;
-        //Hermes advertises a "Remote Process" child target; js-debug's node process-tree
-        //machinery attaches to it with an extra inspector connection. Over the RCE proxy that
-        //extra connection duplicates the single tunneled session and kills every client, so child
-        //auto-attach must stay off there (the proxy's CDP filter dedupes `Runtime.enable` on that
-        //one session instead). On LAN, the child attach targets a real per-process port, so the
-        //two `Runtime.enable` calls land on separate sessions harmlessly - leave it at js-debug's
-        //default (enabled) there, matching the historically-working LAN behavior.
+        //over the relay, js-debug's child-process auto-attach would open a second inspector
+        //connection into the one tunneled session and crash Hermes on the duplicate `Runtime.enable`;
+        //direct LAN attaches give each child its own port, so js-debug's default (enabled) is safe there
         let autoAttachChildProcesses: boolean | undefined;
-        if (configuration.device && isRceDeviceConfig(configuration.device)) {
-            //an RCE device has no LAN address to attach to directly, so route the node debugger
-            //through a local proxy that tunnels to the device's JS debug port over the instance api
+
+        const route = this.jsDebugProxyManager.resolveRoute({
+            device: configuration.device,
+            fallbackHost: configuration.host,
+            platform: process.platform,
+            forceLanRelay: vscode.workspace.getConfiguration('brightscript.debug').get<boolean>('forceJsDebugRelay') === true
+        });
+        this.extensionOutputChannel.appendLine(`[js-debug-proxy] ${route.summary}`);
+
+        if (route.useRelay) {
             try {
-                port = await this.jsDebugProxyManager.start(parentSession.id, configuration.device);
+                port = await this.jsDebugProxyManager.start(parentSession.id, route.device);
             } catch (e) {
                 this.extensionOutputChannel.appendLine(`Failed to start JS debug proxy: ${e?.message ?? e}`);
+                this.jsDebugProxyManager.stop(parentSession.id);
                 return false;
             }
+
+            //the parent session can terminate during the async start() above
+            if (!debugSessionManager.isLive(parentSession)) {
+                this.jsDebugProxyManager.stop(parentSession.id);
+                return false;
+            }
+
             address = '127.0.0.1';
             autoAttachChildProcesses = false;
         } else {
-            //`device` is authoritative when it's a resolved local device config; the raw `host`
-            //field is kept only as a fallback (mirrors the same "device is authoritative, raw host
-            //may be an unresolved placeholder" reasoning as RtaManager.setupRtaWithConfig)
-            address = (configuration.device && isLocalDeviceConfig(configuration.device)) ? configuration.device.host : configuration.host;
+            address = route.host ?? configuration.host;
             port = JS_DEBUG_PORT;
         }
 
@@ -497,6 +505,8 @@ export class Extension {
             // without the rootDir, and it will be retried the next time a debug session starts.
             if (!fsExtra.existsSync(target.rootDir)) {
                 console.error(`Cannot attach node debugger: rootDir does not exist at '${target.rootDir}'`);
+                //don't leave the relay listening with nothing left to attach to it
+                this.jsDebugProxyManager.stop(parentSession.id);
                 return false;
             }
 
@@ -512,9 +522,7 @@ export class Extension {
                     address: address,
                     port: port,
                     timeout: 2_000, // Shorter timeout for retry loop
-                    //see the `autoAttachChildProcesses` derivation above for why this is only set
-                    //(to false) on the RCE/proxy path; omitted entirely on LAN so js-debug's
-                    //default (child auto-attach on) applies
+                    //set to false whenever the relay is in use, omitted on a direct LAN attach - see the derivation above
                     ...(autoAttachChildProcesses === undefined ? {} : { autoAttachChildProcesses: autoAttachChildProcesses }),
                     sourceMaps: true,
                     //this allows us to resolve sourcemaps from ANYWHERE
@@ -558,7 +566,8 @@ export class Extension {
                 console.error(e);
             }
         }
-        // Parent session ended while we were trying to attach
+        // Parent session ended while we were trying to attach; stop() is idempotent
+        this.jsDebugProxyManager.stop(parentSession.id);
         return false;
     }
 
