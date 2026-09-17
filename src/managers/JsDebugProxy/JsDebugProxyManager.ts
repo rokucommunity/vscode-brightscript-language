@@ -1,7 +1,7 @@
 import * as net from 'net';
 import { createRokuDeploySocket, isLocalDeviceConfig, isRceDeviceConfig } from 'roku-deploy';
 import type { DeviceConfig, LocalDeviceConfig, RokuDeploySocket } from 'roku-deploy';
-import type { RceManager } from './RceManager';
+import type { RceManager } from '../RceManager';
 import { JsDebugCdpFilter } from './JsDebugCdpFilter';
 
 /** The device-side Hermes debug port; relayed sessions attach to a local proxy port that tunnels here. */

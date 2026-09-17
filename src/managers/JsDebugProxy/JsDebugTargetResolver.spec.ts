@@ -5,7 +5,7 @@ import * as os from 'os';
 import * as path from 'path';
 let Module = require('module');
 
-import { vscode } from '../mockVscode.spec';
+import { vscode } from '../../mockVscode.spec';
 
 // Override the "require" call to mock vscode — must run before the SUT is imported, since
 // JsDebugTargetResolver value-imports vscode at module load.
@@ -18,9 +18,9 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import { util } from '../util';
+import { util } from '../../util';
 import { JsDebugTargetResolver, getDefaultSourceMapPathOverrides } from './JsDebugTargetResolver';
-import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
+import type { BrightScriptLaunchConfiguration } from '../../DebugConfigurationProvider';
 
 const sinon = createSandbox();
 

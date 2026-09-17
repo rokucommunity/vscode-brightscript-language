@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { standardizePath as s } from 'brighterscript';
-import { util } from '../util';
-import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
+import { util } from '../../util';
+import type { BrightScriptLaunchConfiguration } from '../../DebugConfigurationProvider';
 
 /**
  * Finds the compiled JS bundle a BrightScript debug session should attach the node debugger to,

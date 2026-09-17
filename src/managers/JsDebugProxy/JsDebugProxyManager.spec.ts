@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import * as net from 'net';
 import * as stream from 'stream';
-import type { RceManager } from './RceManager';
+import type { RceManager } from '../RceManager';
 import { JsDebugProxyManager, JS_DEBUG_PORT } from './JsDebugProxyManager';
 
 describe('JsDebugProxyManager', () => {

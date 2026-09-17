@@ -12,10 +12,10 @@ import { RsgSdkPasswordCandidateProvider } from './deviceDiscovery/RsgSdkPasswor
 import { ExperimentalFeaturesManager } from './managers/ExperimentalFeaturesManager';
 import { RceFinder } from './deviceDiscovery/RceFinder';
 import { RceManager } from './managers/RceManager';
-import { JsDebugProxyManager, JS_DEBUG_PORT } from './managers/JsDebugProxyManager';
-import { JsDebugPathTrace } from './managers/JsDebugPathTrace';
-import { JsDebugTargetResolver } from './managers/JsDebugTargetResolver';
-import type { JsDebugTarget } from './managers/JsDebugTargetResolver';
+import { JsDebugProxyManager, JS_DEBUG_PORT } from './managers/JsDebugProxy/JsDebugProxyManager';
+import { JsDebugPathTrace } from './managers/JsDebugProxy/JsDebugPathTrace';
+import { JsDebugTargetResolver } from './managers/JsDebugProxy/JsDebugTargetResolver';
+import type { JsDebugTarget } from './managers/JsDebugProxy/JsDebugTargetResolver';
 import { RceVideoEditorManager } from './managers/RceVideoEditorManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';

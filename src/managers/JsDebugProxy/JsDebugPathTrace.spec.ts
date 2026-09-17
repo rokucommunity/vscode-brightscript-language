@@ -5,7 +5,7 @@ import * as os from 'os';
 import * as path from 'path';
 let Module = require('module');
 
-import { vscode } from '../mockVscode.spec';
+import { vscode } from '../../mockVscode.spec';
 
 // Override the "require" call to mock vscode — must run before the SUT is imported, since
 // JsDebugPathTrace value-imports vscode at module load.
