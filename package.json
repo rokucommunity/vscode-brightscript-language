@@ -3006,6 +3006,12 @@
                         "description": "When launching a TS/JS app, ask the device to hold app startup until the JS debugger attaches (by appending `inspect=1` to the sideload form) so breakpoints in startup code get hit. Set to false as an escape hatch in case this causes launch issues.",
                         "scope": "resource"
                     },
+                    "brightscript.debug.jsPathTrace": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Diagnostic logging for TS/JS (Hermes) debugging. Logs the computed remoteRoot/localRoot, the CDP proxy's activity, and every path-bearing DAP message to the extension output channel, and writes the full js-debug CDP wire log (including its sourcemap path-mapping decisions) to `<workspace>/logs/`. Enable this when breakpoints don't bind, when a stop opens a duplicate/phantom tab, or when you see \"Could not load source ... Unable to retrieve source content\".",
+                        "scope": "resource"
+                    },
                     "brightscript.debug.enableSourceMaps": {
                         "type": "boolean",
                         "default": true,

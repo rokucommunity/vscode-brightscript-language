@@ -13,6 +13,7 @@ import { ExperimentalFeaturesManager } from './managers/ExperimentalFeaturesMana
 import { RceFinder } from './deviceDiscovery/RceFinder';
 import { RceManager } from './managers/RceManager';
 import { JsDebugProxyManager, JS_DEBUG_PORT } from './managers/JsDebugProxyManager';
+import { JsDebugPathTrace } from './managers/JsDebugPathTrace';
 import { RceVideoEditorManager } from './managers/RceVideoEditorManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';
@@ -71,6 +72,7 @@ export class Extension {
     private deviceManager: DeviceManager;
     private extensionContext: vscode.ExtensionContext;
     private jsDebugProxyManager: JsDebugProxyManager;
+    private jsDebugPathTrace: JsDebugPathTrace;
 
     public async activate(context: vscode.ExtensionContext) {
         //make this entire extension disposable so that all resources will be cleaned up on extension deactivation
@@ -121,6 +123,8 @@ export class Extension {
         rceManager.register(context);
         this.jsDebugProxyManager = new JsDebugProxyManager(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
         context.subscriptions.push(this.jsDebugProxyManager);
+        this.jsDebugPathTrace = new JsDebugPathTrace((message) => this.extensionOutputChannel.appendLine(message));
+        this.jsDebugPathTrace.register(context);
         const rceFinder = new RceFinder(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
         context.subscriptions.push(new RceVideoEditorManager(context, rceManager, rceFinder));
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel, rceFinder);
@@ -464,6 +468,16 @@ export class Extension {
         //something like ${workspaceFolder}/out/.roku-deploy-staging/source/compiled
         const localRoot = path.normalize(path.join(target.stagingDir, remoteRoot));
 
+        const jsDebugTraceConfig = this.jsDebugPathTrace.getJsDebugTraceConfig(workspaceFolders[0]?.uri.fsPath ?? target.rootDir);
+        this.jsDebugPathTrace.logStartupSummary({
+            platform: process.platform,
+            tsPath: tsPath,
+            remoteRoot: remoteRoot,
+            localRoot: localRoot,
+            outFiles: [`${localRoot}/*.js`],
+            jsDebugTraceFile: jsDebugTraceConfig?.logFile
+        });
+
         const configuration = parentSession.configuration as BrightScriptLaunchConfiguration;
         let address: string;
         let port: number;
@@ -545,7 +559,13 @@ export class Extension {
 
                     // markers so we can identify this session and link it back to the BRS session
                     _isBrightscriptJsSession: true,
-                    _brightscriptParentSessionId: parentSession.id
+                    _brightscriptParentSessionId: parentSession.id,
+
+                    // When `brightscript.debug.jsPathTrace` is on, have js-debug write its full
+                    // CDP+DAP wire log to the workspace logs folder. This is the only place the
+                    // RAW script urls and its own path-mapping decisions are visible - the DAP
+                    // tracker in JsDebugPathTrace only ever sees post-mapping paths.
+                    trace: jsDebugTraceConfig
                 };
 
                 const success = await vscode.debug.startDebugging(workspaceFolders[0], debugConfig);
