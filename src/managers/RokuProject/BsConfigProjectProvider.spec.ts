@@ -2,7 +2,6 @@ import { expect } from 'chai';
 import { createSandbox } from 'sinon';
 import * as path from 'path';
 import { util } from 'brighterscript';
-import { util as rokuDeployUtil } from 'roku-deploy';
 import { vscode } from '../../mockVscode.spec';
 
 let Module = require('module');

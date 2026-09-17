@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { util as bsUtil } from 'brighterscript';
 import { util } from '../../util';
-import { util as rokuDeployUtil } from 'roku-deploy';
+import { getDestPath } from 'roku-deploy';
 import type { FileEntry } from 'roku-deploy';
 import type { TaskConfig } from '../../BrightScriptTaskProvider';
 import type { DiscoveredRokuProject, ProjectBuildResult, ProjectConfigProvider } from './RokuProjectManager';
@@ -67,7 +67,7 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
         for (const entry of this.configByPath.values()) {
             // getDestPath returns undefined at runtime when the file doesn't match
             // (TypeScript types the return as string, but the implementation returns undefined for no match)
-            if (rokuDeployUtil.getDestPath(filePath, entry.files, entry.rootDir)) {
+            if (getDestPath(filePath, entry.files, entry.rootDir)) {
                 matches.push(entry.configUri);
             }
         }
