@@ -69,7 +69,8 @@ export let vscode = {
         onDidStartDebugSession: () => { },
         onDidTerminateDebugSession: () => { },
         onDidReceiveDebugSessionCustomEvent: () => { },
-        stopDebugging: () => { }
+        stopDebugging: () => { },
+        startDebugging: () => Promise.resolve(true)
     },
     languages: {
         registerCodeLensProvider: () => { },
