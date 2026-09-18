@@ -6,6 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.69.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.69.2...v2.69.3) - 2026-09-18
+### Added
+ - Add RCE perfetto support ([#900](https://github.com/rokucommunity/vscode-brightscript-language/pull/900))
+### Changed
+ - updated the RCE activity bar icon ([#899](https://github.com/rokucommunity/vscode-brightscript-language/pull/899))
+ - upgrade to [roku-debug@0.24.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0244---2026-09-18). Notable changes since 0.24.3:
+     - Route perfetto tracing through roku-deploy's ECP websocket ([#423](https://github.com/rokucommunity/roku-debug/pull/423))
+     - Security enhancements ([#419](https://github.com/rokucommunity/roku-debug/pull/419))
+ - upgrade to [roku-deploy@4.0.0-alpha.8](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#400-alpha8---2026-09-18). Notable changes since 4.0.0-alpha.6:
+     - Security enhancements ([#422](https://github.com/rokucommunity/roku-deploy/pull/422))
+     - Add ECP websocket support and perfetto tracing wrappers ([#419](https://github.com/rokucommunity/roku-deploy/pull/419))
+ - upgrade to [roku-test-automation@3.0.0-alpha.4](https://github.com/rokucommunity/roku-test-automation/blob/master/CHANGELOG.md#300-alpha4---2026-09-18). Notable changes since 3.0.0-alpha.3:
+     - Upgrade roku-deploy to 4.0.0-alpha.8 ([#191](https://github.com/rokucommunity/roku-test-automation/pull/191))
+     - Security enhancements ([#190](https://github.com/rokucommunity/roku-test-automation/pull/190))
+### Fixed
+ - Fix stale Start Device button when device is started externally ([#898](https://github.com/rokucommunity/vscode-brightscript-language/pull/898))
+
+
+
 ## [2.69.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.69.1...v2.69.2) - 2026-09-15
 ### Changed
  - RCE device management UI and stream view UI rework ([#895](https://github.com/rokucommunity/vscode-brightscript-language/pull/895))
