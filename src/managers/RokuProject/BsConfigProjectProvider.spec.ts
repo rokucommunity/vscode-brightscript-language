@@ -184,7 +184,8 @@ describe('BsConfigProjectProvider', () => {
 
     describe('findProjectConfigFromFile', () => {
         it('returns matching config URIs for a file that is part of the project', async () => {
-            const projectDir = '/project';
+            //resolve to an absolute path so the drive letter is present and consistent on Windows
+            const projectDir = path.resolve('/project');
             const configUri = makeUri(path.join(projectDir, 'bsconfig.json'));
             const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
 
@@ -203,7 +204,7 @@ describe('BsConfigProjectProvider', () => {
         });
 
         it('returns an empty array when no indexed config owns the file', async () => {
-            const projectDir = '/project';
+            const projectDir = path.resolve('/project');
             const configUri = makeUri(path.join(projectDir, 'bsconfig.json'));
             const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
 
@@ -220,7 +221,7 @@ describe('BsConfigProjectProvider', () => {
         });
 
         it('returns multiple matches when several configs own the same file', async () => {
-            const projectDir = '/project';
+            const projectDir = path.resolve('/project');
             const configUri1 = makeUri(path.join(projectDir, 'bsconfig.json'));
             const configUri2 = makeUri(path.join(projectDir, 'bsconfig.prod.json'));
             const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
