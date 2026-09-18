@@ -1152,6 +1152,7 @@ export class BrightScriptCommands {
             this.registerCommand(`devicesView.toggleFilter.${key}.active`, handler);
         }
         this.registerCommand('devicesView.resetFilters', () => devicesViewProvider.resetFilters());
+        this.registerCommand('devicesView.unhideAllDevices', () => this.deviceManager.unhideAllDevices());
         // These also appear in the command palette, where there's no tree element; resolving
         // a missing/unknown key to undefined lets `restartDevice`/`checkForUpdates` fall back
         // to the active device or device picker.
@@ -1235,6 +1236,12 @@ export class BrightScriptCommands {
         });
         this.registerCommand('devicesView.deviceMenu.editInWorkspaceSettings', (element?: { key?: string }) => {
             return vscode.commands.executeCommand('extension.brightscript.editDeviceInWorkspaceSettings', element);
+        });
+        this.registerCommand('devicesView.deviceMenu.hideDevice', (element?: { key?: string }) => {
+            return element?.key ? this.deviceManager.hideDevice(element.key) : undefined;
+        });
+        this.registerCommand('devicesView.deviceMenu.unhideDevice', (element?: { key?: string }) => {
+            return element?.key ? this.deviceManager.unhideDevice(element.key) : undefined;
         });
     }
 

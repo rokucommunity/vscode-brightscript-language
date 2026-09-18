@@ -63,6 +63,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             this.handleDevicesChanged();
         });
 
+
         // Re-render when the active device changes so the indicator moves to the correct row
         const unsubscribeContextChange = vscodeContextManager.onChange((key) => {
             if (key === 'activeDeviceKey') {
@@ -466,6 +467,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             tokens.push('canRestart');
         }
         tokens.push(this.isActiveDevice(device) ? 'isActive' : 'notActive');
+        //`isHidden` rows are only rendered while the `hidden` filter facet is on, where they offer Unhide
+        tokens.push(this.deviceManager.isDeviceHidden(device.key) ? 'isHidden' : 'notHidden');
         return tokens.join('-');
     }
 
@@ -573,7 +576,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     private applyFilters(devices: RokuDevice[]): RokuDevice[] {
-        return applyDeviceFilters(devices, this.filters);
+        return applyDeviceFilters(devices, this.filters, this.deviceManager.getHiddenDeviceKeys());
     }
 
     private loadFilters(): DeviceFilters {

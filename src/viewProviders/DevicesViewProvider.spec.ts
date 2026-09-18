@@ -87,7 +87,8 @@ describe('DevicesViewProvider', () => {
         } as any;
     }
 
-    function createProvider(devices: any[], options?: { storedPasswords?: Record<string, string> }) {
+    function createProvider(devices: any[], options?: { storedPasswords?: Record<string, string>; hiddenDeviceKeys?: string[] }) {
+        let hiddenKeys = [...(options?.hiddenDeviceKeys ?? [])];
         const emitter = new EventEmitter();
         const deviceManager: any = {
             on: (event: string, handler: any) => emitter.on(event, handler),
@@ -99,14 +100,38 @@ describe('DevicesViewProvider', () => {
             getIconPath: () => undefined,
             hasDeviceCache: () => false,
             refresh: () => undefined,
-            healthCheckDevice: () => Promise.resolve()
+            healthCheckDevice: () => Promise.resolve(),
+            getHiddenDeviceKeys: () => new Set(hiddenKeys),
+            isDeviceHidden: (key: string) => hiddenKeys.includes(key),
+            hideDevice: (key: string) => {
+                if (!hiddenKeys.includes(key)) {
+                    hiddenKeys.push(key);
+                }
+                emitter.emit('devices-changed');
+                return Promise.resolve();
+            },
+            unhideDevice: (key: string) => {
+                hiddenKeys = hiddenKeys.filter(existing => existing !== key);
+                emitter.emit('devices-changed');
+                return Promise.resolve();
+            },
+            unhideAllDevices: () => {
+                hiddenKeys = [];
+                emitter.emit('devices-changed');
+                return Promise.resolve();
+            }
         };
         const credentialStore: any = {
             on: () => undefined,
             getPassword: (serialNumber: string) => Promise.resolve(options?.storedPasswords?.[serialNumber])
         };
         const provider = new DevicesViewProvider(deviceManager, credentialStore, vscode.context as any);
-        return { provider: provider, deviceManager: deviceManager, emitter: emitter };
+        return {
+            provider: provider,
+            deviceManager: deviceManager,
+            emitter: emitter,
+            getHiddenKeys: () => [...hiddenKeys]
+        };
     }
 
     beforeEach(async () => {
@@ -216,21 +241,21 @@ describe('DevicesViewProvider', () => {
             const devices = [makeDevice({ key: 'tv1', isTv: true, softwareVersion: '15.3.4', serialNumber: 'SERIAL1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-noPassword-isTv-canViewRegistry-canRestart-notActive');
+            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-noPassword-isTv-canViewRegistry-canRestart-notActive-notHidden');
         });
 
         it('includes hasPassword and configured-in tokens, and gates version-specific tokens', async () => {
             const devices = [makeDevice({ key: 'stb1', softwareVersion: '12.0.0', serialNumber: 'SERIAL2', configuredIn: ['user', 'workspace'] })];
             const { provider } = createProvider(devices, { storedPasswords: { SERIAL2: 'secret' } });
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-local-inUser-inWorkspace-hasPassword-canViewRegistry-notActive');
+            expect(items[0].contextValue).to.equal('device-local-inUser-inWorkspace-hasPassword-canViewRegistry-notActive-notHidden');
         });
 
         it('omits password and version-gated tokens when serial number and software version are unknown', async () => {
             const devices = [makeDevice({ key: 'stb1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-notActive');
+            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-notActive-notHidden');
         });
 
         it('builds a cloud contextValue without the settings tokens', async () => {
@@ -239,7 +264,7 @@ describe('DevicesViewProvider', () => {
             const devices = [makeDevice({ key: 's:ESN1', isRce: true, isTv: true, softwareVersion: '15.2.4', serialNumber: 'ESN1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-cloud-noPassword-isTv-canViewRegistry-canRestart-notActive');
+            expect(items[0].contextValue).to.equal('device-cloud-noPassword-isTv-canViewRegistry-canRestart-notActive-notHidden');
         });
 
         it('lists the cloud action items for an rce device', async () => {
@@ -531,6 +556,77 @@ describe('DevicesViewProvider', () => {
             });
 
             expect(treeChanged.called).to.be.false;
+        });
+    });
+
+    describe('hidden devices', () => {
+        it('omits hidden devices from the tree by default', async () => {
+            const devices = [makeDevice({ key: 'a' }), makeDevice({ key: 'b' })];
+            const { provider } = createProvider(devices, { hiddenDeviceKeys: ['b'] });
+
+            const items = await provider.getChildren();
+            expect(items.map(item => (item as any).key)).to.deep.equal(['a']);
+        });
+
+        it('includes hidden devices when the hidden filter facet is on', async () => {
+            seedFilters({ hidden: true });
+            const devices = [makeDevice({ key: 'a' }), makeDevice({ key: 'b' })];
+            const { provider } = createProvider(devices, { hiddenDeviceKeys: ['b'] });
+
+            const items = await provider.getChildren();
+            expect(items.map(item => (item as any).key)).to.deep.equal(['a', 'b']);
+            //the revealed row offers Unhide rather than Hide
+            expect(items[0].contextValue).to.contain('-notHidden');
+            expect(items[1].contextValue).to.contain('-isHidden');
+        });
+
+        it('toggling the hidden facet reveals and re-hides devices', async () => {
+            const devices = [makeDevice({ key: 'a' }), makeDevice({ key: 'b' })];
+            const { provider } = createProvider(devices, { hiddenDeviceKeys: ['b'] });
+
+            await provider.toggleFilter('hidden');
+            expect((await provider.getChildren()).map(item => (item as any).key)).to.deep.equal(['a', 'b']);
+
+            await provider.toggleFilter('hidden');
+            expect((await provider.getChildren()).map(item => (item as any).key)).to.deep.equal(['a']);
+        });
+
+        it('drops a device from the tree once it is hidden through the device manager', async () => {
+            const devices = [makeDevice({ key: 'a' }), makeDevice({ key: 'b' })];
+            const { provider, deviceManager, getHiddenKeys } = createProvider(devices);
+
+            await deviceManager.hideDevice('b');
+
+            expect(getHiddenKeys()).to.deep.equal(['b']);
+            expect((await provider.getChildren()).map(item => (item as any).key)).to.deep.equal(['a']);
+        });
+
+        it('restores a device to the tree once it is unhidden', async () => {
+            const devices = [makeDevice({ key: 'a' }), makeDevice({ key: 'b' })];
+            const { provider, deviceManager } = createProvider(devices, { hiddenDeviceKeys: ['b'] });
+
+            await deviceManager.unhideDevice('b');
+
+            expect((await provider.getChildren()).map(item => (item as any).key)).to.deep.equal(['a', 'b']);
+        });
+
+        it('fires a tree change when the hidden list changes', async () => {
+            const { provider, deviceManager } = createProvider([makeDevice({ key: 'a' })]);
+            const treeChanged = sinon.spy();
+            provider.onDidChangeTreeData(treeChanged);
+
+            await deviceManager.hideDevice('a');
+
+            expect(treeChanged.called).to.be.true;
+        });
+
+        it('a hidden device stays excluded when another facet would have shown it', async () => {
+            //hidden is strict-AND with the rest, so turning on the offline facet doesn't reveal it
+            seedFilters({ offline: true });
+            const devices = [makeDevice({ key: 'a' }), makeDevice({ key: 'b', deviceState: 'offline' })];
+            const { provider } = createProvider(devices, { hiddenDeviceKeys: ['b'] });
+
+            expect((await provider.getChildren()).map(item => (item as any).key)).to.deep.equal(['a']);
         });
     });
 });

@@ -18,7 +18,8 @@ export class GlobalStateManager {
         lastSeenDevicesByNetwork: 'lastSeenDevicesByNetwork',
         deviceCache: 'deviceCache',
         serialNumberByIpForNetwork: 'serialNumberByIpForNetwork',
-        lastAliveTimestamp: 'lastAliveTimestamp'
+        lastAliveTimestamp: 'lastAliveTimestamp',
+        hiddenDeviceKeys: 'hiddenDeviceKeys'
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -309,6 +310,53 @@ export class GlobalStateManager {
         const map = this.context.globalState.get<Record<string, number>>(this.keys.lastAliveTimestamp) || {};
         map[key] = timestamp;
         void this.context.globalState.update(this.keys.lastAliveTimestamp, map);
+    }
+
+    /**
+     * The device keys the user has chosen to hide. This backs the `hidden` device filter facet,
+     * which is the one facet not derived from the device itself. It lives here rather than in
+     * settings because it's a machine-wide note about which devices are noise, not project config.
+     */
+    public getHiddenDeviceKeys(): string[] {
+        const value = this.context.globalState.get<string[]>(this.keys.hiddenDeviceKeys);
+        return Array.isArray(value) ? value.filter(key => typeof key === 'string') : [];
+    }
+
+    public async setHiddenDeviceKeys(keys: string[]): Promise<void> {
+        const unique = [...new Set(keys)];
+        //store `undefined` for an empty list so the key disappears entirely instead of holding []
+        await Promise.resolve(
+            this.context.globalState.update(this.keys.hiddenDeviceKeys, unique.length > 0 ? unique : undefined)
+        );
+    }
+
+    public async addHiddenDeviceKey(key: string): Promise<void> {
+        const keys = this.getHiddenDeviceKeys();
+        if (!keys.includes(key)) {
+            await this.setHiddenDeviceKeys([...keys, key]);
+        }
+    }
+
+    public async removeHiddenDeviceKey(key: string): Promise<void> {
+        const keys = this.getHiddenDeviceKeys();
+        if (keys.includes(key)) {
+            await this.setHiddenDeviceKeys(keys.filter(existing => existing !== key));
+        }
+    }
+
+    /**
+     * A device discovered before its serial number is known is keyed by ip (`i:{ip}`) and later
+     * re-keyed to its stable serial key (`s:{serial}`). Move any hidden entry along with it so the
+     * device doesn't silently reappear once its serial resolves.
+     */
+    public async migrateHiddenDeviceKey(oldKey: string, newKey: string): Promise<void> {
+        const keys = this.getHiddenDeviceKeys();
+        if (!keys.includes(oldKey) || oldKey === newKey) {
+            return;
+        }
+        await this.setHiddenDeviceKeys(keys.map(key => {
+            return key === oldKey ? newKey : key;
+        }));
     }
 
     /**

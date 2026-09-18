@@ -17,6 +17,7 @@ export interface DeviceFilters {
     autoDetected: boolean;
     local: boolean;
     cloud: boolean;
+    hidden: boolean;
 }
 
 export const DEVICE_FILTER_KEYS: Array<keyof DeviceFilters> = [
@@ -30,7 +31,8 @@ export const DEVICE_FILTER_KEYS: Array<keyof DeviceFilters> = [
     'userDefined',
     'autoDetected',
     'local',
-    'cloud'
+    'cloud',
+    'hidden'
 ];
 
 /**
@@ -48,7 +50,8 @@ export const DEVICE_FILTER_LABELS: Record<keyof DeviceFilters, string> = {
     userDefined: 'User Defined',
     autoDetected: 'Auto Detected',
     local: 'Local',
-    cloud: 'Cloud'
+    cloud: 'Cloud',
+    hidden: 'Hidden'
 };
 
 /**
@@ -60,7 +63,8 @@ export const DEVICE_FILTER_GROUPS: Array<Array<keyof DeviceFilters>> = [
     ['tv', 'setTopBox', 'stick'],
     ['online', 'offline'],
     ['userDefined', 'autoDetected'],
-    ['local', 'cloud']
+    ['local', 'cloud'],
+    ['hidden']
 ];
 
 export const DEFAULT_DEVICE_FILTERS: DeviceFilters = {
@@ -74,7 +78,10 @@ export const DEFAULT_DEVICE_FILTERS: DeviceFilters = {
     userDefined: true,
     autoDetected: true,
     local: true,
-    cloud: true
+    cloud: true,
+    //the only facet that defaults to off: a device the user explicitly hid stays out of the
+    //list until they turn this on to go find it again
+    hidden: false
 };
 
 /**
@@ -97,9 +104,18 @@ export function loadDeviceFilters(section: string): DeviceFilters {
  * Strict-AND filter: a device must satisfy every enabled facet to be retained.
  * Pending devices stay visible to the online facet only when their last known
  * state was online; otherwise they fall under the offline facet.
+ *
+ * `hiddenDeviceKeys` holds the devices the user explicitly hid. Unlike every other facet, this
+ * list isn't derived from the device itself, so it's passed in by the caller (it lives in global
+ * state rather than settings — see GlobalStateManager.getHiddenDeviceKeys).
  */
-export function applyDeviceFilters(devices: RokuDevice[], filters: DeviceFilters): RokuDevice[] {
+export function applyDeviceFilters(devices: RokuDevice[], filters: DeviceFilters, hiddenDeviceKeys?: ReadonlySet<string>): RokuDevice[] {
     return devices.filter(device => {
+        //an explicitly-hidden device is only listed when the `hidden` facet is turned on
+        if (!filters.hidden && hiddenDeviceKeys?.has(device.key)) {
+            return false;
+        }
+
         const info = device.deviceInfo ?? {};
         const isTv = info['is-tv'] === 'true';
         const isStick = info['is-stick'] === 'true';
