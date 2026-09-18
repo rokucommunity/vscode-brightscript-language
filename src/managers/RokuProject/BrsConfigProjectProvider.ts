@@ -61,7 +61,9 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
         const filePath = bsUtil.driveLetterToLower(fileUri.fsPath);
         const matches: vscode.Uri[] = [];
         for (const entry of this.configByPath.values()) {
-            if (getDestPath(filePath, entry.files, entry.rootDir)) {
+            // Drive letters must be normalized on both sides — getDestPath does a case-sensitive
+            // match and vscode lowercases the drive letter in fsPath
+            if (getDestPath(filePath, entry.files, bsUtil.driveLetterToLower(entry.rootDir))) {
                 matches.push(entry.configUri);
             }
         }
