@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { util as bsUtil } from 'brighterscript';
 import { util } from '../../util';
-import { util as rokuDeployUtil } from 'roku-deploy';
+import { getDestPath } from 'roku-deploy';
 import type { FileEntry } from 'roku-deploy';
 import type { TaskConfig } from '../../BrightScriptTaskProvider';
 import type { DiscoveredRokuProject, ProjectBuildResult, ProjectConfigProvider } from './RokuProjectManager';
@@ -66,8 +66,10 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
         const matches: vscode.Uri[] = [];
         for (const entry of this.configByPath.values()) {
             // getDestPath returns undefined at runtime when the file doesn't match
-            // (TypeScript types the return as string, but the implementation returns undefined for no match)
-            if (rokuDeployUtil.getDestPath(filePath, entry.files, entry.rootDir)) {
+            // (TypeScript types the return as string, but the implementation returns undefined for no match).
+            // Drive letters must be normalized on both sides — getDestPath does a case-sensitive
+            // match and vscode lowercases the drive letter in fsPath
+            if (getDestPath(filePath, entry.files, bsUtil.driveLetterToLower(entry.rootDir))) {
                 matches.push(entry.configUri);
             }
         }

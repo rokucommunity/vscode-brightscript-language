@@ -523,7 +523,7 @@
                 </div>
             {/if}
             <div class="rceStreamControls">
-                {#if (rceStreamStatus === 'stopped' || rceStreamStatus === 'waiting') && !deviceStartRequested}
+                {#if rceStreamStatus === 'stopped' && !deviceStartRequested}
                     <vscode-button appearance="primary" disabled={deviceActionInFlight} on:click={startStreamedDevice}>
                         <span slot="start" class="buttonIcon"><Play /></span>
                         Start Device
