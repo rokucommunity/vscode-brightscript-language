@@ -188,8 +188,6 @@ describe('BrsConfigProjectProvider', () => {
                 rootDir: projectDir
             });
 
-            sinon.stub(rokuDeployUtil, 'getDestPath').returns('source/main.brs');
-
             const results = await provider.findProjectConfigFromFile(fileUri);
 
             expect(results).to.have.length(1);
@@ -197,8 +195,15 @@ describe('BrsConfigProjectProvider', () => {
         });
 
         it('returns an empty array when no indexed config owns the file', async () => {
-            const fileUri = makeUri('/project/src/main.brs');
-            sinon.stub(rokuDeployUtil, 'getDestPath').returns(undefined as any);
+            const projectDir = '/project';
+            const configUri = makeUri(path.join(projectDir, 'brsconfig.json'));
+            const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
+
+            (provider as any).configByPath.set(configUri.fsPath, {
+                configUri: configUri,
+                files: [{ src: 'other/**/*.brs', dest: 'source' }],
+                rootDir: projectDir
+            });
 
             const results = await provider.findProjectConfigFromFile(fileUri);
 
@@ -212,13 +217,11 @@ describe('BrsConfigProjectProvider', () => {
             const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
 
             (provider as any).configByPath.set(configUri1.fsPath, {
-                configUri: configUri1, files: [], rootDir: projectDir
+                configUri: configUri1, files: [{ src: 'src/**/*.brs', dest: 'source' }], rootDir: projectDir
             });
             (provider as any).configByPath.set(configUri2.fsPath, {
-                configUri: configUri2, files: [], rootDir: projectDir
+                configUri: configUri2, files: [{ src: 'src/**/*.brs', dest: 'source' }], rootDir: projectDir
             });
-
-            sinon.stub(rokuDeployUtil, 'getDestPath').returns('source/main.brs');
 
             const results = await provider.findProjectConfigFromFile(fileUri);
 

@@ -196,8 +196,6 @@ describe('BsConfigProjectProvider', () => {
                 stagingDir: path.join(projectDir, 'out')
             });
 
-            sinon.stub(rokuDeployUtil, 'getDestPath').returns('source/main.brs');
-
             const results = await provider.findProjectConfigFromFile(fileUri);
 
             expect(results).to.have.length(1);
@@ -205,8 +203,16 @@ describe('BsConfigProjectProvider', () => {
         });
 
         it('returns an empty array when no indexed config owns the file', async () => {
-            const fileUri = makeUri('/project/src/main.brs');
-            sinon.stub(rokuDeployUtil, 'getDestPath').returns(undefined as any);
+            const projectDir = '/project';
+            const configUri = makeUri(path.join(projectDir, 'bsconfig.json'));
+            const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
+
+            (provider as any).configByPath.set(configUri.fsPath, {
+                configUri: configUri,
+                files: [{ src: 'other/**/*.brs', dest: 'source' }],
+                rootDir: projectDir,
+                stagingDir: path.join(projectDir, 'out')
+            });
 
             const results = await provider.findProjectConfigFromFile(fileUri);
 
@@ -220,13 +226,11 @@ describe('BsConfigProjectProvider', () => {
             const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
 
             (provider as any).configByPath.set(configUri1.fsPath, {
-                configUri: configUri1, files: [], rootDir: projectDir, stagingDir: ''
+                configUri: configUri1, files: [{ src: 'src/**/*.brs', dest: 'source' }], rootDir: projectDir, stagingDir: ''
             });
             (provider as any).configByPath.set(configUri2.fsPath, {
-                configUri: configUri2, files: [], rootDir: projectDir, stagingDir: ''
+                configUri: configUri2, files: [{ src: 'src/**/*.brs', dest: 'source' }], rootDir: projectDir, stagingDir: ''
             });
-
-            sinon.stub(rokuDeployUtil, 'getDestPath').returns('source/main.brs');
 
             const results = await provider.findProjectConfigFromFile(fileUri);
 
