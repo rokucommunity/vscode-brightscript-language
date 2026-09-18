@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { util as bsUtil } from 'brighterscript';
 import { util } from '../../util';
-import { util as rokuDeployUtil } from 'roku-deploy';
+import { getDestPath } from 'roku-deploy';
 import type { FileEntry } from 'roku-deploy';
 import type { DiscoveredRokuProject, ProjectBuildResult, ProjectConfigProvider } from './RokuProjectManager';
 
@@ -61,7 +61,9 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
         const filePath = bsUtil.driveLetterToLower(fileUri.fsPath);
         const matches: vscode.Uri[] = [];
         for (const entry of this.configByPath.values()) {
-            if (rokuDeployUtil.getDestPath(filePath, entry.files, entry.rootDir)) {
+            // Drive letters must be normalized on both sides — getDestPath does a case-sensitive
+            // match and vscode lowercases the drive letter in fsPath
+            if (getDestPath(filePath, entry.files, bsUtil.driveLetterToLower(entry.rootDir))) {
                 matches.push(entry.configUri);
             }
         }

@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.69.2",
+    "version": "2.69.3",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -80,9 +80,9 @@
         "open": "^8.4.2",
         "pretty-bytes": "^5.6.0",
         "resolve": "^1.22.8",
-        "roku-debug": "^0.24.3",
-        "roku-deploy": "^4.0.0-alpha.6",
-        "roku-test-automation": "^3.0.0-alpha.3",
+        "roku-debug": "^0.24.4",
+        "roku-deploy": "^4.0.0-alpha.8",
+        "roku-test-automation": "^3.0.0-alpha.4",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
         "strip-ansi": "^5.2.0",
@@ -217,7 +217,7 @@
                 {
                     "id": "roku-cloud-emulator",
                     "title": "Roku Cloud Emulator",
-                    "icon": "images/icons/rce-logo.svg"
+                    "icon": "images/Roku Cloud Emulator_textless_black_160x160.svg"
                 }
             ]
         },
