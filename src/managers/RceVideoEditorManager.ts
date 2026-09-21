@@ -6,6 +6,7 @@ import { VscodeCommand } from '../commands/VscodeCommand';
 import { ViewProviderCommand } from '../viewProviders/ViewProviderCommand';
 import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { RceStreamSession } from '../viewProviders/RceStreamSession';
+import { icons } from '../icons';
 import { buildWebviewIndexHtml } from '../viewProviders/webviewHtml';
 import type { RceDevice } from 'roku-deploy';
 import type { RceManager, RceStreamRequestConfig } from './RceManager';
@@ -20,7 +21,7 @@ import type { RceFinder } from '../deviceDiscovery/RceFinder';
  */
 export class RceVideoEditorManager implements vscode.Disposable {
     constructor(
-        private extensionContext: vscode.ExtensionContext,
+        extensionContext: vscode.ExtensionContext,
         private rceManager: RceManager,
         private rceFinder?: RceFinder
     ) {
@@ -147,7 +148,9 @@ export class RceVideoEditorManager implements vscode.Disposable {
                 ]
             }
         );
-        panel.iconPath = vscode.Uri.file(path.join(this.extensionContext.extensionPath, 'images', 'icons', 'rce-logo.svg'));
+        //the device's real type arrives with its stream request; until then use the same set top box
+        //fallback the device type icons use for an unknown type
+        panel.iconPath = icons.setTopBox;
         panel.webview.html = buildWebviewIndexHtml({
             webview: panel.webview,
             webviewBasePath: this.webviewBasePath,
@@ -314,6 +317,7 @@ class RceVideoEditorPanel implements vscode.Disposable {
         //property access
         if (!this.disposed) {
             this.panel.title = streamRequest.deviceName;
+            this.panel.iconPath = icons.getRceDeviceType(streamRequest.deviceType);
         }
         return streamRequest;
     }
