@@ -22,11 +22,11 @@ jobs:
       - run: npm run check-webviews
       - run: npm run test
       - run: npm run create-package
-      - name: Upload coverage to Coveralls
-        if: matrix.os == 'ubuntu-latest'
-        uses: coverallsapp/github-action@v2
-        env:
-          #just hardcode this. It's not a mission-critical token, and we can always change it
-          COVERALLS_REPO_TOKEN: "Ysqq6q68DgojDzv3gvl5Yv029HXZYwGxq"
-        with:
-          path-to-lcov: ./coverage/lcov.info
+      # - name: Upload coverage to Coveralls
+      #   if: matrix.os == 'ubuntu-latest'
+      #   uses: coverallsapp/github-action@v2
+      #   env:
+      #     #just hardcode this. It's not a mission-critical token, and we can always change it
+      #     COVERALLS_REPO_TOKEN: "Ysqq6q68DgojDzv3gvl5Yv029HXZYwGxq"
+      #   with:
+      #     path-to-lcov: ./coverage/lcov.info
