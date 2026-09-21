@@ -306,6 +306,13 @@
                     "group": "navigation"
                 }
             ],
+            "editor/title/context": [
+                {
+                    "command": "extension.brightscript.debugRokuProject",
+                    "when": "resourcePath in brightscript.rokuProjectConfigFiles",
+                    "group": "debug@1"
+                }
+            ],
             "debug/toolBar": [
                 {
                     "command": "extension.brightscript.startTracing",
