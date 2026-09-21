@@ -10,6 +10,7 @@ import { RceDeviceNotRunningError } from './RceManager';
 import { ViewProviderCommand } from '../viewProviders/ViewProviderCommand';
 import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { VscodeCommand } from '../commands/VscodeCommand';
+import { icons } from '../icons';
 
 let Module = require('module');
 const { require: oldRequire } = Module.prototype;
@@ -157,6 +158,27 @@ describe('RceVideoEditorManager', () => {
         expect(offerMessages.length).to.equal(1);
         expect(offerMessages[0].context.deviceId).to.equal(5);
         expect(offerMessages[0].context.offer).to.eql(defaultFakeOffer);
+    });
+
+    it('shows each tab the icon for its device type', async () => {
+        createManager();
+        resolveStreamRequest.callsFake((deviceId: number) => Promise.resolve({
+            deviceId: deviceId,
+            deviceName: `device-${deviceId}`,
+            deviceType: deviceId === 5 ? 'tv' : 'streambar',
+            websocketUrl: `wss://device.rce.roku.com/instance/${deviceId}/janus`,
+            streamId: deviceId,
+            pin: '1234',
+            janusToken: 'janus-secret',
+            iceServers: []
+        }));
+
+        await manager.open(5, 'device-5');
+        await manager.open(6, 'device-6');
+
+        expect(manager.createdPanels[0].iconPath).to.equal(icons.tv);
+        //a streambar has no icon of its own, so it gets the set top box
+        expect(manager.createdPanels[1].iconPath).to.equal(icons.setTopBox);
     });
 
     it('reveals the existing panel instead of creating a second one for the same device', async () => {
