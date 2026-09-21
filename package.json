@@ -566,11 +566,6 @@
                     "group": "1_primary@3"
                 },
                 {
-                    "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
-                    "when": "view == devicesView && viewItem =~ /^device\\b/",
-                    "group": "2_device@1"
-                },
-                {
                     "command": "extension.brightscript.devicesView.deviceMenu.restartDevice",
                     "when": "view == devicesView && viewItem =~ /-canRestart\\b/",
                     "group": "2_device@2"
@@ -624,6 +619,11 @@
                     "command": "extension.brightscript.devicesView.deviceMenu.editInWorkspaceSettings",
                     "when": "view == devicesView && viewItem =~ /-inWorkspace\\b/",
                     "group": "5_settings@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
+                    "when": "view == devicesView && viewItem =~ /^device\\b/",
+                    "group": "6_device_management@1"
                 }
             ],
             "explorer/context": [
@@ -4310,9 +4310,8 @@
             },
             {
                 "command": "extension.brightscript.refreshDevice",
-                "title": "Refresh Device",
-                "category": "BrightScript",
-                "icon": "$(refresh)"
+                "title": "refresh",
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.devicesView.restartDevice",
@@ -4353,7 +4352,7 @@
             },
             {
                 "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
-                "title": "🔃 Refresh Device",
+                "title": "refresh",
                 "category": "BrightScript"
             },
             {
