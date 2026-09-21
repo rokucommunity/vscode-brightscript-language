@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.69.2",
+    "version": "2.69.3",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -79,9 +79,9 @@
         "open": "^8.4.2",
         "pretty-bytes": "^5.6.0",
         "resolve": "^1.22.8",
-        "roku-debug": "^0.24.3",
-        "roku-deploy": "^4.0.0-alpha.6",
-        "roku-test-automation": "^3.0.0-alpha.3",
+        "roku-debug": "^0.24.4",
+        "roku-deploy": "^4.0.0-alpha.8",
+        "roku-test-automation": "^3.0.0-alpha.4",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
         "strip-ansi": "^5.2.0",
@@ -210,7 +210,7 @@
                 {
                     "id": "roku-cloud-emulator",
                     "title": "Roku Cloud Emulator",
-                    "icon": "images/icons/rce-logo.svg"
+                    "icon": "images/Roku Cloud Emulator_textless_black_160x160.svg"
                 }
             ]
         },
@@ -547,11 +547,6 @@
                     "group": "1_primary@3"
                 },
                 {
-                    "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
-                    "when": "view == devicesView && viewItem =~ /^device\\b/",
-                    "group": "2_device@1"
-                },
-                {
                     "command": "extension.brightscript.devicesView.deviceMenu.restartDevice",
                     "when": "view == devicesView && viewItem =~ /-canRestart\\b/",
                     "group": "2_device@2"
@@ -605,6 +600,11 @@
                     "command": "extension.brightscript.devicesView.deviceMenu.editInWorkspaceSettings",
                     "when": "view == devicesView && viewItem =~ /-inWorkspace\\b/",
                     "group": "5_settings@2"
+                },
+                {
+                    "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
+                    "when": "view == devicesView && viewItem =~ /^device\\b/",
+                    "group": "6_device_management@1"
                 }
             ],
             "explorer/context": [
@@ -4252,9 +4252,8 @@
             },
             {
                 "command": "extension.brightscript.refreshDevice",
-                "title": "Refresh Device",
-                "category": "BrightScript",
-                "icon": "$(refresh)"
+                "title": "refresh",
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.devicesView.restartDevice",
@@ -4295,7 +4294,7 @@
             },
             {
                 "command": "extension.brightscript.devicesView.deviceMenu.refreshDevice",
-                "title": "🔃 Refresh Device",
+                "title": "refresh",
                 "category": "BrightScript"
             },
             {
