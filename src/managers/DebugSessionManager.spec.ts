@@ -182,6 +182,28 @@ describe('DebugSessionManager', () => {
             const evaluable = manager.getEvaluableJsSessions().map(s => s.id);
             expect(evaluable[0]).to.equal('js1');
         });
+
+        it('excludes a non-node active session (the BrightScript session itself)', () => {
+            const { brightScript, js, jsChild } = makeDualSession();
+            start(brightScript);
+            start(js);
+            start(jsChild);
+
+            (vscode.debug as any).activeDebugSession = brightScript;
+            const evaluable = manager.getEvaluableJsSessions().map(s => s.id);
+            expect(evaluable).to.eql(['child1', 'js1']);
+        });
+
+        it('excludes a non-node active session (e.g. pwa-chrome) while keeping nodeish ranking', () => {
+            const { brightScript, js, jsChild } = makeDualSession();
+            start(brightScript);
+            start(js);
+            start(jsChild);
+
+            (vscode.debug as any).activeDebugSession = makeSession('chrome', 'pwa-chrome');
+            const evaluable = manager.getEvaluableJsSessions().map(s => s.id);
+            expect(evaluable).to.eql(['child1', 'js1']);
+        });
     });
 
     describe('joint teardown', () => {

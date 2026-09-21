@@ -140,22 +140,28 @@ export class DebugSessionManager {
 
     /**
      * JS sessions to try the Solid transport's `evaluate` against, best-first: the active
-     * session, then children of our brightscript-spawned JS session, then that JS session
-     * itself, then any other node session. vscode-js-debug's logical PARENT session has no
-     * CDP target (an `evaluate` there fails instantly), so the evaluable runtime lives in a
-     * CHILD — which is why children rank above the parent.
+     * session (only when it is itself node/pwa-node), then children of our brightscript-spawned
+     * JS session, then that JS session itself, then any other node session. vscode-js-debug's
+     * logical PARENT session has no CDP target (an `evaluate` there fails instantly), so the
+     * evaluable runtime lives in a CHILD — which is why children rank above the parent.
      */
     public getEvaluableJsSessions(): vscode.DebugSession[] {
-        const nodeish = this.sessions.filter((session) => session.type === 'node' || session.type === 'pwa-node');
+        const nodeishSessions = this.sessions.filter((session) => this.isNodeish(session));
+        const active = vscode.debug.activeDebugSession;
         return this.dedupById([
-            vscode.debug.activeDebugSession,
-            ...nodeish.filter((session) => this.isBrightScriptJs(session.parentSession)),
-            ...nodeish.filter((session) => this.isBrightScriptJs(session)),
-            ...nodeish
+            this.isNodeish(active) ? active : undefined,
+            ...nodeishSessions.filter((session) => this.isBrightScriptJs(session.parentSession)),
+            ...nodeishSessions.filter((session) => this.isBrightScriptJs(session)),
+            ...nodeishSessions
         ]);
     }
 
     // ---- helpers -----------------------------------------------------------------
+
+    /** vscode-js-debug session types (the only ones that can service `evaluate` for the bridge). */
+    private isNodeish(session: vscode.DebugSession | undefined): boolean {
+        return session?.type === 'node' || session?.type === 'pwa-node';
+    }
 
     /**
      * The id of the `brightscript` session `session` belongs to, or undefined when it's
