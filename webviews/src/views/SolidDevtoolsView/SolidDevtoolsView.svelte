@@ -275,25 +275,28 @@
     }
 
     async function loadRoots(reason: 'initial' | 'refresh') {
-        const result = await solidDevtools.sendRequest({ method: 'roots' });
-        if (!result.ok) {
-            if (reason === 'refresh' && haveTree) {
-                // Transient (mid-navigation hiccup) — keep the current tree and let
-                // the next poll retry; don't flash a scary banner.
-                refreshing = false;
-                updateStatusLine();
-            } else {
-                guidance = guidanceFor(result);
-                statusLine = '';
+        try {
+            const result = await solidDevtools.sendRequest({ method: 'roots' });
+            if (!result.ok) {
+                if (reason === 'refresh' && haveTree) {
+                    // Transient (mid-navigation hiccup) — keep the current tree and let
+                    // the next poll retry; don't flash a scary banner.
+                    updateStatusLine();
+                } else {
+                    guidance = guidanceFor(result);
+                    statusLine = '';
+                }
+                return;
             }
-            return;
+            roots = dedupeById(result.data.nodes);
+            connected = result.data.connected;
+            haveTree = true;
+            guidance = '';
+            updateStatusLine();
+        } finally {
+            // Every exit must release the Refresh button and the poll's auto-load gate.
+            refreshing = false;
         }
-        roots = dedupeById(result.data.nodes);
-        connected = result.data.connected;
-        haveTree = true;
-        guidance = '';
-        refreshing = false;
-        updateStatusLine();
     }
 
     function refresh() {
