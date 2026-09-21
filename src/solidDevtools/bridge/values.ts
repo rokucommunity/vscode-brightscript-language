@@ -68,7 +68,7 @@ export function isPlainObject(v: unknown): boolean {
     return p === Object.prototype || p === null;
 }
 
-export function encodeValue(v: unknown, depth: number, budget: { n: number }, seen: Set<unknown>): SolidEncodedValue {
+export function encodeValue(v: unknown, depth: number, budget: { n: number }, seen: Set<unknown>, path: Set<unknown>): SolidEncodedValue {
     budget.n--;
     if (v === null) {
         return { t: 'null' };
@@ -94,10 +94,12 @@ export function encodeValue(v: unknown, depth: number, budget: { n: number }, se
         return { t: 'function', v: v.name || '' };
     }
     if (typeof v === 'object') {
-        if (seen.has(v)) {
+        if (path.has(v)) {
             return tagRef({ t: 'circular' }, v);
         }
-        const expand = depth > 0 && budget.n > 0; // out of budget → collapse to a shape tag
+        // out of budget/depth, OR already emitted elsewhere in this payload (dedupe,
+        // not a cycle) → collapse to a shape tag
+        const expand = depth > 0 && budget.n > 0 && !seen.has(v);
         if (Array.isArray(v)) {
             const arr = v as unknown[];
             let len = 0;
@@ -109,6 +111,7 @@ export function encodeValue(v: unknown, depth: number, budget: { n: number }, se
             const node: SolidEncodedValue = { t: 'array', len: len };
             if (expand && len) {
                 seen.add(v);
+                path.add(v);
                 const items: SolidEncodedValue[] = [];
                 for (let i = 0; i < len && i < VALUE_BREADTH; i++) {
                     let it: unknown;
@@ -117,8 +120,9 @@ export function encodeValue(v: unknown, depth: number, budget: { n: number }, se
                     } catch {
                         it = undefined;
                     }
-                    items.push(encodeValue(it, depth - 1, budget, seen));
+                    items.push(encodeValue(it, depth - 1, budget, seen, path));
                 }
+                path.delete(v);
                 node.items = items;
                 if (len > VALUE_BREADTH) {
                     node.more = len - VALUE_BREADTH;
@@ -142,6 +146,7 @@ export function encodeValue(v: unknown, depth: number, budget: { n: number }, se
         }
         if (expand && isPlainObject(v)) {
             seen.add(v);
+            path.add(v);
             let keys: string[] = [];
             try {
                 keys = Object.keys(obj);
@@ -158,7 +163,7 @@ export function encodeValue(v: unknown, depth: number, budget: { n: number }, se
                     } catch {
                         val = undefined;
                     }
-                    entries.push({ k: k, value: encodeValue(val, depth - 1, budget, seen) });
+                    entries.push({ k: k, value: encodeValue(val, depth - 1, budget, seen, path) });
                 }
                 node.entries = entries;
                 if (keys.length > VALUE_BREADTH) {
@@ -166,6 +171,7 @@ export function encodeValue(v: unknown, depth: number, budget: { n: number }, se
                     tagRef(node, v);
                 }
             }
+            path.delete(v);
         } else {
             // collapsed (out of depth/budget) or a class instance we won't auto-walk —
             // expandable on demand
@@ -190,6 +196,7 @@ export function expandRef(refId: number, offset: number): ExpandResult {
     const v = valueRefs.get(refId);
     const budget = { n: NODE_BUDGET };
     const seen = new Set<unknown>();
+    const path = new Set<unknown>();
     if (typeof v === 'string') {
         const chunk = v.slice(offset, offset + STRING_PAGE);
         const node: SolidEncodedValue = { t: 'string', v: chunk, len: v.length, offset: offset };
@@ -200,9 +207,12 @@ export function expandRef(refId: number, offset: number): ExpandResult {
         return { node: node };
     }
     if (typeof v !== 'object' || v === null) {
-        return { node: encodeValue(v, 1, budget, seen) };
+        return { node: encodeValue(v, 1, budget, seen, path) };
     }
     seen.add(v);
+    // the root is its own ancestor for this expansion, so a direct self-reference
+    // among its children still reports circular
+    path.add(v);
     if (Array.isArray(v)) {
         const arr = v as unknown[];
         let len = 0;
@@ -220,7 +230,7 @@ export function expandRef(refId: number, offset: number): ExpandResult {
             } catch {
                 it = undefined;
             }
-            items.push(encodeValue(it, 1, budget, seen));
+            items.push(encodeValue(it, 1, budget, seen, path));
         }
         if (len > offset + VALUE_BREADTH) {
             node.more = len - offset - VALUE_BREADTH;
@@ -263,7 +273,7 @@ export function expandRef(refId: number, offset: number): ExpandResult {
         } catch {
             val = undefined;
         }
-        entries.push({ k: k, value: encodeValue(val, 1, budget, seen) });
+        entries.push({ k: k, value: encodeValue(val, 1, budget, seen, path) });
     }
     if (keys.length > offset + VALUE_BREADTH) {
         node.more = keys.length - offset - VALUE_BREADTH;
