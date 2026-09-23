@@ -979,6 +979,8 @@ export class Extension {
         this.chanperfStatusBar?.dispose?.();
         this.diagnosticManager?.dispose?.();
         this.deviceManager?.dispose?.();
+        //holds listening sockets when the js-debug relay is in play (always on windows)
+        this.jsDebugProxyManager?.dispose?.();
         this.stagingReadyByParentSessionId.clear();
     }
 }
