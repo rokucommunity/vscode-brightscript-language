@@ -2696,7 +2696,7 @@
                     },
                     "brightscript.experimental.rokuCloudEmulator": {
                         "type": "boolean",
-                        "default": false,
+                        "default": true,
                         "description": "Enable the Roku Cloud Emulator integration: the Cloud Emulator activity bar panel, cloud device discovery in the Devices view, and debugging against cloud devices. Requires Roku Cloud Emulator early access and an api token. Changing this requires a window reload.",
                         "scope": "window"
                     }

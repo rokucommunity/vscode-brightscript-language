@@ -51,11 +51,11 @@ describe('ExperimentalFeaturesManager', () => {
         });
     }
 
-    it('reports features disabled by default and sets the context key', () => {
+    it('falls back to the feature default when the setting is absent and sets the context key', () => {
         const manager = new ExperimentalFeaturesManager(managerContext as any);
 
-        expect(manager.isEnabled(ExperimentalFeature.rokuCloudEmulator)).to.be.false;
-        expect(contextSetStub.calledWith('brightscript.experimental.rokuCloudEmulator', false)).to.be.true;
+        expect(manager.isEnabled(ExperimentalFeature.rokuCloudEmulator)).to.be.true;
+        expect(contextSetStub.calledWith('brightscript.experimental.rokuCloudEmulator', true)).to.be.true;
     });
 
     it('enables a feature through its own setting', () => {
@@ -67,6 +67,15 @@ describe('ExperimentalFeaturesManager', () => {
         expect(contextSetStub.calledWith('brightscript.experimental.rokuCloudEmulator', true)).to.be.true;
     });
 
+    it('disables a feature through its own setting', () => {
+        setSetting('experimental.rokuCloudEmulator', false);
+
+        const manager = new ExperimentalFeaturesManager(managerContext as any);
+
+        expect(manager.isEnabled(ExperimentalFeature.rokuCloudEmulator)).to.be.false;
+        expect(contextSetStub.calledWith('brightscript.experimental.rokuCloudEmulator', false)).to.be.true;
+    });
+
     it('enables every feature through experimental.all', () => {
         setSetting('experimental.all', true);
 
@@ -76,6 +85,7 @@ describe('ExperimentalFeaturesManager', () => {
     });
 
     it('reflects a toggle live: isEnabled, the context key, and the change event all follow', () => {
+        setSetting('experimental.rokuCloudEmulator', false);
         const manager = new ExperimentalFeaturesManager(managerContext as any);
         const enablementChanges: Array<[ExperimentalFeature, boolean]> = [];
         manager.onEnablementChanged((feature, enabled) => enablementChanges.push([feature, enabled]));
@@ -147,6 +157,7 @@ describe('ExperimentalFeaturesManager', () => {
     });
 
     it('stops notifying an unsubscribed handler', () => {
+        setSetting('experimental.rokuCloudEmulator', false);
         const manager = new ExperimentalFeaturesManager(managerContext as any);
         const enablementChanges: Array<[ExperimentalFeature, boolean]> = [];
         const unsubscribe = manager.onEnablementChanged((feature, enabled) => enablementChanges.push([feature, enabled]));

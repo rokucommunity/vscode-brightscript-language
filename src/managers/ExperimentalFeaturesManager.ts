@@ -14,6 +14,14 @@ export enum ExperimentalFeature {
 }
 
 /**
+ * The enablement each feature falls back to when its setting is absent. Mirrors the `default`
+ * declared for `brightscript.experimental.<feature>` in package.json.
+ */
+const featureDefaults: Record<ExperimentalFeature, boolean> = {
+    [ExperimentalFeature.rokuCloudEmulator]: true
+};
+
+/**
  * Owns the `brightscript.experimental.*` feature flags. `brightscript.experimental.all` enables
  * every feature at once; otherwise each feature's own setting decides.
  *
@@ -64,7 +72,7 @@ export class ExperimentalFeaturesManager {
     public isEnabled(feature: ExperimentalFeature): boolean {
         const brightscriptConfig = util.getConfiguration('brightscript');
         return (brightscriptConfig.get<boolean>('experimental.all') ?? false) ||
-            (brightscriptConfig.get<boolean>(`experimental.${feature}`) ?? false);
+            (brightscriptConfig.get<boolean>(`experimental.${feature}`) ?? featureDefaults[feature]);
     }
 
     /**
