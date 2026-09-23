@@ -7,21 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [3.0.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.69.3...v3.0.0) - 2026-09-23
-### Changed
- - updated brighterscript ([#908](https://github.com/rokucommunity/vscode-brightscript-language/pull/908))
+### Added
  - RSG 2.0 SDK support ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - Debug TypeScript apps directly: breakpoints, stepping, and variables in your `.ts`/`.tsx` sources ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - Solid Devtools panel: live component tree, props/signals/memos inspector, search, and a perf overlay. Pops out into its own editor tab ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - TypeScript debugging against Roku Cloud Emulator devices ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - `waitForJsDebugger` launch option holds app startup until the JS debugger attaches, so startup breakpoints hit ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - `tsPath` launch option overrides the manifest `ts_path` bundle the JS debugger attaches to, including per component library ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - Devices and passwords from `.roku/roku-dev-config.json`, lease files, and `RK_DEVICE_*`/`ROKU_DEV_*` env vars are picked up automatically ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - `roku-config.ts` projects are discovered in the Roku Projects view, with a generated build task and launch config ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - `brightscript.debug.jsPathTrace` setting for diagnosing TypeScript breakpoint and source path issues ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+### Changed
  - Display device type icons on the cloud emulator video tab ([#904](https://github.com/rokucommunity/vscode-brightscript-language/pull/904))
  - Made the refresh device command less prominent ([#902](https://github.com/rokucommunity/vscode-brightscript-language/pull/902))
  - upgrade to [brighterscript@0.73.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0735---2026-09-15). Notable changes since 0.73.3:
      - Fix crash stripping sourceMappingURL comment from non-transpiled files ([#1821](https://github.com/rokucommunity/brighterscript/pull/1821))
      - Tolerate older BrsTranspileState in continue back-transpile ([#1812](https://github.com/rokucommunity/brighterscript/pull/1812))
-     - chore: Remove duplicate thenby devDependency ([#1808](https://github.com/rokucommunity/brighterscript/pull/1808))
      - Security enhancements ([#1804](https://github.com/rokucommunity/brighterscript/pull/1804), [#1805](https://github.com/rokucommunity/brighterscript/pull/1805))
      - Locate the super() call when injecting field initializers ([#1803](https://github.com/rokucommunity/brighterscript/pull/1803))
 ### Fixed
- - fixed: Missing Debug Roku Project option in the editor tab context menu ([#903](https://github.com/rokucommunity/vscode-brightscript-language/pull/903))
+ - Missing Debug Roku Project option in the editor tab context menu ([#903](https://github.com/rokucommunity/vscode-brightscript-language/pull/903))
 ### Removed
- - Remove the Roku Cloud Emulator experimental gate ([#907](https://github.com/rokucommunity/vscode-brightscript-language/pull/907))
+ - Roku Cloud Emulator no longer hidden behind an experimental user setting ([#907](https://github.com/rokucommunity/vscode-brightscript-language/pull/907))
 
 
 
