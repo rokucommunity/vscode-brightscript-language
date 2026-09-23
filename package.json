@@ -59,7 +59,7 @@
         "@rokucommunity/logger": "^0.4.2",
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
-        "brighterscript": "^0.73.3",
+        "brighterscript": "^0.73.5",
         "brighterscript-formatter": "^1.8.3",
         "clone-deep": "^4.0.1",
         "dayjs": "^1.11.12",
