@@ -15,8 +15,6 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'create-vsix')
     steps:
       - uses: actions/checkout@master
-        with:
-          persist-credentials: false
       - uses: actions/setup-node@master
         with:
           node-version: "20.19.4"
@@ -78,20 +76,9 @@ jobs:
         run: |
           echo "::error::Could not build a .vsix because fork PRs can't access the required secrets. Ask a maintainer to dispatch it manually for PR #${{ github.event.pull_request.number }}: https://github.com/${{ github.repository }}/actions/workflows/create-vsix.yml"
           exit 1
-      - name: Load local npm cache for node ${{ env.NODE_VERSION }}
-        uses: MasterworksIO/action-local-cache@2
-        with:
-          path: .npm
-          key: ${{ env.NODE_VERSION }}
-          strategy: move
-      - run: npm ci --cache .npm
-      - name: Test token access
-        run: git ls-remote --heads https://$GH_TOKEN@github.com/rokucommunity/roku-debug-rsg
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      - run: npm ci
       - run: npx ts-node scripts/create-vsix.ts "${{ steps.info.outputs.branch }}" --fork-owner "${{ steps.info.outputs.forkOwner }}"
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
       # upload the production .vsix (archive: false only supports a single file, so
       # upload each .vsix as its own artifact: upload, delete, repackage, upload again)
