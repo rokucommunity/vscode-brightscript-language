@@ -150,7 +150,7 @@ describe('RokuConfigProjectProvider', () => {
         });
 
         it('stops walking at the workspace root', async () => {
-            const workspaceRoot = '/workspace';
+            const workspaceRoot = path.join(path.sep, 'workspace');
             const fileUri = makeUri(path.join(workspaceRoot, 'src', 'main.brs'));
 
             (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns({

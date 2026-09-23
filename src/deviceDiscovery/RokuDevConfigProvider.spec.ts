@@ -184,7 +184,7 @@ describe('RokuDevConfigProvider', () => {
         });
 
         it('reads the config from $ROKU_DEV_CONFIG_PATH instead of the home directory when set', () => {
-            const overridePath = path.join(path.sep, 'custom', 'my-config.json');
+            const overridePath = path.resolve(path.sep, 'custom', 'my-config.json');
             process.env.ROKU_DEV_CONFIG_PATH = overridePath;
             try {
                 stubFiles({

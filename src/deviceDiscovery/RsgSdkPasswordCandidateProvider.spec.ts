@@ -149,7 +149,7 @@ describe('RsgSdkPasswordCandidateProvider', () => {
             });
 
             it('scans $RK_DEVICE_LEASE_DIR instead of workspace .roku/leases dirs when set', () => {
-                const customLeaseDir = path.join(path.sep, 'custom', 'leases');
+                const customLeaseDir = path.resolve(path.sep, 'custom', 'leases');
                 process.env.RK_DEVICE_LEASE_DIR = customLeaseDir;
                 process.env.LAB_PW_TEST = 'lab-pw';
                 stubLeaseFiles({
