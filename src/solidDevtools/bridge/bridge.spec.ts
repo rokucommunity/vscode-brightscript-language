@@ -557,6 +557,98 @@ describe('solidDevtools bridge', () => {
         });
     });
 
+    describe('encodeValue: circular vs shared references', () => {
+        /** Inspect a component with a single `target` prop and return its encoded value. */
+        function inspectTarget(value: any): any {
+            sdt().__connect(api);
+            const comp = makeComponent('Holder', { target: value });
+            const root = makeRoot();
+            link(root, comp);
+            hooks.afterCreateOwner(root);
+            const roots = callAndRead(sdt().lazyRoots());
+            const data = callAndRead(sdt().lazyInspect(roots.nodes[0].id));
+            return data.props.find((p: any) => p.key === 'target').value;
+        }
+
+        it('emits a repeated object (no cycle) as a ref, not circular', () => {
+            const shared = { x: 1 };
+            const target = inspectTarget({ item: shared, selected: shared });
+            const item = target.entries.find((e: any) => e.k === 'item').value;
+            const selected = target.entries.find((e: any) => e.k === 'selected').value;
+            assert.equal(item.t, 'object');
+            assert.isArray(item.entries);
+            assert.equal(selected.t, 'object');
+            assert.isUndefined(selected.entries, 'second occurrence must not be re-walked');
+            assert.isNumber(selected.ref, 'second occurrence must still be drillable');
+        });
+
+        it('emits a repeated array (no cycle) as a ref, not circular', () => {
+            const shared = [1, 2, 3];
+            const target = inspectTarget({ item: shared, selected: shared });
+            const item = target.entries.find((e: any) => e.k === 'item').value;
+            const selected = target.entries.find((e: any) => e.k === 'selected').value;
+            assert.equal(item.t, 'array');
+            assert.isArray(item.items);
+            assert.equal(selected.t, 'array');
+            assert.isUndefined(selected.items, 'second occurrence must not be re-walked');
+            assert.isNumber(selected.ref, 'second occurrence must still be drillable');
+        });
+
+        it('reports a direct self-reference as circular', () => {
+            const o: any = {};
+            o.self = o;
+            const target = inspectTarget(o);
+            const self = target.entries.find((e: any) => e.k === 'self').value;
+            assert.equal(self.t, 'circular');
+        });
+
+        it('reports an array that contains itself as circular', () => {
+            const a: any[] = [1];
+            a.push(a);
+            const target = inspectTarget(a);
+            assert.equal(target.t, 'array');
+            assert.equal(target.items[1].t, 'circular');
+        });
+
+        it('reports a two-level ancestor cycle as circular at the innermost node', () => {
+            const a: any = {};
+            a.b = { c: a };
+            const target = inspectTarget(a);
+            const b = target.entries.find((e: any) => e.k === 'b').value;
+            const c = b.entries.find((e: any) => e.k === 'c').value;
+            assert.equal(c.t, 'circular');
+        });
+
+        it('does not flag a sibling-then-descend shared reference as circular', () => {
+            const shared = { foo: 1 };
+            const target = inspectTarget({ x: shared, y: { z: shared } });
+            const x = target.entries.find((e: any) => e.k === 'x').value;
+            const y = target.entries.find((e: any) => e.k === 'y').value;
+            const z = y.entries.find((e: any) => e.k === 'z').value;
+            assert.equal(x.t, 'object');
+            assert.isArray(x.entries, 'first occurrence (x) is walked');
+            assert.equal(z.t, 'object', 'y.z is a collapsed shape, not circular');
+            assert.isUndefined(z.entries);
+            assert.isNumber(z.ref);
+        });
+
+        it('reports circular for a self-referencing page root expanded via lazyValue', () => {
+            const o: any = {};
+            o.self = o;
+            // nest deep enough that `o` itself collapses to a ref at inspect time
+            // (depth 2 shows target → a → b, so `b`'s value collapses)
+            const target = inspectTarget({ a: { b: o } });
+            const a = target.entries.find((e: any) => e.k === 'a').value;
+            const b = a.entries.find((e: any) => e.k === 'b').value;
+            assert.equal(b.t, 'object');
+            assert.isUndefined(b.entries, 'o is collapsed with a ref, not yet walked');
+            assert.isNumber(b.ref);
+            const expanded = callAndRead(sdt().lazyValue(b.ref, 0));
+            const self = expanded.node.entries.find((e: any) => e.k === 'self').value;
+            assert.equal(self.t, 'circular', 'root must be its own ancestor for this expansion');
+        });
+    });
+
     describe('globals + orphans', () => {
         it('auto-captures unowned signals and inspects them', () => {
             sdt().__connect(api);

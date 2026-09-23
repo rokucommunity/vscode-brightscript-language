@@ -122,11 +122,15 @@ export class SolidDevtoolsTransport {
         // parent, which has no CDP target); probe each until one accepts `evaluate`.
         for (const candidate of debugSessionManager.getEvaluableJsSessions()) {
             const r = await this.evaluate(candidate, 'typeof globalThis.__SDT');
-            if (r.ok) {
-                this.log(`using debug session "${candidate.name}" (typeof __SDT = ${this.unquote(r.result)})`);
+            // `typeof globalThis.__SDT` from a real JS context only ever yields these two;
+            // anything else (e.g. roku-debug's console text) means the wrong session type.
+            const typeofResult = this.unquote(r.result);
+            if (r.ok && (typeofResult === 'object' || typeofResult === 'undefined')) {
+                this.log(`using debug session "${candidate.name}" (typeof __SDT = ${typeofResult})`);
                 this.cachedSession = candidate;
                 return candidate;
             }
+            this.log(`skipping debug session "${candidate.name}" (${r.ok ? `typeof __SDT = ${typeofResult}` : `evaluate failed: ${r.error}`})`);
         }
         return undefined;
     }

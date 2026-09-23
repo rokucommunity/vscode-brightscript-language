@@ -521,6 +521,7 @@ function inspectOrphans(): number {
     resetValueRefs();
     const out: InspectResult = { kind: 'inspect', id: '@orphans', name: 'orphan signals', type: 'GLOBALS' };
     const seen = new Set<unknown>();
+    const path = new Set<unknown>();
     const budget = { n: NODE_BUDGET };
     const signals: SolidInspectEntry[] = [];
     // throwaway root: encodeValue's walks can hit app getters that create computations
@@ -531,7 +532,7 @@ function inspectOrphans(): number {
                 out.truncated = true;
                 break;
             }
-            signals.push({ name: safeName(s) || '', value: encodeValue(s.value, 2, budget, seen) });
+            signals.push({ name: safeName(s) || '', value: encodeValue(s.value, 2, budget, seen, path) });
         }
     });
     if (signals.length) {
@@ -550,13 +551,14 @@ function inspectGlobals(ns: string): number {
     const rec = globalGroups.get(ns);
     if (rec) {
         const seen = new Set<unknown>();
+        const path = new Set<unknown>();
         const budget = { n: NODE_BUDGET };
         const signals: SolidInspectEntry[] = [];
         try {
             // throwaway root: reading registered accessors can create computations
             runInThrowawayRoot(() => {
                 for (const k of Object.keys(rec)) {
-                    signals.push({ name: k, value: encodeValue(readGlobal(rec[k]), 2, budget, seen) });
+                    signals.push({ name: k, value: encodeValue(readGlobal(rec[k]), 2, budget, seen, path) });
                 }
             });
         } catch (e) {
@@ -591,6 +593,7 @@ function lazyInspect(idStr: string): number {
     resetValueRefs();
     const out: InspectResult = { kind: 'inspect', id: idStr, name: safeName(owner) || '', type: safeType(owner) };
     const seen = new Set<unknown>();
+    const path = new Set<unknown>();
     // Shared node budget across the whole inspect — bounds the total payload so it
     // always drains well within the client timeout no matter how many signals/memos
     // a component has. When exhausted, remaining values collapse to a ref'd shape tag.
@@ -601,7 +604,7 @@ function lazyInspect(idStr: string): number {
         // without an owner Solid DEV warns "computations created outside a
         // `createRoot` or `render` will never be disposed" and leaks them.
         runInThrowawayRoot(() => {
-            collectInspect(owner, out, budget, seen);
+            collectInspect(owner, out, budget, seen, path);
         });
         if (budget.n <= 0) {
             out.truncated = true; // some values were collapsed to fit the payload budget
@@ -614,7 +617,7 @@ function lazyInspect(idStr: string): number {
 
 /** Read one owner's props/signals/memos/stores/value into `out`. Must run inside a
  *  throwaway root (see lazyInspect). */
-function collectInspect(owner: SolidNode, out: SolidInspectData, budget: { n: number }, seen: Set<unknown>): void {
+function collectInspect(owner: SolidNode, out: SolidInspectData, budget: { n: number }, seen: Set<unknown>, path: Set<unknown>): void {
     // Props WITH values. We skip `children`/`ref`: resolving children can do heavy
     // synchronous render work.
     const props = owner.props;
@@ -640,7 +643,7 @@ function collectInspect(owner: SolidNode, out: SolidInspectData, budget: { n: nu
                 } catch {
                     val = undefined;
                 }
-                list.push({ key: k, value: encodeValue(val, 2, budget, seen) });
+                list.push({ key: k, value: encodeValue(val, 2, budget, seen, path) });
             }
             if (list.length) {
                 out.props = list;
@@ -663,7 +666,7 @@ function collectInspect(owner: SolidNode, out: SolidInspectData, budget: { n: nu
             } catch {
                 // fall back to SIGNAL
             }
-            const entry: SolidInspectEntry = { name: safeName(n) || '', value: encodeValue(n.value, 2, budget, seen) };
+            const entry: SolidInspectEntry = { name: safeName(n) || '', value: encodeValue(n.value, 2, budget, seen, path) };
             if (nt === 'STORE') {
                 stores.push(entry);
             } else {
@@ -684,7 +687,7 @@ function collectInspect(owner: SolidNode, out: SolidInspectData, budget: { n: nu
         for (let i = 0; i < owned.length && i < 400 && memos.length < 100; i++) {
             const c = owned[i];
             if (c && typeof c.fn === 'function' && ('comparator' in c)) {
-                memos.push({ name: safeName(c) || '', value: encodeValue(c.value, 2, budget, seen) });
+                memos.push({ name: safeName(c) || '', value: encodeValue(c.value, 2, budget, seen, path) });
             }
         }
         if (memos.length) {
@@ -693,7 +696,7 @@ function collectInspect(owner: SolidNode, out: SolidInspectData, budget: { n: nu
     }
     // The component's rendered output — depth 1, but it's a SceneGraph node
     // (non-plain) so encodeValue won't walk into it; shows its constructor + a ref.
-    const ev = encodeValue(owner.value, 1, budget, seen);
+    const ev = encodeValue(owner.value, 1, budget, seen, path);
     if (ev && ev.t !== 'undefined' && ev.t !== 'null') {
         out.value = ev;
     }
