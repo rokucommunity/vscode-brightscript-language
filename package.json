@@ -30,6 +30,7 @@
         "vscode:prepublish": "npm run build",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
         "build-bridge": "esbuild src/solidDevtools/bridge/index.ts --bundle --format=iife --target=es2016 --outfile=dist/solidDevtools/bridge.js",
+        "watch-bridge": "npm run build-bridge -- --watch=forever",
         "build": "npm run copy-schema && npm run build-bridge && tsc -p ./ && npm run build-webviews",
         "build-webviews": "cd ./webviews && npm run build && cd ..",
         "lint": "eslint \"./src/**/*.ts\"",
