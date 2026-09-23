@@ -17,7 +17,7 @@ afterEach(() => {
     delete vscode.workspace.workspaceFile;
     delete vscode.workspace._configuration;
     vscode.workspace.workspaceFolders = [] as any;
-    vscode.workspace.findFiles = () => [] as any;
+    vscode.workspace.findFiles = () => Promise.resolve([]) as any;
     vscode.context.globalState['_data'] = {};
     vscode.context.workspaceState['_data'] = {};
     vscode.context.secrets['_data'] = {};
@@ -64,11 +64,13 @@ export let vscode = {
     },
     debug: {
         registerDebugConfigurationProvider: () => { },
+        registerDebugAdapterTrackerFactory: () => { },
         registerDebugAdapterDescriptorFactory: () => { },
         onDidStartDebugSession: () => { },
         onDidTerminateDebugSession: () => { },
         onDidReceiveDebugSessionCustomEvent: () => { },
-        stopDebugging: () => { }
+        stopDebugging: () => { },
+        startDebugging: () => Promise.resolve(true)
     },
     languages: {
         registerCodeLensProvider: () => { },
@@ -220,7 +222,7 @@ export let vscode = {
             return typeof pathOrUri === 'string' ? pathOrUri : pathOrUri.fsPath;
         },
         findFiles: (include, exclude) => {
-            return [] as any;
+            return Promise.resolve([]) as any;
         },
         fs: {
             writeFile: (uri, buffer) => { },

@@ -21,6 +21,7 @@ export enum ViewProviderCommand {
     runRokuAutomationConfig = 'runRokuAutomationConfig',
     sendMessageToWebviews = 'sendMessageToWebviews',
     sendReplRequest = 'sendReplRequest',
+    sendSolidDevtoolsRequest = 'sendSolidDevtoolsRequest',
     sendRceStreamAnswer = 'sendRceStreamAnswer',
     sendRceStreamIceCandidate = 'sendRceStreamIceCandidate',
     setRceActiveAccount = 'setRceActiveAccount',

@@ -4,6 +4,7 @@ let Module = require('module');
 import { ProfilingCommands } from './ProfilingCommands';
 import { vscode } from '../mockVscode.spec';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
+import { debugSessionManager } from '../managers/DebugSessionManager';
 
 const sinon = createSandbox();
 
@@ -25,6 +26,7 @@ describe('ProfilingCommands', () => {
     let onDidStartDebugSessionCallback: (...args: any[]) => any;
     let registeredCommands: Map<string, (...args: any[]) => any>;
     let contextManagerSetStub: sinon.SinonStub;
+    let getActiveBrightScriptSessionStub: sinon.SinonStub;
 
     beforeEach(() => {
         commands = new ProfilingCommands();
@@ -62,6 +64,10 @@ describe('ProfilingCommands', () => {
 
         // Stub the vscodeContextManager.set method
         contextManagerSetStub = sinon.stub(vscodeContextManager, 'set').resolves();
+
+        // The commands now resolve their target via the DebugSessionManager (so they hit the
+        // BRS session even when the JS session is active in a dual session), so drive that.
+        getActiveBrightScriptSessionStub = sinon.stub(debugSessionManager, 'getActiveBrightScriptSession').returns(undefined);
     });
 
     afterEach(() => {
@@ -250,7 +256,7 @@ describe('ProfilingCommands', () => {
                 type: 'brightscript',
                 customRequest: sinon.stub().resolves()
             };
-            (vscode.debug as any).activeDebugSession = mockSession;
+            getActiveBrightScriptSessionStub.returns(mockSession);
 
             expect(mockSession.customRequest.calledWith('startPerfettoTracing')).to.be.false;
         });
@@ -287,13 +293,13 @@ describe('ProfilingCommands', () => {
     describe('startTracing command', () => {
         it('shows error when no active debug session', async () => {
             commands.register(mockContext);
-            (vscode.debug as any).activeDebugSession = undefined;
+            getActiveBrightScriptSessionStub.returns(undefined);
 
             const startTracingCommand = registeredCommands.get('extension.brightscript.startTracing');
             await startTracingCommand();
 
             expect((vscode.window.showErrorMessage as sinon.SinonStub).calledWith(
-                `Cannot start tracing: there's no active debug session`
+                `Cannot start tracing: there's no active BrightScript debug session`
             )).to.be.true;
         });
 
@@ -303,7 +309,7 @@ describe('ProfilingCommands', () => {
             const mockSession = {
                 customRequest: sinon.stub().resolves({ message: 'Tracing started at /path/to/trace.perfetto-trace' })
             };
-            (vscode.debug as any).activeDebugSession = mockSession;
+            getActiveBrightScriptSessionStub.returns(mockSession);
 
             const startTracingCommand = registeredCommands.get('extension.brightscript.startTracing');
             await startTracingCommand();
@@ -318,7 +324,7 @@ describe('ProfilingCommands', () => {
             const mockSession = {
                 customRequest: sinon.stub().rejects(new Error('Failed to connect'))
             };
-            (vscode.debug as any).activeDebugSession = mockSession;
+            getActiveBrightScriptSessionStub.returns(mockSession);
 
             const startTracingCommand = registeredCommands.get('extension.brightscript.startTracing');
             // Should not throw
@@ -331,7 +337,7 @@ describe('ProfilingCommands', () => {
     describe('stopTracing command', () => {
         it('returns silently when no active debug session', async () => {
             commands.register(mockContext);
-            (vscode.debug as any).activeDebugSession = undefined;
+            getActiveBrightScriptSessionStub.returns(undefined);
 
             const stopTracingCommand = registeredCommands.get('extension.brightscript.stopTracing');
             await stopTracingCommand();
@@ -345,7 +351,7 @@ describe('ProfilingCommands', () => {
             const mockSession = {
                 customRequest: sinon.stub().resolves({ message: 'Tracing stopped. Trace saved to /path/to/trace.perfetto-trace' })
             };
-            (vscode.debug as any).activeDebugSession = mockSession;
+            getActiveBrightScriptSessionStub.returns(mockSession);
 
             const stopTracingCommand = registeredCommands.get('extension.brightscript.stopTracing');
             await stopTracingCommand();
@@ -359,7 +365,7 @@ describe('ProfilingCommands', () => {
             const mockSession = {
                 customRequest: sinon.stub().rejects(new Error('No active tracing session'))
             };
-            (vscode.debug as any).activeDebugSession = mockSession;
+            getActiveBrightScriptSessionStub.returns(mockSession);
 
             const stopTracingCommand = registeredCommands.get('extension.brightscript.stopTracing');
             await stopTracingCommand();
@@ -371,13 +377,13 @@ describe('ProfilingCommands', () => {
     describe('captureHeapSnapshot command', () => {
         it('shows error when no active debug session', async () => {
             commands.register(mockContext);
-            (vscode.debug as any).activeDebugSession = undefined;
+            getActiveBrightScriptSessionStub.returns(undefined);
 
             const captureHeapSnapshotCommand = registeredCommands.get('extension.brightscript.captureHeapSnapshot');
             await captureHeapSnapshotCommand();
 
             expect((vscode.window.showErrorMessage as sinon.SinonStub).calledWith(
-                `Cannot capture heap snapshot: there's no active debug session`
+                `Cannot capture heap snapshot: there's no active BrightScript debug session`
             )).to.be.true;
         });
 
@@ -387,7 +393,7 @@ describe('ProfilingCommands', () => {
             const mockSession = {
                 customRequest: sinon.stub().resolves({ message: 'Snapshot captured' })
             };
-            (vscode.debug as any).activeDebugSession = mockSession;
+            getActiveBrightScriptSessionStub.returns(mockSession);
 
             const captureHeapSnapshotCommand = registeredCommands.get('extension.brightscript.captureHeapSnapshot');
             await captureHeapSnapshotCommand();
@@ -401,7 +407,7 @@ describe('ProfilingCommands', () => {
             const mockSession = {
                 customRequest: sinon.stub().rejects(new Error('Tracing not active'))
             };
-            (vscode.debug as any).activeDebugSession = mockSession;
+            getActiveBrightScriptSessionStub.returns(mockSession);
 
             const captureHeapSnapshotCommand = registeredCommands.get('extension.brightscript.captureHeapSnapshot');
             await captureHeapSnapshotCommand();
@@ -415,7 +421,7 @@ describe('ProfilingCommands', () => {
             const mockSession = {
                 customRequest: sinon.stub().resolves({ message: 'Snapshot captured' })
             };
-            (vscode.debug as any).activeDebugSession = mockSession;
+            getActiveBrightScriptSessionStub.returns(mockSession);
 
             const captureSnapshotCommand = registeredCommands.get('extension.brightscript.captureHeapSnapshot');
 
@@ -445,7 +451,7 @@ describe('ProfilingCommands', () => {
                 type: 'brightscript',
                 customRequest: sinon.stub().resolves()
             };
-            (vscode.debug as any).activeDebugSession = mockSession;
+            getActiveBrightScriptSessionStub.returns(mockSession);
 
             const startTracingCommand = registeredCommands.get('extension.brightscript.startTracing');
             const stopTracingCommand = registeredCommands.get('extension.brightscript.stopTracing');
@@ -469,7 +475,7 @@ describe('ProfilingCommands', () => {
                 type: 'brightscript',
                 customRequest: sinon.stub().resolves()
             };
-            (vscode.debug as any).activeDebugSession = mockSession;
+            getActiveBrightScriptSessionStub.returns(mockSession);
 
             const captureSnapshotCommand = registeredCommands.get('extension.brightscript.captureHeapSnapshot');
 
@@ -492,7 +498,7 @@ describe('ProfilingCommands', () => {
                 type: 'brightscript',
                 customRequest: sinon.stub().resolves()
             };
-            (vscode.debug as any).activeDebugSession = mockSession;
+            getActiveBrightScriptSessionStub.returns(mockSession);
 
             const startTracingCommand = registeredCommands.get('extension.brightscript.startTracing');
 

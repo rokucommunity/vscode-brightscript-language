@@ -124,6 +124,28 @@ class Util {
     }
 
     /**
+     * Read the `ts_path` manifest entry from a built app's `rootDir`, which identifies a
+     * TypeScript/JS (Solid) app and points at the compiled JS bundle. Returns undefined when the
+     * manifest is missing (e.g. the app hasn't been built yet) or has no `ts_path` (a
+     * BrightScript-only app). Kept synchronous so non-async callers (like `onDidStartDebugSession`)
+     * can use it directly.
+     */
+    public getTsPath(rootDir: string): string | undefined {
+        if (!rootDir) {
+            return undefined;
+        }
+        //strip any trailing slash(es) so we don't produce `rootDir//manifest`
+        const manifestPath = `${rootDir.replace(/[\\/]+$/, '')}/manifest`;
+        if (!fsExtra.existsSync(manifestPath)) {
+            return undefined;
+        }
+        const contents = fsExtra.readFileSync(manifestPath).toString();
+        // https://regex101.com/r/qgLxGh/1
+        const match = /ts_path[ \t]*=[ \t]*(.*)?(?=[\r?\n]|$)/ig.exec(contents);
+        return match?.[1]?.trim() || undefined;
+    }
+
+    /**
      * Checks to see if the port is already in use
      * @param port target port to check
      */

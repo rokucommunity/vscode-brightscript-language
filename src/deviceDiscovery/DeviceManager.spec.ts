@@ -5,7 +5,11 @@ import { vscode } from '../mockVscode.spec';
 import type { RokuDevice } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
+import { RokuDevConfigProvider } from './RokuDevConfigProvider';
 import { util } from '../util';
+import * as fsExtra from 'fs-extra';
+import * as os from 'os';
+import * as path from 'path';
 import { EventEmitter } from 'eventemitter3';
 
 describe('DeviceManager', () => {
@@ -2880,6 +2884,140 @@ describe('DeviceManager', () => {
                 // Name should be cleared
                 expect(manager.getAllDevices().length).to.equal(1);
                 expect(manager.getAllDevices()[0].configuredName).to.equal(undefined);
+            });
+        });
+
+        describe('addConfiguredDeviceProvider', () => {
+            function createFakeProvider(devices: Array<{ host: string; name?: string; password?: string }>) {
+                const emitter = new vscode.EventEmitter();
+                return {
+                    emitter: emitter,
+                    devices: devices,
+                    provider: {
+                        onDidChange: emitter.event,
+                        getConfiguredDevices: () => devices.slice(),
+                        refresh: sinon.stub().resolves()
+                    }
+                };
+            }
+
+            it('devices from a registered provider show up in getAllDevices', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                const fake = createFakeProvider([
+                    { host: '192.168.1.70', name: 'Provider Device', password: 'provider-pass' }
+                ]);
+
+                manager.addConfiguredDeviceProvider(fake.provider as any);
+                await manager['loadConfiguredDevices']();
+
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(1);
+                expect(devices[0].ip).to.equal('192.168.1.70');
+                expect(devices[0].isConfigured).to.be.true;
+                expect(devices[0].configuredName).to.equal('Provider Device');
+                expect(devices[0].configuredPassword).to.equal('provider-pass');
+                expect(devices[0].configuredIn).to.deep.equal(['rokuDevConfig']);
+            });
+
+            it('user settings override provider devices for the same host', async () => {
+                (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    get: () => undefined,
+                    inspect: () => ({
+                        workspaceValue: [],
+                        globalValue: [{ host: '192.168.1.71', name: 'From User', password: 'user-pass' }]
+                    }),
+                    deviceDiscovery: {
+                        enabled: false
+                    }
+                } as any);
+
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                const fake = createFakeProvider([
+                    { host: '192.168.1.71', name: 'From Provider', password: 'provider-pass' }
+                ]);
+
+                manager.addConfiguredDeviceProvider(fake.provider as any);
+                await manager['loadConfiguredDevices']();
+
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(1);
+                expect(devices[0].configuredName).to.equal('From User');
+                expect(devices[0].configuredPassword).to.equal('user-pass');
+                expect(devices[0].configuredIn).to.deep.equal(['rokuDevConfig', 'user']);
+            });
+
+            it('reloads devices when the provider fires onDidChange', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                const fake = createFakeProvider([]);
+
+                manager.addConfiguredDeviceProvider(fake.provider as any);
+                await manager['loadConfiguredDevices']();
+                expect(manager.getAllDevices().length).to.equal(0);
+
+                // Provider discovers a new device and notifies
+                fake.devices.push({ host: '192.168.1.72', name: 'Late Arrival' });
+                const loadSpy = sinon.spy(manager as any, 'loadConfiguredDevices');
+                fake.emitter.fire();
+
+                expect(loadSpy.called).to.be.true;
+                await Promise.all(loadSpy.returnValues);
+
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(1);
+                expect(devices[0].configuredName).to.equal('Late Arrival');
+            });
+
+            it('a broken provider does not prevent other providers from loading', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                const broken = createFakeProvider([]);
+                broken.provider.getConfiguredDevices = () => {
+                    throw new Error('boom');
+                };
+                const healthy = createFakeProvider([{ host: '192.168.1.73', name: 'Healthy' }]);
+
+                manager.addConfiguredDeviceProvider(broken.provider as any);
+                manager.addConfiguredDeviceProvider(healthy.provider as any);
+                await manager['loadConfiguredDevices']();
+
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(1);
+                expect(devices[0].configuredName).to.equal('Healthy');
+            });
+
+            it('end-to-end: a device from ~/roku-dev-config.json shows up in getAllDevices', async () => {
+                const fakeHome = path.join(path.sep, 'home', 'test-user');
+                const homeConfigPath = path.join(fakeHome, 'roku-dev-config.json');
+                const files = {
+                    [homeConfigPath]: { devices: [{ ip: '192.168.1.74', name: 'Home Config Device', password: 'home-pass' }] }
+                };
+                sinon.stub(os, 'homedir').returns(fakeHome);
+                sinon.stub(fsExtra, 'existsSync').callsFake((p: any) => p in files);
+                sinon.stub(fsExtra, 'pathExistsSync').callsFake((p: any) => p in files);
+                sinon.stub(fsExtra, 'readJsonSync').callsFake((p: any) => files[p]);
+                sinon.stub(vscode.workspace, 'createFileSystemWatcher').returns({
+                    onDidCreate: () => ({ dispose: () => { } }),
+                    onDidChange: () => ({ dispose: () => { } }),
+                    onDidDelete: () => ({ dispose: () => { } }),
+                    dispose: () => { }
+                } as any);
+                sinon.stub(vscode.workspace, 'onDidChangeWorkspaceFolders').returns({ dispose: () => { } } as any);
+
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                const provider = new RokuDevConfigProvider();
+                try {
+                    manager.addConfiguredDeviceProvider(provider);
+                    await manager['loadConfiguredDevices']();
+
+                    const devices = manager.getAllDevices();
+                    expect(devices.length).to.equal(1);
+                    expect(devices[0].ip).to.equal('192.168.1.74');
+                    expect(devices[0].isConfigured).to.be.true;
+                    expect(devices[0].configuredName).to.equal('Home Config Device');
+                    expect(devices[0].configuredPassword).to.equal('home-pass');
+                    expect(devices[0].configuredIn).to.deep.equal(['rokuDevConfig']);
+                } finally {
+                    provider.dispose();
+                }
             });
         });
 

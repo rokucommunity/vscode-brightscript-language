@@ -15,6 +15,7 @@ import { RokuRegistryViewProvider } from '../viewProviders/RokuRegistryViewProvi
 import { SceneGraphInspectorViewProvider } from '../viewProviders/SceneGraphInspectorViewProvider';
 import { RokuAutomationViewViewProvider } from '../viewProviders/RokuAutomationViewViewProvider';
 import { RokuReplViewProvider } from '../viewProviders/RokuReplViewProvider';
+import { SolidDevtoolsViewProvider } from '../viewProviders/SolidDevtoolsViewProvider';
 import { RceManagementViewProvider } from '../viewProviders/RceManagementViewProvider';
 
 export class WebviewViewProviderManager {
@@ -68,6 +69,9 @@ export class WebviewViewProviderManager {
     }, {
         constructor: RokuReplViewProvider,
         provider: undefined as RokuReplViewProvider
+    }, {
+        constructor: SolidDevtoolsViewProvider,
+        provider: undefined as SolidDevtoolsViewProvider
     }, {
         constructor: RceManagementViewProvider,
         provider: undefined as RceManagementViewProvider

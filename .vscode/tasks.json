@@ -63,8 +63,39 @@
                 }
             ],
             "dependsOn": [
-                "watch-all"
+                "watch-all",
+                "watch-bridge"
             ]
+        },
+        {
+            "label": "watch-bridge",
+            "type": "shell",
+            "command": "npm",
+            "args": [
+                "run",
+                "watch-bridge",
+                "--loglevel",
+                "silent"
+            ],
+            "presentation": {
+                "group": "watch",
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "\\[ERROR\\]"
+                },
+                "severity": "error",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^\\[watch\\] build started",
+                    "endsPattern": "^\\[watch\\] build finished"
+                }
+            }
         },
         {
             "label": "test",

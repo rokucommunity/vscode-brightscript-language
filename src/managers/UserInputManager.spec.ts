@@ -424,12 +424,13 @@ describe('UserInputManager', () => {
     });
 
     describe('collectDevicePasswordCandidates', () => {
-        //the new signature takes (serialNumber, extraCandidates); the launch-config equivalent is
+        //the new signature takes (host, serialNumber, extraCandidates); the launch-config equivalent is
         //extraCandidates = [result.password, config.password]
         const callCollect = (
             serialNumber: string | undefined,
-            extraCandidates: Array<string | undefined>
-        ): Promise<string[]> => (userInputManager as any).collectDevicePasswordCandidates(serialNumber, extraCandidates);
+            extraCandidates: Array<string | undefined>,
+            host?: string
+        ): Promise<string[]> => (userInputManager as any).collectDevicePasswordCandidates(host, serialNumber, extraCandidates);
 
         beforeEach(async () => {
             await credentialStore.clearAll();
@@ -481,6 +482,34 @@ describe('UserInputManager', () => {
             // eslint-disable-next-line no-template-curly-in-string
             const candidates = await callCollect(undefined, ['  ${activeHostPassword}  ', '  ${promptForPassword}  ']);
             expect(candidates).to.deep.equal([]);
+        });
+
+        it('places registered provider candidates after the cred store and before the default password', async () => {
+            sinon.stub(deviceManager, 'getDefaultPassword').returns('default-pw');
+            await credentialStore.setPassword('SN-001', 'cred-store-pw');
+            userInputManager.addPasswordCandidateProvider({
+                getPasswordCandidates: () => ['provider-pw-1', 'provider-pw-2']
+            });
+            const candidates = await callCollect('SN-001', ['extra-pw'], '1.2.3.4');
+            expect(candidates).to.deep.equal(['cred-store-pw', 'provider-pw-1', 'provider-pw-2', 'default-pw', 'extra-pw']);
+        });
+
+        it('passes the host and serial number through to providers and filters their empty/placeholder values', async () => {
+            const getPasswordCandidates = sinon.spy((_host: string | undefined, _serialNumber: string | undefined) => {
+                // eslint-disable-next-line no-template-curly-in-string
+                return [undefined, '', '${promptForPassword}', 'real-pw'];
+            });
+            userInputManager.addPasswordCandidateProvider({ getPasswordCandidates: getPasswordCandidates });
+            const candidates = await callCollect('SN-001', [], '1.2.3.4');
+            expect(candidates).to.deep.equal(['real-pw']);
+            expect(getPasswordCandidates.calledWith('1.2.3.4', 'SN-001')).to.be.true;
+        });
+
+        it('queries every registered provider in registration order', async () => {
+            userInputManager.addPasswordCandidateProvider({ getPasswordCandidates: () => ['first-provider-pw'] });
+            userInputManager.addPasswordCandidateProvider({ getPasswordCandidates: () => ['second-provider-pw'] });
+            const candidates = await callCollect(undefined, [], '1.2.3.4');
+            expect(candidates).to.deep.equal(['first-provider-pw', 'second-provider-pw']);
         });
     });
 
