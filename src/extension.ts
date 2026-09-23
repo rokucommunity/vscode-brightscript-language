@@ -77,6 +77,8 @@ export class Extension {
     private stagingReadyByParentSessionId = new Map<string, StagingReadyEntry>();
     //how long attachJsDebugger waits for the authoritative stagingDir before attaching with the guess; not readonly, tests shrink it
     private jsAttachStagingGraceMs = 30_000;
+    //shown at most once per activation - a missing bridge bundle means the extension's own build is broken
+    private hasShownMissingDevtoolsBridgeError = false;
 
     public async activate(context: vscode.ExtensionContext) {
         //make this entire extension disposable so that all resources will be cleaned up on extension deactivation
@@ -894,11 +896,17 @@ export class Extension {
             await this.normalizeStagedSourceMaps(project.stagingDir);
 
             if (solidDevtoolsEnabled) {
-                await injectDevtoolsBridge({
+                const bridgeResult = await injectDevtoolsBridge({
                     stagingDir: project.stagingDir,
                     devtoolsBridgePath: path.join(this.extensionContext.extensionPath, 'dist', 'solidDevtools', 'bridge.js'),
                     log: (message) => this.extensionOutputChannel.appendLine(`[SolidDevtools] ${message}`)
                 });
+                if (bridgeResult.bridgeBundleMissing && !this.hasShownMissingDevtoolsBridgeError) {
+                    this.hasShownMissingDevtoolsBridgeError = true;
+                    void vscode.window.showErrorMessage(
+                        'The Solid Devtools on-device bridge is missing from this extension build. The devtools panel will stay empty until this is fixed. See the BrightScript output channel for details.'
+                    );
+                }
             }
         }
     }

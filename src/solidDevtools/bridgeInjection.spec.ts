@@ -47,6 +47,7 @@ describe('bridgeInjection', () => {
         const result = await inject({ devtoolsBridgePath: s`${tempDir}/nope.js` });
         expect(result.injected).to.be.false;
         expect(result.reason).to.include('devtoolsBridgePath not found');
+        expect(result.bridgeBundleMissing).to.be.true;
     });
 
     it('skips when the manifest has no ts_path', async () => {
@@ -55,6 +56,7 @@ describe('bridgeInjection', () => {
         expect(result.injected).to.be.false;
         expect(result.reason).to.include('no ts_path');
         expect(fsExtra.readFileSync(bundlePath, 'utf8')).to.equal(bundleCode);
+        expect(result.bridgeBundleMissing).to.not.be.true;
     });
 
     it('skips a precompiled (bytecode) bundle instead of corrupting it', async () => {

@@ -99,7 +99,10 @@ export async function injectDevtoolsBridge(options: DevtoolsBridgeInjectionOptio
     };
     try {
         if (!options.devtoolsBridgePath || !await fsExtra.pathExists(options.devtoolsBridgePath)) {
-            return skip(`devtoolsBridgePath not found: '${options.devtoolsBridgePath}'`);
+            //not a normal skip: the extension is missing its own bridge bundle
+            const result = skip(`devtoolsBridgePath not found: '${options.devtoolsBridgePath}'`);
+            log('Run `npm run build-bridge` to rebuild it');
+            return { ...result, bridgeBundleMissing: true };
         }
         const tsBundleRelativePath = await getTsBundlePath(options.stagingDir);
         if (!tsBundleRelativePath) {
@@ -182,4 +185,6 @@ export interface DevtoolsBridgeInjectionResult {
     connected: boolean;
     /** why injection (or the connect insert) was skipped */
     reason?: string;
+    /** true when the extension's own bridge bundle is missing — a broken build, not a normal skip */
+    bridgeBundleMissing?: boolean;
 }
