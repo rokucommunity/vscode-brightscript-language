@@ -75,7 +75,6 @@ class InstallLocalRunner {
         },
         {
             name: 'roku-debug',
-            repositoryUrl: 'https://github.com/rokucommunity/roku-debug-rsg',
             dependencies: [
                 'roku-deploy',
                 'brighterscript'
@@ -89,7 +88,6 @@ class InstallLocalRunner {
         },
         {
             name: 'vscode-brightscript-language',
-            repositoryUrl: 'https://github.com/rokucommunity/vscode-brightscript-language-rsg',
             dependencies: [
                 'roku-deploy',
                 'brighterscript',
@@ -209,7 +207,7 @@ class InstallLocalRunner {
 
 interface Project {
     name: string;
-
+    /** Clone url, when the repo isn't `https://github.com/rokucommunity/<name>` */
     repositoryUrl?: string;
     dependencies: string[];
     processed?: boolean;

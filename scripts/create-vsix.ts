@@ -5,16 +5,6 @@ import * as chalk from 'chalk';
 
 const silent = process.argv.includes('--silent');
 const tempDir = s`${__dirname}/../.vsix-building`;
-let githubToken: string | undefined;
-if (process.env.GH_TOKEN) {
-    githubToken = process.env.GH_TOKEN;
-    console.log('Using GH_TOKEN from environment variable: ' + githubToken.replace(/./g, '*'));
-} else if (process.env.GITHUB_TOKEN) {
-    githubToken = process.env.GITHUB_TOKEN;
-    console.log('Using GITHUB_TOKEN from environment variable: ' + githubToken.replace(/./g, '*'));
-} else {
-    console.log('No GitHub token found in environment variables');
-}
 const orgName = 'rokucommunity';
 const baseUrl = `https://github.com/${orgName}`;
 const projects = [{
@@ -29,8 +19,6 @@ const projects = [{
     dependencies: ['roku-deploy', 'logger']
 }, {
     name: 'roku-debug',
-    repositoryUrl: 'https://github.com/rokucommunity/roku-debug-rsg',
-    defaultBranch: 'rsg',
     dependencies: ['roku-deploy', 'brighterscript', 'logger']
 }, {
     name: 'brighterscript-formatter',
@@ -40,8 +28,6 @@ const projects = [{
     dependencies: ['roku-deploy', 'brighterscript']
 }, {
     name: 'vscode-brightscript-language',
-    repositoryUrl: 'https://github.com/rokucommunity/vscode-brightscript-language-rsg',
-    defaultBranch: 'rsg',
     dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy', 'logger', 'roku-test-automation']
 }] as Project[];
 
@@ -78,8 +64,7 @@ async function main() {
         if (!project.packagePath) {
             try {
                 const version = fsExtra.readJsonSync(`${tempDir}/vscode-brightscript-language/node_modules/${project.name}/package.json`).version;
-                const releaseUrl = project.repositoryUrl ?? `${baseUrl}/${project.name}`;
-                project.source = `[v${version}](${releaseUrl}/releases/tag/v${version})`;
+                project.source = `[v${version}](${baseUrl}/${project.name}/releases/tag/v${version})`;
             } catch (e) {
                 log(`Warning: could not determine the installed npm version of ${project.name}`);
             }
@@ -103,20 +88,19 @@ async function processProject(project: Project, branch: string, forkOwner: strin
     }
     project.processed = true;
     log(`${project.name}: processing`);
-    //the extension itself is always built (falling back to its default branch); dependency projects are
-    //only built when they have a matching branch, otherwise the normal npm dependency flows through
+    //the extension itself is always built (falling back to master); dependency projects are only
+    //built when they have a matching branch, otherwise the normal npm dependency flows through
     const isRoot = project.name === 'vscode-brightscript-language';
     let ref = await resolveRef(project, branch, forkOwner);
     if (!ref && isRoot) {
-        const cloneUrl = project.repositoryUrl ?? `${baseUrl}/${project.name}`;
-        const defaultBranch = project.defaultBranch ?? 'master';
-        const defaultSha = getBranchSha(cloneUrl, defaultBranch);
+        const cloneUrl = `${baseUrl}/${project.name}`;
+        const masterSha = getBranchSha(cloneUrl, 'master');
         ref = {
             cloneUrl: cloneUrl,
-            ref: defaultBranch,
-            source: branchLink(project, defaultBranch),
-            sha: defaultSha,
-            commitUrl: `${cloneUrl}/commit/${defaultSha}`
+            ref: 'master',
+            source: branchLink(project, 'master'),
+            sha: masterSha,
+            commitUrl: `${cloneUrl}/commit/${masterSha}`
         };
     }
     if (!ref) {
@@ -165,11 +149,10 @@ async function processProject(project: Project, branch: string, forkOwner: strin
  * Returns undefined when the project has no matching branch (i.e. it shouldn't be built locally)
  */
 async function resolveRef(project: Project, branch: string, forkOwner: string): Promise<Ref | undefined> {
-    const orgCloneUrl = project.repositoryUrl ?? `${baseUrl}/${project.name}`;
-    const repoName = getRepoName(project);
-    if (branch && branch !== (project.defaultBranch ?? 'master')) {
+    const orgCloneUrl = `${baseUrl}/${project.name}`;
+    if (branch && branch !== 'master') {
         //1. the org has this branch and it's attached to an open PR
-        let pr = await findOpenPr(repoName, orgName, branch);
+        let pr = await findOpenPr(project.name, orgName, branch);
         if (pr) {
             return {
                 cloneUrl: orgCloneUrl,
@@ -181,7 +164,7 @@ async function resolveRef(project: Project, branch: string, forkOwner: string): 
         }
         //2. the fork owner has this branch attached to an open PR on this project
         if (forkOwner) {
-            pr = await findOpenPr(repoName, forkOwner, branch);
+            pr = await findOpenPr(project.name, forkOwner, branch);
             if (pr) {
                 return {
                     cloneUrl: pr.head.repo.clone_url,
@@ -225,8 +208,8 @@ async function findOpenPr(repoName: string, owner: string, branch: string) {
         'user-agent': `${orgName}-create-vsix`
     };
     //use the token when available (CI) to avoid the low unauthenticated rate limit
-    if (githubToken) {
-        headers.authorization = `Bearer ${githubToken}`;
+    if (process.env.GITHUB_TOKEN) {
+        headers.authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
     }
     //minutes of npm installs/builds pass between calls, and GitHub closes idle keep-alive sockets
     //long before then. `connection: close` avoids undici reusing a socket the server already dropped
@@ -240,17 +223,6 @@ async function findOpenPr(repoName: string, owner: string, branch: string) {
     return prs[0];
 }
 
-/**
- * Get the repo name to use for GitHub API lookups (the overridden repo name when this project has a
- * repositoryUrl override, otherwise the project's own name)
- */
-function getRepoName(project: Project) {
-    if (project.repositoryUrl) {
-        return project.repositoryUrl.split('/').pop()!;
-    }
-    return project.name;
-}
-
 interface Project {
     /**
      * The name of the GitHub repo, e.g. `logger` for https://github.com/rokucommunity/logger
@@ -260,8 +232,6 @@ interface Project {
      * The published npm package name, if different from the repo name, e.g. `@rokucommunity/logger`
      */
     packageName?: string;
-    repositoryUrl?: string;
-    defaultBranch?: string;
     dependencies: string[];
     packagePath?: string;
     source?: string;
@@ -281,22 +251,10 @@ interface Ref {
 }
 
 /**
- * Insert the GitHub token into a `https://github.com/...` URL that doesn't already have credentials
- * (needed so git operations against the token-gated roku-debug-rsg repo can authenticate)
- */
-function injectToken(url: string) {
-    if (!githubToken) {
-        return url;
-    }
-    return url.replace(/^https:\/\/(?!.*@)/, `https://${githubToken}@`);
-}
-
-/**
  * Get the tip commit sha of a branch on a remote repo (returns undefined when the branch doesn't exist)
  */
 function getBranchSha(cloneUrl: string, branch: string) {
-    const url = injectToken(cloneUrl);
-    const output = childProcess.execSync(`git ls-remote --heads ${url} "refs/heads/${branch}"`).toString();
+    const output = childProcess.execSync(`git ls-remote --heads ${cloneUrl} "refs/heads/${branch}"`).toString();
     return output.split(/\s+/)[0] || undefined;
 }
 
@@ -305,15 +263,13 @@ function getBranchSha(cloneUrl: string, branch: string) {
  * e.g. `branch: [alpha](https://github.com/rokucommunity/roku-deploy/tree/alpha)`
  */
 function branchLink(project: Project, branch: string) {
-    const cloneUrl = project.repositoryUrl ?? `${baseUrl}/${project.name}`;
-    return `branch: [${branch}](${cloneUrl}/tree/${branch})`;
+    return `branch: [${branch}](${baseUrl}/${project.name}/tree/${branch})`;
 }
 
 function clone(project: Project, ref: Ref) {
-    const url = injectToken(ref.cloneUrl);
-    log(`Cloning ${url.replace(githubToken ?? '', '***')} (branch '${ref.ref}', shallow)`);
+    log(`Cloning ${ref.cloneUrl} (branch '${ref.ref}', shallow)`);
     //shallow single-branch clone: we only ever build the tip of one branch, so skip the full history
-    execSync(`git clone --depth 1 --single-branch --branch "${ref.ref}" ${url} ${project.name}`);
+    execSync(`git clone --depth 1 --single-branch --branch "${ref.ref}" ${ref.cloneUrl} ${project.name}`);
 }
 
 function changeVersion(project: Project, version: string) {
