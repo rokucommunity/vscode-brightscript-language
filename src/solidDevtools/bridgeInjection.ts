@@ -22,11 +22,11 @@ import * as fsExtra from 'fs-extra';
  *     `.map`'s `mappings` (the same-line insert in step 2 needs no map change).
  *
  * Failure policy: this must NEVER break a launch. Any miss (no ts_path, no bundle,
- * no marker, unreadable bridge) just skips that part and reports a reason. When the
- * bundle exists but the DevHooks marker doesn't (e.g. a non-dev build), the bridge
- * is STILL prepended without the connect call, so the devtools panel can surface a
- * clear "couldn't connect to solid DEV — is this a dev build?" status instead of
- * silence.
+ * no marker, unreadable bridge) just skips the injection entirely and reports a
+ * reason. A missing DevHooks marker means solid's PRODUCTION build was bundled
+ * (rsg-sdk emits dev hooks only when `solidDevMode: true` in roku-config.ts) — the
+ * bridge would have nothing to attach to, so nothing is injected and the reported
+ * reason tells the user to set `solidDevMode: true`.
  *
  * Types (DevtoolsBridgeInjectionOptions / ...Result) are declared at the bottom.
  */
@@ -127,21 +127,18 @@ export async function injectDevtoolsBridge(options: DevtoolsBridgeInjectionOptio
         //insert the connect call immediately after the DevHooks declaration (same line, so
         //the source map needs no change for this edit)
         const markerMatch = DEV_HOOKS_REGEX.exec(bundle);
-        let connected = false;
-        let newBundle: string;
-        if (markerMatch) {
-            const insertAt = markerMatch.index + markerMatch[0].length;
-            newBundle = bundle.slice(0, insertAt) + buildConnectStatement(markerMatch[1]) + bundle.slice(insertAt);
-            connected = true;
-        } else {
-            //no dev marker (likely not a dev build). Still prepend the bridge so the panel
-            //can report "bridge present but couldn't connect to solid DEV" instead of nothing.
-            newBundle = bundle;
-            log(`solid DevHooks marker not found in '${bundlePath}' — injecting bridge WITHOUT the connect call (is this a dev build?)`);
+        //No DevHooks marker means solid's PRODUCTION build was bundled (rsg-sdk only emits
+        //dev hooks when `solidDevMode: true` in roku-config.ts, which selects solid's DEV
+        //build). The bridge has nothing to attach to, so injecting it would ship ~1100 lines
+        //of dead code to the device for no benefit. Bail instead — the devtools panel reports
+        //this reason so the user knows to set `solidDevMode: true`.
+        if (!markerMatch) {
+            return skip(`solid DevHooks not found in '${bundlePath}' — not a solid dev build (set \`solidDevMode: true\` in roku-config.ts to enable the devtools)`);
         }
-
-        //prepend the bridge IIFE
-        newBundle = bridgeCode + newBundle;
+        const insertAt = markerMatch.index + markerMatch[0].length;
+        //prepend the bridge IIFE and insert the connect call after the DevHooks declaration
+        const newBundle = bridgeCode +
+            bundle.slice(0, insertAt) + buildConnectStatement(markerMatch[1]) + bundle.slice(insertAt);
         await fsExtra.writeFile(bundlePath, newBundle);
 
         //pad the source map for the prepended lines so original mappings stay valid
@@ -155,11 +152,11 @@ export async function injectDevtoolsBridge(options: DevtoolsBridgeInjectionOptio
             }
         }
 
-        log(`Devtools bridge injected into '${bundlePath}' (+${prependedLineCount} lines, connect ${connected ? `inserted after '${markerMatch[1]}'` : 'SKIPPED — no DevHooks marker'})`);
+        log(`Devtools bridge injected into '${bundlePath}' (+${prependedLineCount} lines, connect inserted after '${markerMatch[1]}')`);
         return {
             injected: true,
-            connected: connected,
-            reason: connected ? undefined : 'DevHooks marker not found (not a dev build?)'
+            connected: true,
+            reason: undefined
         };
     } catch (e) {
         log(`Devtools bridge injection failed: ${(e as Error)?.stack ?? String(e)}`);

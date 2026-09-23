@@ -223,16 +223,33 @@ describe('DebugSessionManager', () => {
             expect(stopStub.calledWith(brightScript)).to.be.false;
         });
 
-        it('terminating the JS session stops its BRS sibling', () => {
+        it('terminating a confirmed JS session stops its BRS sibling', () => {
             const { brightScript, js } = makeDualSession();
             start(brightScript);
             start(js);
+            //extension.ts confirms the JS session once its `startDebugging` resolves true; only
+            //confirmed sessions participate in joint teardown
+            manager.confirmJsSessionsFor(brightScript.id);
 
             const stopStub = sinon.stub(vscode.debug, 'stopDebugging') as sinon.SinonStub;
             stopStub.resolves();
             terminate(js);
 
             expect(stopStub.calledWith(brightScript)).to.be.true;
+        });
+
+        it('terminating an UNCONFIRMED JS session leaves its BRS sibling running', () => {
+            const { brightScript, js } = makeDualSession();
+            start(brightScript);
+            start(js);
+
+            const stopStub = sinon.stub(vscode.debug, 'stopDebugging') as sinon.SinonStub;
+            stopStub.resolves();
+            //a failed attach attempt starts-and-terminates a session without ever being
+            //confirmed; it must only stop itself, not the healthy parent mid-retry-loop
+            terminate(js);
+
+            expect(stopStub.called).to.be.false;
         });
 
         it('an unrelated debug session tears down nothing', () => {

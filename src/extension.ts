@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as prettyBytes from 'pretty-bytes';
 import { extensions } from 'vscode';
-import { isLocalDeviceConfig, isRceDeviceConfig } from 'roku-deploy';
+import { isRceDeviceConfig } from 'roku-deploy';
 import type { DeviceConfig } from 'roku-deploy';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
@@ -12,6 +12,8 @@ import { RsgSdkPasswordCandidateProvider } from './deviceDiscovery/RsgSdkPasswor
 import { ExperimentalFeaturesManager } from './managers/ExperimentalFeaturesManager';
 import { RceFinder } from './deviceDiscovery/RceFinder';
 import { RceManager } from './managers/RceManager';
+import { JsDebugProxyManager, JS_DEBUG_PORT } from './managers/JsDebugProxy/JsDebugProxyManager';
+import { JsDebugPathTrace } from './managers/JsDebugProxy/JsDebugPathTrace';
 import { RceVideoEditorManager } from './managers/RceVideoEditorManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';
@@ -69,6 +71,12 @@ export class Extension {
     private logOutputManager: LogOutputManager;
     private deviceManager: DeviceManager;
     private extensionContext: vscode.ExtensionContext;
+    private jsDebugProxyManager: JsDebugProxyManager;
+    private jsDebugPathTrace: JsDebugPathTrace;
+    //authoritative stagingDir per BRS session, keyed by parent session id - see attachJsDebugger's staging-ready wait
+    private stagingReadyByParentSessionId = new Map<string, StagingReadyEntry>();
+    //how long attachJsDebugger waits for the authoritative stagingDir before attaching with the guess; not readonly, tests shrink it
+    private jsAttachStagingGraceMs = 30_000;
 
     public async activate(context: vscode.ExtensionContext) {
         //make this entire extension disposable so that all resources will be cleaned up on extension deactivation
@@ -117,6 +125,10 @@ export class Extension {
         //list and idles every consumer; the UI hides through the feature's context key
         const rceManager = new RceManager(context, experimentalFeatures);
         rceManager.register(context);
+        this.jsDebugProxyManager = new JsDebugProxyManager(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
+        context.subscriptions.push(this.jsDebugProxyManager);
+        this.jsDebugPathTrace = new JsDebugPathTrace((message) => this.extensionOutputChannel.appendLine(message));
+        this.jsDebugPathTrace.register(context);
         const rceFinder = new RceFinder(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
         context.subscriptions.push(new RceVideoEditorManager(context, rceManager, rceFinder));
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel, rceFinder);
@@ -419,6 +431,8 @@ export class Extension {
             if (config.remoteControlMode?.deactivateOnSessionEnd) {
                 void this.remoteControlManager.setRemoteControlMode(false, 'launch');
             }
+            this.jsDebugProxyManager.stop(debugSession.id);
+            this.stagingReadyByParentSessionId.delete(debugSession.id);
             this.webviewViewProviderManager.onDidTerminateDebugSession(debugSession);
         }
         this.diagnosticManager.clear();
@@ -430,19 +444,12 @@ export class Extension {
      * first component library with a `tsPath` configured in launch.json.
      */
     private async resolveJsDebugTarget(configuration: BrightScriptLaunchConfiguration): Promise<JsDebugTarget | undefined> {
-        //the node debugger attaches to `configuration.host` over the LAN. A non-local session
-        //(e.g. Roku Cloud Emulator) has no reachable address - its raw `host` may even be an
-        //unresolved `${promptForHost}` placeholder - so the attach retry loop would spin for
-        //the life of the session. applyInspectMode skips these sessions for the same reason.
-        if (configuration.device && !isLocalDeviceConfig(configuration.device)) {
-            return undefined;
-        }
         const appTsPath = configuration.tsPath ?? util.getTsPath(configuration.rootDir);
         if (appTsPath) {
             const workspaceFolders = vscode.workspace.workspaceFolders || [];
             //use the stagingDir if provided, otherwise default to what we think it will probably be (hasn't changed in years...)
             const stagingDir = configuration.stagingDir ?? configuration.stagingFolderPath ?? `${workspaceFolders[0].uri.fsPath}/out/.roku-deploy-staging`;
-            return { tsPath: appTsPath, rootDir: configuration.rootDir, stagingDir: stagingDir };
+            return { tsPath: appTsPath, rootDir: configuration.rootDir, stagingDir: stagingDir, kind: 'main' };
         }
 
         for (const library of configuration.componentLibraries ?? []) {
@@ -454,22 +461,86 @@ export class Extension {
             const manifestValues = await util.convertManifestToObject(path.join(library.rootDir, 'manifest')) ?? {};
             const outFileName = library.outFile.replace(/\$\{([\w\d_]+)\}/g, (wholeMatch, name) => (manifestValues[name] ?? wholeMatch).trim());
             const stagingDir = s`${configuration.outDir}/component-libraries/${path.basename(outFileName, path.extname(outFileName))}`;
-            return { tsPath: library.tsPath, rootDir: library.rootDir, stagingDir: stagingDir };
+            //`processStagingDir` only reports the MAIN project's authoritative stagingDir - a complib
+            //target keeps its own derivation, never the recorded main-project value
+            return { tsPath: library.tsPath, rootDir: library.rootDir, stagingDir: stagingDir, kind: 'componentLibrary' };
         }
     }
 
     private async attachJsDebugger(parentSession: vscode.DebugSession, target: JsDebugTarget) {
-        const tsPath = target.tsPath.replace(/\s*(?:lib)?pkg:/, '');
         const workspaceFolders = vscode.workspace.workspaceFolders || [];
-        //something like ${rootDir}/source/compiled
-        const remoteRoot = path.normalize(path.dirname(tsPath));
-        //something like ${workspaceFolder}/out/.roku-deploy-staging/source/compiled
-        const localRoot = path.normalize(path.join(target.stagingDir, remoteRoot));
+        const tsPath = target.tsPath.replace(/\s*(?:lib)?pkg:/, '');
+        //`tsPath` is a DEVICE path (`pkg:/source/compiled/index.js`), so it is always posix. Using
+        //the platform-native helpers here rewrites it to `\source\compiled` on Windows, which
+        //matches nothing the device reports back.
+        //something like /source/compiled
+        const remoteRoot = path.posix.dirname(tsPath);
+
+        const jsDebugTraceConfig = this.jsDebugPathTrace.getJsDebugTraceConfig(workspaceFolders[0]?.uri.fsPath ?? target.rootDir);
+
+        const configuration = parentSession.configuration as BrightScriptLaunchConfiguration;
+        let address: string;
+        let port: number;
+        //over the relay, js-debug's child-process auto-attach would open a second inspector
+        //connection into the one tunneled session and crash Hermes on the duplicate `Runtime.enable`;
+        //direct LAN attaches give each child its own port, so js-debug's default (enabled) is safe there
+        let autoAttachChildProcesses: boolean | undefined;
+
+        const route = this.jsDebugProxyManager.resolveRoute({
+            device: configuration.device,
+            fallbackHost: configuration.host,
+            platform: process.platform,
+            forceLanRelay: vscode.workspace.getConfiguration('brightscript.debug').get<boolean>('forceJsDebugRelay') === true
+        });
+        this.extensionOutputChannel.appendLine(`[js-debug-proxy] ${route.summary}`);
+
+        if (route.useRelay) {
+            try {
+                port = await this.jsDebugProxyManager.start(parentSession.id, route.device);
+            } catch (e) {
+                this.extensionOutputChannel.appendLine(`Failed to start JS debug proxy: ${e?.message ?? e}`);
+                this.jsDebugProxyManager.stop(parentSession.id);
+                return false;
+            }
+
+            //the parent session can terminate during the async start() above
+            if (!debugSessionManager.isLive(parentSession)) {
+                this.jsDebugProxyManager.stop(parentSession.id);
+                return false;
+            }
+
+            address = '127.0.0.1';
+            autoAttachChildProcesses = false;
+        } else {
+            address = route.host ?? configuration.host;
+            port = JS_DEBUG_PORT;
+        }
+
+        //A previous app instance may still be listening on the device when this session starts,
+        //so attaching before the NEW app is confirmed running can bind js-debug to the OLD process
+        //(it'll die when the new app replaces it, with no re-attach). `emitChannelPublishedEvent`
+        //is a documented user escape hatch for devices roku-debug says lock up on that event - when
+        //it's explicitly disabled, roku-debug never sends it, so gate on staging-known instead so
+        //those users don't eat the full grace period.
+        const channelPublishedEventEnabled = configuration.emitChannelPublishedEvent !== false;
+        const stagingEntry = this.getOrCreateStagingEntry(parentSession.id);
+        const attachWaitResult = await this.waitForAttachSignal(parentSession, stagingEntry, channelPublishedEventEnabled);
+        if (attachWaitResult === 'died') {
+            this.jsDebugProxyManager.stop(parentSession.id);
+            return false;
+        } else if (attachWaitResult === 'timeout') {
+            const signal = channelPublishedEventEnabled ? 'channelPublished' : 'stagingDir (emitChannelPublishedEvent is disabled)';
+            this.extensionOutputChannel.appendLine(`[js-debug-proxy] ${signal} not received within ${this.jsAttachStagingGraceMs}ms - proceeding with stagingDir '${stagingEntry.stagingDir ?? target.stagingDir}'`);
+        }
 
         // vscode doesn't trigger the onDidStartDebugSession event until the debugger is actually attached.
         // So there's a window where the parent debug session stops while this is still trying to attach.
         // To more quickly close the node debugger in that situation, we will run much shorter "attach" windows
         // in a loop until we successfully attach or until the parent session ends.
+
+        //tracks what the previous attempt logged, so the retry loop (which can run for a while)
+        //only re-logs the summary/guess-vs-actual lines when the stagingDir actually changes
+        let previousStagingDirUsed: string | undefined;
 
         while (debugSessionManager.isLive(parentSession)) {
             // The node debugger attaches against the bundle's local rootDir. If that directory has
@@ -480,26 +551,60 @@ export class Extension {
             // without the rootDir, and it will be retried the next time a debug session starts.
             if (!fsExtra.existsSync(target.rootDir)) {
                 console.error(`Cannot attach node debugger: rootDir does not exist at '${target.rootDir}'`);
+                //don't leave the relay listening with nothing left to attach to it
+                this.jsDebugProxyManager.stop(parentSession.id);
                 return false;
             }
 
             //rewrite the debug session name to indicate it's the BRS session (this is just for user clarity in the UI, it has no functional effect)
             parentSession.name = `${parentSession.name.replace(/ \(BRS\)$/, '')} (BRS)`;
             try {
+                //recomputed every attempt (not hoisted) so an authoritative stagingDir that arrives
+                //after the grace timeout is still picked up by the next retry. Only a 'main' target
+                //may substitute the recorded value in - `processStagingDir` only ever reports the
+                //MAIN project's stagingDir, which is meaningless for a component library target.
+                const stagingDirUsed = target.kind === 'main' ? (stagingEntry.stagingDir ?? target.stagingDir) : target.stagingDir;
+                //something like ${stagingDir}/source/compiled - the staged copy is what gets zipped and
+                //sideloaded, so its sourcemap is the one whose lines match what the device runs
+                const localRoot = path.join(stagingDirUsed, remoteRoot);
+                //js-debug matches globs with forward slashes on every platform
+                const localRootPosix = localRoot.replace(/\\/g, '/');
+                const outFiles = [`${localRootPosix}/*.js`];
+
+                //only log when the stagingDir actually changed since the last attempt (always true
+                //on the first attempt) - the retry loop can run for a while and re-logging the same
+                //summary every ~2s is just noise
+                if (stagingDirUsed !== previousStagingDirUsed) {
+                    if (stagingDirUsed !== target.stagingDir) {
+                        this.extensionOutputChannel.appendLine(`[js-debug-proxy] stagingDir guess '${target.stagingDir}' differed from actual '${stagingDirUsed}' - using actual`);
+                    }
+                    this.jsDebugPathTrace.logStartupSummary({
+                        platform: process.platform,
+                        tsPath: tsPath,
+                        remoteRoot: remoteRoot,
+                        localRoot: localRoot,
+                        outFiles: outFiles,
+                        jsDebugTraceFile: jsDebugTraceConfig?.logFile
+                    });
+                    previousStagingDirUsed = stagingDirUsed;
+                }
+
                 const debugConfig: vscode.DebugConfiguration = {
                     type: 'node',
                     //use the same debug config name as the parent, but suffix with (JS) so we can identify the JS debug session in the UI
                     name: `${parentSession.configuration.name} (JS)`,
                     request: 'attach',
                     cwd: target.rootDir,
-                    address: (parentSession.configuration as BrightScriptLaunchConfiguration).host,
-                    port: 9999,
+                    address: address,
+                    port: port,
                     timeout: 2_000, // Shorter timeout for retry loop
+                    //set to false whenever the relay is in use, omitted on a direct LAN attach - see the derivation above
+                    ...(autoAttachChildProcesses === undefined ? {} : { autoAttachChildProcesses: autoAttachChildProcesses }),
                     sourceMaps: true,
                     //this allows us to resolve sourcemaps from ANYWHERE
                     resolveSourceMapLocations: null,
                     // If source maps are enabled, these glob patterns specify the generated JavaScript files. If a pattern starts with `!` the files are excluded. If not specified, the generated code is expected in the same directory as its source.
-                    outFiles: [`${localRoot}/*.js`],
+                    outFiles: outFiles,
                     //Absolute path to the remote directory containing the program. (what path the debugger will send to US, which will be translated to localRoot by the node debugger)
                     remoteRoot: remoteRoot,
                     // where the currently-running javascript (bundled) files live on this system
@@ -513,19 +618,67 @@ export class Extension {
 
                     // markers so we can identify this session and link it back to the BRS session
                     _isBrightscriptJsSession: true,
-                    _brightscriptParentSessionId: parentSession.id
+                    _brightscriptParentSessionId: parentSession.id,
+
+                    // When `brightscript.debug.jsPathTrace` is on, have js-debug write its full
+                    // CDP+DAP wire log to the workspace logs folder. This is the only place the
+                    // RAW script urls and its own path-mapping decisions are visible - the DAP
+                    // tracker in JsDebugPathTrace only ever sees post-mapping paths.
+                    trace: jsDebugTraceConfig
                 };
 
                 const success = await vscode.debug.startDebugging(workspaceFolders[0], debugConfig);
                 if (success) {
+                    //opt this JS session into joint teardown - unconfirmed (failed) attach
+                    //attempts must not tear down the parent while this loop is still retrying
+                    debugSessionManager.confirmJsSessionsFor(parentSession.id);
                     return true;
                 }
             } catch (e) {
                 console.error(e);
             }
         }
-        // Parent session ended while we were trying to attach
+        // Parent session ended while we were trying to attach; stop() is idempotent
+        this.jsDebugProxyManager.stop(parentSession.id);
         return false;
+    }
+
+    /** Gets (or lazily creates) the staging-ready entry for a BRS session id. */
+    private getOrCreateStagingEntry(parentSessionId: string): StagingReadyEntry {
+        let entry = this.stagingReadyByParentSessionId.get(parentSessionId);
+        if (!entry) {
+            entry = { stagingDir: undefined, channelPublished: false };
+            this.stagingReadyByParentSessionId.set(parentSessionId, entry);
+        }
+        return entry;
+    }
+
+    /**
+     * Waits for the signal `attachJsDebugger` should gate its first attach attempt on: normally
+     * roku-debug's ChannelPublishedEvent (the device now runs THIS session's app), or - when
+     * `emitChannelPublishedEvent` is explicitly disabled and roku-debug will never send it -
+     * merely the authoritative stagingDir. The grace timeout only applies while NO signal at all
+     * has been seen; once staging is known (proof this roku-debug speaks the custom-event
+     * protocol) it keeps waiting for channelPublished indefinitely, with session-death as the
+     * only exit - a slow RCE sideload must not fall through into the stale-app attach window.
+     */
+    private async waitForAttachSignal(parentSession: vscode.DebugSession, entry: StagingReadyEntry, channelPublishedEventEnabled: boolean): Promise<'ready' | 'died' | 'timeout'> {
+        const deadline = Date.now() + this.jsAttachStagingGraceMs;
+        while (true) {
+            if (channelPublishedEventEnabled ? entry.channelPublished : entry.stagingDir !== undefined) {
+                return 'ready';
+            }
+            if (!debugSessionManager.isLive(parentSession)) {
+                return 'died';
+            }
+            const stagingSeen = entry.stagingDir !== undefined;
+            if (Date.now() >= deadline && !(channelPublishedEventEnabled && stagingSeen)) {
+                return 'timeout';
+            }
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 50);
+            });
+        }
     }
 
     private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
@@ -539,6 +692,11 @@ export class Extension {
             }
         } else if (isChannelPublishedEvent(e)) {
             this.webviewViewProviderManager.onChannelPublishedEvent(e);
+            //the device now runs THIS session's app - unblocks attachJsDebugger's wait for e.session.
+            //Guard against re-creating the entry for a session that already terminated.
+            if (debugSessionManager.isLive(e.session)) {
+                this.getOrCreateStagingEntry(e.session.id).channelPublished = true;
+            }
             //write debug server log statements to the DebugServer output channel
         } else if (isDebugServerLogOutputEvent(e)) {
             this.extensionOutputChannel.appendLine(e.body.line);
@@ -662,7 +820,7 @@ export class Extension {
             } else if (isShowPopupMessageCustomRequest(event)) {
                 response = await this.showMessage(event);
             } else if (isProcessStagingDirCustomRequest(event)) {
-                response = await this.processStagingDir(event);
+                response = await this.processStagingDir(event, session);
             }
             //send the response back to the server
             await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
@@ -707,24 +865,87 @@ export class Extension {
      * Handle the `processStagingDir` reverse request from roku-debug — sent after all projects are
      * staged and before they're packaged. This is where the extension injects the Solid Devtools
      * on-device bridge into the main project's staged TS bundle (no-op for non-TS apps and when
-     * the `brightscript.solidDevtools.enabled` setting is off; never fails the launch).
+     * the `brightscript.solidDevtools.enabled` setting is off; never fails the launch), and where
+     * `attachJsDebugger`'s staging-ready wait for `session` (the BRS session) learns the
+     * authoritative stagingDir it was guessing at.
      */
-    private async processStagingDir(event: CustomRequestEvent<{ projects: Array<{ type: string; stagingDir: string }> }>) {
+    private async processStagingDir(event: CustomRequestEvent<{ projects: Array<{ type: string; stagingDir: string }> }>, session: vscode.DebugSession) {
         const projects = event.body.projects ?? [];
         const solidDevtoolsEnabled = vscode.workspace.getConfiguration('brightscript').get<boolean>('solidDevtools.enabled', true);
-        if (!solidDevtoolsEnabled) {
-            return;
-        }
         for (const project of projects) {
             //only the main app project carries the TS bundle
             if (project.type !== 'main') {
                 continue;
             }
-            await injectDevtoolsBridge({
-                stagingDir: project.stagingDir,
-                devtoolsBridgePath: path.join(this.extensionContext.extensionPath, 'dist', 'solidDevtools', 'bridge.js'),
-                log: (message) => this.extensionOutputChannel.appendLine(`[SolidDevtools] ${message}`)
-            });
+
+            //this is the authoritative stagingDir `resolveJsDebugTarget` could only guess at -
+            //unblock attachJsDebugger's wait for `session` (the BRS session) right away. Guard
+            //against re-creating the entry for a session that already terminated (this handler
+            //can finish after `onDidTerminateDebugSession` already cleaned it up).
+            if (debugSessionManager.isLive(session)) {
+                this.getOrCreateStagingEntry(session.id).stagingDir = project.stagingDir;
+            }
+
+            //Always fix the staged sourcemap, regardless of the devtools setting: roku-debug
+            //rewrites `sources` while staging and (on Windows) emits them with native separators.
+            //Sourcemap `sources` are URLs, so `..\..\packages\x.ts` never collapses against the
+            //map's posix location - js-debug ends up with a driveless path and vscode opens a
+            //phantom duplicate tab instead of the user's real file. TODO: fix in roku-debug.
+            await this.normalizeStagedSourceMaps(project.stagingDir);
+
+            if (solidDevtoolsEnabled) {
+                await injectDevtoolsBridge({
+                    stagingDir: project.stagingDir,
+                    devtoolsBridgePath: path.join(this.extensionContext.extensionPath, 'dist', 'solidDevtools', 'bridge.js'),
+                    log: (message) => this.extensionOutputChannel.appendLine(`[SolidDevtools] ${message}`)
+                });
+            }
+        }
+    }
+
+    /**
+     * Rewrite backslashes to forward slashes in every staged `.js.map`'s `sources`/`sourceRoot`.
+     * Never throws - a malformed map must not break the launch.
+     */
+    private async normalizeStagedSourceMaps(stagingDir: string) {
+        //the TS bundle's map is the one that matters, and the staged manifest's `ts_path` names it
+        const manifestPath = s`${stagingDir}/manifest`;
+        let mapPath: string;
+        try {
+            if (!await fsExtra.pathExists(manifestPath)) {
+                return;
+            }
+            const manifest = await fsExtra.readFile(manifestPath, 'utf8');
+            const tsPath = /^[ \t]*ts_path[ \t]*=[ \t]*(.+?)[ \t\r]*$/m.exec(manifest)?.[1];
+            if (!tsPath) {
+                //not a TS/RSG app
+                return;
+            }
+            mapPath = s`${stagingDir}/${tsPath.replace(/^pkg:/i, '').replace(/^[/\\]+/, '')}.map`;
+            if (!await fsExtra.pathExists(mapPath)) {
+                return;
+            }
+        } catch (e) {
+            this.extensionOutputChannel.appendLine(`[SourceMap] could not locate the staged sourcemap under '${stagingDir}': ${(e as Error)?.message ?? String(e)}`);
+            return;
+        }
+
+        try {
+            const map = await fsExtra.readJson(mapPath);
+            const hasBackslash = (value: unknown) => typeof value === 'string' && value.includes('\\');
+            if (!Array.isArray(map.sources) || (!map.sources.some(hasBackslash) && !hasBackslash(map.sourceRoot))) {
+                return;
+            }
+            const count = map.sources.filter(hasBackslash).length;
+            map.sources = map.sources.map((source: unknown) => (typeof source === 'string' ? source.replace(/\\/g, '/') : source));
+            if (typeof map.sourceRoot === 'string') {
+                map.sourceRoot = map.sourceRoot.replace(/\\/g, '/');
+            }
+            await fsExtra.writeJson(mapPath, map);
+            this.extensionOutputChannel.appendLine(`[SourceMap] normalized separators in ${count} 'sources' ${count === 1 ? 'entry' : 'entries'} of '${mapPath}'`);
+        } catch (e) {
+            //a malformed/unreadable map must never break the launch
+            this.extensionOutputChannel.appendLine(`[SourceMap] skipped '${mapPath}': ${(e as Error)?.message ?? String(e)}`);
         }
     }
 
@@ -750,26 +971,31 @@ export class Extension {
         this.chanperfStatusBar?.dispose?.();
         this.diagnosticManager?.dispose?.();
         this.deviceManager?.dispose?.();
+        this.stagingReadyByParentSessionId.clear();
     }
 }
+/** The compiled JS bundle a BrightScript debug session should attach the node debugger to. */
+interface JsDebugTarget {
+    /** Device path to the compiled JS bundle (a `ts_path`-style value, e.g. 'pkg:/source/compiled/main.js') */
+    tsPath: string;
+    /** rootDir of the project the bundle was built from (the app's rootDir, or the component library's) */
+    rootDir: string;
+    /** The staging directory the debugger copied this project's files into (where the staged .js and .map live) */
+    stagingDir: string;
+    /** `processStagingDir` only ever reports the MAIN project's authoritative stagingDir - only a 'main' target may substitute it in for the guess */
+    kind: 'main' | 'componentLibrary';
+}
+
+/** Per-BRS-session signals `attachJsDebugger` polls before its first attach attempt. */
+interface StagingReadyEntry {
+    /** The main project's authoritative stagingDir, once `processStagingDir` reports it. */
+    stagingDir: string | undefined;
+    /** Set once roku-debug's ChannelPublishedEvent confirms the device is running THIS session's app. */
+    channelPublished: boolean;
+}
+
 export const extension = new Extension();
 export async function activate(context: vscode.ExtensionContext) {
     await extension.activate(context);
 }
 
-// ---- types ----
-
-interface JsDebugTarget {
-    /**
-     * Device path to the compiled JS bundle (a `ts_path`-style value, e.g. 'pkg:/source/compiled/main.js')
-     */
-    tsPath: string;
-    /**
-     * rootDir of the project the bundle was built from (the app's rootDir, or the component library's)
-     */
-    rootDir: string;
-    /**
-     * The staging directory the debugger copied this project's files into (where the staged .js and .map files live)
-     */
-    stagingDir: string;
-}

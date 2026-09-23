@@ -214,14 +214,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             this.extensionOutputChannel.appendLine(`[inspect] skipped: waitForJsDebugger is false`);
             return;
         }
-        //the JS debugger attaches over the LAN, which a non-local session (e.g. Roku Cloud
-        //Emulator) can never satisfy - injecting inspect=1 there would hang app startup waiting
-        //for a debugger that cannot attach. When `device` is omitted the session is local by
-        //definition (roku-debug builds a local device config from `host`).
-        if (config.device && !isLocalDeviceConfig(config.device)) {
-            this.extensionOutputChannel.appendLine(`[inspect] skipped: non-local device session`);
-            return;
-        }
         //same precedence as `resolveJsDebugTarget` in extension.ts: an explicit `tsPath` in
         //launch.json wins over the staged manifest's `ts_path`, then any component library
         //with a `tsPath` (its JS runs in the same runtime, so the device still needs to wait)
