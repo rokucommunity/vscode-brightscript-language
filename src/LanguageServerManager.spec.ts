@@ -433,6 +433,165 @@ describe('LanguageServerManager', () => {
             //should get null since that's what the 'selectBrighterScriptVersion' function returns from our stub
             expect(bsdkPath).to.eql(null);
         });
+
+        describe('code-workspace vs folder precedence', () => {
+            /**
+             * Stub `getConfiguration` so values are scoped like real VSCode: the `.code-workspace` value is returned for the
+             * workspaceFile scope, and each folder's `get()` returns its own value, falling back to the `.code-workspace` value
+             */
+            function stubScopedConfig(options: { codeWorkspace?: string; folders?: Record<string, string> }) {
+                if (options.codeWorkspace !== undefined) {
+                    fsExtra.outputJsonSync(vscode.workspace.workspaceFile.fsPath, {
+                        settings: { 'brightscript.bsdk': options.codeWorkspace }
+                    });
+                }
+                sinon.stub(vscode.workspace, 'getConfiguration').callsFake((name, resource: any) => {
+                    const isWorkspaceFile = resource && resource === vscode.workspace.workspaceFile;
+                    const folderValue = options.folders?.[resource?.name];
+                    return {
+                        get: () => (isWorkspaceFile ? options.codeWorkspace : folderValue ?? options.codeWorkspace),
+                        inspect: () => ({
+                            key: 'bsdk',
+                            workspaceValue: options.codeWorkspace,
+                            workspaceFolderValue: isWorkspaceFile ? undefined : folderValue
+                        }) as any,
+                        update: () => Promise.resolve()
+                    } as any;
+                });
+            }
+
+            beforeEach(() => {
+                vscode.workspace.workspaceFile = URI.file(s`${tempDir}/.vscode/project.code-workspace`);
+                vscode.workspace.workspaceFolders.push({
+                    index: 0,
+                    name: 'app1',
+                    uri: URI.file(s`${tempDir}/app1`)
+                }, {
+                    index: 1,
+                    name: 'app2',
+                    uri: URI.file(s`${tempDir}/app2`)
+                });
+            });
+
+            it('uses the code-workspace value instead of prompting, even when folders have different values', async () => {
+                stubScopedConfig({
+                    codeWorkspace: '../node_modules/brighterscript',
+                    folders: { app1: 'node_modules/bs1', app2: 'node_modules/bs2' }
+                });
+                const promptStub = sinon.stub(languageServerInfoCommand, 'selectBrighterScriptVersion').returns(Promise.resolve(null));
+
+                expect(
+                    s(await languageServerManager['getBsdkVersionInfo']())
+                ).to.eql(s`${tempDir}/node_modules/brighterscript`);
+                expect(promptStub.called).to.be.false;
+            });
+
+            it('resolves a relative code-workspace value against the code-workspace dir even though folders inherit it', async () => {
+                //every folder inherits the code-workspace value, so each folder would resolve it relative to itself
+                stubScopedConfig({ codeWorkspace: '../node_modules/brighterscript' });
+                const promptStub = sinon.stub(languageServerInfoCommand, 'selectBrighterScriptVersion').returns(Promise.resolve(null));
+
+                expect(
+                    s(await languageServerManager['getBsdkVersionInfo']())
+                ).to.eql(s`${tempDir}/node_modules/brighterscript`);
+                expect(promptStub.called).to.be.false;
+            });
+
+            it('uses ${workspaceFolder:name} from the code-workspace file', async () => {
+                stubScopedConfig({ codeWorkspace: '${workspaceFolder:app2}/node_modules/brighterscript' });
+
+                expect(
+                    s(await languageServerManager['getBsdkVersionInfo']())
+                ).to.eql(s`${tempDir}/app2/node_modules/brighterscript`);
+            });
+
+            it('falls back to the single folder value when the code-workspace file has no value', async () => {
+                fsExtra.outputJsonSync(vscode.workspace.workspaceFile.fsPath, { settings: {} });
+                stubScopedConfig({ folders: { app2: 'node_modules/brighterscript' } });
+
+                expect(
+                    s(await languageServerManager['getBsdkVersionInfo']())
+                ).to.eql(s`${tempDir}/app2/node_modules/brighterscript`);
+            });
+
+            it('prompts when the code-workspace file has no value and folders have different values', async () => {
+                fsExtra.outputJsonSync(vscode.workspace.workspaceFile.fsPath, { settings: {} });
+                stubScopedConfig({ folders: { app1: 'node_modules/bs1', app2: 'node_modules/bs2' } });
+                const promptStub = sinon.stub(languageServerInfoCommand, 'selectBrighterScriptVersion').returns(Promise.resolve(null));
+
+                expect(await languageServerManager['getBsdkVersionInfo']()).to.eql(null);
+                expect(promptStub.called).to.be.true;
+            });
+
+            it('does not prompt when multiple folders resolve to the same path', async () => {
+                fsExtra.outputJsonSync(vscode.workspace.workspaceFile.fsPath, { settings: {} });
+                stubScopedConfig({
+                    folders: {
+                        app1: '${workspaceFolder:app1}/node_modules/brighterscript',
+                        app2: '../app1/node_modules/brighterscript'
+                    }
+                });
+                const promptStub = sinon.stub(languageServerInfoCommand, 'selectBrighterScriptVersion').returns(Promise.resolve(null));
+
+                expect(
+                    s(await languageServerManager['getBsdkVersionInfo']())
+                ).to.eql(s`${tempDir}/app1/node_modules/brighterscript`);
+                expect(promptStub.called).to.be.false;
+            });
+
+            it('resolves ${workspaceFolder} in a folder setting to that folder, not the first folder', async () => {
+                fsExtra.outputJsonSync(vscode.workspace.workspaceFile.fsPath, { settings: {} });
+                stubScopedConfig({ folders: { app2: '${workspaceFolder}/node_modules/brighterscript' } });
+
+                expect(
+                    s(await languageServerManager['getBsdkVersionInfo']())
+                ).to.eql(s`${tempDir}/app2/node_modules/brighterscript`);
+            });
+        });
+
+        it('throws for ${workspaceFolder} in the code-workspace file when there are no workspace folders', async () => {
+            vscode.workspace.workspaceFile = URI.file(s`${tempDir}/.vscode/workspace.code-workspace`);
+            setConfig(vscode.workspace.workspaceFile.fsPath, {
+                'brightscript.bsdk': '${workspaceFolder}/node_modules/brighterscript'
+            });
+
+            await expectThrowsAsync(
+                () => languageServerManager['getBsdkVersionInfo'](),
+                'brightscript.bsdk: cannot resolve ${workspaceFolder} because there are no workspace folders'
+            );
+        });
+
+        it('throws for a variable that only starts with "workspaceFolder"', async () => {
+            vscode.workspace.workspaceFile = URI.file(s`${tempDir}/.vscode/workspace.code-workspace`);
+            vscode.workspace.workspaceFolders.push({
+                index: 0,
+                name: 'SDK',
+                uri: URI.file(s`${tempDir}`)
+            });
+            setConfig(vscode.workspace.workspaceFile.fsPath, {
+                'brightscript.bsdk': '${workspaceFolderBasename}/node_modules/brighterscript'
+            });
+
+            await expectThrowsAsync(
+                () => languageServerManager['getBsdkVersionInfo'](),
+                'brightscript.bsdk: unsupported variable in bsdk "${workspaceFolderBasename}/node_modules/brighterscript"'
+            );
+        });
+
+        it('leaves values alone when a variable is not at the start', async () => {
+            vscode.workspace.workspaceFolders.push({
+                index: 0,
+                name: 'app1',
+                uri: URI.file(s`${tempDir}/app1`)
+            });
+            setConfig(s`${tempDir}/app1/.vscode/settings.json`, {
+                'brightscript.bsdk': 'node_modules/${notAVariable}'
+            });
+
+            expect(
+                s(await languageServerManager['getBsdkVersionInfo']())
+            ).to.eql(s`${tempDir}/app1/node_modules/${'${notAVariable}'}`);
+        });
     });
 
     describe('ensureBscVersionInstalled', function() {
