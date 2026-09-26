@@ -54,17 +54,17 @@ describe('ExperimentalFeaturesManager', () => {
     it('reports features disabled by default and sets the context key', () => {
         const manager = new ExperimentalFeaturesManager(managerContext as any);
 
-        expect(manager.isEnabled(ExperimentalFeature.rokuCloudEmulator)).to.be.false;
-        expect(contextSetStub.calledWith('brightscript.experimental.rokuCloudEmulator', false)).to.be.true;
+        expect(manager.isEnabled(ExperimentalFeature.placeholder)).to.be.false;
+        expect(contextSetStub.calledWith('brightscript.experimental.placeholder', false)).to.be.true;
     });
 
     it('enables a feature through its own setting', () => {
-        setSetting('experimental.rokuCloudEmulator', true);
+        setSetting('experimental.placeholder', true);
 
         const manager = new ExperimentalFeaturesManager(managerContext as any);
 
-        expect(manager.isEnabled(ExperimentalFeature.rokuCloudEmulator)).to.be.true;
-        expect(contextSetStub.calledWith('brightscript.experimental.rokuCloudEmulator', true)).to.be.true;
+        expect(manager.isEnabled(ExperimentalFeature.placeholder)).to.be.true;
+        expect(contextSetStub.calledWith('brightscript.experimental.placeholder', true)).to.be.true;
     });
 
     it('enables every feature through experimental.all', () => {
@@ -72,7 +72,7 @@ describe('ExperimentalFeaturesManager', () => {
 
         const manager = new ExperimentalFeaturesManager(managerContext as any);
 
-        expect(manager.isEnabled(ExperimentalFeature.rokuCloudEmulator)).to.be.true;
+        expect(manager.isEnabled(ExperimentalFeature.placeholder)).to.be.true;
     });
 
     it('reflects a toggle live: isEnabled, the context key, and the change event all follow', () => {
@@ -80,20 +80,20 @@ describe('ExperimentalFeaturesManager', () => {
         const enablementChanges: Array<[ExperimentalFeature, boolean]> = [];
         manager.onEnablementChanged((feature, enabled) => enablementChanges.push([feature, enabled]));
 
-        setSetting('experimental.rokuCloudEmulator', true);
+        setSetting('experimental.placeholder', true);
         fireExperimentalConfigChange();
 
-        expect(manager.isEnabled(ExperimentalFeature.rokuCloudEmulator)).to.be.true;
-        expect(contextSetStub.calledWith('brightscript.experimental.rokuCloudEmulator', true)).to.be.true;
-        expect(enablementChanges).to.eql([[ExperimentalFeature.rokuCloudEmulator, true]]);
+        expect(manager.isEnabled(ExperimentalFeature.placeholder)).to.be.true;
+        expect(contextSetStub.calledWith('brightscript.experimental.placeholder', true)).to.be.true;
+        expect(enablementChanges).to.eql([[ExperimentalFeature.placeholder, true]]);
 
-        setSetting('experimental.rokuCloudEmulator', false);
+        setSetting('experimental.placeholder', false);
         fireExperimentalConfigChange();
 
-        expect(manager.isEnabled(ExperimentalFeature.rokuCloudEmulator)).to.be.false;
+        expect(manager.isEnabled(ExperimentalFeature.placeholder)).to.be.false;
         expect(enablementChanges).to.eql([
-            [ExperimentalFeature.rokuCloudEmulator, true],
-            [ExperimentalFeature.rokuCloudEmulator, false]
+            [ExperimentalFeature.placeholder, true],
+            [ExperimentalFeature.placeholder, false]
         ]);
     });
 
@@ -104,46 +104,13 @@ describe('ExperimentalFeaturesManager', () => {
         manager.onEnablementChanged((feature, enabled) => enablementChanges.push([feature, enabled]));
 
         //`all` keeps the feature enabled regardless of its own setting
-        setSetting('experimental.rokuCloudEmulator', true);
+        setSetting('experimental.placeholder', true);
         fireExperimentalConfigChange();
-        setSetting('experimental.rokuCloudEmulator', false);
+        setSetting('experimental.placeholder', false);
         fireExperimentalConfigChange();
 
-        expect(manager.isEnabled(ExperimentalFeature.rokuCloudEmulator)).to.be.true;
+        expect(manager.isEnabled(ExperimentalFeature.placeholder)).to.be.true;
         expect(enablementChanges).to.eql([]);
-    });
-
-    it('clears the workspace device-identity keys pointing at cloud devices when the feature turns off', async () => {
-        setSetting('experimental.rokuCloudEmulator', true);
-        const manager = new ExperimentalFeaturesManager(managerContext as any);
-        //only 's:CLOUD-ESN' resolves to a cloud device; the other keys are LAN or unknown
-        manager.setDeviceManager({
-            getDevice: (key: string) => (key === 's:CLOUD-ESN' ? { rce: { id: 83 } } : undefined)
-        } as any);
-        await vscode.context.workspaceState.update('activeDeviceKey', 's:CLOUD-ESN');
-        await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:CLOUD-ESN');
-
-        setSetting('experimental.rokuCloudEmulator', false);
-        fireExperimentalConfigChange();
-
-        expect(vscode.context.workspaceState.get('activeDeviceKey')).to.be.undefined;
-        expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.be.undefined;
-    });
-
-    it('leaves device-identity keys pointing at anything else alone when the feature turns off', async () => {
-        setSetting('experimental.rokuCloudEmulator', true);
-        const manager = new ExperimentalFeaturesManager(managerContext as any);
-        manager.setDeviceManager({
-            getDevice: (key: string) => (key === 's:LAN-SERIAL' ? { ip: '192.168.1.30' } : undefined)
-        } as any);
-        await vscode.context.workspaceState.update('activeDeviceKey', 's:LAN-SERIAL');
-        await vscode.context.workspaceState.update('remoteControlDeviceKey', 'i:192.168.1.40');
-
-        setSetting('experimental.rokuCloudEmulator', false);
-        fireExperimentalConfigChange();
-
-        expect(vscode.context.workspaceState.get('activeDeviceKey')).to.equal('s:LAN-SERIAL');
-        expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.equal('i:192.168.1.40');
     });
 
     it('stops notifying an unsubscribed handler', () => {
@@ -152,7 +119,7 @@ describe('ExperimentalFeaturesManager', () => {
         const unsubscribe = manager.onEnablementChanged((feature, enabled) => enablementChanges.push([feature, enabled]));
 
         unsubscribe();
-        setSetting('experimental.rokuCloudEmulator', true);
+        setSetting('experimental.placeholder', true);
         fireExperimentalConfigChange();
 
         expect(enablementChanges).to.eql([]);

@@ -7,8 +7,8 @@ import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import type { RceManager } from '../managers/RceManager';
-import type { RceFinder } from '../deviceDiscovery/RceFinder';
 import type { RceStateDevice } from './RceManagementViewContract';
+import type { RceFinder } from '../deviceDiscovery/RceFinder';
 
 export type { RceStateDevice } from './RceManagementViewContract';
 

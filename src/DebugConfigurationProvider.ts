@@ -10,7 +10,7 @@ import type {
     WorkspaceFolder
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { LaunchConfiguration } from 'roku-debug';
+import type { ComponentLibraryConfiguration, LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
@@ -113,7 +113,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Massage a debug configuration just before a debug session is being launched,
+    * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
@@ -195,6 +195,45 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 deviceSelection.source
             );
         }
+    }
+
+    /**
+     * Runs after `resolveDebugConfiguration` (variables substituted) and after the preLaunchTask, so
+     * the app is already built/staged and its manifest is readable here.
+     */
+    public resolveDebugConfigurationWithSubstitutedVariables(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration): BrightScriptLaunchConfiguration {
+        this.applyInspectMode(config);
+        return config;
+    }
+
+    /**
+     * For TS/JS (Solid) apps, append `inspect=1` to the `plugin_install` sideload form so the device
+     * waits for the JS (Hermes) debugger at startup, letting us hit early breakpoints (mirrors the
+     * rsg-sdk `--inspect-persist` flag; ignored on firmware < 16.0). Merges into any existing
+     * `packageUploadOverrides.formData` without clobbering other keys or an explicit `inspect` value.
+     */
+    private applyInspectMode(config: BrightScriptLaunchConfiguration) {
+        //escape hatch (launch.json or the `brightscript.debug.waitForJsDebugger` user setting)
+        if (config.waitForJsDebugger === false) {
+            this.extensionOutputChannel.appendLine(`[inspect] skipped: waitForJsDebugger is false`);
+            return;
+        }
+        //same precedence as `resolveJsDebugTarget` in extension.ts: an explicit `tsPath` in
+        //launch.json wins over the staged manifest's `ts_path`, then any component library
+        //with a `tsPath` (its JS runs in the same runtime, so the device still needs to wait)
+        const tsPath = config.tsPath ??
+            this.util.getTsPath(config.rootDir) ??
+            config.componentLibraries?.find(library => library.tsPath)?.tsPath;
+        //BrightScript-only apps have no JS debugger to wait for
+        if (!tsPath) {
+            this.extensionOutputChannel.appendLine(`[inspect] skipped: no ts_path under '${config.rootDir}' and no component library tsPath`);
+            return;
+        }
+        //`route` defaults to 'plugin_install' downstream, so omit it; cast since the type marks it required
+        config.packageUploadOverrides ??= {} as NonNullable<BrightScriptLaunchConfiguration['packageUploadOverrides']>;
+        config.packageUploadOverrides.formData ??= {};
+        config.packageUploadOverrides.formData.inspect ??= '1';
+        this.extensionOutputChannel.appendLine(`[inspect] applied inspect=1 (ts_path='${tsPath}')`);
     }
 
     /**
@@ -937,6 +976,33 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * @default { activateOnSessionStart: false, deactivateOnSessionEnd: false }
      */
     remoteControlMode?: { activateOnSessionStart?: boolean; deactivateOnSessionEnd?: boolean };
+
+    /**
+     * Device path to the app's compiled JS bundle the JS debugger should attach to (e.g. 'pkg:/source/compiled/main.js').
+     * Overrides the `ts_path` value from the app's manifest.
+     */
+    tsPath?: string;
+
+    /**
+     * When launching a TS/JS app, ask the device to hold app startup until the JS debugger attaches
+     * (by appending `inspect=1` to the sideload form) so breakpoints in startup code get hit.
+     * Set to false as an escape hatch in case this causes launch issues.
+     * @default true
+     */
+    waitForJsDebugger?: boolean;
+
+    /**
+     * The list of component libraries to build/host during a debug session, with extension-only additions layered
+     * on top of roku-debug's schema
+     */
+    componentLibraries: Array<ComponentLibraryConfiguration & {
+        /**
+         * Device path to this component library's compiled JS bundle (same meaning as the `ts_path` manifest value,
+         * e.g. 'pkg:/source/compiled/main.js'). When the app's own manifest has no `ts_path`, the first component
+         * library with a `tsPath` becomes the target the JS debugger attaches to.
+         */
+        tsPath?: string;
+    }>;
 }
 
 /**

@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.69.3",
+    "version": "3.0.0",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -29,12 +29,14 @@
         "preversion": "npm run build && npm run lint && npm run check-webviews && npm run test && npm run check-extraneous && npm run audit",
         "vscode:prepublish": "npm run build",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
-        "build": "npm run copy-schema && tsc -p ./ && npm run build-webviews",
+        "build-bridge": "esbuild src/solidDevtools/bridge/index.ts --bundle --format=iife --target=es2016 --outfile=dist/solidDevtools/bridge.js",
+        "watch-bridge": "npm run build-bridge -- --watch=forever",
+        "build": "npm run copy-schema && npm run build-bridge && tsc -p ./ && npm run build-webviews",
         "build-webviews": "cd ./webviews && npm run build && cd ..",
         "lint": "eslint \"./src/**/*.ts\"",
         "check-webviews": "cd webviews && npm run check",
         "audit": "npm audit --audit-level=high || audit-ci --config ./audit-ci.jsonc && cd webviews && npm run audit",
-        "watch": "npm run copy-schema && tsc -w -p ./",
+        "watch": "npm run copy-schema && npm run build-bridge && tsc -w -p ./",
         "watch-webviews": "cd ./webviews && npm run watch",
         "watch-all": "ts-node ./scripts/watch-all.ts",
         "test": "nyc mocha",
@@ -57,7 +59,7 @@
         "@rokucommunity/logger": "^0.4.2",
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
-        "brighterscript": "^0.73.3",
+        "brighterscript": "^0.73.5",
         "brighterscript-formatter": "^1.8.3",
         "clone-deep": "^4.0.1",
         "dayjs": "^1.11.12",
@@ -120,7 +122,9 @@
         "chalk": "^4.1.2",
         "changelog-parser": "^2.8.0",
         "deferred": "^0.7.11",
+        "esbuild": "^0.28.0",
         "eslint": "^8.10.0",
+        "eslint-plugin-bridge": "file:eslint-local-rules",
         "eslint-plugin-github": "^4.3.5",
         "eslint-plugin-import": "^2.26.0",
         "eslint-plugin-no-only-tests": "^2.6.0",
@@ -169,9 +173,13 @@
         "onLanguage:xml",
         "workspaceContains:**/manifest",
         "workspaceContains:**/bsconfig.json",
+        "workspaceContains:**/roku-config.ts",
+        "workspaceContains:**/roku-dev-config.json",
+        "workspaceContains:**/.roku/**",
         "onDebug",
         "onDebugDynamicConfigurations:brightscript",
         "onTaskType:brightscript",
+        "onWebviewPanel:solidDevtoolsView",
         "onWebviewPanel:rceVideoView",
         "onWebviewPanel:sceneGraphInspectorView"
     ],
@@ -219,8 +227,7 @@
                 {
                     "id": "rceManagementView",
                     "name": "Device Manager",
-                    "type": "webview",
-                    "when": "brightscript.experimental.rokuCloudEmulator"
+                    "type": "webview"
                 }
             ],
             "vscode-brightscript-language": [
@@ -283,6 +290,13 @@
                     "id": "rokuReplView",
                     "name": "Roku REPL",
                     "type": "webview"
+                },
+                {
+                    "id": "solidDevtoolsView",
+                    "contextualTitle": "Solid Devtools",
+                    "name": "Solid Devtools",
+                    "type": "webview",
+                    "when": "!brightscript.solidDevtoolsPanelOpen"
                 }
             ]
         },
@@ -517,6 +531,11 @@
                     "group": "navigation@1"
                 },
                 {
+                    "command": "extension.brightscript.openSolidDevtoolsInPanel",
+                    "when": "view == solidDevtoolsView",
+                    "group": "navigation@1"
+                },
+                {
                     "command": "extension.brightscript.disconnectFromDevice",
                     "when": "view == sceneGraphInspectorView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@2"
@@ -720,22 +739,22 @@
                 },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.local",
-                    "when": "!brightscript.devicesView.filter.local && brightscript.experimental.rokuCloudEmulator",
+                    "when": "!brightscript.devicesView.filter.local",
                     "group": "5_kind@1"
                 },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.local.active",
-                    "when": "brightscript.devicesView.filter.local && brightscript.experimental.rokuCloudEmulator",
+                    "when": "brightscript.devicesView.filter.local",
                     "group": "5_kind@1"
                 },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.cloud",
-                    "when": "!brightscript.devicesView.filter.cloud && brightscript.experimental.rokuCloudEmulator",
+                    "when": "!brightscript.devicesView.filter.cloud",
                     "group": "5_kind@2"
                 },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.cloud.active",
-                    "when": "brightscript.devicesView.filter.cloud && brightscript.experimental.rokuCloudEmulator",
+                    "when": "brightscript.devicesView.filter.cloud",
                     "group": "5_kind@2"
                 },
                 {
@@ -744,18 +763,6 @@
                 }
             ],
             "commandPalette": [
-                {
-                    "command": "extension.brightscript.rce.addAccount",
-                    "when": "brightscript.experimental.rokuCloudEmulator"
-                },
-                {
-                    "command": "extension.brightscript.rce.switchAccount",
-                    "when": "brightscript.experimental.rokuCloudEmulator"
-                },
-                {
-                    "command": "extension.brightscript.rce.removeAccount",
-                    "when": "brightscript.experimental.rokuCloudEmulator"
-                },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.devModeEnabled",
                     "when": "false"
@@ -950,7 +957,9 @@
                 "type": "brightscript",
                 "languages": [
                     "brightscript",
-                    "brighterscript"
+                    "brighterscript",
+                    "typescript",
+                    "typescriptreact"
                 ],
                 "program": "./dist/debugAdapter.js",
                 "runtime": "node",
@@ -1042,6 +1051,18 @@
                                 "type": "string",
                                 "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
                                 "default": "${workspaceFolder}"
+                            },
+                            "tsPath": {
+                                "type": "string",
+                                "description": "Device path to the app's compiled JS bundle the JS debugger should attach to. Overrides the `ts_path` value from the app's manifest.",
+                                "examples": [
+                                    "pkg:/source/compiled/main.js"
+                                ]
+                            },
+                            "waitForJsDebugger": {
+                                "type": "boolean",
+                                "description": "When launching a TS/JS app, ask the device to hold app startup until the JS debugger attaches (by appending `inspect=1` to the sideload form) so breakpoints in startup code get hit. Set to false as an escape hatch in case this causes launch issues.",
+                                "default": true
                             },
                             "debugRootDir": {
                                 "type": "string",
@@ -1141,6 +1162,13 @@
                                                 "LibName.zip"
                                             ],
                                             "pattern": "^(.*)(\\.zip)$"
+                                        },
+                                        "tsPath": {
+                                            "type": "string",
+                                            "description": "Device path to this component library's compiled JS bundle (same meaning as the `ts_path` manifest value). When the app's own manifest has no `ts_path`, the first component library with a `tsPath` becomes the target the JS debugger attaches to.",
+                                            "examples": [
+                                                "pkg:/source/compiled/main.js"
+                                            ]
                                         },
                                         "files": {
                                             "type": "array",
@@ -2693,12 +2721,6 @@
                         "default": false,
                         "description": "Enable every experimental feature in this section, regardless of each feature's own setting. Changing this requires a window reload.",
                         "scope": "window"
-                    },
-                    "brightscript.experimental.rokuCloudEmulator": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "Enable the Roku Cloud Emulator integration: the Cloud Emulator activity bar panel, cloud device discovery in the Devices view, and debugging against cloud devices. Requires Roku Cloud Emulator early access and an api token. Changing this requires a window reload.",
-                        "scope": "window"
                     }
                 }
             },
@@ -2965,6 +2987,24 @@
                         "type": "boolean",
                         "default": true,
                         "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md",
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.waitForJsDebugger": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "When launching a TS/JS app, ask the device to hold app startup until the JS debugger attaches (by appending `inspect=1` to the sideload form) so breakpoints in startup code get hit. Set to false as an escape hatch in case this causes launch issues.",
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.jsPathTrace": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Diagnostic logging for TS/JS (Hermes) debugging. Logs the computed remoteRoot/localRoot, the CDP proxy's activity, and every path-bearing DAP message to the extension output channel, and writes the full js-debug CDP wire log (including its sourcemap path-mapping decisions) to `<workspace>/logs/`. Enable this when breakpoints don't bind, when a stop opens a duplicate/phantom tab, or when you see \"Could not load source ... Unable to retrieve source content\".",
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.forceJsDebugRelay": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Forces the local JS-debug relay for LAN devices on every platform. The relay is always used for RCE devices, and on Windows where it corrects js-debug's malformed four-slash file:// breakpoint urls. This setting is primarily for testing the relay path from macOS/Linux.",
                         "scope": "resource"
                     },
                     "brightscript.debug.enableSourceMaps": {
@@ -3636,11 +3676,23 @@
                         "type": "string",
                         "description": "Directory where screenshots will be saved. If omitted, screenshots will be saved to the OS's temporary directory. Supports absolute paths (e.g., \"/Users/username/Desktop\" on macOS, \"C:\\\\Users\\\\username\\\\Desktop\" on Windows) and relative paths (e.g., \"debug/screenshots\" or \"debug\\\\screenshots\" on Windows) which are resolved relative to the workspace folder. ${workspaceFolder} is also supported and will point to the first workspace found.",
                         "scope": "resource"
+                    },
+                    "brightscript.solidDevtools.enabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Inject the Solid Devtools on-device bridge into RSG/TypeScript apps during debug staging (dev builds only — apps without a ts_path manifest entry are unaffected).",
+                        "scope": "resource"
                     }
                 }
             }
         ],
         "commands": [
+            {
+                "command": "extension.brightscript.openSolidDevtoolsInPanel",
+                "title": "Open Solid Devtools In New Window",
+                "category": "BrightScript",
+                "icon": "$(link-external)"
+            },
             {
                 "command": "extension.brightscript.debugRokuProject",
                 "title": "Debug Roku Project",
