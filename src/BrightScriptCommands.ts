@@ -68,7 +68,12 @@ export class BrightScriptCommands {
 
         // Refresh a single device (inline button on hover in devices panel)
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
-            await this.deviceManager.healthCheckDevice({ serialNumber: item.key }, true);
+            //item.key is the DeviceManager key (`s:`, `i:` or `rce:` prefixed), not a bare serial number
+            const device = this.deviceManager.getDevice(item.key);
+            if (!device) {
+                return;
+            }
+            await this.deviceManager.healthCheckDevice(device, true);
         });
 
         this.registerCommand('sendRemoteText', async () => {
