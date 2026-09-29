@@ -3,7 +3,7 @@ import * as path from 'path';
 import { createSandbox } from 'sinon';
 import type { WorkspaceFolder } from 'vscode';
 import Uri from 'vscode-uri';
-import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import type { BrightScriptLaunchConfiguration, DeviceSelectionTracker } from './DebugConfigurationProvider';
 import { UserInputManager } from './managers/UserInputManager';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
@@ -403,7 +403,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 const getDeviceStub = sinon.stub(deviceManager, 'getDevice').returns(device);
                 const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves(undefined);
 
-                const result = await (configProvider as any).processHostParameter({ host: '' });
+                const result = await (configProvider as any).processHostParameter({ host: '' }, { source: 'unresolved' });
 
                 expect(getDeviceStub.calledWith({ ip: '1.2.3.4' })).to.be.true;
                 expect(validateStub.called).to.be.false;
@@ -419,7 +419,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 const getDeviceStub = sinon.stub(deviceManager, 'getDevice').returns(device);
                 const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves(undefined);
 
-                const result = await (configProvider as any).processHostParameter({ host: '' });
+                const result = await (configProvider as any).processHostParameter({ host: '' }, { source: 'unresolved' });
 
                 expect(promptStub.called).to.be.false;
                 expect(getDeviceStub.calledWith({ ip: '1.2.3.4' })).to.be.true;
@@ -434,7 +434,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 const getDeviceStub = sinon.stub(deviceManager, 'getDevice').returns(undefined);
                 const validateStub = sinon.stub(deviceManager, 'validateAndAddDevice').resolves(device);
 
-                const result = await (configProvider as any).processHostParameter({ host: '1.2.3.4' });
+                const result = await (configProvider as any).processHostParameter({ host: '1.2.3.4' }, { source: 'unresolved' });
 
                 expect(validateStub.calledWith('1.2.3.4')).to.be.true;
                 expect(getDeviceStub.calledWith({ ip: '1.2.3.4' })).to.be.true;
@@ -446,7 +446,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
                 let threw: Error | undefined;
                 try {
-                    await (configProvider as any).processHostParameter({ host: '1.2.3.4' });
+                    await (configProvider as any).processHostParameter({ host: '1.2.3.4' }, { source: 'unresolved' });
                 } catch (e) {
                     threw = e as Error;
                 }
@@ -460,7 +460,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 sinon.stub(userInputManager, 'promptForHost').resolves({ host: '5.6.7.8', deviceInfo: deviceInfo, device: { host: '5.6.7.8' } });
                 sinon.stub(deviceManager, 'getDevice').returns(device);
 
-                const result = await (configProvider as any).processHostParameter({ device: { host: '${promptForHost}' } });
+                const result = await (configProvider as any).processHostParameter({ device: { host: '${promptForHost}' } }, { source: 'unresolved' });
 
                 //the device option is rebuilt from the resolved host - roku-debug addresses the device
                 //through `device.host`, so the literal placeholder must never survive there
@@ -475,7 +475,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 const promptStub = sinon.stub(userInputManager, 'promptForHost').resolves({ host: '5.6.7.8', deviceInfo: deviceInfo, device: { host: '5.6.7.8' } });
                 sinon.stub(deviceManager, 'getDevice').returns(device);
 
-                const result = await (configProvider as any).processHostParameter({ host: '${promptForHost}' });
+                const result = await (configProvider as any).processHostParameter({ host: '${promptForHost}' }, { source: 'unresolved' });
 
                 expect(promptStub.called).to.be.true;
                 expect(result.host).to.equal('5.6.7.8');
@@ -490,7 +490,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 const promptStub = sinon.stub(userInputManager, 'promptForHost');
                 sinon.stub(deviceManager, 'getDevice').returns(device);
 
-                const result = await (configProvider as any).processHostParameter({ device: { host: '${activeHost}' } });
+                const result = await (configProvider as any).processHostParameter({ device: { host: '${activeHost}' } }, { source: 'unresolved' });
 
                 expect(promptStub.called).to.be.false;
                 expect(result.host).to.equal('5.6.7.8');
@@ -504,7 +504,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 const promptStub = sinon.stub(userInputManager, 'promptForHost').resolves({ host: '5.6.7.8', deviceInfo: deviceInfo, device: { host: '5.6.7.8' } });
                 sinon.stub(deviceManager, 'getDevice').returns(device);
 
-                const result = await (configProvider as any).processHostParameter({ device: { host: '' } });
+                const result = await (configProvider as any).processHostParameter({ device: { host: '' } }, { source: 'unresolved' });
 
                 expect(promptStub.called).to.be.true;
                 expect(result.device).to.eql({ host: '5.6.7.8' });
@@ -526,7 +526,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 //stub rather than wrapping it a second time
                 (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
 
-                const result = await (configProvider as any).processHostParameter({ host: '' });
+                const result = await (configProvider as any).processHostParameter({ host: '' }, { source: 'unresolved' });
 
                 const expectedDevice = { instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'account-token' };
                 expect(result.device).to.eql(expectedDevice);
@@ -552,7 +552,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
                 let threw: Error | undefined;
                 try {
-                    await (configProvider as any).processHostParameter({ host: '' });
+                    await (configProvider as any).processHostParameter({ host: '' }, { source: 'unresolved' });
                 } catch (e) {
                     threw = e as Error;
                 }
@@ -572,7 +572,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
                 let threw: Error | undefined;
                 try {
-                    await (configProvider as any).processHostParameter({ host: '', device: device });
+                    await (configProvider as any).processHostParameter({ host: '', device: device }, { source: 'unresolved' });
                 } catch (e) {
                     threw = e as Error;
                 }
@@ -589,7 +589,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
                 let threw: Error | undefined;
                 try {
-                    await (configProvider as any).processHostParameter({ host: '', device: device });
+                    await (configProvider as any).processHostParameter({ host: '', device: device }, { source: 'unresolved' });
                 } catch (e) {
                     threw = e as Error;
                 }
@@ -602,7 +602,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 const device = { esn: 'ESN123' };
                 (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
 
-                await (configProvider as any).processHostParameter({ host: '', device: device });
+                await (configProvider as any).processHostParameter({ host: '', device: device }, { source: 'unresolved' });
 
                 expect((rokuDeploy.getDeviceInfo as any).calledWith({
                     device: { esn: 'ESN123', rceToken: 'account-token' },
@@ -615,7 +615,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
                 const warningStub = sinon.stub(vscode.window, 'showWarningMessage').resolves(undefined);
 
-                const result = await (configProvider as any).processHostParameter({ host: '', device: device });
+                const result = await (configProvider as any).processHostParameter({ host: '', device: device }, { source: 'unresolved' });
 
                 expect(result.device.rceToken).to.equal('account-token');
                 expect(warningStub.calledOnce).to.be.true;
@@ -629,7 +629,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
                 const warningStub = sinon.stub(vscode.window, 'showWarningMessage').resolves(undefined);
 
-                const result = await (configProvider as any).processHostParameter({ host: '', device: device });
+                const result = await (configProvider as any).processHostParameter({ host: '', device: device }, { source: 'unresolved' });
 
                 expect(result.device.rceToken).to.equal('account-token');
                 expect(warningStub.calledOnce).to.be.true;
@@ -642,7 +642,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
                 let threw: Error | undefined;
                 try {
-                    await (configProvider as any).processHostParameter({ host: '', device: device });
+                    await (configProvider as any).processHostParameter({ host: '', device: device }, { source: 'unresolved' });
                 } catch (e) {
                     threw = e as Error;
                 }
@@ -656,7 +656,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 sinon.stub(deviceManager, 'getDevice').returns(device);
                 sinon.stub(deviceManager, 'validateAndAddDevice').resolves(device);
 
-                const result = await (configProvider as any).processHostParameter({ host: '1.2.3.4' });
+                const result = await (configProvider as any).processHostParameter({ host: '1.2.3.4' }, { source: 'unresolved' });
 
                 expect(rceManager.getToken.called).to.be.false;
                 expect(result.device).to.eql({ host: '1.2.3.4' });
@@ -669,7 +669,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 //the user's explicit active device must not move on a sideload
                 await vscode.context.workspaceState.update('activeDeviceKey', 's:USER-PICK');
 
-                await (configProvider as any).processHostParameter({ host: '1.2.3.4' });
+                await (configProvider as any).processHostParameter({ host: '1.2.3.4' }, { source: 'unresolved' });
 
                 expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.equal('s:abc123');
                 expect(vscode.context.workspaceState.get('activeDeviceKey')).to.equal('s:USER-PICK');
@@ -683,7 +683,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 await vscode.context.workspaceState.update('remoteControlDeviceKey', 's:OLD-LAN-DEVICE');
                 sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns({ key: 'rce:83', rce: { id: 83, status: 'running' } } as any);
 
-                await (configProvider as any).processHostParameter({ host: '', device: device });
+                await (configProvider as any).processHostParameter({ host: '', device: device }, { source: 'unresolved' });
 
                 expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.equal('rce:83');
             });
@@ -695,7 +695,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns(undefined);
                 (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
 
-                await (configProvider as any).processHostParameter({ host: '', device: device });
+                await (configProvider as any).processHostParameter({ host: '', device: device }, { source: 'unresolved' });
 
                 expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.equal('');
             });
@@ -714,12 +714,97 @@ describe('BrightScriptConfigurationProvider', () => {
                 sinon.stub(deviceManager, 'getDeviceByDeviceConfig').returns({ key: 'rce:84', rce: { id: 84, status: 'shutdown' } } as any);
 
                 try {
-                    await (configProvider as any).processHostParameter({ host: '' });
+                    await (configProvider as any).processHostParameter({ host: '' }, { source: 'unresolved' });
                 } catch {
                     // the friendly not-running error is expected; this test only cares about the identity writes
                 }
 
                 expect(vscode.context.workspaceState.get('remoteControlDeviceKey')).to.equal('rce:84');
+            });
+        });
+
+        describe('device selection source', () => {
+            it('records config when the launch config supplies a usable host', async () => {
+                const deviceInfo = { 'serial-number': 'abc123' };
+                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
+                sinon.stub(deviceManager, 'getDevice').returns(undefined);
+                sinon.stub(deviceManager, 'validateAndAddDevice').resolves(device);
+                const tracker: DeviceSelectionTracker = { source: 'unresolved' };
+
+                await (configProvider as any).processHostParameter({ host: '1.2.3.4' }, tracker);
+
+                expect(tracker.source).to.equal('config');
+            });
+
+            it('records activeDevice when the healthy active device answers the prompt', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves({ host: '1.2.3.4', deviceInfo: deviceInfo }) };
+                const promptStub = sinon.stub(userInputManager, 'promptForHost');
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+                sinon.stub(deviceManager, 'validateAndAddDevice').resolves(undefined);
+                const tracker: DeviceSelectionTracker = { source: 'unresolved' };
+
+                await (configProvider as any).processHostParameter({ host: '' }, tracker);
+
+                expect(promptStub.called).to.be.false;
+                expect(tracker.source).to.equal('activeDevice');
+            });
+
+            it('records picker when the user chooses from the device picker', async () => {
+                const deviceInfo = { 'serial-number': 'abc123', 'developer-enabled': 'true' };
+                const device = { ip: '1.2.3.4', serialNumber: 'abc123', deviceInfo: deviceInfo } as any;
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                sinon.stub(userInputManager, 'promptForHost').resolves({ host: '1.2.3.4', deviceInfo: deviceInfo, device: { host: '1.2.3.4' } });
+                sinon.stub(deviceManager, 'getDevice').returns(device);
+                sinon.stub(deviceManager, 'validateAndAddDevice').resolves(undefined);
+                const tracker: DeviceSelectionTracker = { source: 'unresolved' };
+
+                await (configProvider as any).processHostParameter({ host: '' }, tracker);
+
+                expect(tracker.source).to.equal('picker');
+            });
+
+            it('leaves the source unresolved when the picker is dismissed', async () => {
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                sinon.stub(userInputManager, 'promptForHost').rejects(new Error('No host was selected'));
+                const tracker: DeviceSelectionTracker = { source: 'unresolved' };
+
+                try {
+                    await (configProvider as any).processHostParameter({ host: '' }, tracker);
+                } catch {
+                    // dismissal is expected to throw; this test only cares about the tracked source
+                }
+
+                expect(tracker.source).to.equal('unresolved');
+            });
+
+            it('records config when the launch config names a cloud emulator device directly', async () => {
+                const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc' };
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
+                const tracker: DeviceSelectionTracker = { source: 'unresolved' };
+
+                await (configProvider as any).processHostParameter({ host: '', device: device }, tracker);
+
+                expect(tracker.source).to.equal('config');
+            });
+
+            it('records picker when the user chooses a cloud emulator device from the picker', async () => {
+                const device = { instanceUrl: 'https://device.rce.roku.com/instance/abc', rceToken: 'account-token' };
+                (configProvider as any).brightScriptCommands = { getHealthyActiveHost: sinon.stub().resolves(undefined) };
+                sinon.stub(userInputManager, 'promptForHost').resolves({
+                    host: undefined,
+                    deviceInfo: undefined,
+                    device: device,
+                    rce: { status: 'running' }
+                } as any);
+                sinon.stub(vscode.window, 'showWarningMessage').resolves(undefined);
+                (rokuDeploy.getDeviceInfo as any).resolves({ 'developer-enabled': 'true' });
+                const tracker: DeviceSelectionTracker = { source: 'unresolved' };
+
+                await (configProvider as any).processHostParameter({ host: '' }, tracker);
+
+                expect(tracker.source).to.equal('picker');
             });
         });
 

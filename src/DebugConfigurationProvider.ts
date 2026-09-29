@@ -128,6 +128,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         let deviceInfo: DeviceInfo;
         let result: BrightScriptLaunchConfiguration;
+        //tracked as resolution proceeds rather than derived afterwards: `processLocalHostParameter`
+        //rewrites `config.device` to the resolved host, erasing what the config originally asked for
+        const deviceSelection: DeviceSelectionTracker = { source: 'unresolved' };
         try {
             // merge user and workspace settings into the config
             result = this.processUserWorkspaceSettings(config);
@@ -138,7 +141,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
             result = await this.sanitizeConfiguration(result, folder);
             result = await this.processEnvVariables(folder, result);
-            result = await this.processHostParameter(result);
+            result = await this.processHostParameter(result, deviceSelection);
             result = await this.processPasswordParameter(config, result);
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
@@ -188,7 +191,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             this.telemetryManager?.sendStartDebugSessionEvent(
                 this.processUserWorkspaceSettings(config) as any,
                 result,
-                deviceInfo
+                deviceInfo,
+                deviceSelection.source
             );
         }
     }
@@ -573,17 +577,19 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * entirely; roku-debug reaches them through roku-deploy's `device` option. Everything else
      * follows the host-based local flow.
      * @param config  current config object
+     * @param deviceSelection  tracks how the target device ended up being chosen, for telemetry
      */
-    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+    private async processHostParameter(config: BrightScriptLaunchConfiguration, deviceSelection: DeviceSelectionTracker): Promise<BrightScriptLaunchConfiguration> {
         //a local `device` config's host takes the place of the top-level `host` field
         if (config.device && isLocalDeviceConfig(config.device)) {
             config.host = config.device.host;
         }
 
         if (this.isNonLocalDevice(config.device)) {
+            deviceSelection.source = 'config';
             return this.processNonLocalDeviceParameter(config);
         }
-        return this.processLocalHostParameter(config);
+        return this.processLocalHostParameter(config, deviceSelection);
     }
 
     /**
@@ -595,8 +601,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * When the user picks a Roku Cloud Emulator device from the (shared) device picker, the config
      * adopts its precomputed device option and the non-local flow takes over.
      * @param config  current config object
+     * @param deviceSelection  tracks how the target device ended up being chosen, for telemetry
      */
-    private async processLocalHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+    private async processLocalHostParameter(config: BrightScriptLaunchConfiguration, deviceSelection: DeviceSelectionTracker): Promise<BrightScriptLaunchConfiguration> {
         //`host` can be missing entirely (a config that only supplies `device: { host: '' }`) - treat
         //that the same as an empty host and prompt, rather than crashing on the trim
         const trimmedHost = (config.host ?? '').trim();
@@ -611,8 +618,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (needsHostPrompt) {
             // both the active-host lookup and the picker probe + register the device in the device
             // manager, so reuse it below instead of probing again
-            const resolved = await this.brightScriptCommands.getHealthyActiveHost() ??
-                await this.userInputManager.promptForHost();
+            const activeHost = await this.brightScriptCommands.getHealthyActiveHost();
+            const resolved = activeHost ?? await this.userInputManager.promptForHost();
+            if (resolved) {
+                deviceSelection.source = activeHost ? 'activeDevice' : 'picker';
+            }
 
             if (resolved && this.isNonLocalDevice(resolved.device)) {
                 //the user picked a Roku Cloud Emulator device from the (shared) device picker: adopt a
@@ -630,6 +640,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             if (resolved?.host) {
                 device = this.deviceManager.getDevice({ ip: resolved.host });
             }
+        } else {
+            //the config already named a usable host, so nothing needed resolving
+            deviceSelection.source = 'config';
         }
 
         //check the host and throw error if not provided, or remember the device as the
@@ -990,4 +1003,17 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
          */
         tsPath?: string;
     }>;
+}
+
+/**
+ * How the target device for a debug session was chosen.
+ * - `config`: the launch configuration named the device outright, so nothing needed resolving
+ * - `activeDevice`: the config asked to be prompted, and the persisted active device answered it
+ * - `picker`: the config asked to be prompted, and the user chose from the device picker
+ * - `unresolved`: the prompt flow started but produced no device (dismissed, or it threw)
+ */
+export type DeviceSelectionSource = 'config' | 'activeDevice' | 'picker' | 'unresolved';
+
+export interface DeviceSelectionTracker {
+    source: DeviceSelectionSource;
 }
