@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [3.0.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/3.0.0...v3.0.1) - 2026-09-29
+### Added
+ - Add a Filtered Devices group to the devices view ([#914](https://github.com/rokucommunity/vscode-brightscript-language/pull/914))
+### Changed
+ - Expand startDebugSession telemetry ([#905](https://github.com/rokucommunity/vscode-brightscript-language/pull/905))
+ - upgrade to [roku-debug@0.24.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0245---2026-09-29). Notable changes since 0.24.4:
+     - Gate perfetto connectOnStart on tracing being enabled ([#425](https://github.com/rokucommunity/roku-debug/pull/425))
+ - upgrade to [roku-deploy@4.0.0-alpha.9](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#400-alpha9---2026-09-28). Notable changes since 4.0.0-alpha.8:
+     - Absorb the abort error when terminating a rejected ECP websocket ([#428](https://github.com/rokucommunity/roku-deploy/pull/428))
+### Fixed
+ - Fix the devices view Refresh action for LAN devices ([#915](https://github.com/rokucommunity/vscode-brightscript-language/pull/915))
+
+
+
 ## [3.0.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.69.3...v3.0.0) - 2026-09-23
 ### Added
  - RSG 2.0 SDK support ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
