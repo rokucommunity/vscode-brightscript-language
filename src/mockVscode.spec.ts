@@ -573,7 +573,17 @@ export let vscode = {
                 }
             } as any;
         },
-        parse: () => { }
+        parse: (value?: string) => {
+            const separatorIndex = value?.indexOf(':') ?? -1;
+            if (separatorIndex < 0) {
+                return undefined;
+            }
+            return {
+                scheme: value.slice(0, separatorIndex),
+                path: value.slice(separatorIndex + 1),
+                toString: () => value
+            } as any;
+        }
     },
     SnippetString: class {
         constructor(value: string = null) {
