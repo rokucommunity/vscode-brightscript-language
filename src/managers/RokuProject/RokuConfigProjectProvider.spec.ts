@@ -20,8 +20,8 @@ describe('RokuConfigProjectProvider', () => {
         sinon.restore();
         provider = new RokuConfigProjectProvider();
 
-        sinon.stub(vscode.workspace as any, 'asRelativePath').callsFake((uri: any) => (typeof uri === 'string' ? uri : uri.fsPath));
-        sinon.stub(vscode.workspace as any, 'getWorkspaceFolder').returns(undefined);
+        sinon.stub(vscode.workspace, 'asRelativePath').callsFake((uri: any) => (typeof uri === 'string' ? uri : uri.fsPath));
+        sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(undefined);
     });
 
     afterEach(() => {

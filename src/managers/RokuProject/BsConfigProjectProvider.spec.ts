@@ -20,10 +20,10 @@ describe('BsConfigProjectProvider', () => {
         provider = new BsConfigProjectProvider();
 
         // passthrough: relative paths are the URI paths themselves
-        sinon.stub(vscode.workspace as any, 'asRelativePath').callsFake((uri: any) => {
+        sinon.stub(vscode.workspace, 'asRelativePath').callsFake((uri: any) => {
             return typeof uri === 'string' ? uri : uri.fsPath;
         });
-        sinon.stub(vscode.workspace as any, 'getWorkspaceFolder').returns(undefined);
+        sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(undefined);
     });
 
     afterEach(() => {
@@ -71,7 +71,7 @@ describe('BsConfigProjectProvider', () => {
         it('calls workspace.findFiles for the bsconfig glob and returns results', async () => {
             const uri1 = makeUri('/project/bsconfig.json');
             const uri2 = makeUri('/project/bsconfig.prod.json');
-            sinon.stub(vscode.workspace as any, 'findFiles').resolves([uri1, uri2]);
+            sinon.stub(vscode.workspace, 'findFiles').resolves([uri1, uri2]);
 
             const results = await provider.findProjectConfigs();
 
@@ -79,7 +79,7 @@ describe('BsConfigProjectProvider', () => {
         });
 
         it('returns an empty array when no config files are found', async () => {
-            sinon.stub(vscode.workspace as any, 'findFiles').resolves([]);
+            sinon.stub(vscode.workspace, 'findFiles').resolves([]);
 
             const results = await provider.findProjectConfigs();
 

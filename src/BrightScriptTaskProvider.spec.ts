@@ -93,7 +93,7 @@ describe('BrightScriptTaskProvider', () => {
             fsExtra.ensureDirSync(projectDir);
             fsExtra.writeFileSync(path.join(projectDir, 'bsconfig.json'), '{}');
 
-            sinon.stub(vscode.workspace as any, 'findFiles').resolves([
+            sinon.stub(vscode.workspace, 'findFiles').resolves([
                 Uri.file(path.join(projectDir, 'bsconfig.json'))
             ]);
             sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
@@ -119,7 +119,7 @@ describe('BrightScriptTaskProvider', () => {
             fsExtra.writeFileSync(path.join(projectDir1, 'bsconfig.json'), '{}');
             fsExtra.writeFileSync(path.join(projectDir2, 'bsconfig.json'), '{}');
 
-            sinon.stub(vscode.workspace as any, 'findFiles').resolves([
+            sinon.stub(vscode.workspace, 'findFiles').resolves([
                 Uri.file(path.join(projectDir1, 'bsconfig.json')),
                 Uri.file(path.join(projectDir2, 'bsconfig.json'))
             ]);
@@ -147,7 +147,7 @@ describe('BrightScriptTaskProvider', () => {
             fsExtra.writeFileSync(path.join(projectDir1, 'bsconfig.json'), '{}');
             fsExtra.writeFileSync(path.join(projectDir2, 'bsconfig.json'), '{}');
 
-            sinon.stub(vscode.workspace as any, 'findFiles').resolves([
+            sinon.stub(vscode.workspace, 'findFiles').resolves([
                 Uri.file(path.join(projectDir1, 'bsconfig.json')),
                 Uri.file(path.join(projectDir2, 'bsconfig.json'))
             ]);
@@ -166,7 +166,7 @@ describe('BrightScriptTaskProvider', () => {
         });
 
         it('returns task when no files match ${folderForFile} pattern (error shown at runtime)', async () => {
-            sinon.stub(vscode.workspace as any, 'findFiles').resolves([]);
+            sinon.stub(vscode.workspace, 'findFiles').resolves([]);
             sinon.stub(vscode.window, 'showWarningMessage');
 
             const task = createMockTask({
@@ -186,7 +186,7 @@ describe('BrightScriptTaskProvider', () => {
             fsExtra.ensureDirSync(projectDir);
             fsExtra.writeFileSync(path.join(projectDir, 'bsconfig.json'), '{}');
 
-            sinon.stub(vscode.workspace as any, 'findFiles').resolves([
+            sinon.stub(vscode.workspace, 'findFiles').resolves([
                 Uri.file(path.join(projectDir, 'bsconfig.json'))
             ]);
             sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
@@ -215,7 +215,7 @@ describe('BrightScriptTaskProvider', () => {
             const findFilesStub = sinon.stub();
             findFilesStub.onFirstCall().resolves([Uri.file(path.join(bsconfigDir, 'bsconfig.json'))]);
             findFilesStub.onSecondCall().resolves([Uri.file(path.join(packageDir, 'package.json'))]);
-            sinon.stub(vscode.workspace as any, 'findFiles').callsFake(findFilesStub as any);
+            sinon.stub(vscode.workspace, 'findFiles').callsFake(findFilesStub as any);
             sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
 
             const task = createMockTask({
@@ -234,7 +234,7 @@ describe('BrightScriptTaskProvider', () => {
             // Create bsconfig.json at root
             fsExtra.writeFileSync(path.join(rootDir, 'bsconfig.json'), '{}');
 
-            sinon.stub(vscode.workspace as any, 'findFiles').resolves([
+            sinon.stub(vscode.workspace, 'findFiles').resolves([
                 Uri.file(path.join(rootDir, 'bsconfig.json'))
             ]);
             sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
@@ -447,7 +447,7 @@ describe('BrightScriptTaskProvider', () => {
             fsExtra.writeFileSync(path.join(projectDir1, 'bsconfig.json'), '{}');
             fsExtra.writeFileSync(path.join(projectDir2, 'bsconfig.json'), '{}');
 
-            sinon.stub(vscode.workspace as any, 'findFiles').resolves([
+            sinon.stub(vscode.workspace, 'findFiles').resolves([
                 Uri.file(path.join(projectDir1, 'bsconfig.json')),
                 Uri.file(path.join(projectDir2, 'bsconfig.json'))
             ]);
@@ -485,7 +485,7 @@ describe('BrightScriptTaskProvider', () => {
 
         it('exits with code 1 when no files found for ${folderForFile} variable', async () => {
             // Mock findFiles to return empty array (no files found)
-            sinon.stub(vscode.workspace as any, 'findFiles').resolves([]);
+            sinon.stub(vscode.workspace, 'findFiles').resolves([]);
             sinon.stub(vscode.window, 'showWarningMessage');
 
             const task = createMockTask({
@@ -528,7 +528,7 @@ describe('BrightScriptTaskProvider', () => {
             fsExtra.writeFileSync(path.join(projectDir, 'bsconfig.json'), '{}');
 
             // Mock findFiles to throw an error during variable resolution
-            sinon.stub(vscode.workspace as any, 'findFiles').rejects(new Error('File system error'));
+            sinon.stub(vscode.workspace, 'findFiles').rejects(new Error('File system error'));
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -2489,7 +2489,7 @@ describe('BrightScriptTaskProvider', () => {
             findFilesStub.resolves([
                 Uri.file(path.join(projectDir, 'bsconfig.json'))
             ]);
-            sinon.stub(vscode.workspace as any, 'findFiles').callsFake(findFilesStub as any);
+            sinon.stub(vscode.workspace, 'findFiles').callsFake(findFilesStub as any);
             sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
 
             // Mock showQuickPick to return the relative folder path
