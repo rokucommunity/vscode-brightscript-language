@@ -1,18 +1,6 @@
 import * as sinon from 'sinon';
-let Module = require('module');
 
 import { vscode } from './mockVscode.spec';
-
-//override the "require" call to mock certain items
-const { require: oldRequire } = Module.prototype;
-
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
 
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';

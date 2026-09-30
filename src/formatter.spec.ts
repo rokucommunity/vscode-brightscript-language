@@ -6,19 +6,6 @@ import { vscode } from './mockVscode.spec';
 import type { FormattingOptions } from 'brighterscript-formatter';
 import { Formatter as BrighterScriptFormatter } from 'brighterscript-formatter';
 
-let Module = require('module');
-
-//override the "require" call to mock certain items
-const { require: oldRequire } = Module.prototype;
-
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
-
 import { Formatter } from './formatter';
 
 describe('Formatter', () => {

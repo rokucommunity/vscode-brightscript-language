@@ -4,15 +4,6 @@ import * as path from 'path';
 import { util } from 'brighterscript';
 import { vscode } from '../../mockVscode.spec';
 
-let Module = require('module');
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    }
-    return oldRequire.apply(this, arguments);
-};
-
 import { BsConfigProjectProvider } from './BsConfigProjectProvider';
 
 const sinon = createSandbox();
@@ -28,11 +19,11 @@ describe('BsConfigProjectProvider', () => {
         sinon.restore();
         provider = new BsConfigProjectProvider();
 
-        // asRelativePath is not in the vscode mock; add a passthrough stub
-        (vscode.workspace as any).asRelativePath = sinon.stub().callsFake((uri: any) => {
+        // passthrough: relative paths are the URI paths themselves
+        sinon.stub(vscode.workspace as any, 'asRelativePath').callsFake((uri: any) => {
             return typeof uri === 'string' ? uri : uri.fsPath;
         });
-        (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(undefined);
+        sinon.stub(vscode.workspace as any, 'getWorkspaceFolder').returns(undefined);
     });
 
     afterEach(() => {
@@ -80,7 +71,7 @@ describe('BsConfigProjectProvider', () => {
         it('calls workspace.findFiles for the bsconfig glob and returns results', async () => {
             const uri1 = makeUri('/project/bsconfig.json');
             const uri2 = makeUri('/project/bsconfig.prod.json');
-            (vscode.workspace as any).findFiles = sinon.stub().resolves([uri1, uri2]);
+            sinon.stub(vscode.workspace as any, 'findFiles').resolves([uri1, uri2]);
 
             const results = await provider.findProjectConfigs();
 
@@ -88,7 +79,7 @@ describe('BsConfigProjectProvider', () => {
         });
 
         it('returns an empty array when no config files are found', async () => {
-            (vscode.workspace as any).findFiles = sinon.stub().resolves([]);
+            sinon.stub(vscode.workspace as any, 'findFiles').resolves([]);
 
             const results = await provider.findProjectConfigs();
 
@@ -243,7 +234,7 @@ describe('BsConfigProjectProvider', () => {
     describe('createProject', () => {
         it('generates the correct task name from the config URI', () => {
             const configUri = makeUri('/workspace/project/bsconfig.json');
-            (vscode.workspace as any).asRelativePath = sinon.stub().returns('project/bsconfig.json');
+            (vscode.workspace.asRelativePath as any).returns('project/bsconfig.json');
             (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [],
@@ -258,7 +249,7 @@ describe('BsConfigProjectProvider', () => {
 
         it('embeds the config filename in the bsc command', () => {
             const configUri = makeUri('/workspace/project/bsconfig.json');
-            (vscode.workspace as any).asRelativePath = sinon.stub().returns('project/bsconfig.json');
+            (vscode.workspace.asRelativePath as any).returns('project/bsconfig.json');
             (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [],
@@ -273,7 +264,7 @@ describe('BsConfigProjectProvider', () => {
 
         it('produces a debug config name with no flavor for bsconfig.json', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.json');
-            (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
+            (vscode.workspace.asRelativePath as any).returns('myapp/bsconfig.json');
             (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [],
@@ -288,7 +279,7 @@ describe('BsConfigProjectProvider', () => {
 
         it('appends the flavor in parentheses for bsconfig.prod.json', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.prod.json');
-            (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.prod.json');
+            (vscode.workspace.asRelativePath as any).returns('myapp/bsconfig.prod.json');
             (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [],
@@ -304,7 +295,7 @@ describe('BsConfigProjectProvider', () => {
         it('uses the indexed stagingDir as the debug rootDir', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.json');
             const stagingDir = '/workspace/myapp/custom-staging';
-            (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
+            (vscode.workspace.asRelativePath as any).returns('myapp/bsconfig.json');
             (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [],
@@ -320,7 +311,7 @@ describe('BsConfigProjectProvider', () => {
         it('falls back to resolving stagingDir from file when not indexed', () => {
             const projectDir = '/workspace/myapp';
             const configUri = makeUri(path.join(projectDir, 'bsconfig.json'));
-            (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
+            (vscode.workspace.asRelativePath as any).returns('myapp/bsconfig.json');
 
             sinon.stub(util, 'loadConfigFile').returns({} as any);
             sinon.stub(util, 'normalizeConfig').returns({
@@ -336,7 +327,7 @@ describe('BsConfigProjectProvider', () => {
 
         it('sets files to ["**/*"] in the debug config so the debugger deploys all staged files', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.json');
-            (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
+            (vscode.workspace.asRelativePath as any).returns('myapp/bsconfig.json');
             (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp',
                 stagingDir: '/workspace/myapp/out/.roku-deploy-staging'
@@ -349,7 +340,7 @@ describe('BsConfigProjectProvider', () => {
 
         it('includes the preLaunchTask in the debug config', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.json');
-            (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
+            (vscode.workspace.asRelativePath as any).returns('myapp/bsconfig.json');
             (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp',
                 stagingDir: '/workspace/myapp/out/.roku-deploy-staging'
@@ -362,7 +353,7 @@ describe('BsConfigProjectProvider', () => {
 
         it('sets the cwd of the task to the project directory', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.json');
-            (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
+            (vscode.workspace.asRelativePath as any).returns('myapp/bsconfig.json');
             (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp',
                 stagingDir: '/workspace/myapp/out/.roku-deploy-staging'

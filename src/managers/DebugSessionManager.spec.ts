@@ -1,19 +1,7 @@
 import { expect } from 'chai';
 import { createSandbox } from 'sinon';
-let Module = require('module');
 
 import { vscode } from '../mockVscode.spec';
-
-// Override the "require" call to mock vscode — must run before the SUT is imported, since
-// DebugSessionManager value-imports vscode (for EventEmitter) at module load.
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
 
 import { DebugSessionManager } from './DebugSessionManager';
 

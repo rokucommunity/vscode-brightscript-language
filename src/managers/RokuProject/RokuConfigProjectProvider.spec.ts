@@ -3,15 +3,6 @@ import { createSandbox } from 'sinon';
 import * as path from 'path';
 import { vscode } from '../../mockVscode.spec';
 
-let Module = require('module');
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    }
-    return oldRequire.apply(this, arguments);
-};
-
 import { RokuConfigProjectProvider } from './RokuConfigProjectProvider';
 
 const sinon = createSandbox();
@@ -29,14 +20,8 @@ describe('RokuConfigProjectProvider', () => {
         sinon.restore();
         provider = new RokuConfigProjectProvider();
 
-        (vscode.workspace as any).asRelativePath = sinon.stub().callsFake((uri: any) => (typeof uri === 'string' ? uri : uri.fsPath)
-        );
-        (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(undefined);
-
-        // Ensure workspace.fs.stat exists so sinon can stub it
-        if (!(vscode.workspace.fs as any).stat) {
-            (vscode.workspace.fs as any).stat = () => Promise.resolve({});
-        }
+        sinon.stub(vscode.workspace as any, 'asRelativePath').callsFake((uri: any) => (typeof uri === 'string' ? uri : uri.fsPath));
+        sinon.stub(vscode.workspace as any, 'getWorkspaceFolder').returns(undefined);
     });
 
     afterEach(() => {
@@ -95,7 +80,7 @@ describe('RokuConfigProjectProvider', () => {
             const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
             const expectedConfig = path.join(projectDir, 'src', ROKU_CONFIG_FILENAME);
 
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns({
+            (vscode.workspace.getWorkspaceFolder as any).returns({
                 uri: makeUri('/workspace')
             });
 
@@ -117,7 +102,7 @@ describe('RokuConfigProjectProvider', () => {
             const fileUri = makeUri(path.join(projectDir, 'src', 'components', 'main.brs'));
             const expectedConfig = path.join(projectDir, ROKU_CONFIG_FILENAME);
 
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns({
+            (vscode.workspace.getWorkspaceFolder as any).returns({
                 uri: makeUri('/workspace')
             });
 
@@ -137,7 +122,7 @@ describe('RokuConfigProjectProvider', () => {
         it('returns an empty array when roku-config.ts is not found anywhere in the tree', async () => {
             const fileUri = makeUri('/workspace/project/src/main.brs');
 
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns({
+            (vscode.workspace.getWorkspaceFolder as any).returns({
                 uri: makeUri('/workspace')
             });
 
@@ -153,7 +138,7 @@ describe('RokuConfigProjectProvider', () => {
             const workspaceRoot = path.join(path.sep, 'workspace');
             const fileUri = makeUri(path.join(workspaceRoot, 'src', 'main.brs'));
 
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns({
+            (vscode.workspace.getWorkspaceFolder as any).returns({
                 uri: makeUri(workspaceRoot)
             });
 
@@ -172,7 +157,7 @@ describe('RokuConfigProjectProvider', () => {
 
         it('returns an empty array when there is no workspace folder', async () => {
             const fileUri = makeUri('/workspace/project/src/main.brs');
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(undefined);
+            (vscode.workspace.getWorkspaceFolder as any).returns(undefined);
             statStub.rejects(new Error('not found'));
 
             const results = await provider.findProjectConfigFromFile(fileUri);
@@ -185,7 +170,7 @@ describe('RokuConfigProjectProvider', () => {
     describe('createProject', () => {
         it('generates a taskName from the relative config path', () => {
             const configUri = makeUri('/workspace/project/roku-config.ts');
-            (vscode.workspace as any).asRelativePath = sinon.stub().returns('project/roku-config.ts');
+            (vscode.workspace.asRelativePath as any).returns('project/roku-config.ts');
 
             const result = provider.createProject(configUri);
 
@@ -228,7 +213,7 @@ describe('RokuConfigProjectProvider', () => {
 
         it('sets preLaunchTask to match the generated taskName', () => {
             const configUri = makeUri('/workspace/project/roku-config.ts');
-            (vscode.workspace as any).asRelativePath = sinon.stub().returns('project/roku-config.ts');
+            (vscode.workspace.asRelativePath as any).returns('project/roku-config.ts');
 
             const result = provider.createProject(configUri);
 

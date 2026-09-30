@@ -3,27 +3,9 @@ import * as sinonImport from 'sinon';
 import { EventEmitter } from 'eventemitter3';
 import { vscode } from '../mockVscode.spec';
 
-let Module = require('module');
-const { require: oldRequire } = Module.prototype;
-
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
-
 import { DevicesViewProvider } from './DevicesViewProvider';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import type { DeviceFilters } from '../deviceFilters';
-
-if (!(vscode as any).TreeItemCollapsibleState) {
-    (vscode as any).TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 };
-}
-if (!(vscode as any).ConfigurationTarget) {
-    (vscode as any).ConfigurationTarget = { Global: 1, Workspace: 2, WorkspaceFolder: 3 };
-}
 
 const FILTERS_SECTION = 'brightscript.devicesView.filters';
 
@@ -113,13 +95,8 @@ describe('DevicesViewProvider', () => {
         return { provider: provider, deviceManager: deviceManager, emitter: emitter };
     }
 
-    beforeEach(async () => {
+    beforeEach(() => {
         clearFilters();
-        (vscode.workspace as any)._onDidChangeConfigurationEmitter?.removeAllListeners();
-        //make sure no active device leaks in from a previous test (the context manager is a module
-        //singleton and the provider seeds it from workspaceState)
-        await vscode.context.workspaceState.update('activeDeviceKey', undefined);
-        await vscodeContextManager.set('activeDeviceKey', '');
     });
 
     describe('applyFilters via getChildren', () => {

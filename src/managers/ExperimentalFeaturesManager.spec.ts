@@ -5,18 +5,6 @@ import { ExperimentalFeature, ExperimentalFeaturesManager } from './Experimental
 import { vscodeContextManager } from './VscodeContextManager';
 
 const sinon = createSandbox();
-const Module = require('module');
-
-//override the "require" call to mock certain items
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
-
 describe('ExperimentalFeaturesManager', () => {
 
     let contextSetStub: ReturnType<typeof sinon.stub>;

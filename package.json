@@ -5539,21 +5539,6 @@
             ]
         }
     },
-    "mocha": {
-        "spec": [
-            "src/**/*.spec.ts",
-            "webviews/src/**/*.spec.ts"
-        ],
-        "require": [
-            "source-map-support/register",
-            "ts-node/register"
-        ],
-        "bail": false,
-        "fullTrace": true,
-        "watchExtensions": [
-            "ts"
-        ]
-    },
     "nyc": {
         "include": [
             "src/**/!(*.spec).ts",

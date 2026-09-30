@@ -3,15 +3,6 @@ import { createSandbox } from 'sinon';
 import * as path from 'path';
 import { vscode } from '../../mockVscode.spec';
 
-let Module = require('module');
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    }
-    return oldRequire.apply(this, arguments);
-};
-
 import { RokuProjectManager } from './RokuProjectManager';
 import type { DiscoveredRokuProject, ProjectBuildResult, ProjectConfigProvider } from './RokuProjectManager';
 
@@ -70,9 +61,9 @@ describe('RokuProjectManager', () => {
             setProjects: sinon.stub()
         };
 
-        // Add methods missing from the mock that RokuProjectManager calls
-        (vscode.languages as any).registerCodeLensProvider = sinon.stub().returns({ dispose: () => { } });
-        (vscode.window as any).createStatusBarItem = sinon.stub().returns({
+        // Stub the workspace, language and window APIs that RokuProjectManager calls
+        sinon.stub(vscode.languages as any, 'registerCodeLensProvider').returns({ dispose: () => { } });
+        sinon.stub(vscode.window as any, 'createStatusBarItem').returns({
             text: '',
             command: undefined,
             tooltip: undefined,
@@ -81,13 +72,9 @@ describe('RokuProjectManager', () => {
             dispose: sinon.stub()
         });
         sinon.stub(vscode.commands, 'executeCommand');
-        (vscode.workspace as any).asRelativePath = sinon.stub().callsFake((uri: any) => {
+        sinon.stub(vscode.workspace as any, 'asRelativePath').callsFake((uri: any) => {
             return typeof uri === 'string' ? uri : uri.fsPath;
         });
-        // Use a CodeLens class that preserves constructor arguments for assertions
-        (vscode as any).CodeLens = class {
-            constructor(public range: any, public command: any) { }
-        };
 
         manager = new RokuProjectManager(taskRegistry as any, viewProvider as any);
 

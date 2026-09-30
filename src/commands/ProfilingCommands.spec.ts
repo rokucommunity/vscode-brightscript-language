@@ -1,22 +1,11 @@
 import { expect } from 'chai';
 import { createSandbox } from 'sinon';
-let Module = require('module');
 import { ProfilingCommands } from './ProfilingCommands';
 import { vscode } from '../mockVscode.spec';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { debugSessionManager } from '../managers/DebugSessionManager';
 
 const sinon = createSandbox();
-
-// Override the "require" call to mock vscode
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
 
 describe('ProfilingCommands', () => {
     let commands: ProfilingCommands;

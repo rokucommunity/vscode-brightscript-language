@@ -3,20 +3,8 @@ import { createSandbox } from 'sinon';
 import * as fsExtra from 'fs-extra';
 import * as os from 'os';
 import * as path from 'path';
-let Module = require('module');
 
 import { vscode } from '../../mockVscode.spec';
-
-// Override the "require" call to mock vscode — must run before the SUT is imported, since
-// JsDebugPathTrace value-imports vscode at module load.
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
 
 import { JsDebugPathTrace } from './JsDebugPathTrace';
 
