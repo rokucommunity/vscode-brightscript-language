@@ -35,9 +35,10 @@ import { RemoteControlManager } from './managers/RemoteControlManager';
 import { DeviceTargetManager } from './managers/DeviceTargetManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
 import type { CustomRequestEvent, ProcessCrashEventData } from 'roku-debug';
-import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent, isProcessStagingDirCustomRequest } from 'roku-debug';
+import { isChannelPublishedEvent, isChannelSideloadedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent, isProcessStagingDirCustomRequest } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { debugSessionManager } from './managers/DebugSessionManager';
+import { createHermesAttachPauseTracker } from './HermesAttachPauseTracker';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
 import { DiagnosticManager } from './managers/DiagnosticManager';
@@ -249,7 +250,7 @@ export class Extension {
         );
 
         // When attaching to Hermes (which always pauses on debugger connect), automatically
-        // continue execution on the first stopped event so the user doesn't have to manually resume.
+        // continue that pause so the user doesn't have to manually resume (see createHermesAttachPauseTracker).
         // The pwa-node debugger spawns a child session for the actual Hermes connection — we target
         // that child session (identified by its parent having _isBrightscriptJsSession: true).
         const debugTsEvents = false;
@@ -258,50 +259,14 @@ export class Extension {
                 console.log(...cb());
             }
         }; // set to true to enable debug logging for this feature
+        const extensionOutputChannel = this.extensionOutputChannel;
         context.subscriptions.push(
             vscode.debug.registerDebugAdapterTrackerFactory('pwa-node', {
                 createDebugAdapterTracker: function createDebugAdapterTracker(session) {
                     if (!session.parentSession.configuration?._isBrightscriptJsSession || session.parentSession?.configuration?.continueOnAttach !== true) {
                         return undefined;
                     }
-
-                    let threadId: number | undefined;
-                    let hasValidStackForCurrentStop = false;
-                    return {
-                        onDidSendMessage: function onDidSendMessage(message) {
-                            logTsEvents(() => [message.type, message.type === 'response' ? message.command : message.event, JSON.stringify(message)]);
-
-                            if (message.type === 'event' && message.event === 'stopped') {
-                                // Save the last threadId so we can continue it after attach. Hermes doesn't include the threadId in the stackTrace response.
-                                // Only update if the event body actually has a threadId — some Hermes attach pauses omit it.
-                                if (message.body.threadId !== undefined) {
-                                    threadId = message.body.threadId;
-                                }
-                                hasValidStackForCurrentStop = false;
-                                logTsEvents(() => [`stopped event: threadId=${threadId} (from event body: ${message.body.threadId})`]);
-                            }
-
-                            // Fallback: if the stopped event had no threadId, grab it from the threads response (which always precedes the stackTrace request)
-                            if (threadId === undefined && message.type === 'response' && message.command === 'threads' && message.body.threads?.length > 0) {
-                                threadId = message.body.threads[0].id;
-                                logTsEvents(() => [`set threadId from threads response fallback: ${threadId}`]);
-                            }
-
-                            // Automatically continue after attach if Hermes session is paused with no stack frames. These seem to be auto pauses that happen on attach.
-                            // VS Code may make multiple stackTrace requests per stop; once a valid (non-empty) stack is seen, don't auto-continue on a subsequent empty one.
-                            if (threadId !== undefined && message.type === 'response' && message.command === 'stackTrace') {
-                                const frames = message.body.stackFrames;
-                                logTsEvents(() => [`stackTrace: ${frames.length} frames`, ...frames.map((f: any) => `${f.source?.path ?? f.source?.name ?? '(no source)'}:${f.line}`)]);
-                                if (frames.some((f: any) => f.source?.path)) {
-                                    // At least one frame has a real source file — this is a valid user-code stop
-                                    hasValidStackForCurrentStop = true;
-                                } else if (!hasValidStackForCurrentStop) {
-                                    logTsEvents(() => ['Automatically continuing pause after attach with Hermes session...']);
-                                    void session.customRequest('continue', { threadId: threadId });
-                                }
-                            }
-                        }
-                    };
+                    return createHermesAttachPauseTracker(session, logTsEvents, line => extensionOutputChannel.appendLine(`[js-attach] ${line}`));
                 }
             })
         );
@@ -475,6 +440,10 @@ export class Extension {
 
         const jsDebugTraceConfig = this.jsDebugPathTrace.getJsDebugTraceConfig(workspaceFolders[0]?.uri.fsPath ?? target.rootDir);
 
+        //activate js-debug now, while the app is still packaging/uploading, so its startup cost isn't
+        //spent inside the device's short wait-for-JS-debugger window once the attach signal arrives
+        this.warmUpJsDebug();
+
         const configuration = parentSession.configuration as BrightScriptLaunchConfiguration;
         let address: string;
         let port: number;
@@ -529,6 +498,10 @@ export class Extension {
             const signal = channelPublishedEventEnabled ? 'channelPublished' : 'stagingDir (emitChannelPublishedEvent is disabled)';
             this.extensionOutputChannel.appendLine(`[js-debug-proxy] ${signal} not received within ${this.jsAttachStagingGraceMs}ms - proceeding with stagingDir '${stagingEntry.stagingDir ?? target.stagingDir}'`);
         }
+        //how long attaching takes after the signal decides whether early (entry-file) breakpoints bind,
+        //since the device only waits a few seconds for the JS debugger - worth surfacing in the log
+        const attachSignal = attachWaitResult === 'timeout' ? 'grace timeout' : this.getAttachSignalName(stagingEntry);
+        const attachStartedAt = Date.now();
 
         // vscode doesn't trigger the onDidStartDebugSession event until the debugger is actually attached.
         // So there's a window where the parent debug session stops while this is still trying to attach.
@@ -626,6 +599,7 @@ export class Extension {
 
                 const success = await vscode.debug.startDebugging(workspaceFolders[0], debugConfig);
                 if (success) {
+                    this.extensionOutputChannel.appendLine(`[js-debug-proxy] attached ${Date.now() - attachStartedAt}ms after ${attachSignal}`);
                     //opt this JS session into joint teardown - unconfirmed (failed) attach
                     //attempts must not tear down the parent while this loop is still retrying
                     debugSessionManager.confirmJsSessionsFor(parentSession.id);
@@ -640,29 +614,60 @@ export class Extension {
         return false;
     }
 
+    /**
+     * Activate VS Code's JavaScript debugger (which serves the `node` attach we start for TS/JS apps)
+     * ahead of time. Best-effort: a missing or failing js-debug just leaves activation to `startDebugging`.
+     */
+    private warmUpJsDebug() {
+        for (const id of ['ms-vscode.js-debug-nightly', 'ms-vscode.js-debug']) {
+            const jsDebug = vscode.extensions.getExtension(id);
+            if (jsDebug?.isActive === false) {
+                Promise.resolve(jsDebug.activate()).catch(e => console.error(`Failed to activate '${id}'`, e));
+                return;
+            }
+            if (jsDebug?.isActive) {
+                return;
+            }
+        }
+    }
+
+    /** Name of the signal that opened `waitForAttachSignal`, for the attach-latency log line. */
+    private getAttachSignalName(entry: StagingReadyEntry) {
+        if (entry.channelSideloaded) {
+            return 'channelSideloaded';
+        }
+        return entry.channelPublished ? 'channelPublished' : 'stagingDir';
+    }
+
     /** Gets (or lazily creates) the staging-ready entry for a BRS session id. */
     private getOrCreateStagingEntry(parentSessionId: string): StagingReadyEntry {
         let entry = this.stagingReadyByParentSessionId.get(parentSessionId);
         if (!entry) {
-            entry = { stagingDir: undefined, channelPublished: false };
+            entry = { stagingDir: undefined, channelSideloaded: false, channelPublished: false };
             this.stagingReadyByParentSessionId.set(parentSessionId, entry);
         }
         return entry;
     }
 
     /**
-     * Waits for the signal `attachJsDebugger` should gate its first attach attempt on: normally
-     * roku-debug's ChannelPublishedEvent (the device now runs THIS session's app), or - when
+     * Waits for the signal `attachJsDebugger` should gate its first attach attempt on: preferably
+     * roku-debug's ChannelSideloadedEvent (the device accepted THIS session's package and is
+     * launching it), otherwise its ChannelPublishedEvent (older roku-debug versions), or - when
      * `emitChannelPublishedEvent` is explicitly disabled and roku-debug will never send it -
      * merely the authoritative stagingDir. The grace timeout only applies while NO signal at all
      * has been seen; once staging is known (proof this roku-debug speaks the custom-event
      * protocol) it keeps waiting for channelPublished indefinitely, with session-death as the
      * only exit - a slow RCE sideload must not fall through into the stale-app attach window.
+     *
+     * The sideloaded signal matters for early breakpoints: with `inspect=1` the device waits only a
+     * few seconds for the JS debugger, BEFORE it opens the BrightScript debug port, and roku-debug
+     * only sends channelPublished once that port connects - i.e. after the JS wait already expired
+     * and the bundle's top-level code (the entry file) already ran.
      */
     private async waitForAttachSignal(parentSession: vscode.DebugSession, entry: StagingReadyEntry, channelPublishedEventEnabled: boolean): Promise<'ready' | 'died' | 'timeout'> {
         const deadline = Date.now() + this.jsAttachStagingGraceMs;
         while (true) {
-            if (channelPublishedEventEnabled ? entry.channelPublished : entry.stagingDir !== undefined) {
+            if (entry.channelSideloaded || (channelPublishedEventEnabled ? entry.channelPublished : entry.stagingDir !== undefined)) {
                 return 'ready';
             }
             if (!debugSessionManager.isLive(parentSession)) {
@@ -686,6 +691,13 @@ export class Extension {
             logOutputManager.setLaunchConfig(config);
             if (config.remoteControlMode?.activateOnSessionStart) {
                 void this.remoteControlManager.setRemoteControlMode(true, 'launch');
+            }
+        } else if (isChannelSideloadedEvent(e)) {
+            //the device accepted THIS session's package and is launching it - unblocks attachJsDebugger's
+            //wait for e.session while Hermes still waits for its debugger. Guard against re-creating the
+            //entry for a session that already terminated.
+            if (debugSessionManager.isLive(e.session)) {
+                this.getOrCreateStagingEntry(e.session.id).channelSideloaded = true;
             }
         } else if (isChannelPublishedEvent(e)) {
             this.webviewViewProviderManager.onChannelPublishedEvent(e);
@@ -995,6 +1007,11 @@ interface JsDebugTarget {
 interface StagingReadyEntry {
     /** The main project's authoritative stagingDir, once `processStagingDir` reports it. */
     stagingDir: string | undefined;
+    /**
+     * Set once roku-debug's ChannelSideloadedEvent confirms the device accepted THIS session's package.
+     * Arrives before `channelPublished` - early enough to attach while Hermes still waits for its debugger.
+     */
+    channelSideloaded: boolean;
     /** Set once roku-debug's ChannelPublishedEvent confirms the device is running THIS session's app. */
     channelPublished: boolean;
 }
