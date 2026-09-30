@@ -6,17 +6,6 @@ import { BaseRdbViewProvider } from './BaseRdbViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
 
-let Module = require('module');
-const { require: oldRequire } = Module.prototype;
-
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
-
 let sinon: sinonImport.SinonSandbox;
 beforeEach(() => {
     sinon = sinonImport.createSandbox();

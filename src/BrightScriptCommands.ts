@@ -6,28 +6,31 @@ import { captureScreenshotCommand } from './commands/CaptureScreenshotCommand';
 import { rekeyAndPackageCommand } from './commands/RekeyAndPackageCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import { util } from './util';
-import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
-import type { WhatsNewManager } from './managers/WhatsNewManager';
-import type { ConfiguredDevice, DeviceManager, HostWithDeviceInfo, RokuDevice } from './deviceDiscovery/DeviceManager';
+import { inject, injectable } from 'tsyringe';
+import { RemoteControlManager, type RemoteControlModeInitiator } from './managers/RemoteControlManager';
+import { WhatsNewManager } from './managers/WhatsNewManager';
+import { type ConfiguredDevice, DeviceManager, type HostWithDeviceInfo, type RokuDevice } from './deviceDiscovery/DeviceManager';
 import { firstBy } from 'thenby';
-import type { UserInputManager } from './managers/UserInputManager';
+import { UserInputManager } from './managers/UserInputManager';
 import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheCommand';
-import type { LocalPackageManager } from './managers/LocalPackageManager';
+import { LocalPackageManager } from './managers/LocalPackageManager';
 import { profilingCommands } from './commands/ProfilingCommands';
-import type { CredentialStore } from './managers/CredentialStore';
-import type { DeviceTargetManager } from './managers/DeviceTargetManager';
+import { CredentialStore } from './managers/CredentialStore';
+import { DeviceTargetManager } from './managers/DeviceTargetManager';
+import { ExtensionContextToken } from './injectionTokens';
 import { vscodeContextManager } from './managers/VscodeContextManager';
 import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { DEVICE_FILTER_KEYS } from './deviceFilters';
 import { rokuDeploy, isLocalDeviceConfig } from 'roku-deploy';
 import type { DeviceConfig, RemoteKeyText } from 'roku-deploy';
 
+@injectable()
 export class BrightScriptCommands {
 
     constructor(
         private remoteControlManager: RemoteControlManager,
         private whatsNewManager: WhatsNewManager,
-        private context: vscode.ExtensionContext,
+        @inject(ExtensionContextToken) private context: vscode.ExtensionContext,
         private deviceManager: DeviceManager,
         private userInputManager: UserInputManager,
         private localPackageManager: LocalPackageManager,

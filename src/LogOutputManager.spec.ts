@@ -2,20 +2,8 @@ import { assert, expect } from 'chai';
 import type Sinon from 'sinon';
 import { createSandbox } from 'sinon';
 const sinon = createSandbox();
-let Module = require('module');
 
 import { vscode } from './mockVscode.spec';
-
-//override the "require" call to mock certain items
-const { require: oldRequire } = Module.prototype;
-
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
 
 import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';

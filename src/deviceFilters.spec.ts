@@ -1,16 +1,6 @@
 import { expect } from 'chai';
 import { vscode } from './mockVscode.spec';
 
-const Module = require('module');
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
-
 import {
     DEFAULT_DEVICE_FILTERS,
     applyDeviceFilters,

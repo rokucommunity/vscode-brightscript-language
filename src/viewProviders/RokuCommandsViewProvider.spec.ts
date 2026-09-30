@@ -4,16 +4,6 @@ import { vscode } from '../mockVscode.spec';
 import { RokuCommandsViewProvider } from './RokuCommandsViewProvider';
 import { VscodeCommand } from '../commands/VscodeCommand';
 
-let Module = require('module');
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
-
 let sinon: sinonImport.SinonSandbox;
 let view;
 let callback;
