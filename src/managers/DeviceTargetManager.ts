@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import type { DeviceConfig } from 'roku-deploy';
 import { util } from '../util';
-import type { DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
-import type { UserInputManager } from './UserInputManager';
+import { inject, injectable } from 'tsyringe';
+import { DeviceManager, type RokuDevice } from '../deviceDiscovery/DeviceManager';
+import { UserInputManager } from './UserInputManager';
+import { ExtensionContextToken } from '../injectionTokens';
 
 /**
  * Resolves which device a command should target - and with what credentials - from the various
@@ -10,9 +12,10 @@ import type { UserInputManager } from './UserInputManager';
  * or nothing at all (the shared device picker). LAN and Roku Cloud Emulator devices resolve the
  * same way; every target comes back as a roku-deploy device config.
  */
+@injectable()
 export class DeviceTargetManager {
     constructor(
-        private context: vscode.ExtensionContext,
+        @inject(ExtensionContextToken) private context: vscode.ExtensionContext,
         private deviceManager: DeviceManager,
         private userInputManager: UserInputManager
     ) { }

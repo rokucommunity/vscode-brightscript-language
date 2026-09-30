@@ -8,6 +8,14 @@ import { DeviceTargetManager } from './managers/DeviceTargetManager';
 import { util } from './util';
 import { rokuDeploy } from 'roku-deploy';
 import { vscodeContextManager } from './managers/VscodeContextManager';
+import { container } from 'tsyringe';
+import { ExtensionContextToken } from './injectionTokens';
+import { DeviceManager } from './deviceDiscovery/DeviceManager';
+import { CredentialStore } from './managers/CredentialStore';
+import { RemoteControlManager } from './managers/RemoteControlManager';
+import { WhatsNewManager } from './managers/WhatsNewManager';
+import { LocalPackageManager } from './managers/LocalPackageManager';
+import { UserInputManager } from './managers/UserInputManager';
 
 describe('BrightScriptFileUtils ', () => {
     let commands: BrightScriptCommands;
@@ -871,6 +879,38 @@ describe('BrightScriptFileUtils ', () => {
 
             languagesMock.verify();
             commandsMock.verify();
+        });
+    });
+
+    describe('dependency injection', () => {
+        it('resolves BrightScriptCommands with the registered instances and shared singletons', () => {
+            const childContainer = container.createChildContainer();
+            const fakeDeviceManager = {} as DeviceManager;
+            const fakeCredentialStore = {} as CredentialStore;
+            const fakeRemoteControlManager = {} as RemoteControlManager;
+            const fakeWhatsNewManager = {} as WhatsNewManager;
+            const fakeLocalPackageManager = {} as LocalPackageManager;
+            childContainer.registerInstance(ExtensionContextToken, vscode.context);
+            childContainer.registerInstance(DeviceManager, fakeDeviceManager);
+            childContainer.registerInstance(CredentialStore, fakeCredentialStore);
+            childContainer.registerInstance(RemoteControlManager, fakeRemoteControlManager);
+            childContainer.registerInstance(WhatsNewManager, fakeWhatsNewManager);
+            childContainer.registerInstance(LocalPackageManager, fakeLocalPackageManager);
+            childContainer.registerSingleton(UserInputManager);
+            childContainer.registerSingleton(DeviceTargetManager);
+            childContainer.registerSingleton(BrightScriptCommands);
+
+            const resolved = childContainer.resolve(BrightScriptCommands);
+
+            assert.strictEqual(resolved['context'], vscode.context);
+            assert.strictEqual(resolved['deviceManager'], fakeDeviceManager);
+            assert.strictEqual(resolved['credentialStore'], fakeCredentialStore);
+            assert.strictEqual(resolved['remoteControlManager'], fakeRemoteControlManager);
+            assert.strictEqual(resolved['whatsNewManager'], fakeWhatsNewManager);
+            assert.strictEqual(resolved['localPackageManager'], fakeLocalPackageManager);
+            assert.strictEqual(resolved['userInputManager'], childContainer.resolve(UserInputManager));
+            assert.strictEqual(resolved['deviceTargetManager'], childContainer.resolve(DeviceTargetManager));
+            assert.strictEqual(resolved['deviceTargetManager']['userInputManager'], resolved['userInputManager']);
         });
     });
 });

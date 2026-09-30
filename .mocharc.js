@@ -17,6 +17,7 @@ const config = {
         'webviews/src/**/*.spec.ts'
     ],
     require: [
+        'reflect-metadata',
         'source-map-support/register',
         'ts-node/register',
         path.join(__dirname, 'src', 'mockVscode.spec.ts')
