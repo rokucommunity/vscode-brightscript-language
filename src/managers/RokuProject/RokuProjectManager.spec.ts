@@ -63,16 +63,16 @@ describe('RokuProjectManager', () => {
 
         // Stub the workspace, language and window APIs that RokuProjectManager calls
         sinon.stub(vscode.languages as any, 'registerCodeLensProvider').returns({ dispose: () => { } });
-        sinon.stub(vscode.window as any, 'createStatusBarItem').returns({
+        sinon.stub(vscode.window, 'createStatusBarItem').returns({
             text: '',
             command: undefined,
             tooltip: undefined,
             show: sinon.stub(),
             hide: sinon.stub(),
             dispose: sinon.stub()
-        });
+        } as any);
         sinon.stub(vscode.commands, 'executeCommand');
-        sinon.stub(vscode.workspace as any, 'asRelativePath').callsFake((uri: any) => {
+        sinon.stub(vscode.workspace, 'asRelativePath').callsFake((uri: any) => {
             return typeof uri === 'string' ? uri : uri.fsPath;
         });
 
