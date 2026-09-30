@@ -2598,7 +2598,7 @@
                     },
                     "brightscript.bsdk": {
                         "type": "string",
-                        "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
+                        "markdownDescription": "The BrighterScript version to use for the BrightScript and BrighterScript language features. Can be `embedded`, an npm version/range/dist-tag, a URL or path to a `.tgz`, or a path to a brighterscript package directory. Relative paths are resolved relative to the `.code-workspace` file or workspace folder where this is defined. Paths may start with `${workspaceFolder}` or `${workspaceFolder:name}`.",
                         "scope": "resource"
                     },
                     "brightscript.npmCacheRetentionDays": {
