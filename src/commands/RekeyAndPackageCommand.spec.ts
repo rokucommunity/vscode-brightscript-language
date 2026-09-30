@@ -2,9 +2,9 @@ import { vscode } from '../mockVscode.spec';
 import type { SinonStub } from 'sinon';
 import { createSandbox } from 'sinon';
 import { RekeyAndPackageCommand } from './RekeyAndPackageCommand';
+import { configurationManager } from '../managers/ConfigurationManager';
 import { rokuDeploy } from 'roku-deploy';
 import { expect } from 'chai';
-import { util } from '../util';
 
 const sinon = createSandbox();
 
@@ -105,7 +105,7 @@ describe('RekeyAndPackageCommand', () => {
 
     describe('packageFromLaunchConfig', () => {
         function selectLaunchConfig(launchConfig: any) {
-            sinon.stub(util, 'getConfiguration').returns({ get: () => [launchConfig] } as any);
+            sinon.stub(configurationManager, 'getConfiguration').returns({ get: () => [launchConfig] } as any);
             sinon.stub(vscode.window, 'showQuickPick').resolves(launchConfig.name);
             return command['packageFromLaunchConfig']({});
         }

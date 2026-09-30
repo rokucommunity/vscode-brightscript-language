@@ -3,7 +3,8 @@ import * as semver from 'semver';
 import type { ConfiguredDevice, DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import type { CredentialStore } from '../managers/CredentialStore';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
-import { util } from '../util';
+import { configurationManager } from '../managers/ConfigurationManager';
+import { Concealer } from './Concealer';
 import { ViewProviderId } from './ViewProviderId';
 import {
     DEFAULT_DEVICE_FILTERS,
@@ -94,6 +95,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         });
     }
 
+    private concealer = new Concealer();
     private visible = false;
     private scanProgressResolver: (() => void) | null = null;
 
@@ -179,7 +181,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      * Should the unique info about a device be obfuscated (i.e. randomly modified to protect the data)?
      */
     private get isConcealDeviceInfoEnabled() {
-        return util.getConfiguration('brightscript.deviceDiscovery').get('concealDeviceInfo') === true;
+        return configurationManager.getConfiguration('brightscript.deviceDiscovery').get('concealDeviceInfo') === true;
     }
 
     private devices: Array<RokuDevice>;
@@ -576,7 +578,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     private concealObject(object: Record<string, any>, secretKeys: string[]) {
-        return util.concealObject(
+        return this.concealer.concealObject(
             object,
             this.isConcealDeviceInfoEnabled ? secretKeys : []
         );
@@ -589,7 +591,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      */
     private concealString(value: string) {
         if (this.isConcealDeviceInfoEnabled) {
-            return util.concealString(value);
+            return this.concealer.concealString(value);
         } else {
             return value;
         }

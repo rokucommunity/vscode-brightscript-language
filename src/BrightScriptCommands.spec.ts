@@ -5,9 +5,10 @@ import { vscode } from './mockVscode.spec';
 
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { DeviceTargetManager } from './managers/DeviceTargetManager';
-import { util } from './util';
 import { rokuDeploy } from 'roku-deploy';
 import { vscodeContextManager } from './managers/VscodeContextManager';
+import { windowManager } from './managers/WindowManager';
+import * as utilModule from './util';
 
 describe('BrightScriptFileUtils ', () => {
     let commands: BrightScriptCommands;
@@ -144,7 +145,7 @@ describe('BrightScriptFileUtils ', () => {
                 get: sinon.stub().returns(''),
                 update: updateStub
             } as any);
-            showTimedNotificationStub = sinon.stub(Object.getPrototypeOf(util), 'showTimedNotification').resolves();
+            showTimedNotificationStub = sinon.stub(windowManager, 'showTimedNotification').resolves();
             localCommands.registerCommands();
         });
 
@@ -198,7 +199,7 @@ describe('BrightScriptFileUtils ', () => {
                 get: sinon.stub().returns(''),
                 update: updateStub
             } as any);
-            showTimedNotificationStub = sinon.stub(Object.getPrototypeOf(util), 'showTimedNotification').resolves();
+            showTimedNotificationStub = sinon.stub(windowManager, 'showTimedNotification').resolves();
             localCommands.registerCommands();
         });
 
@@ -245,7 +246,7 @@ describe('BrightScriptFileUtils ', () => {
             sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
                 capturedCommands[name] = cb;
             });
-            showTimedNotificationStub = sinon.stub(Object.getPrototypeOf(util), 'showTimedNotification').resolves();
+            showTimedNotificationStub = sinon.stub(windowManager, 'showTimedNotification').resolves();
             vscodeContextSetStub = sinon.stub(vscodeContextManager, 'set').resolves();
             localCommands.registerCommands();
         });
@@ -311,7 +312,6 @@ describe('BrightScriptFileUtils ', () => {
     });
 
     describe('restartDevApplication', () => {
-        let utilProto: any;
         let sleepStub: sinon.SinonStub;
         let spinAsyncStub: sinon.SinonStub;
         let showTimedNotificationStub: sinon.SinonStub;
@@ -328,12 +328,11 @@ describe('BrightScriptFileUtils ', () => {
         const activeAppDev = { id: 'dev', title: 'My App' };
 
         beforeEach(() => {
-            utilProto = Object.getPrototypeOf(util);
             resolveActiveDeviceConfigStub = sinon.stub(commands as any, 'resolveActiveDeviceConfig');
             resolveActiveDeviceConfigStub.resolves(lanDevice);
-            spinAsyncStub = sinon.stub(utilProto, 'spinAsync').callsFake((_message: string, callback: () => Promise<any>) => callback());
-            sleepStub = sinon.stub(utilProto, 'sleep').resolves();
-            showTimedNotificationStub = sinon.stub(utilProto, 'showTimedNotification').resolves();
+            spinAsyncStub = sinon.stub(windowManager, 'spinAsync').callsFake((_message: string, callback: () => Promise<any>) => callback());
+            sleepStub = sinon.stub(utilModule, 'sleep').resolves();
+            showTimedNotificationStub = sinon.stub(windowManager, 'showTimedNotification').resolves();
             getAppsStub = sinon.stub(rokuDeploy, 'getApps').resolves(appsWithDev as any);
             getActiveAppStub = sinon.stub(rokuDeploy, 'getActiveApp').resolves(activeAppDev as any);
             launchAppStub = sinon.stub(rokuDeploy, 'launchApp').resolves();
@@ -363,6 +362,7 @@ describe('BrightScriptFileUtils ', () => {
 
             assert.isTrue(launchAppStub.calledOnce, 'should call launchApp once');
             assert.deepEqual(launchAppStub.firstCall.args[0], { device: lanDevice, appId: 'dev' });
+            assert.isTrue(sleepStub.calledOnceWith(1000), 'should wait for the app to boot before checking its status');
 
             assert.isTrue(showTimedNotificationStub.calledOnce);
             assert.isFalse(showErrorStub.called);

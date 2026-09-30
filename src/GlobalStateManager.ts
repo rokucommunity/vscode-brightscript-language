@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { util } from './util';
+import { configurationManager } from './managers/ConfigurationManager';
 
 export class GlobalStateManager {
     constructor(
@@ -24,7 +24,7 @@ export class GlobalStateManager {
     private remoteTextHistoryEnabled: boolean;
 
     private updateFromVsCodeConfiguration() {
-        let config: any = util.getConfiguration('brightscript') || {};
+        let config: any = configurationManager.getConfiguration('brightscript') || {};
         this.remoteTextHistoryLimit = (config.sendRemoteTextHistory || { limit: 30 }).limit;
         this.remoteTextHistoryEnabled = config.sendRemoteTextHistory?.enabled;
     }

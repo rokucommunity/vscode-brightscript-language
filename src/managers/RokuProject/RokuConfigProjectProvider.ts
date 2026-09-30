@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { TaskConfig } from '../../BrightScriptTaskProvider';
 import type { DiscoveredRokuProject, ProjectBuildResult, ProjectConfigProvider } from './RokuProjectManager';
-import { util } from '../../util';
+import { configurationManager } from '../ConfigurationManager';
 
 const ROKU_CONFIG_FILENAME = 'roku-config.ts';
 
@@ -19,7 +19,7 @@ export class RokuConfigProjectProvider implements ProjectConfigProvider {
     }
 
     public async findProjectConfigs(): Promise<vscode.Uri[]> {
-        const exclude = util.buildExcludeGlob(this.excludePatterns);
+        const exclude = configurationManager.buildExcludeGlob(this.excludePatterns);
         const results = await Promise.all(
             this.configFileSelector
                 .filter(selector => selector.pattern)

@@ -4,9 +4,10 @@ import { rokuDeploy, DeviceUnreachableError, InvalidDeviceResponseCodeError } fr
 import { vscode } from '../mockVscode.spec';
 import type { RokuDevice } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
+import { windowManager } from '../managers/WindowManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
 import { RokuDevConfigProvider } from './RokuDevConfigProvider';
-import { util } from '../util';
+import { sleep } from '../util';
 import * as fsExtra from 'fs-extra';
 import * as os from 'os';
 import * as path from 'path';
@@ -1749,7 +1750,7 @@ describe('DeviceManager', () => {
             } as any);
 
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
+            const showTimedStub = sinon.stub(windowManager, 'showTimedNotification').resolves();
 
             // Add device with cached info
             const device = createMockDevice({
@@ -1779,7 +1780,7 @@ describe('DeviceManager', () => {
             } as any);
 
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
+            const showTimedStub = sinon.stub(windowManager, 'showTimedNotification').resolves();
 
             // Trigger device-online without cached device
             manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
@@ -1800,7 +1801,7 @@ describe('DeviceManager', () => {
             } as any);
 
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
+            const showTimedStub = sinon.stub(windowManager, 'showTimedNotification').resolves();
 
             manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
 
@@ -1819,7 +1820,7 @@ describe('DeviceManager', () => {
             } as any);
 
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
+            const showTimedStub = sinon.stub(windowManager, 'showTimedNotification').resolves();
 
             // Add device with cached info
             const device = createMockDevice({
@@ -2260,7 +2261,7 @@ describe('DeviceManager', () => {
             // Simulate network change
             (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
             manager['networkChangeMonitor']['onNetworkChanged']();
-            await util.sleep(10);
+            await sleep(10);
 
             // On new network, IP→serial mapping is cleared.
             // Resolving by IP alone should refetch since we can't look up the serial.
@@ -2295,7 +2296,7 @@ describe('DeviceManager', () => {
             // Simulate network change
             (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
             manager['networkChangeMonitor']['onNetworkChanged']();
-            await util.sleep(10);
+            await sleep(10);
 
             // Re-add device (network change clears discovered devices)
             addDevice(device);

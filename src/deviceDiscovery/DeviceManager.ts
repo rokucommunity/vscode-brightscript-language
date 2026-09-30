@@ -9,7 +9,9 @@ import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
-import { util } from '../util';
+import { configurationManager } from '../managers/ConfigurationManager';
+import { windowManager } from '../managers/WindowManager';
+import { sleep } from '../util';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { debounce } from 'lodash';
 import { icons } from '../icons';
@@ -116,7 +118,7 @@ export class DeviceManager {
 
     private setupConfiguration() {
         const applyConfig = (event?: vscode.ConfigurationChangeEvent) => {
-            let config: any = util.getConfiguration('brightscript') || {};
+            let config: any = configurationManager.getConfiguration('brightscript') || {};
 
             void vscodeContextManager.set('brightscript.deviceDiscovery.enabled', config.deviceDiscovery?.enabled);
             void vscodeContextManager.set('brightscript.hasDefaultDevicePassword', !!this.getDefaultPassword());
@@ -828,18 +830,18 @@ export class DeviceManager {
      * Is device discovery enabled (i.e. passive scans are permitted)
      */
     private get deviceDiscoveryEnabled() {
-        return util.getConfiguration('brightscript')?.deviceDiscovery?.enabled ?? true;
+        return configurationManager.getConfiguration('brightscript')?.deviceDiscovery?.enabled ?? true;
     }
 
     /**
      * Should info messages be shown when new devices are discovered (e.g. "Device found: Roku TV")?
      */
     private get showInfoMessages() {
-        return util.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
+        return configurationManager.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
     }
 
     private get heartbeatLogging() {
-        return util.getConfiguration('brightscript')?.deviceDiscovery?.heartbeatLogging ?? false;
+        return configurationManager.getConfiguration('brightscript')?.deviceDiscovery?.heartbeatLogging ?? false;
     }
 
     private makeFinderLogger(): (msg: string) => void {
@@ -855,7 +857,7 @@ export class DeviceManager {
      * Returns undefined when the setting is empty so callers can fall through to their own logic.
      */
     public getDefaultPassword(): string | undefined {
-        const value = util.getConfiguration('brightscript')?.defaultDevicePassword;
+        const value = configurationManager.getConfiguration('brightscript')?.defaultDevicePassword;
         return typeof value === 'string' && value.length > 0 ? value : undefined;
     }
 
@@ -1558,7 +1560,7 @@ export class DeviceManager {
         if (!this.deviceOnlineNotifiers.has(notifierId)) {
             this.deviceOnlineNotifiers.set(notifierId, debounce((name: string) => {
                 this.deviceOnlineNotifiers.delete(notifierId);
-                void util.showTimedNotification(`Device Online: ${name}`);
+                void windowManager.showTimedNotification(`Device Online: ${name}`);
             }, 500));
         }
         this.deviceOnlineNotifiers.get(notifierId)(displayName);
@@ -1693,7 +1695,7 @@ export class DeviceManager {
 
     private async randomDelay(min: number, max: number) {
         const randomness = Math.random() * ((max - min) + min);
-        await util.sleep(randomness);
+        await sleep(randomness);
     }
 }
 

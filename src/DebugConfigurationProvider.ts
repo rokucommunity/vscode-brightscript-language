@@ -12,7 +12,9 @@ import type {
 import * as vscode from 'vscode';
 import type { ComponentLibraryConfiguration, LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
-import { util } from './util';
+import { configurationManager } from './managers/ConfigurationManager';
+import { fileManager } from './managers/FileManager';
+import { describeDevice, ensureTrailingSlash } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import cloneDeep = require('clone-deep');
@@ -68,7 +70,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
     //make unit testing easier by adding these imports properties
     public fsExtra = fsExtra;
-    public util = util;
+    public fileManager = fileManager;
 
     private configDefaults: Partial<BrightScriptLaunchConfiguration> = {
         type: 'brightscript',
@@ -222,7 +224,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //launch.json wins over the staged manifest's `ts_path`, then any component library
         //with a `tsPath` (its JS runs in the same runtime, so the device still needs to wait)
         const tsPath = config.tsPath ??
-            this.util.getTsPath(config.rootDir) ??
+            this.fileManager.getTsPath(config.rootDir) ??
             config.componentLibraries?.find(library => library.tsPath)?.tsPath;
         //BrightScript-only apps have no JS debugger to wait for
         if (!tsPath) {
@@ -240,7 +242,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * There are several debug-level config values that can be stored in user settings, so get those
      */
     private processUserWorkspaceSettings(config: BrightScriptLaunchConfiguration): BrightScriptLaunchConfiguration {
-        const workspaceConfig = util.getConfiguration('brightscript.debug');
+        const workspaceConfig = configurationManager.getConfiguration('brightscript.debug');
 
         let userWorkspaceSettings = {} as BrightScriptLaunchConfiguration;
 
@@ -274,7 +276,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * @param config current config object
      */
     private async sanitizeConfiguration(config: BrightScriptLaunchConfiguration, folder: WorkspaceFolder): Promise<BrightScriptLaunchConfiguration> {
-        let userWorkspaceSettings: any = util.getConfiguration('brightscript') || {};
+        let userWorkspaceSettings: any = configurationManager.getConfiguration('brightscript') || {};
 
         //make sure we have an object
         config = {
@@ -314,20 +316,20 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         config.cwd = folderUri.fsPath;
 
-        config.rootDir = this.util.ensureTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
+        config.rootDir = ensureTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
 
         //Check for depreciated Items
         if (config.debugRootDir) {
             if (config.sourceDirs) {
                 throw new Error('Cannot set both debugRootDir AND sourceDirs');
             } else {
-                config.sourceDirs = [this.util.ensureTrailingSlash(config.debugRootDir)];
+                config.sourceDirs = [ensureTrailingSlash(config.debugRootDir)];
             }
         } else if (config.sourceDirs) {
             let dirs: string[] = [];
 
             for (let dir of config.sourceDirs) {
-                dirs.push(this.util.ensureTrailingSlash(dir));
+                dirs.push(ensureTrailingSlash(dir));
             }
             config.sourceDirs = dirs;
         } else if (!config.sourceDirs) {
@@ -335,10 +337,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
 
         if (config.componentLibraries) {
-            config.componentLibrariesOutDir = this.util.ensureTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
+            config.componentLibrariesOutDir = ensureTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
 
             for (let library of config.componentLibraries as any) {
-                library.rootDir = this.util.ensureTrailingSlash(library.rootDir);
+                library.rootDir = ensureTrailingSlash(library.rootDir);
                 library.files = library.files ? library.files : [...BrightScriptDebugConfigurationProvider.defaultFiles];
             }
         } else {
@@ -352,7 +354,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
 
         // Run any required post processing after applying defaults
-        config.outDir = this.util.ensureTrailingSlash(config.outDir);
+        config.outDir = ensureTrailingSlash(config.outDir);
 
         // Pass along files needed by RDB to roku-debug
         config.rdbFilesBasePath = rta.utils.getDeviceFilesPath();
@@ -389,7 +391,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (config.injectRaleTrackerTask) {
             if (!config.raleTrackerTaskFileLocation) {
                 await vscode.window.showErrorMessage(`"raleTrackerTaskFileLocation" must be defined when "injectRaleTrackerTask" is enabled`);
-            } else if (await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
+            } else if (await this.fileManager.fileExists(config.raleTrackerTaskFileLocation) === false) {
                 await vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${config.raleTrackerTaskFileLocation}`);
             }
         }
@@ -421,7 +423,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         // Make sure that directory paths end in a trailing slash
         if (config.debugRootDir) {
-            config.debugRootDir = this.util.ensureTrailingSlash(config.debugRootDir);
+            config.debugRootDir = ensureTrailingSlash(config.debugRootDir);
         }
 
         if (config.packagePath?.includes('${workspaceFolder}')) {
@@ -494,7 +496,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             if (config.envFile.includes('${workspaceFolder}')) {
                 envFilePath = config.envFile.replace('${workspaceFolder}', folder.uri.fsPath);
             }
-            if (await this.util.fileExists(envFilePath) === false) {
+            if (await this.fileManager.fileExists(envFilePath) === false) {
                 //the .env file is optional, so just warn instead of failing the debug session
                 console.warn(`Cannot find .env file at "${envFilePath}". Falling back to the process environment for '\${env:*}' values.`);
             } else {
@@ -565,7 +567,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * sessions leave unset or unresolved.
      */
     private describeDevice(device: DeviceConfig | undefined): string {
-        return util.describeDevice(device, 'the target device');
+        return describeDevice(device, 'the target device');
     }
 
     /**
@@ -900,7 +902,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     public getBsConfig(workspaceFolder: vscode.Uri) {
         //try to load bsconfig settings
-        let settings = util.getConfiguration('brightscript', workspaceFolder);
+        let settings = configurationManager.getConfiguration('brightscript', workspaceFolder);
         let configFilePath = settings.get<string>('configFile');
         let isDefaultPath = false;
         if (!configFilePath) {

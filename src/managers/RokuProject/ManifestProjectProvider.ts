@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { util as bsUtil } from 'brighterscript';
 import { getDestPath } from 'roku-deploy';
-import { util } from '../../util';
+import { configurationManager } from '../ConfigurationManager';
 import { BrightScriptDebugConfigurationProvider } from '../../DebugConfigurationProvider';
 import type { DiscoveredRokuProject, ProjectBuildResult, ProjectConfigProvider } from './RokuProjectManager';
 
@@ -32,7 +32,7 @@ export class ManifestProjectProvider implements ProjectConfigProvider {
     }
 
     public async findProjectConfigs(): Promise<vscode.Uri[]> {
-        const exclude = util.buildExcludeGlob(this.excludePatterns);
+        const exclude = configurationManager.buildExcludeGlob(this.excludePatterns);
         const results = await Promise.all(
             this.configFileSelector
                 .filter(selector => selector.pattern)

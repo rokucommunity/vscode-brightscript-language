@@ -1,10 +1,10 @@
 import { vscode } from '../mockVscode.spec';
 import type { PackageCatalogPackageInfo } from './LocalPackageManager';
 import { LocalPackageManager } from './LocalPackageManager';
+import { processManager } from './ProcessManager';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import { expect } from 'chai';
-import { util } from '../util';
 import * as dayjs from 'dayjs';
 import * as md5 from 'md5';
 import { createSandbox } from 'sinon';
@@ -27,7 +27,7 @@ describe('LocalPackageManager', () => {
         sinon.restore();
 
         //mock the npm install command to speed up the tests
-        sinon.stub(util, 'spawnNpmAsync').callsFake(async (args: string[], options) => {
+        sinon.stub(processManager, 'spawnNpmAsync').callsFake(async (args: string[], options) => {
             let spawnCwd = s`${options.cwd?.toString()}`;
             if (args[0] !== 'install' || !spawnCwd.startsWith(storageDir)) {
                 throw new Error(`Invalid cwd: ${spawnCwd}`);
@@ -74,7 +74,7 @@ describe('LocalPackageManager', () => {
         });
 
         it('skips install when package is already there', async () => {
-            const stub = sinon.stub(util, 'spawnAsync').callsFake(() => Promise.resolve());
+            const stub = sinon.stub(processManager, 'spawnAsync').callsFake(() => Promise.resolve());
 
             fsExtra.ensureDirSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd`);
             fsExtra.outputJsonSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`, {

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { DeviceConfig } from 'roku-deploy';
-import { util } from '../util';
+import { configurationManager } from './ConfigurationManager';
 import type { DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import type { UserInputManager } from './UserInputManager';
 
@@ -70,7 +70,7 @@ export class DeviceTargetManager {
             if (remoteDevice) {
                 return { device: remoteDevice.device, serialNumber: remoteDevice.serialNumber, label: this.deviceManager.getDeviceDisplayName(remoteDevice, true) };
             }
-            const configHost = util.getConfiguration('brightscript.remoteControl').get<string>('host');
+            const configHost = configurationManager.getConfiguration('brightscript.remoteControl').get<string>('host');
             // eslint-disable-next-line no-template-curly-in-string
             reference = configHost !== '${promptForHost}' ? configHost : undefined;
         }

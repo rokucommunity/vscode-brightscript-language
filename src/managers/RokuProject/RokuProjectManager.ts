@@ -6,7 +6,7 @@ import { BrsConfigProjectProvider } from './BrsConfigProjectProvider';
 import { BsConfigProjectProvider } from './BsConfigProjectProvider';
 import { ManifestProjectProvider } from './ManifestProjectProvider';
 import { VscodeCommand } from '../../commands/VscodeCommand';
-import { util } from '../../util';
+import { configurationManager } from '../ConfigurationManager';
 import { RokuConfigProjectProvider } from './RokuConfigProjectProvider';
 
 export class RokuProjectManager {
@@ -46,7 +46,7 @@ export class RokuProjectManager {
                     continue;
                 }
                 const watcher = vscode.workspace.createFileSystemWatcher(selector.pattern);
-                const isExcluded = (uri: vscode.Uri) => util.isUriExcluded(uri, provider.excludePatterns);
+                const isExcluded = (uri: vscode.Uri) => configurationManager.isUriExcluded(uri, provider.excludePatterns);
                 context.subscriptions.push(
                     watcher,
                     watcher.onDidCreate(uri => {

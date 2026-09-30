@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { EventEmitter } from 'eventemitter3';
-import { util } from '../util';
+import { configurationManager } from './ConfigurationManager';
 import { vscodeContextManager } from './VscodeContextManager';
 
 /**
@@ -63,7 +63,7 @@ export class ExperimentalFeaturesManager {
      * Whether the feature is enabled right now (its own setting, or `experimental.all`)
      */
     public isEnabled(feature: ExperimentalFeature): boolean {
-        const brightscriptConfig = util.getConfiguration('brightscript');
+        const brightscriptConfig = configurationManager.getConfiguration('brightscript');
         return (brightscriptConfig.get<boolean>('experimental.all') ?? false) ||
             (brightscriptConfig.get<boolean>(`experimental.${feature}`) ?? featureDefaults[feature]);
     }

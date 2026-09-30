@@ -4,7 +4,7 @@ import type {
     DocumentRangeFormattingEditProvider,
     TextDocument
 } from 'vscode';
-import { util } from './util';
+import { configurationManager } from './managers/ConfigurationManager';
 import {
     Position,
     Range,
@@ -22,7 +22,7 @@ export class Formatter implements DocumentRangeFormattingEditProvider {
         const workspaceFolder = workspace.getWorkspaceFolder(document.uri);
 
         try {
-            let userSettingsOptions = util.getConfiguration('brightscript.format', document.uri);
+            let userSettingsOptions = configurationManager.getConfiguration('brightscript.format', document.uri);
             let bsfmtPath = userSettingsOptions.get<string>('bsfmtPath');
 
             let bsfmtOptions = new Runner().getBsfmtOptions({

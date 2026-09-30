@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
-import { util } from '../util';
+import { configurationManager } from '../managers/ConfigurationManager';
 import type { ConfiguredDevice } from './DeviceManager';
 
 /**
@@ -69,7 +69,7 @@ export class RokuDevConfigProvider implements vscode.Disposable {
     private async refreshWorkspaceConfigPaths() {
         const uris = await vscode.workspace.findFiles(
             '**/.roku/roku-dev-config.json',
-            util.buildExcludeGlob(['**/node_modules/**'])
+            configurationManager.buildExcludeGlob(['**/node_modules/**'])
         );
         this.workspaceConfigPaths.clear();
         for (const uri of uris) {

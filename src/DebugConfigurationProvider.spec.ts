@@ -76,25 +76,25 @@ describe('BrightScriptConfigurationProvider', () => {
         }
 
         it('adds inspect=1 form data for a TypeScript/JS app (has ts_path)', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(tsPath);
             const config = applyInspectMode({ rootDir: rootDir });
             expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
         });
 
         it('omits `route` so it defaults downstream in roku-deploy', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(tsPath);
             const config = applyInspectMode({ rootDir: rootDir });
             expect(config.packageUploadOverrides.route).to.be.undefined;
         });
 
         it('does nothing for a BrightScript-only app (no ts_path)', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(undefined);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(undefined);
             const config = applyInspectMode({ rootDir: rootDir });
             expect(config.packageUploadOverrides).to.be.undefined;
         });
 
         it('adds inspect=1 when only a component library has a tsPath', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(undefined);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(undefined);
             const config = applyInspectMode({
                 rootDir: rootDir,
                 componentLibraries: [
@@ -106,37 +106,37 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('does nothing when waitForJsDebugger is false, even for a TypeScript/JS app', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(tsPath);
             const config = applyInspectMode({ rootDir: rootDir, waitForJsDebugger: false });
             expect(config.packageUploadOverrides).to.be.undefined;
         });
 
         it('applies inspect mode for a non-local (Cloud Emulator) device session', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(tsPath);
             const config = applyInspectMode({ rootDir: rootDir, device: { id: 123, rceToken: 'token' } as any });
             expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
         });
 
         it('applies inspect mode when the session targets a local device config', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(tsPath);
             const config = applyInspectMode({ rootDir: rootDir, device: { host: '1.2.3.4' } as any });
             expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
         });
 
         it('still applies inspect mode when waitForJsDebugger is explicitly true', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(tsPath);
             const config = applyInspectMode({ rootDir: rootDir, waitForJsDebugger: true });
             expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
         });
 
         it('applies inspect mode when waitForJsDebugger is undefined (defaults to waiting)', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(tsPath);
             const config = applyInspectMode({ rootDir: rootDir });
             expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
         });
 
         it('does nothing when component libraries exist but none have a tsPath', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(undefined);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(undefined);
             const config = applyInspectMode({
                 rootDir: rootDir,
                 componentLibraries: [{ rootDir: rootDir, outFile: 'lib.zip' }] as any
@@ -145,7 +145,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('merges into existing form data without clobbering other keys', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(tsPath);
             const config = applyInspectMode({
                 rootDir: rootDir,
                 packageUploadOverrides: { route: 'custom_route', formData: { custom: 'value' } }
@@ -156,7 +156,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('does not clobber an explicit user-provided inspect value', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(tsPath);
             const config = applyInspectMode({
                 rootDir: rootDir,
                 packageUploadOverrides: { route: 'plugin_install', formData: { inspect: '0' } }
@@ -165,7 +165,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('is applied by resolveDebugConfigurationWithSubstitutedVariables', () => {
-            sinon.stub(configProvider.util, 'getTsPath').returns(tsPath);
+            sinon.stub(configProvider.fileManager, 'getTsPath').returns(tsPath);
             const config = configProvider.resolveDebugConfigurationWithSubstitutedVariables(folder, { rootDir: rootDir } as BrightScriptLaunchConfiguration);
             expect(config.packageUploadOverrides.formData.inspect).to.equal('1');
         });
@@ -273,7 +273,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('does not throw on missing .env file and falls back to the process env', async () => {
-            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
+            sinon.stub(configProvider.fileManager, 'fileExists').returns(Promise.resolve(false));
             sinon.stub(configProvider, 'getBsConfig').returns({});
             sinon.stub(process, 'env').value({ ...process.env, ROKU_PASSWORD: 'pass1234' });
 
@@ -1055,7 +1055,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('replaces ${workspaceFolder} in .envFile path', async () => {
-            let stub = sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
+            let stub = sinon.stub(configProvider.fileManager, 'fileExists').returns(Promise.resolve(false));
             try {
                 await processEnvVariables(folder, {
                     envFile: '${workspaceFolder}/.env'

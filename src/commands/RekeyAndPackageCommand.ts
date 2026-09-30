@@ -5,7 +5,8 @@ import type { HostWithDeviceInfo } from '../deviceDiscovery/DeviceManager';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
 import * as path from 'path';
 import { readFileSync } from 'fs-extra';
-import { util } from '../util';
+import { configurationManager } from '../managers/ConfigurationManager';
+import { describeDevice } from '../util';
 import type { UserInputManager } from '../managers/UserInputManager';
 import { standardizePath } from 'brighterscript';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -131,7 +132,7 @@ export class RekeyAndPackageCommand {
         const selection = await vscode.window.showInformationMessage('Rekey info:', {
             modal: true,
             detail: [
-                `device: ${util.describeDevice(rekeyConfig.device ?? { host: rekeyConfig.host })}`,
+                `device: ${describeDevice(rekeyConfig.device ?? { host: rekeyConfig.host })}`,
                 `password: ${rekeyConfig.password}`,
                 `signing password: ${rekeyConfig.signingPassword}`,
                 `package: ${rekeyConfig.rekeySignedPackage}`
@@ -302,7 +303,7 @@ export class RekeyAndPackageCommand {
             const pkgPath = zipPath.replace(/\.zip$/i, '.pkg');
 
             let details = [
-                `device: ${util.describeDevice(rokuDeployOptions.device ?? { host: rokuDeployOptions.host })}`,
+                `device: ${describeDevice(rokuDeployOptions.device ?? { host: rokuDeployOptions.host })}`,
                 `password: ${rokuDeployOptions.password}`,
                 `signing password: ${rokuDeployOptions.signingPassword}`,
                 `outDir: ${rokuDeployOptions.outDir}`,
@@ -403,7 +404,7 @@ export class RekeyAndPackageCommand {
     }
 
     private async packageFromLaunchConfig(rokuDeployOptions) {
-        let config = util.getConfiguration('launch');
+        let config = configurationManager.getConfiguration('launch');
         const configurations = config.get<any[]>('configurations');
         let configNames = [];
         for (let config of configurations) {

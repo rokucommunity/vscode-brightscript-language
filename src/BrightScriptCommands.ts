@@ -5,7 +5,9 @@ import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCo
 import { captureScreenshotCommand } from './commands/CaptureScreenshotCommand';
 import { rekeyAndPackageCommand } from './commands/RekeyAndPackageCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
-import { util } from './util';
+import { configurationManager } from './managers/ConfigurationManager';
+import { windowManager } from './managers/WindowManager';
+import { isNullish, sleep } from './util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
 import type { ConfiguredDevice, DeviceManager, HostWithDeviceInfo, RokuDevice } from './deviceDiscovery/DeviceManager';
@@ -82,7 +84,7 @@ export class BrightScriptCommands {
                 items.push({ label: item });
             }
 
-            const stuffUserTyped = await util.showQuickPickInputBox({
+            const stuffUserTyped = await windowManager.showQuickPickInputBox({
                 placeholder: 'Press enter to send all typed characters to the Roku',
                 items: items
             });
@@ -353,22 +355,22 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('clearCurrentDeviceList', async () => {
-            const toatsPromise = util.showTimedNotification('Clearing device list');
+            const toatsPromise = windowManager.showTimedNotification('Clearing device list');
             await this.deviceManager.clearCurrentDeviceList();
             await toatsPromise;
         });
 
         this.registerCommand('enableDeviceDiscovery', async () => {
-            await util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
+            await configurationManager.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
         });
 
         this.registerCommand('disableDeviceDiscovery', async () => {
-            await util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', false);
+            await configurationManager.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', false);
         });
 
         this.registerCommand('clearDeviceCache', async () => {
             this.deviceManager.clearAllCache();
-            await util.showTimedNotification('Clearing device cache');
+            await windowManager.showTimedNotification('Clearing device cache');
         });
 
         this.registerCommand('clearLastSeenDevices', async () => {
@@ -378,7 +380,7 @@ export class BrightScriptCommands {
 
         this.registerCommand('copyToClipboard', async (value: string) => {
             try {
-                if (util.isNullish(value)) {
+                if (isNullish(value)) {
                     throw new Error('Cannot copy ${value} to clipboard');
                 }
                 await vscode.env.clipboard.writeText(value?.toString());
@@ -403,7 +405,7 @@ export class BrightScriptCommands {
                 return;
             }
 
-            const apps = await util.spinAsync('Fetching app list', async () => {
+            const apps = await windowManager.spinAsync('Fetching app list', async () => {
                 return rokuDeploy.getApps({ device: deviceConfig });
             });
 
@@ -436,7 +438,7 @@ export class BrightScriptCommands {
                 if (device?.rce) {
                     //a cloud emulator device has no browser-reachable ECP url; fetch the raw
                     //registry response and show it in an editor instead
-                    const result = await util.spinAsync('Fetching registry', async () => {
+                    const result = await windowManager.spinAsync('Fetching registry', async () => {
                         return rokuDeploy.sendEcpRequest({ device: device.device, route: `query/registry/${appId}` });
                     });
                     const document = await vscode.workspace.openTextDocument({
@@ -473,7 +475,7 @@ export class BrightScriptCommands {
             await vscodeContextManager.set('activeDeviceKey', activeDeviceKey);
 
             const label = device ? this.deviceManager.getDeviceDisplayName(device, true) : ip;
-            await util.showTimedNotification(`'${label}' set as active device`);
+            await windowManager.showTimedNotification(`'${label}' set as active device`);
         });
 
         this.registerCommand('editDeviceInUserSettings', async (deviceOrItem: { key: string }) => {
@@ -556,7 +558,7 @@ export class BrightScriptCommands {
 
         this.registerCommand('clearDefaultDevicePassword', async () => {
             await vscode.workspace.getConfiguration('brightscript').update('defaultDevicePassword', undefined, vscode.ConfigurationTarget.Global);
-            await util.showTimedNotification('Default device password cleared.');
+            await windowManager.showTimedNotification('Default device password cleared.');
         });
 
         this.registerCommand('setDefaultDevicePassword', async () => {
@@ -617,7 +619,7 @@ export class BrightScriptCommands {
             await this.context.workspaceState.update('activeDeviceKey', '');
             await this.context.workspaceState.update('remoteControlDeviceKey', '');
             await vscodeContextManager.set('activeDeviceKey', '');
-            await util.showTimedNotification('Active device cleared');
+            await windowManager.showTimedNotification('Active device cleared');
         });
 
         this.registerCommand('showReleaseNotes', () => {
@@ -755,7 +757,7 @@ export class BrightScriptCommands {
         //label for a cloud device (which has no host, and whose rceToken must never be printed)
         const deviceLabel = isLocalDeviceConfig(device) ? device.host : 'the active device';
 
-        await util.spinAsync('Restarting dev app', async () => {
+        await windowManager.spinAsync('Restarting dev app', async () => {
             const apps = await rokuDeploy.getApps({ device: device });
             const hasDev = apps.some(app => app.id === 'dev');
             if (!hasDev) {
@@ -776,10 +778,10 @@ export class BrightScriptCommands {
             }
 
             // give a little bit of time to let the app boot up before checking its status
-            await util.sleep(1000);
+            await sleep(1000);
             const activeApp = await rokuDeploy.getActiveApp({ device: device });
             if (activeApp.id === 'dev') {
-                void util.showTimedNotification('Dev app restarted', 2000);
+                void windowManager.showTimedNotification('Dev app restarted', 2000);
             } else {
                 await vscode.window.showWarningMessage(`Sent the dev launch command, but the foreground app is "${activeApp.id ?? 'unknown'}". The dev app may still be loading.`);
             }
@@ -916,7 +918,7 @@ export class BrightScriptCommands {
             return remoteDevice.device;
         }
 
-        const configuredHost = placeholderToUndefined(util.getConfiguration('brightscript.remoteControl').get<string>('host'));
+        const configuredHost = placeholderToUndefined(configurationManager.getConfiguration('brightscript.remoteControl').get<string>('host'));
         if (configuredHost) {
             return { host: configuredHost };
         }
@@ -937,7 +939,7 @@ export class BrightScriptCommands {
     public async getRemotePassword(showPrompt = true) {
         this.password = await this.context.workspaceState.get('remotePassword');
         if (!this.password) {
-            let config = util.getConfiguration('brightscript.remoteControl');
+            let config = configurationManager.getConfiguration('brightscript.remoteControl');
             this.password = config.get('password');
             // eslint-disable-next-line no-template-curly-in-string
             if ((!this.password || this.password === '${promptForPassword}') && showPrompt) {

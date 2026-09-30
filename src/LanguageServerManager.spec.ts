@@ -15,9 +15,10 @@ import {
     LanguageClient,
     State
 } from 'vscode-languageclient/node';
-import { util } from './util';
+import { sleep } from './util';
 import { GlobalStateManager } from './GlobalStateManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
+import { processManager } from './managers/ProcessManager';
 import { expectThrowsAsync } from './testHelpers.spec';
 import undent from 'undent';
 const sinon = createSandbox();
@@ -369,11 +370,11 @@ describe('LanguageServerManager', () => {
         });
 
         it.skip('does not run multiple installs for the same version at the same time', async () => {
-            let spy = sinon.stub(util, 'spawnNpmAsync').callsFake(async (command, options) => {
+            let spy = sinon.stub(processManager, 'spawnNpmAsync').callsFake(async (command, options) => {
                 //simulate that the bsc code was installed
                 fsExtra.outputFileSync(`${options.cwd}/node_modules/brighterscript/dist/index.js`, '');
                 //ensure both requests have the opportunity to run at same time
-                await util.sleep(1000);
+                await sleep(1000);
             });
             //request the install multiple times without waiting for them
             const promises = [
@@ -399,7 +400,7 @@ describe('LanguageServerManager', () => {
         });
 
         it.skip('reuses the same bsc version when already exists', async () => {
-            let spy = sinon.spy(util, 'spawnNpmAsync');
+            let spy = sinon.spy(processManager, 'spawnNpmAsync');
             fsExtra.ensureDirSync(
                 s`${storageDir}/brighterscript/0.65.0/node_modules/brighterscript/dist/index.js`
             );
@@ -440,7 +441,7 @@ describe('LanguageServerManager', () => {
 
             //mock the actual installation process (since we're handling when it crashes)
             let callCount = 0;
-            sinon.stub(util, 'spawnNpmAsync').callsFake(async (args, options) => {
+            sinon.stub(processManager, 'spawnNpmAsync').callsFake(async (args, options) => {
                 callCount++;
                 //fail first time, pass all others
                 if (callCount === 1) {
@@ -477,7 +478,7 @@ describe('LanguageServerManager', () => {
 
             expect(stub.called).to.be.false;
 
-            await util.sleep(100);
+            await sleep(100);
             expect(stub.called).to.be.true;
         });
     });
@@ -537,7 +538,7 @@ describe('LanguageServerManager', () => {
             handler({ status: BusyStatus.busy });
             handler({ status: BusyStatus.busy });
 
-            await util.sleep(200);
+            await sleep(200);
             //we should only have 1 console print (for the final busy event we sent)
             expect(client.outputChannel.appendLine.callCount).to.eql(1);
         });

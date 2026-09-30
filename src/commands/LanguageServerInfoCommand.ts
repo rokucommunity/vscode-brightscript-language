@@ -7,7 +7,9 @@ import { firstBy } from 'thenby';
 import { VscodeCommand } from './VscodeCommand';
 import URI from 'vscode-uri';
 import * as relativeTime from 'dayjs/plugin/relativeTime';
-import { util } from '../util';
+import { configurationManager } from '../managers/ConfigurationManager';
+import { processManager } from '../managers/ProcessManager';
+import { windowManager } from '../managers/WindowManager';
 import { type LocalPackageManager } from '../managers/LocalPackageManager';
 import * as semver from 'semver';
 import { standardizePath as s } from 'brighterscript';
@@ -46,7 +48,7 @@ export class LanguageServerInfoCommand {
                 label: `Remove cached brighterscript versions`,
                 description: ``,
                 command: async () => {
-                    await util.runWithProgress({
+                    await windowManager.runWithProgress({
                         title: 'Removing cached brighterscript versions'
                     }, async () => {
                         await vscode.commands.executeCommand(VscodeCommand.clearNpmPackageCache);
@@ -117,7 +119,7 @@ export class LanguageServerInfoCommand {
 
     private async getBscVersionsFromNpm() {
 
-        const json = await util.exec(`npm view brighterscript time --json`);
+        const json = await processManager.exec(`npm view brighterscript time --json`);
 
         const versions = JSON.parse(json);
 
@@ -187,7 +189,7 @@ export class LanguageServerInfoCommand {
         selection = await selection?.command?.() ?? selection;
 
         if (selection) {
-            const config = util.getConfiguration('brightscript');
+            const config = configurationManager.getConfiguration('brightscript');
             const currentValue = config.get<string>('bsdk') ?? 'embedded';
 
             //if the user chose the same value that's already there, just restart the language server

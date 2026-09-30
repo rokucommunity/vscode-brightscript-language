@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { rokuDeploy } from 'roku-deploy';
 import type { DeviceTargetManager } from '../managers/DeviceTargetManager';
-import { util } from '../util';
+import { configurationManager } from '../managers/ConfigurationManager';
+import { sleep } from '../util';
 
 export const FILE_SCHEME = 'bs-captureScreenshot';
 
@@ -15,7 +16,7 @@ export class CaptureScreenshotCommand {
     }
 
     private async getScreenshotDir() {
-        let screenshotDir = util.getConfiguration('brightscript').get<string>('screenshotDir');
+        let screenshotDir = configurationManager.getConfiguration('brightscript').get<string>('screenshotDir');
         if (screenshotDir) {
             let workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             if (vscode.workspace.workspaceFolders?.length > 1) {
@@ -48,7 +49,7 @@ export class CaptureScreenshotCommand {
         let ensureSleepMin = async () => {
             let elapsed = Date.now() - start;
             if (elapsed < MIN_PROGRESS_TIME) {
-                await util.sleep(MIN_PROGRESS_TIME - elapsed);
+                await sleep(MIN_PROGRESS_TIME - elapsed);
             }
         };
         try {

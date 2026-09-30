@@ -14,7 +14,9 @@ import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbol
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
 import type { DefinitionRepository } from './DefinitionRepository';
-import { util } from './util';
+import { configurationManager } from './managers/ConfigurationManager';
+import { windowManager } from './managers/WindowManager';
+import { sleep } from './util';
 import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import * as fsExtra from 'fs-extra';
 import { EventEmitter } from 'eventemitter3';
@@ -393,7 +395,7 @@ export class LanguageServerManager {
      */
     public async restart() {
         await this.disableLanguageServer();
-        await util.delay(1);
+        await sleep(1);
         await this.syncVersionAndTryRun();
     }
 
@@ -405,7 +407,7 @@ export class LanguageServerManager {
             this.clientDispose?.dispose();
             this.client = undefined;
             //delay slightly to let things catch up
-            await util.delay(100);
+            await sleep(100);
             this.deferred = new Deferred();
         }
         //enable the simple providers (since there is no language server)
@@ -455,7 +457,7 @@ export class LanguageServerManager {
     }
 
     public isLanguageServerEnabledInSettings() {
-        const result = util.getConfigurationValueIfDefined('brightscript.languageServer.enabled') ?? util.getConfigurationValueIfDefined('brightscript.enableLanguageServer', true);
+        const result = configurationManager.getConfigurationValueIfDefined('brightscript.languageServer.enabled') ?? configurationManager.getConfigurationValueIfDefined('brightscript.enableLanguageServer', true);
         return result;
     }
 
@@ -524,7 +526,7 @@ export class LanguageServerManager {
         //use bsdk entry in the code-workspace file
         if (this.workspaceConfigIncludesBsdkKey()) {
             let result = this.parseVersionInfo(
-                util.getConfiguration('brightscript', vscode.workspace.workspaceFile).get<string>('bsdk')?.trim?.(),
+                configurationManager.getConfiguration('brightscript', vscode.workspace.workspaceFile).get<string>('bsdk')?.trim?.(),
                 path.dirname(vscode.workspace.workspaceFile.fsPath)
             );
             if (result) {
@@ -534,7 +536,7 @@ export class LanguageServerManager {
 
         //collect `brightscript.bsdk` setting value from each workspaceFolder
         const folderResults = vscode.workspace.workspaceFolders?.reduce((acc, workspaceFolder) => {
-            const versionInfo = util.getConfiguration('brightscript', workspaceFolder).get<string>('bsdk');
+            const versionInfo = configurationManager.getConfiguration('brightscript', workspaceFolder).get<string>('bsdk');
             const parsed = this.parseVersionInfo(versionInfo, workspaceFolder.uri.fsPath);
             if (parsed) {
                 acc.set(parsed.value, parsed);
@@ -591,7 +593,7 @@ export class LanguageServerManager {
 
         //install this version of brighterscript
         try {
-            const packageInfo = await util.runWithProgress({
+            const packageInfo = await windowManager.runWithProgress({
                 title: 'Installing brighterscript language server ' + versionInfo,
                 location: vscode.ProgressLocation.Notification,
                 cancellable: false,
@@ -623,7 +625,7 @@ export class LanguageServerManager {
      * Delete any brighterscript versions that haven't been used in a while
      */
     private async deleteOutdatedBscVersions() {
-        const npmCacheRetentionDays = util.getConfiguration('brightscript')?.get?.('npmCacheRetentionDays', 45) ?? 45;
+        const npmCacheRetentionDays = configurationManager.getConfiguration('brightscript')?.get?.('npmCacheRetentionDays', 45) ?? 45;
 
         //build the cutoff date (i.e. 45 days ago)
         const cutoffDate = dayjs().subtract(npmCacheRetentionDays, 'days');
@@ -663,7 +665,7 @@ function OneAtATime(options: { timeout?: number }) {
             target.__oneAtATime ??= {};
             target.__oneAtATime[propertyKey] ??= Promise.resolve();
 
-            const timer = util.sleep(options.timeout > 0 ? options.timeout : Number.MAX_SAFE_INTEGER);
+            const timer = sleep(options.timeout > 0 ? options.timeout : Number.MAX_SAFE_INTEGER);
 
             return Promise.race([
                 //race for the last task to resolve

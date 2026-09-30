@@ -9,7 +9,8 @@ import type { ConfiguredDevice, DeviceManager, HostWithDeviceInfo, RokuDevice } 
 import type { CredentialStore } from './CredentialStore';
 import { icons } from '../icons';
 import { vscodeContextManager } from './VscodeContextManager';
-import { util } from '../util';
+import { configurationManager } from './ConfigurationManager';
+import { windowManager } from './WindowManager';
 import {
     DEFAULT_DEVICE_FILTERS,
     DEVICE_FILTER_GROUPS,
@@ -452,11 +453,11 @@ export class UserInputManager {
                 this.deviceManager.refresh(true);
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
                 this.deviceManager.clearCurrentDeviceList().catch(() => { });
-                void util.showTimedNotification('Clearing device list');
+                void windowManager.showTimedNotification('Clearing device list');
             } else if (button.tooltip === ENABLE_DEVICE_DISCOVERY) {
-                void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
+                void configurationManager.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
             } else if (button.tooltip === DISABLE_DEVICE_DISCOVERY) {
-                void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', false);
+                void configurationManager.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', false);
             } else if (button.tooltip === FILTER_DEVICES) {
                 openFilterSubmenu();
             }

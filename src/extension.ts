@@ -5,7 +5,9 @@ import { isRceDeviceConfig } from 'roku-deploy';
 import type { DeviceConfig } from 'roku-deploy';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
-import { util } from './util';
+import { configurationManager } from './managers/ConfigurationManager';
+import { fileManager } from './managers/FileManager';
+import { windowManager } from './managers/WindowManager';
 import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import { RokuDevConfigProvider } from './deviceDiscovery/RokuDevConfigProvider';
 import { RsgSdkPasswordCandidateProvider } from './deviceDiscovery/RsgSdkPasswordCandidateProvider';
@@ -117,7 +119,7 @@ export class Extension {
         );
 
         this.telemetryManager.sendStartupEvent();
-        this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
+        this.extensionOutputChannel = windowManager.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
         this.extensionOutputChannel.appendLine('Extension startup');
         //constructed for its side effects: it publishes the `brightscript.experimental.*` context
         //keys and keeps them following the settings. No feature consumes it today
@@ -380,7 +382,7 @@ export class Extension {
             debugSessionManager.onDidTerminateSession(this.onDidTerminateDebugSession.bind(this))
         );
 
-        let brightscriptConfig = util.getConfiguration('brightscript');
+        let brightscriptConfig = configurationManager.getConfiguration('brightscript');
         if (brightscriptConfig?.outputPanelStartupBehavior) {
             if (brightscriptConfig.outputPanelStartupBehavior === 'show') {
                 //show the output panel on extension startup without taking focus (only if configured to do so...defaults to 'nothing')
@@ -441,7 +443,7 @@ export class Extension {
      * first component library with a `tsPath` configured in launch.json.
      */
     private async resolveJsDebugTarget(configuration: BrightScriptLaunchConfiguration): Promise<JsDebugTarget | undefined> {
-        const appTsPath = configuration.tsPath ?? util.getTsPath(configuration.rootDir);
+        const appTsPath = configuration.tsPath ?? fileManager.getTsPath(configuration.rootDir);
         if (appTsPath) {
             const workspaceFolders = vscode.workspace.workspaceFolders || [];
             //use the stagingDir if provided, otherwise default to what we think it will probably be (hasn't changed in years...)
@@ -455,7 +457,7 @@ export class Extension {
             }
             //roku-debug stages each component library in its own folder at `${outDir}/component-libraries/<outFile minus extension>`,
             //where outFile may contain `${var}` placeholders resolved from the library's manifest. Recreate that path here.
-            const manifestValues = await util.convertManifestToObject(path.join(library.rootDir, 'manifest')) ?? {};
+            const manifestValues = await fileManager.convertManifestToObject(path.join(library.rootDir, 'manifest')) ?? {};
             const outFileName = library.outFile.replace(/\$\{([\w\d_]+)\}/g, (wholeMatch, name) => (manifestValues[name] ?? wholeMatch).trim());
             const stagingDir = s`${configuration.outDir}/component-libraries/${path.basename(outFileName, path.extname(outFileName))}`;
             //`processStagingDir` only reports the MAIN project's authoritative stagingDir - a complib
@@ -771,7 +773,7 @@ export class Extension {
                 let doc = await vscode.workspace.openTextDocument(uri);
                 await vscode.window.showTextDocument(doc, {
                     preview: false,
-                    selection: util.toRange(firstDiagnostic.range)
+                    selection: this.toRange(firstDiagnostic.range)
                 });
             }
 
@@ -796,6 +798,16 @@ export class Extension {
         } catch (err) {
             console.error('Error handling custom event', e, err);
         }
+    }
+
+    /**
+     * Convert an arbitrary range-like object into a proper vscode.Range instance
+     */
+    private toRange(range: { start: { line: number; character: number }; end: { line: number; character: number } }) {
+        return new vscode.Range(
+            new vscode.Position(range.start.line, range.start.character),
+            new vscode.Position(range.end.line, range.end.character)
+        );
     }
 
     private async showMessage(e: any) {
@@ -956,7 +968,7 @@ export class Extension {
      * Writes text to a logfile if enabled
      */
     private writeExtensionLog(text: string) {
-        let extensionLogfilePath = util.getConfiguration('brightscript').get<string>('extensionLogfilePath');
+        let extensionLogfilePath = configurationManager.getConfiguration('brightscript').get<string>('extensionLogfilePath');
         if (extensionLogfilePath) {
             //replace the ${workspaceFolder} variable with the path to the first workspace
             extensionLogfilePath = extensionLogfilePath.replace('${workspaceFolder}', vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);

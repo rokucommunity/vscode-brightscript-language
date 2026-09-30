@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/consistent-indexed-object-style */
 import * as fsExtra from 'fs-extra';
 import { standardizePath as s } from 'brighterscript';
-import { util } from '../util';
+import { processManager } from './ProcessManager';
+import { isNonEmptyString } from '../util';
 import type { ExtensionContext } from 'vscode';
 import * as lodash from 'lodash';
 import * as md5 from 'md5';
@@ -83,7 +84,7 @@ export class LocalPackageManager {
         });
 
         //install the package
-        await util.spawnNpmAsync(['install'], {
+        await processManager.spawnNpmAsync(['install'], {
             cwd: packageInfo.rootDir
         });
 
@@ -272,7 +273,7 @@ export class LocalPackageManager {
      */
     public parseVersionInfo(versionInfo: string, cwd: string): ParsedVersionInfo {
         //is empty string or undefined, return undefined
-        if (!util.isNonEmptyString(versionInfo)) {
+        if (!isNonEmptyString(versionInfo)) {
             return undefined;
 
             //is an exact semver value

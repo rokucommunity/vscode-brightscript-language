@@ -16,7 +16,8 @@ import {
 } from 'vscode';
 
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
-import { util } from './util';
+import { configurationManager } from './managers/ConfigurationManager';
+import { normalizeFileScheme } from './util';
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CREDIT WHERE CREDIT IS DUE
@@ -55,7 +56,7 @@ export class WorkspaceEncoding {
     }
 
     private getConfiguration(uri: Uri): string {
-        const encoding: string = util.getConfiguration('files', uri).get('encoding', 'utf8');
+        const encoding: string = configurationManager.getConfiguration('files', uri).get('encoding', 'utf8');
         if (encoding === 'utf8bom') {
             return 'utf8'; // iconv-lite removes bom by default when decoding, so this is fine
         }
@@ -191,10 +192,10 @@ export class DeclarationProvider implements Disposable {
     }
 
     public readDeclarations(uri: Uri, input: string): BrightScriptDeclaration[] {
-        const uriPath = util.normalizeFileScheme(uri.toString());
+        const uriPath = normalizeFileScheme(uri.toString());
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
         if (workspaceFolder) {
-            const outDir = util.normalizeFileScheme(path.join(workspaceFolder.uri.toString(), 'out'));
+            const outDir = normalizeFileScheme(path.join(workspaceFolder.uri.toString(), 'out'));
 
             // Prevents results in the out directory from being returned
             if (uriPath.startsWith(outDir)) {
@@ -484,8 +485,8 @@ export class DeclarationProvider implements Disposable {
 
 export function getExcludeGlob(): string {
     const exclude = [
-        ...Object.keys(util.getConfiguration('search').get('exclude') || {}),
-        ...Object.keys(util.getConfiguration('files').get('exclude') || {})
+        ...Object.keys(configurationManager.getConfiguration('search').get('exclude') || {}),
+        ...Object.keys(configurationManager.getConfiguration('files').get('exclude') || {})
     ].join(',');
     return `{${exclude}}`;
 }

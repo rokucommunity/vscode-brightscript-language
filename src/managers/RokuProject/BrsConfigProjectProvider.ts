@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { util as bsUtil } from 'brighterscript';
-import { util } from '../../util';
+import { configurationManager } from '../ConfigurationManager';
 import { getDestPath } from 'roku-deploy';
 import type { FileEntry } from 'roku-deploy';
 import type { DiscoveredRokuProject, ProjectBuildResult, ProjectConfigProvider } from './RokuProjectManager';
@@ -44,7 +44,7 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
     }
 
     public async findProjectConfigs(): Promise<vscode.Uri[]> {
-        const exclude = util.buildExcludeGlob(this.excludePatterns);
+        const exclude = configurationManager.buildExcludeGlob(this.excludePatterns);
         const results = await Promise.all(
             this.configFileSelector
                 .filter(selector => selector.pattern)

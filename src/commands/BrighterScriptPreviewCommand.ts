@@ -1,6 +1,6 @@
 import { Uri, Range } from 'vscode';
 import * as vscode from 'vscode';
-import { util } from '../util';
+import { debounce } from 'debounce';
 import * as path from 'path';
 import * as querystring from 'querystring';
 import { SourceMapConsumer } from 'source-map';
@@ -10,6 +10,18 @@ export const FILE_SCHEME = 'bs-preview';
 
 export class BrighterScriptPreviewCommand {
     public static SELECTION_SYNC_DELAY = 300;
+
+    private debounceByKey = {} as Record<string, any>;
+
+    /**
+     * Get a debounce function that runs a separate debounce for every unique key provided
+     */
+    private keyedDebounce<T>(key: string, callback: () => T, waitMilliseconds: number) {
+        if (!this.debounceByKey[key]) {
+            this.debounceByKey[key] = debounce(callback, waitMilliseconds);
+        }
+        this.debounceByKey[key]();
+    }
 
     public register(context: vscode.ExtensionContext) {
 
@@ -30,7 +42,7 @@ export class BrighterScriptPreviewCommand {
         vscode.workspace.onDidChangeTextDocument((e) => {
             if (this.isWatchingUri(e.document.uri)) {
                 let uri = this.getBsPreviewUri(e.document.uri);
-                util.keyedDebounce(`'textdoc-change:${uri.fsPath}`, () => {
+                this.keyedDebounce(`'textdoc-change:${uri.fsPath}`, () => {
                     this.onDidChangeEmitter.fire(uri);
                 }, 500);
             }
@@ -42,14 +54,14 @@ export class BrighterScriptPreviewCommand {
             //if this is one of our source files
             if (this.activePreviews[uri.fsPath]) {
 
-                util.keyedDebounce(`sync-preview:${uri.fsPath}`, async () => {
+                this.keyedDebounce(`sync-preview:${uri.fsPath}`, async () => {
                     await this.syncPreviewLocation(uri);
                 }, BrighterScriptPreviewCommand.SELECTION_SYNC_DELAY);
 
                 //this is the preview file
             } else if (this.getSourcePathFromPreviewUri(uri)) {
                 //TODO enable this once we figure out the bugs
-                // util.keyedDebounce(`sync-source:${uri.fsPath}`, async () => {
+                // this.keyedDebounce(`sync-source:${uri.fsPath}`, async () => {
                 //     this.syncSourceLocation(uri);
                 // }, BrighterScriptPreviewCommand.SELECTION_SYNC_DELAY);
             }

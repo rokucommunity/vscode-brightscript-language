@@ -2,7 +2,7 @@ import TelemetryReporter from '@vscode/extension-telemetry';
 import type { Disposable } from 'vscode';
 import type { BrightScriptLaunchConfiguration, DeviceSelectionSource } from '../DebugConfigurationProvider';
 import type { RemoteControlModeInitiator } from './RemoteControlManager';
-import { util } from '../util';
+import { configurationManager } from './ConfigurationManager';
 import type { DeviceInfo, DeviceConfig } from 'roku-deploy';
 import { isLocalDeviceConfig, isRceDeviceConfig, isRceDeviceConfigByEsn, isRceDeviceConfigById, isRceDeviceConfigByUrl } from 'roku-deploy';
 
@@ -66,7 +66,7 @@ export class TelemetryManager implements Disposable {
             isLogfilePathDefined: isDefined(initialConfig.logfilePath),
             isBsConstDefined: isDefined(initialConfig.bsConst),
             isExtensionLogfilePathDefined: isDefined(
-                util.getConfiguration('brightscript').get<string>('extensionLogfilePath')
+                configurationManager.getConfiguration('brightscript').get<string>('extensionLogfilePath')
             ),
             deviceReferenceKind: getDeviceReferenceKind(initialConfig.device),
             isProfilingTracingEnabled: boolToString(initialConfig.profiling?.tracing?.enable),
