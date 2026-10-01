@@ -151,10 +151,10 @@
         "@deboxsoft/cpx": {
             "shell-quote": "^1.10.0"
         },
-        "brace-expansion": "^2.1.4",
+        "brace-expansion": "^2.1.7",
         "js-yaml": "^4.3.2",
         "@babel/core": "^7.29.7",
-        "fast-uri": "^3.1.7",
+        "fast-uri": "^3.1.8",
         "body-parser": "^1.20.6",
         "qs": "^6.16.0",
         "ip-address": "^10.4.0",
