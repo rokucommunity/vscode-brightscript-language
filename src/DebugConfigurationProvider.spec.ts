@@ -1229,6 +1229,14 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(stub.callCount).to.equal(2);
         });
 
+        it(`validates the password against the launch config's packagePort`, async () => {
+            const stub = sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
+
+            await callProcess({ password: 'some-pw' }, { host: '127.0.0.1', password: 'some-pw', packagePort: 8084 }, { serialNumber: 'SN-001' });
+
+            expect(stub.firstCall.args[2]).to.equal(8084);
+        });
+
         it('throws and stops the flow on unreachable during candidate validation', async () => {
             sinon.stub(deviceManager, 'validateDevicePassword').resolves('unreachable');
 
