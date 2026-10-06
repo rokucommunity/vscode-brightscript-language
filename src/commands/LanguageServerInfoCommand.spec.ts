@@ -38,7 +38,8 @@ describe('LanguageServerInfoCommand', () => {
     });
 
     describe('getBscVersionsFromNpm', function() {
-        this.timeout(20_000);
+        //this hits the live npm registry, which can be slow on CI runners (especially macOS)
+        this.timeout(60_000);
         it('returns a list of versions', async () => {
             const results = await command['getBscVersionsFromNpm']();
             // `results` is entire list of all bsc versions, live from npm. so we obviously can't make a test that ensure they're all correct.
