@@ -781,6 +781,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             return result;
         }
         const serialNumber = result.deviceInfo?.['serial-number'];
+        //honor the config's `packagePort` when validating the password, otherwise a dev installer
+        //on a non-default port (e.g. the BrightScript Simulator) looks unreachable. A cloud emulator
+        //device is addressed through its own proxy, so it keeps the default
+        const packagePort = isLocalDeviceConfig(device) ? result.packagePort : undefined;
 
         // Opportunistically drain any legacy IP-keyed password that still lives in
         // workspaceState from pre-refactor extension installs (the helpers no-op for anything but
@@ -790,7 +794,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         // authoritative error surfaces from the main flow.
         const legacyPassword = this.getLegacyIpKeyedPassword(device);
         if (legacyPassword !== undefined) {
-            const validation = await this.deviceManager.validateDevicePassword(device, legacyPassword);
+            const validation = await this.deviceManager.validateDevicePassword(device, legacyPassword, packagePort);
             if (validation === 'ok') {
                 await this.clearLegacyIpKeyedPassword(device);
                 // A legacy entry is explicit historical opt-in: persist it to the cred store
@@ -816,7 +820,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         const resolution = await this.userInputManager.resolveDevicePassword({
             device: device,
             serialNumber: serialNumber,
-            extraCandidates: [result.password, config.password]
+            extraCandidates: [result.password, config.password],
+            packagePort: packagePort
         });
         if (resolution.status === 'unreachable') {
             throw new Error(`Debug session terminated: device '${this.describeDevice(device)}' is unreachable.`);
