@@ -7,6 +7,29 @@ This extension contributes the following settings:
 
 <br/>
 
+### `brightscript.bsdk`
+Specifies which version of [BrighterScript](https://github.com/rokucommunity/brighterscript) to use for the language server. Supported values:
+ - `"embedded"` (or omitted) - use the version of BrighterScript bundled with the extension
+ - a path to a directory containing the `brighterscript` package (i.e. `"node_modules/brighterscript"`)
+ - an npm version, range, or dist-tag (i.e. `"0.65.0"`, `"^0.65.0"`, or `"@next"`), which the extension will download and cache
+ - a URL or path to a `.tgz` package (i.e. `"https://github.com/rokucommunity/brighterscript/releases/download/v0.0.0-packages/brighterscript-0.65.27.tgz"`)
+
+Relative paths are resolved relative to the file where the setting is defined:
+ - in a `.code-workspace` file, relative to the directory containing the `.code-workspace` file (which does not need to be the project root)
+ - in a folder's `.vscode/settings.json`, relative to that workspace folder
+
+The path may start with one of these variables:
+ - `${workspaceFolder}` - in a `.code-workspace` file, this is the first workspace folder. In a folder's `.vscode/settings.json`, this is that folder.
+ - `${workspaceFolder:name}` - the workspace folder with the given name (i.e. `"${workspaceFolder:app}/node_modules/brighterscript"`)
+
+Any other variable (i.e. `${env:MY_VAR}`) is not supported, and an error will be shown in the BrightScript extension output panel.
+
+When there are multiple sources, the first match wins:
+ 1. the value from the `.code-workspace` file
+ 2. if exactly one workspace folder has a value (or all folders resolve to the same value), use it
+ 3. if workspace folders have different values, you will be prompted to pick which one to use
+ 4. otherwise, use the embedded version
+
 ### `brightscript.format.keywordCase`
 specify case of keywords when formatting
 
