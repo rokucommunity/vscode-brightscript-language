@@ -3,6 +3,8 @@ export enum ViewProviderEvent {
     onDeviceAvailabilityChange = 'onDeviceAvailabilityChange',
     onVscodeCommandReceived = 'onVscodeCommandReceived',
     onRegistryUpdated = 'onRegistryUpdated',
+    onSolidDevtoolsDebugSessionStarted = 'onSolidDevtoolsDebugSessionStarted',
+    onSolidDevtoolsPerfSample = 'onSolidDevtoolsPerfSample',
     onStoredAppUIUpdated = 'onStoredAppUIUpdated',
     onRokuAutomationConfigsLoaded = 'onRokuAutomationConfigsLoaded',
     onRokuAutomationImportAllAutomations = 'onRokuAutomationImportAllAutomations',
@@ -18,5 +20,7 @@ export enum ViewProviderEvent {
     onRceStreamError = 'onRceStreamError',
     onRceStreamClosed = 'onRceStreamClosed',
     onRceStreamDeviceStopped = 'onRceStreamDeviceStopped',
-    onRceStreamStopped = 'onRceStreamStopped'
+    onRceStreamStopped = 'onRceStreamStopped',
+    onRceDeviceRuntimeChanged = 'onRceDeviceRuntimeChanged',
+    onRceRefreshingChanged = 'onRceRefreshingChanged'
 }

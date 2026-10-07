@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { EventEmitter } from 'eventemitter3';
-import type { DeviceManager } from '../deviceDiscovery/DeviceManager';
 import { util } from '../util';
 import { vscodeContextManager } from './VscodeContextManager';
 
@@ -10,8 +9,22 @@ import { vscodeContextManager } from './VscodeContextManager';
  * clauses (view and command visibility).
  */
 export enum ExperimentalFeature {
-    rokuCloudEmulator = 'rokuCloudEmulator'
+    /**
+     * @deprecated Placeholder with no consumers, kept so the gating machinery in this class stays
+     * exercised until a real experimental feature arrives. Has no package.json settings
+     * contribution.
+     */
+    placeholder = 'placeholder'
 }
+
+/**
+ * The enablement each feature falls back to when its setting is absent. For features with a
+ * package.json settings contribution this mirrors that setting's `default`; the placeholder has
+ * no contribution, so it relies on this map alone.
+ */
+const featureDefaults: Record<ExperimentalFeature, boolean> = {
+    [ExperimentalFeature.placeholder]: false
+};
 
 /**
  * Owns the `brightscript.experimental.*` feature flags. `brightscript.experimental.all` enables
@@ -19,11 +32,10 @@ export enum ExperimentalFeature {
  *
  * Features toggle live: the context keys that drive UI visibility (views, command palette
  * entries) follow the settings immediately, and runtime consumers either read `isEnabled` at the
- * moment they act or subscribe to `onEnablementChanged` (for example RceManager, which reports
- * "no token" while its feature is disabled and re-announces on every toggle).
+ * moment they act or subscribe to `onEnablementChanged`.
  */
 export class ExperimentalFeaturesManager {
-    constructor(private context: vscode.ExtensionContext) {
+    constructor(context: vscode.ExtensionContext) {
         for (const feature of Object.values(ExperimentalFeature)) {
             const enabled = this.isEnabled(feature);
             this.lastKnownEnablement.set(feature, enabled);
@@ -40,17 +52,6 @@ export class ExperimentalFeaturesManager {
 
     private emitter = new EventEmitter();
 
-    private deviceManager: DeviceManager | undefined;
-
-    /**
-     * Late-bound: the device manager is constructed after this manager (it sits behind the RCE
-     * finder, which already needs these flags). Used to recognize cloud devices when cleaning up
-     * after the Roku Cloud Emulator feature turns off.
-     */
-    public setDeviceManager(deviceManager: DeviceManager) {
-        this.deviceManager = deviceManager;
-    }
-
     /**
      * The enablement each feature most recently reported, so only real transitions emit events (a
      * settings edit that lands on the same effective value, like flipping an individual feature
@@ -64,7 +65,7 @@ export class ExperimentalFeaturesManager {
     public isEnabled(feature: ExperimentalFeature): boolean {
         const brightscriptConfig = util.getConfiguration('brightscript');
         return (brightscriptConfig.get<boolean>('experimental.all') ?? false) ||
-            (brightscriptConfig.get<boolean>(`experimental.${feature}`) ?? false);
+            (brightscriptConfig.get<boolean>(`experimental.${feature}`) ?? featureDefaults[feature]);
     }
 
     /**
@@ -84,25 +85,6 @@ export class ExperimentalFeaturesManager {
                 this.lastKnownEnablement.set(feature, enabled);
                 void vscodeContextManager.set(`brightscript.experimental.${feature}`, enabled);
                 this.emitter.emit('enablement-changed', feature, enabled);
-                if (feature === ExperimentalFeature.rokuCloudEmulator && !enabled) {
-                    this.clearRceDeviceIdentityKeys();
-                }
-            }
-        }
-    }
-
-    /**
-     * Disabling the Roku Cloud Emulator feature must not leave a cloud device as the workspace's
-     * active or remote-control device, where pickers and remote commands would keep targeting it.
-     * The keys are resolved and checked synchronously, while the device manager's cloud inventory
-     * is still present: the finder's empty emission that follows the same toggle (see RceManager's
-     * token-changed bridge) lands a microtask later at the earliest.
-     */
-    private clearRceDeviceIdentityKeys() {
-        for (const workspaceStateKey of ['activeDeviceKey', 'remoteControlDeviceKey']) {
-            const storedDeviceKey = this.context.workspaceState.get<string>(workspaceStateKey);
-            if (storedDeviceKey && this.deviceManager?.getDevice(storedDeviceKey)?.rce) {
-                void this.context.workspaceState.update(workspaceStateKey, undefined);
             }
         }
     }

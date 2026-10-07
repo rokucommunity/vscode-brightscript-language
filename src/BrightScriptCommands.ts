@@ -68,7 +68,12 @@ export class BrightScriptCommands {
 
         // Refresh a single device (inline button on hover in devices panel)
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
-            await this.deviceManager.healthCheckDevice({ serialNumber: item.key }, true);
+            //item.key is the DeviceManager key (`s:`, `i:` or `rce:` prefixed), not a bare serial number
+            const device = this.deviceManager.getDevice(item.key);
+            if (!device) {
+                return;
+            }
+            await this.deviceManager.healthCheckDevice(device, true);
         });
 
         this.registerCommand('sendRemoteText', async () => {
@@ -399,7 +404,7 @@ export class BrightScriptCommands {
             }
 
             const apps = await util.spinAsync('Fetching app list', async () => {
-                return rokuDeploy.queryApps({ device: deviceConfig });
+                return rokuDeploy.getApps({ device: deviceConfig });
             });
 
             //convert the items to QuickPick items
@@ -432,7 +437,7 @@ export class BrightScriptCommands {
                     //a cloud emulator device has no browser-reachable ECP url; fetch the raw
                     //registry response and show it in an editor instead
                     const result = await util.spinAsync('Fetching registry', async () => {
-                        return rokuDeploy.sendEcpRequest(device.device, `query/registry/${appId}`);
+                        return rokuDeploy.sendEcpRequest({ device: device.device, route: `query/registry/${appId}` });
                     });
                     const document = await vscode.workspace.openTextDocument({
                         language: 'xml',
@@ -751,7 +756,7 @@ export class BrightScriptCommands {
         const deviceLabel = isLocalDeviceConfig(device) ? device.host : 'the active device';
 
         await util.spinAsync('Restarting dev app', async () => {
-            const apps = await rokuDeploy.queryApps({ device: device });
+            const apps = await rokuDeploy.getApps({ device: device });
             const hasDev = apps.some(app => app.id === 'dev');
             if (!hasDev) {
                 await vscode.window.showErrorMessage(`No dev channel sideloaded on ${deviceLabel}. Sideload your project before restarting.`);
@@ -772,7 +777,7 @@ export class BrightScriptCommands {
 
             // give a little bit of time to let the app boot up before checking its status
             await util.sleep(1000);
-            const activeApp = await rokuDeploy.queryActiveApp({ device: device });
+            const activeApp = await rokuDeploy.getActiveApp({ device: device });
             if (activeApp.id === 'dev') {
                 void util.showTimedNotification('Dev app restarted', 2000);
             } else {

@@ -2,8 +2,6 @@ import * as vscode from 'vscode';
 import { EventEmitter } from 'eventemitter3';
 import { RceManagementClient } from 'roku-deploy';
 import type { DeviceType, IceServer, User } from 'roku-deploy';
-import type { ExperimentalFeaturesManager } from './ExperimentalFeaturesManager';
-import { ExperimentalFeature } from './ExperimentalFeaturesManager';
 
 /**
  * Owns the Roku Cloud Emulator (RCE) accounts and the shared management-api client.
@@ -20,22 +18,8 @@ import { ExperimentalFeature } from './ExperimentalFeaturesManager';
  */
 export class RceManager {
     constructor(
-        private context: vscode.ExtensionContext,
-        private experimentalFeatures?: ExperimentalFeaturesManager
-    ) {
-        if (experimentalFeatures) {
-            const unsubscribe = experimentalFeatures.onEnablementChanged((feature) => {
-                if (feature === ExperimentalFeature.rokuCloudEmulator) {
-                    //the effective token just changed between the account token and "none" (see
-                    //getToken); ride the existing token-changed plumbing so finders rescan (which
-                    //clears or restores cloud devices everywhere) and panels refresh
-                    this.client = undefined;
-                    this.emitter.emit('token-changed');
-                }
-            });
-            context.subscriptions.push({ dispose: unsubscribe });
-        }
-    }
+        private context: vscode.ExtensionContext
+    ) { }
 
     private emitter = new EventEmitter();
 
@@ -177,16 +161,8 @@ export class RceManager {
     /**
      * Get the RCE api token for this workspace: the active account first,
      * then the ROKU_RCE_TOKEN environment variable.
-     *
-     * While the Roku Cloud Emulator experimental feature is disabled this always returns
-     * undefined: "no token" is the single gate every consumer already handles (finder scans emit
-     * an empty device list, panel state reports no account, launch resolution and adapter env
-     * injection find nothing to send).
      */
     public async getToken(): Promise<string | undefined> {
-        if (this.experimentalFeatures && !this.experimentalFeatures.isEnabled(ExperimentalFeature.rokuCloudEmulator)) {
-            return undefined;
-        }
         return (await this.getActiveAccount())?.token ?? process.env.ROKU_RCE_TOKEN;
     }
 
@@ -248,25 +224,23 @@ export class RceManager {
         if (device.status !== 'running') {
             throw new RceDeviceNotRunningError(`Device '${device.name}' is not running`, device.status);
         }
-        const runningDevice = device.running_device;
-        //janus_id can legitimately be 0 (a valid stream id), so its presence must be checked
+        const runningDevice = device.runningDevice;
+        //janusId can legitimately be 0 (a valid stream id), so its presence must be checked
         //with a nullish check rather than a truthiness check
-        if (!runningDevice?.janus_websocket_url || runningDevice?.janus_id === undefined || runningDevice?.janus_id === null) {
+        if (!runningDevice?.janusWebsocketUrl || runningDevice?.janusId === undefined || runningDevice?.janusId === null) {
             throw new RceDeviceNotRunningError(`Device '${device.name}' must be running and expose a video stream to watch it`, device.status);
         }
 
-        /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
         return {
             deviceId: device.id,
             deviceName: device.name,
-            deviceType: device.device_type,
-            websocketUrl: runningDevice.janus_websocket_url,
-            streamId: runningDevice.janus_id,
-            pin: runningDevice.janus_pin ?? undefined,
-            janusToken: runningDevice.janus_token ?? undefined,
-            iceServers: runningDevice.janus_ice_servers ?? []
+            deviceType: device.deviceType,
+            websocketUrl: runningDevice.janusWebsocketUrl,
+            streamId: runningDevice.janusId,
+            pin: runningDevice.janusPin ?? undefined,
+            janusToken: runningDevice.janusToken ?? undefined,
+            iceServers: runningDevice.janusIceServers ?? []
         };
-        /* eslint-enable camelcase */
     }
 
     /**

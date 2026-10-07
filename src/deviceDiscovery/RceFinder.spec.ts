@@ -68,6 +68,40 @@ describe('RceFinder', () => {
         expect(errors.map(e => e.message)).to.eql(['boom']);
     });
 
+    it('emits scanStarted before devices, only when a token/client is available', async () => {
+        const devices = [{ id: 83, name: 'Chris', status: 'running' }] as unknown as RceDevice[];
+        client = { listDevices: () => Promise.resolve(devices) };
+        const eventOrder: string[] = [];
+        finder.on('scanStarted', () => eventOrder.push('scanStarted'));
+        finder.on('devices', () => eventOrder.push('devices'));
+
+        await finder.scan();
+
+        expect(eventOrder).to.eql(['scanStarted', 'devices']);
+    });
+
+    it('emits scanStarted before error when the poll fails', async () => {
+        client = {
+            listDevices: () => Promise.reject(new Error('boom'))
+        };
+        const eventOrder: string[] = [];
+        finder.on('scanStarted', () => eventOrder.push('scanStarted'));
+        finder.on('error', () => eventOrder.push('error'));
+
+        await finder.scan();
+
+        expect(eventOrder).to.eql(['scanStarted', 'error']);
+    });
+
+    it('does not emit scanStarted on the no-token path', async () => {
+        const scanStartedEvents: unknown[] = [];
+        finder.on('scanStarted', () => scanStartedEvents.push(undefined));
+
+        await finder.scan();
+
+        expect(scanStartedEvents).to.eql([]);
+    });
+
     it('start begins polling and stop ends it', () => {
         expect(finder.running).to.be.false;
         finder.start();

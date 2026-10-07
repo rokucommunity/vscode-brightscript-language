@@ -6,6 +6,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [3.0.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/3.0.0...v3.0.1) - 2026-09-29
+### Added
+ - Add a Filtered Devices group to the devices view ([#914](https://github.com/rokucommunity/vscode-brightscript-language/pull/914))
+### Changed
+ - Expand startDebugSession telemetry ([#905](https://github.com/rokucommunity/vscode-brightscript-language/pull/905))
+ - upgrade to [roku-debug@0.24.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0245---2026-09-29). Notable changes since 0.24.4:
+     - Gate perfetto connectOnStart on tracing being enabled ([#425](https://github.com/rokucommunity/roku-debug/pull/425))
+ - upgrade to [roku-deploy@4.0.0-alpha.9](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#400-alpha9---2026-09-28). Notable changes since 4.0.0-alpha.8:
+     - Absorb the abort error when terminating a rejected ECP websocket ([#428](https://github.com/rokucommunity/roku-deploy/pull/428))
+### Fixed
+ - Fix the devices view Refresh action for LAN devices ([#915](https://github.com/rokucommunity/vscode-brightscript-language/pull/915))
+
+
+
+## [3.0.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.69.3...v3.0.0) - 2026-09-23
+### Added
+ - RSG 2.0 SDK support ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - Debug TypeScript apps directly: breakpoints, stepping, and variables in your `.ts`/`.tsx` sources ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - Solid Devtools panel: live component tree, props/signals/memos inspector, search, and a perf overlay. Pops out into its own editor tab ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - TypeScript debugging against Roku Cloud Emulator devices ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - `waitForJsDebugger` launch option holds app startup until the JS debugger attaches, so startup breakpoints hit ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - `tsPath` launch option overrides the manifest `ts_path` bundle the JS debugger attaches to, including per component library ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - Devices and passwords from `.roku/roku-dev-config.json`, lease files, and `RK_DEVICE_*`/`ROKU_DEV_*` env vars are picked up automatically ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - `roku-config.ts` projects are discovered in the Roku Projects view, with a generated build task and launch config ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+ - `brightscript.debug.jsPathTrace` setting for diagnosing TypeScript breakpoint and source path issues ([#906](https://github.com/rokucommunity/vscode-brightscript-language/pull/906))
+### Changed
+ - Display device type icons on the cloud emulator video tab ([#904](https://github.com/rokucommunity/vscode-brightscript-language/pull/904))
+ - Made the refresh device command less prominent ([#902](https://github.com/rokucommunity/vscode-brightscript-language/pull/902))
+ - upgrade to [brighterscript@0.73.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0735---2026-09-15). Notable changes since 0.73.3:
+     - Fix crash stripping sourceMappingURL comment from non-transpiled files ([#1821](https://github.com/rokucommunity/brighterscript/pull/1821))
+     - Tolerate older BrsTranspileState in continue back-transpile ([#1812](https://github.com/rokucommunity/brighterscript/pull/1812))
+     - Security enhancements ([#1804](https://github.com/rokucommunity/brighterscript/pull/1804), [#1805](https://github.com/rokucommunity/brighterscript/pull/1805))
+     - Locate the super() call when injecting field initializers ([#1803](https://github.com/rokucommunity/brighterscript/pull/1803))
+### Fixed
+ - Missing Debug Roku Project option in the editor tab context menu ([#903](https://github.com/rokucommunity/vscode-brightscript-language/pull/903))
+### Removed
+ - Roku Cloud Emulator no longer hidden behind an experimental user setting ([#907](https://github.com/rokucommunity/vscode-brightscript-language/pull/907))
+
+
+
+## [2.69.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.69.2...v2.69.3) - 2026-09-18
+### Added
+ - Add RCE perfetto support ([#900](https://github.com/rokucommunity/vscode-brightscript-language/pull/900))
+### Changed
+ - updated the RCE activity bar icon ([#899](https://github.com/rokucommunity/vscode-brightscript-language/pull/899))
+ - upgrade to [roku-debug@0.24.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0244---2026-09-18). Notable changes since 0.24.3:
+     - Route perfetto tracing through roku-deploy's ECP websocket ([#423](https://github.com/rokucommunity/roku-debug/pull/423))
+     - Security enhancements ([#419](https://github.com/rokucommunity/roku-debug/pull/419))
+ - upgrade to [roku-deploy@4.0.0-alpha.8](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#400-alpha8---2026-09-18). Notable changes since 4.0.0-alpha.6:
+     - Security enhancements ([#422](https://github.com/rokucommunity/roku-deploy/pull/422))
+     - Add ECP websocket support and perfetto tracing wrappers ([#419](https://github.com/rokucommunity/roku-deploy/pull/419))
+ - upgrade to [roku-test-automation@3.0.0-alpha.4](https://github.com/rokucommunity/roku-test-automation/blob/master/CHANGELOG.md#300-alpha4---2026-09-18). Notable changes since 3.0.0-alpha.3:
+     - Upgrade roku-deploy to 4.0.0-alpha.8 ([#191](https://github.com/rokucommunity/roku-test-automation/pull/191))
+     - Security enhancements ([#190](https://github.com/rokucommunity/roku-test-automation/pull/190))
+### Fixed
+ - Fix stale Start Device button when device is started externally ([#898](https://github.com/rokucommunity/vscode-brightscript-language/pull/898))
+
+
+
+## [2.69.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.69.1...v2.69.2) - 2026-09-15
+### Changed
+ - RCE device management UI and stream view UI rework ([#895](https://github.com/rokucommunity/vscode-brightscript-language/pull/895))
+
+
+
+## [2.69.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.69.0...v2.69.1) - 2026-09-10
+### Changed
+ - Security enhancements ([#887](https://github.com/rokucommunity/vscode-brightscript-language/pull/887), [#890](https://github.com/rokucommunity/vscode-brightscript-language/pull/890), [#891](https://github.com/rokucommunity/vscode-brightscript-language/pull/891), [#892](https://github.com/rokucommunity/vscode-brightscript-language/pull/892), [#888](https://github.com/rokucommunity/vscode-brightscript-language/pull/888))
+ - Harden webview panel lifecycle and restore panels across window reloads ([#886](https://github.com/rokucommunity/vscode-brightscript-language/pull/886))
+ - upgrade to [@rokucommunity/logger@0.4.2](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#042---2026-09-02). Notable changes since 0.4.1:
+     - Security enhancements ([#38](https://github.com/rokucommunity/logger/pull/38), [#39](https://github.com/rokucommunity/logger/pull/39))
+ - upgrade to [brighterscript@0.73.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0733---2026-09-09). Notable changes since 0.73.0:
+     - Modifies default max worker thread logic to be only as much as memory allows ([#1798](https://github.com/rokucommunity/brighterscript/pull/1798))
+     - Security enhancements ([#1763](https://github.com/rokucommunity/brighterscript/pull/1763), [#1764](https://github.com/rokucommunity/brighterscript/pull/1764), [#1766](https://github.com/rokucommunity/brighterscript/pull/1766), [#1773](https://github.com/rokucommunity/brighterscript/pull/1773), [#1774](https://github.com/rokucommunity/brighterscript/pull/1774), [#1775](https://github.com/rokucommunity/brighterscript/pull/1775), [#1782](https://github.com/rokucommunity/brighterscript/pull/1782), [#1796](https://github.com/rokucommunity/brighterscript/pull/1796))
+     - Better error message for wrong-cased XML tags ([#1793](https://github.com/rokucommunity/brighterscript/pull/1793))
+     - Add generic go-to-definition for file path strings in BRS/BS/XML files ([#1648](https://github.com/rokucommunity/brighterscript/pull/1648))
+     - Fix duplicate and crashing "find all references" results ([#1791](https://github.com/rokucommunity/brighterscript/pull/1791))
+     - Fix nested curly braces in template strings ([#1539](https://github.com/rokucommunity/brighterscript/pull/1539))
+     - Recognize regex literals after `${` and `,` ([#1789](https://github.com/rokucommunity/brighterscript/pull/1789))
+     - Reduce per-Token lexer allocation to cut GC pressure while editing ([#1712](https://github.com/rokucommunity/brighterscript/pull/1712))
+     - Keep synthesized Tokens on the lexer's hidden class ([#1781](https://github.com/rokucommunity/brighterscript/pull/1781))
+     - Report mismatched XML element pairs ([#1746](https://github.com/rokucommunity/brighterscript/pull/1746))
+     - Add <field> and <function> completions in xml interfaces ([#1748](https://github.com/rokucommunity/brighterscript/pull/1748))
+     - Cap LSP worker thread pool to fix memory scaling with project count ([#1776](https://github.com/rokucommunity/brighterscript/pull/1776))
+     - Add warning for function names that exceed the truncation limit ([#1777](https://github.com/rokucommunity/brighterscript/pull/1777))
+     - Add SceneGraph XML element and attribute completions ([#1741](https://github.com/rokucommunity/brighterscript/pull/1741))
+ - upgrade to [brighterscript-formatter@1.8.3](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#183---2026-09-09). Notable changes since 1.8.1:
+     - Security enhancements ([#155](https://github.com/rokucommunity/brighterscript-formatter/pull/155), [#157](https://github.com/rokucommunity/brighterscript-formatter/pull/157))
+ - upgrade to [roku-debug@0.24.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0243---2026-09-09). Notable changes since 0.24.1:
+     - Security enhancements ([#412](https://github.com/rokucommunity/roku-debug/pull/412), [#414](https://github.com/rokucommunity/roku-debug/pull/414), [#417](https://github.com/rokucommunity/roku-debug/pull/417))
+     - Replace postman-request with needle ([#415](https://github.com/rokucommunity/roku-debug/pull/415))
+ - upgrade to [roku-test-automation@3.0.0-alpha.3](https://github.com/rokucommunity/roku-test-automation/blob/master/CHANGELOG.md#300-alpha3---2026-09-09). Notable changes since 3.0.0-alpha.1:
+     - Security enhancements ([#183](https://github.com/rokucommunity/roku-test-automation/pull/183), [#186](https://github.com/rokucommunity/roku-test-automation/pull/186), [#188](https://github.com/rokucommunity/roku-test-automation/pull/188))
+
+
+
 ## [2.69.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.68.0...v2.69.0) - 2026-08-28
 ### Added
  - Support Roku Cloud Emulator devices in the RDB webviews and REPL ([#881](https://github.com/rokucommunity/vscode-brightscript-language/pull/881))

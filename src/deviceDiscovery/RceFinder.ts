@@ -7,7 +7,9 @@ import type { RceManager } from '../managers/RceManager';
  * Mirrors the RokuFinder surface: `start()`/`stop()` for continuous polling, `scan()` for a
  * one-shot poll, and events the DeviceManager consumes. Emits a `devices` event with the full
  * device list on every successful poll (the management api always returns the complete
- * inventory, so consumers replace rather than accumulate).
+ * inventory, so consumers replace rather than accumulate). Also emits `scanStarted` right before
+ * the network fetch, and `error` if it fails, for consumers that want to show a scan-in-progress
+ * indicator.
  */
 export class RceFinder extends EventEmitter {
     constructor(
@@ -92,6 +94,10 @@ export class RceFinder extends EventEmitter {
                 this.emit('devices', []);
                 return;
             }
+            //only the actual network fetch is worth a "scan in progress" signal (consumers use this
+            //to show a spinner once it runs long); every emission here is followed by 'devices' or
+            //'error' below, so a listener never sees a 'scanStarted' with nothing to end it
+            this.emit('scanStarted');
             const devices: RceDevice[] = await client.listDevices();
             this.emit('devices', devices);
         } catch (e) {

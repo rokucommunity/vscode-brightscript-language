@@ -14,6 +14,8 @@ module.exports = {
         '@typescript-eslint',
         'no-only-tests',
         'github',
+        //local plugin (file:eslint-local-rules) — rules specific to the on-device bridge
+        'bridge',
         'import'
     ],
     extends: [
@@ -199,6 +201,20 @@ module.exports = {
     },
     //disable some rules for certain files
     overrides: [{
+        //On-device Solid Devtools bridge (Hermes 0.12). It is esbuild-bundled and PREPENDED
+        //to the app bundle post-build, so it bypasses the SDK's Babel block-scoping transform
+        //— and esbuild cannot lower let/const to var. So the bridge relies on Hermes' native
+        //block scoping. The custom `bridge/no-loop-closure-capture` rule guards the one runtime
+        //hazard: a closure created directly in a loop that escapes and captures a loop-scoped
+        //binding (per-iteration `let`/`const` semantics Hermes may not honor). ESLint's built-in
+        //`no-loop-func` misses this (it trusts spec per-iteration semantics). Immediately-invoked
+        //reads via `untrackRead(() => …)` are exempt by the rule's allow-list.
+        files: ['src/solidDevtools/bridge/**/*.ts'],
+        excludedFiles: ['**/*.spec.ts'],
+        rules: {
+            'bridge/no-loop-closure-capture': 'error'
+        }
+    }, {
         //these files are getting deleted soon, so ignore the eslint warnings for now
         files: ['src/brsTypes/**/*.ts'],
         rules: {

@@ -100,8 +100,20 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
             return Promise.resolve(true);
         });
 
+        //the sidebar's only in-view exit from a Cloud Emulator stream. A plain session stop would
+        //leave rtaManager.device (and therefore deviceAvailable) pointed at this same cloud device,
+        //so the view would fall into the dead LAN screenshot flow instead of the connect view;
+        //route through the same full reset the "Disconnect from Device" button uses so
+        //deviceAvailable goes false too, but only when RTA is actually holding THIS streamed
+        //device (a cloud sideload or Connect-to-Device pick) - a Watch-button session that never
+        //touched RTA must never clobber an unrelated LAN connection this way
         this.addMessageCommandCallback(ViewProviderCommand.stopRceStream, (message) => {
-            this.rceStreamSession.stop();
+            const streamedDeviceId = this.rceStreamSession.deviceId;
+            if (streamedDeviceId !== undefined && this.resolveRtaDeviceRceId() === streamedDeviceId) {
+                this.dependencies.rtaManager.disconnectFromDevice();
+            } else {
+                this.rceStreamSession.stop();
+            }
             return Promise.resolve(true);
         });
 
@@ -110,6 +122,20 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         this.addMessageCommandCallback(ViewProviderCommand.pressRceDevicePowerButton, async (message) => {
             const rceToken = await this.dependencies.rceManager.getToken();
             await rokuDeploy.keyPress({ device: { id: Number(message.context.deviceId), rceToken: rceToken }, key: 'Power' });
+            this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
+            return true;
+        });
+
+        //the controls under the video: start/stop the streamed device by id through the internal
+        //commands RceManagementViewProvider registers, since this webview can only reach this provider
+        this.addMessageCommandCallback(ViewProviderCommand.startRceDevice, async (message) => {
+            await vscode.commands.executeCommand(VscodeCommand.rceStartDeviceById, message.context.deviceId);
+            this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
+            return true;
+        });
+
+        this.addMessageCommandCallback(ViewProviderCommand.stopRceDevice, async (message) => {
+            await vscode.commands.executeCommand(VscodeCommand.rceStopDeviceById, message.context.deviceId);
             this.postOrQueueMessage(this.createResponseMessage(message, { success: true }));
             return true;
         });
@@ -224,34 +250,86 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
             this.rceStreamSession.stop();
             return;
         }
-        //resolve the management-api device id: through the device manager when it knows the device,
-        //falling back to an id-addressed config's own id
-        const device = this.dependencies.deviceManager?.getDeviceByDeviceConfig?.(deviceConfig);
-        let deviceId: number | undefined;
-        if (device?.rce) {
-            deviceId = device.rce.id;
-        } else if ('id' in deviceConfig) {
-            deviceId = Number(deviceConfig.id);
-        }
-        if (deviceId === undefined || Number.isNaN(deviceId)) {
+        const deviceId = this.resolveRceDeviceId(deviceConfig);
+        if (deviceId === undefined) {
             return;
         }
+        const device = this.dependencies.deviceManager?.getDeviceByDeviceConfig?.(deviceConfig);
         const deviceName = device ? this.dependencies.deviceManager.getDeviceDisplayName(device) : `device ${deviceId}`;
         this.lastSideloadedRceDevice = { id: deviceId, name: deviceName };
         await this.watchRceDevice(deviceId, deviceName);
     }
 
     /**
-     * Relay the streamed device's current status (from an RceFinder poll emission) into the stream
-     * session. Bound so `on`/`off` see the same function reference.
+     * Resolves a Cloud Emulator device config to its management-api device id: through the device
+     * manager when it knows the device, else an id-addressed config's own id. Undefined for
+     * anything the device manager can't place and that isn't id-addressed.
+     */
+    private resolveRceDeviceId(deviceConfig: DeviceConfig): number | undefined {
+        const device = this.dependencies.deviceManager?.getDeviceByDeviceConfig?.(deviceConfig);
+        if (device?.rce) {
+            return device.rce.id;
+        }
+        if ('id' in deviceConfig) {
+            const deviceId = Number(deviceConfig.id);
+            return Number.isNaN(deviceId) ? undefined : deviceId;
+        }
+        return undefined;
+    }
+
+    /**
+     * The Cloud Emulator device id rtaManager.device currently holds, or undefined when it holds
+     * no device, a LAN device, or a cloud device the device manager and id-addressing both fail to
+     * place. Used to gate stopRceStream's full disconnect to only the device this stream is for.
+     */
+    private resolveRtaDeviceRceId(): number | undefined {
+        const rokuDevice = this.dependencies.rtaManager.device;
+        if (!rokuDevice) {
+            return undefined;
+        }
+        //rtaManager.device is RTA's own client wrapper, not the roku-deploy DeviceConfig itself
+        const deviceConfig = rokuDevice.getRokuDeployDevice();
+        if (!isRceDeviceConfig(deviceConfig)) {
+            return undefined;
+        }
+        return this.resolveRceDeviceId(deviceConfig);
+    }
+
+    /**
+     * Relay the streamed device's current status and runtime (from an RceFinder poll emission)
+     * into the stream session. Bound so `on`/`off` see the same function reference.
      */
     private handleFinderDevices = (devices: RceDevice[]) => {
         const deviceId = this.rceStreamSession.deviceId;
         const device = deviceId === undefined ? undefined : devices.find((candidateDevice) => candidateDevice.id === deviceId);
         if (device) {
             this.rceStreamSession.handleDeviceStatusChanged(device.status);
+            this.postDeviceRuntimeIfChanged(deviceId, device.runningDevice?.startedAt, device.runningDevice?.maxRuntime);
         }
     };
+
+    /**
+     * Posts the streamed device's current runtime, but only when it actually changed since the
+     * last post - every finder emission (every few seconds) would otherwise repost an identical
+     * message regardless of whether the webview is even ready to receive it.
+     */
+    private postDeviceRuntimeIfChanged(deviceId: number, startedAt: string | null | undefined, maxRuntime: number | null | undefined): void {
+        if (this.lastPostedRuntimeDeviceId === deviceId && this.lastPostedRuntimeStartedAt === startedAt && this.lastPostedRuntimeMaxRuntime === maxRuntime) {
+            return;
+        }
+        this.lastPostedRuntimeDeviceId = deviceId;
+        this.lastPostedRuntimeStartedAt = startedAt;
+        this.lastPostedRuntimeMaxRuntime = maxRuntime;
+        this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRceDeviceRuntimeChanged, {
+            deviceId: deviceId,
+            startedAt: startedAt,
+            maxRuntime: maxRuntime
+        }));
+    }
+
+    private lastPostedRuntimeDeviceId: number | undefined;
+    private lastPostedRuntimeStartedAt: string | null | undefined;
+    private lastPostedRuntimeMaxRuntime: number | null | undefined;
 
     public dispose() {
         super.dispose();

@@ -1,5 +1,5 @@
 import { Deferred } from 'brighterscript';
-import type { DeviceInfoRaw, DeviceConfig, DeviceStatus } from 'roku-deploy';
+import { isLocalDeviceConfig, type DeviceInfoRaw, type DeviceConfig, type DeviceStatus } from 'roku-deploy';
 import type {
     Disposable,
     QuickPickItem
@@ -48,6 +48,17 @@ export class UserInputManager {
         private credentialStore: CredentialStore
     ) { }
 
+    private passwordCandidateProviders: DevicePasswordCandidateProvider[] = [];
+
+    /**
+     * Register an external source of device password candidates (e.g. sdk config files or
+     * environment variables). Provider candidates are tried after the settings-based candidates
+     * and before the default device password.
+     */
+    public addPasswordCandidateProvider(provider: DevicePasswordCandidateProvider) {
+        this.passwordCandidateProviders.push(provider);
+    }
+
     public async promptForHostManual(): Promise<HostWithDeviceInfo | undefined> {
         while (true) {
             const value = await vscode.window.showInputBox({
@@ -83,15 +94,20 @@ export class UserInputManager {
      * entry when one already exists; callers that keep a global password fallback persist that
      * themselves.
      *
+     * `packagePort` is the port of the device's dev installer web server, for targets that don't use
+     * the default (80), such as the BrightScript Simulator.
+     *
      * @returns `ok` with the accepted password, `unreachable` when the device can't be contacted,
      *          or `cancelled` when the user dismisses the prompt.
      */
-    public async resolveDevicePassword(options: { device: DeviceConfig; serialNumber: string | undefined; extraCandidates?: Array<string | undefined> }): Promise<DevicePasswordResolution> {
-        const { device, serialNumber } = options;
-        const candidates = await this.collectDevicePasswordCandidates(serialNumber, options.extraCandidates);
+    public async resolveDevicePassword(options: { device: DeviceConfig; serialNumber: string | undefined; extraCandidates?: Array<string | undefined>; packagePort?: number }): Promise<DevicePasswordResolution> {
+        const { device, serialNumber, packagePort } = options;
+        //candidate providers key env/config-derived passwords by LAN host; cloud devices have none
+        const host = isLocalDeviceConfig(device) ? device.host : undefined;
+        const candidates = await this.collectDevicePasswordCandidates(host, serialNumber, options.extraCandidates);
 
         for (const candidate of candidates) {
-            const validation = await this.deviceManager.validateDevicePassword(device, candidate);
+            const validation = await this.deviceManager.validateDevicePassword(device, candidate, packagePort);
             if (validation === 'ok') {
                 await this.persistDevicePassword(serialNumber, candidate);
                 return { status: 'ok', password: candidate };
@@ -112,7 +128,7 @@ export class UserInputManager {
             if (!value) {
                 return { status: 'cancelled' };
             }
-            const validation = await this.deviceManager.validateDevicePassword(device, value);
+            const validation = await this.deviceManager.validateDevicePassword(device, value, packagePort);
             if (validation === 'ok') {
                 await this.persistDevicePassword(serialNumber, value);
                 return { status: 'ok', password: value };
@@ -130,7 +146,7 @@ export class UserInputManager {
      * validation loop only sees real passwords. `extraCandidates` are appended after the
      * standard sources (e.g. launch-config values for a debug session).
      */
-    private async collectDevicePasswordCandidates(serialNumber: string | undefined, extraCandidates?: Array<string | undefined>): Promise<string[]> {
+    private async collectDevicePasswordCandidates(host: string | undefined, serialNumber: string | undefined, extraCandidates?: Array<string | undefined>): Promise<string[]> {
         const candidates: string[] = [];
         const addCandidate = (value: string | undefined | null) => {
             const trimmed = value?.trim();
@@ -157,6 +173,12 @@ export class UserInputManager {
             for (const folder of vscode.workspace.workspaceFolders ?? []) {
                 const folderInspection = vscode.workspace.getConfiguration('brightscript', folder.uri).inspect<ConfiguredDevice[]>('devices');
                 scanScope(folderInspection?.workspaceFolderValue);
+            }
+        }
+
+        for (const provider of this.passwordCandidateProviders) {
+            for (const candidate of provider.getPasswordCandidates(host, serialNumber)) {
+                addCandidate(candidate);
             }
         }
 
@@ -639,6 +661,16 @@ export class UserInputManager {
             filterPick.show();
         });
     }
+}
+
+/**
+ * External source of device password candidates that can be plugged into UserInputManager.
+ * Mirrors DeviceManager's `ConfiguredDeviceProvider` pattern: sources defined outside VSCode
+ * settings register themselves so this file doesn't need to know about each one.
+ */
+export interface DevicePasswordCandidateProvider {
+    /** Return candidate passwords for the device, ordered most- to least-specific. */
+    getPasswordCandidates(host: string | undefined, serialNumber: string | undefined): Array<string | undefined>;
 }
 
 type QuickPickFilterItem = QuickPickItem & { facetKey?: keyof DeviceFilters };

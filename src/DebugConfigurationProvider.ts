@@ -10,7 +10,7 @@ import type {
     WorkspaceFolder
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { LaunchConfiguration } from 'roku-debug';
+import type { ComponentLibraryConfiguration, LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
@@ -113,7 +113,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Massage a debug configuration just before a debug session is being launched,
+    * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
@@ -128,6 +128,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         let deviceInfo: DeviceInfo;
         let result: BrightScriptLaunchConfiguration;
+        //tracked as resolution proceeds rather than derived afterwards: `processLocalHostParameter`
+        //rewrites `config.device` to the resolved host, erasing what the config originally asked for
+        const deviceSelection: DeviceSelectionTracker = { source: 'unresolved' };
         try {
             // merge user and workspace settings into the config
             result = this.processUserWorkspaceSettings(config);
@@ -138,7 +141,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
             result = await this.sanitizeConfiguration(result, folder);
             result = await this.processEnvVariables(folder, result);
-            result = await this.processHostParameter(result);
+            result = await this.processHostParameter(result, deviceSelection);
             result = await this.processPasswordParameter(config, result);
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
@@ -188,9 +191,49 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             this.telemetryManager?.sendStartDebugSessionEvent(
                 this.processUserWorkspaceSettings(config) as any,
                 result,
-                deviceInfo
+                deviceInfo,
+                deviceSelection.source
             );
         }
+    }
+
+    /**
+     * Runs after `resolveDebugConfiguration` (variables substituted) and after the preLaunchTask, so
+     * the app is already built/staged and its manifest is readable here.
+     */
+    public resolveDebugConfigurationWithSubstitutedVariables(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration): BrightScriptLaunchConfiguration {
+        this.applyInspectMode(config);
+        return config;
+    }
+
+    /**
+     * For TS/JS (Solid) apps, append `inspect=1` to the `plugin_install` sideload form so the device
+     * waits for the JS (Hermes) debugger at startup, letting us hit early breakpoints (mirrors the
+     * rsg-sdk `--inspect-persist` flag; ignored on firmware < 16.0). Merges into any existing
+     * `packageUploadOverrides.formData` without clobbering other keys or an explicit `inspect` value.
+     */
+    private applyInspectMode(config: BrightScriptLaunchConfiguration) {
+        //escape hatch (launch.json or the `brightscript.debug.waitForJsDebugger` user setting)
+        if (config.waitForJsDebugger === false) {
+            this.extensionOutputChannel.appendLine(`[inspect] skipped: waitForJsDebugger is false`);
+            return;
+        }
+        //same precedence as `resolveJsDebugTarget` in extension.ts: an explicit `tsPath` in
+        //launch.json wins over the staged manifest's `ts_path`, then any component library
+        //with a `tsPath` (its JS runs in the same runtime, so the device still needs to wait)
+        const tsPath = config.tsPath ??
+            this.util.getTsPath(config.rootDir) ??
+            config.componentLibraries?.find(library => library.tsPath)?.tsPath;
+        //BrightScript-only apps have no JS debugger to wait for
+        if (!tsPath) {
+            this.extensionOutputChannel.appendLine(`[inspect] skipped: no ts_path under '${config.rootDir}' and no component library tsPath`);
+            return;
+        }
+        //`route` defaults to 'plugin_install' downstream, so omit it; cast since the type marks it required
+        config.packageUploadOverrides ??= {} as NonNullable<BrightScriptLaunchConfiguration['packageUploadOverrides']>;
+        config.packageUploadOverrides.formData ??= {};
+        config.packageUploadOverrides.formData.inspect ??= '1';
+        this.extensionOutputChannel.appendLine(`[inspect] applied inspect=1 (ts_path='${tsPath}')`);
     }
 
     /**
@@ -534,17 +577,19 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * entirely; roku-debug reaches them through roku-deploy's `device` option. Everything else
      * follows the host-based local flow.
      * @param config  current config object
+     * @param deviceSelection  tracks how the target device ended up being chosen, for telemetry
      */
-    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+    private async processHostParameter(config: BrightScriptLaunchConfiguration, deviceSelection: DeviceSelectionTracker): Promise<BrightScriptLaunchConfiguration> {
         //a local `device` config's host takes the place of the top-level `host` field
         if (config.device && isLocalDeviceConfig(config.device)) {
             config.host = config.device.host;
         }
 
         if (this.isNonLocalDevice(config.device)) {
+            deviceSelection.source = 'config';
             return this.processNonLocalDeviceParameter(config);
         }
-        return this.processLocalHostParameter(config);
+        return this.processLocalHostParameter(config, deviceSelection);
     }
 
     /**
@@ -556,8 +601,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * When the user picks a Roku Cloud Emulator device from the (shared) device picker, the config
      * adopts its precomputed device option and the non-local flow takes over.
      * @param config  current config object
+     * @param deviceSelection  tracks how the target device ended up being chosen, for telemetry
      */
-    private async processLocalHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+    private async processLocalHostParameter(config: BrightScriptLaunchConfiguration, deviceSelection: DeviceSelectionTracker): Promise<BrightScriptLaunchConfiguration> {
         //`host` can be missing entirely (a config that only supplies `device: { host: '' }`) - treat
         //that the same as an empty host and prompt, rather than crashing on the trim
         const trimmedHost = (config.host ?? '').trim();
@@ -572,8 +618,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (needsHostPrompt) {
             // both the active-host lookup and the picker probe + register the device in the device
             // manager, so reuse it below instead of probing again
-            const resolved = await this.brightScriptCommands.getHealthyActiveHost() ??
-                await this.userInputManager.promptForHost();
+            const activeHost = await this.brightScriptCommands.getHealthyActiveHost();
+            const resolved = activeHost ?? await this.userInputManager.promptForHost();
+            if (resolved) {
+                deviceSelection.source = activeHost ? 'activeDevice' : 'picker';
+            }
 
             if (resolved && this.isNonLocalDevice(resolved.device)) {
                 //the user picked a Roku Cloud Emulator device from the (shared) device picker: adopt a
@@ -591,6 +640,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             if (resolved?.host) {
                 device = this.deviceManager.getDevice({ ip: resolved.host });
             }
+        } else {
+            //the config already named a usable host, so nothing needed resolving
+            deviceSelection.source = 'config';
         }
 
         //check the host and throw error if not provided, or remember the device as the
@@ -729,6 +781,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             return result;
         }
         const serialNumber = result.deviceInfo?.['serial-number'];
+        //honor the config's `packagePort` when validating the password, otherwise a dev installer
+        //on a non-default port (e.g. the BrightScript Simulator) looks unreachable. A cloud emulator
+        //device is addressed through its own proxy, so it keeps the default
+        const packagePort = isLocalDeviceConfig(device) ? result.packagePort : undefined;
 
         // Opportunistically drain any legacy IP-keyed password that still lives in
         // workspaceState from pre-refactor extension installs (the helpers no-op for anything but
@@ -738,7 +794,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         // authoritative error surfaces from the main flow.
         const legacyPassword = this.getLegacyIpKeyedPassword(device);
         if (legacyPassword !== undefined) {
-            const validation = await this.deviceManager.validateDevicePassword(device, legacyPassword);
+            const validation = await this.deviceManager.validateDevicePassword(device, legacyPassword, packagePort);
             if (validation === 'ok') {
                 await this.clearLegacyIpKeyedPassword(device);
                 // A legacy entry is explicit historical opt-in: persist it to the cred store
@@ -764,7 +820,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         const resolution = await this.userInputManager.resolveDevicePassword({
             device: device,
             serialNumber: serialNumber,
-            extraCandidates: [result.password, config.password]
+            extraCandidates: [result.password, config.password],
+            packagePort: packagePort
         });
         if (resolution.status === 'unreachable') {
             throw new Error(`Debug session terminated: device '${this.describeDevice(device)}' is unreachable.`);
@@ -924,4 +981,44 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * @default { activateOnSessionStart: false, deactivateOnSessionEnd: false }
      */
     remoteControlMode?: { activateOnSessionStart?: boolean; deactivateOnSessionEnd?: boolean };
+
+    /**
+     * Device path to the app's compiled JS bundle the JS debugger should attach to (e.g. 'pkg:/source/compiled/main.js').
+     * Overrides the `ts_path` value from the app's manifest.
+     */
+    tsPath?: string;
+
+    /**
+     * When launching a TS/JS app, ask the device to hold app startup until the JS debugger attaches
+     * (by appending `inspect=1` to the sideload form) so breakpoints in startup code get hit.
+     * Set to false as an escape hatch in case this causes launch issues.
+     * @default true
+     */
+    waitForJsDebugger?: boolean;
+
+    /**
+     * The list of component libraries to build/host during a debug session, with extension-only additions layered
+     * on top of roku-debug's schema
+     */
+    componentLibraries: Array<ComponentLibraryConfiguration & {
+        /**
+         * Device path to this component library's compiled JS bundle (same meaning as the `ts_path` manifest value,
+         * e.g. 'pkg:/source/compiled/main.js'). When the app's own manifest has no `ts_path`, the first component
+         * library with a `tsPath` becomes the target the JS debugger attaches to.
+         */
+        tsPath?: string;
+    }>;
+}
+
+/**
+ * How the target device for a debug session was chosen.
+ * - `config`: the launch configuration named the device outright, so nothing needed resolving
+ * - `activeDevice`: the config asked to be prompted, and the persisted active device answered it
+ * - `picker`: the config asked to be prompted, and the user chose from the device picker
+ * - `unresolved`: the prompt flow started but produced no device (dismissed, or it threw)
+ */
+export type DeviceSelectionSource = 'config' | 'activeDevice' | 'picker' | 'unresolved';
+
+export interface DeviceSelectionTracker {
+    source: DeviceSelectionSource;
 }

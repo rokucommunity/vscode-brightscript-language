@@ -5,7 +5,11 @@ import { vscode } from '../mockVscode.spec';
 import type { RokuDevice } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
+import { RokuDevConfigProvider } from './RokuDevConfigProvider';
 import { util } from '../util';
+import * as fsExtra from 'fs-extra';
+import * as os from 'os';
+import * as path from 'path';
 import { EventEmitter } from 'eventemitter3';
 
 describe('DeviceManager', () => {
@@ -1130,6 +1134,12 @@ describe('DeviceManager', () => {
             expect(validateStub.firstCall.args[0]).to.deep.equal({ device: { host: '192.168.1.100' }, password: 'rokudev' });
         });
 
+        it('forwards the installer port to roku-deploy when one is given', async () => {
+            validateStub.resolves(true);
+            await manager.validateDevicePassword({ host: '127.0.0.1' }, 'rokudev', 8084);
+            expect(validateStub.firstCall.args[0]).to.deep.equal({ device: { host: '127.0.0.1' }, password: 'rokudev', port: 8084 });
+        });
+
         it(`returns 'bad-password' when the device rejects the credentials`, async () => {
             validateStub.resolves(false);
             const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'wrong');
@@ -1328,25 +1338,23 @@ describe('DeviceManager', () => {
         });
     });
 
-    /* eslint-disable camelcase -- the RCE management api uses snake_case fields */
     describe('cloud emulator devices', () => {
         function rceDevice(overrides: Record<string, any> = {}) {
             return {
                 id: 83,
                 name: 'Chris',
-                device_type: 'tv',
-                serial_number: 'XY020078HH5S',
+                deviceType: 'tv',
+                serialNumber: 'XY020078HH5S',
                 status: 'running',
-                created_at: '2026-01-01',
-                running_device: {
-                    instance_api_url: 'https://device.rce.roku.com/instance/abc',
-                    firmware_version_id: 'rce-fw:15.2.4-tv_prod',
-                    instance_uuid: 'uuid-1',
-                    created_at: '2026-01-01',
-                    snapshot_id: 1,
+                createdAt: '2026-01-01',
+                runningDevice: {
+                    instanceApiUrl: 'https://device.rce.roku.com/instance/abc',
+                    firmwareVersionId: 'rce-fw:15.2.4-tv_prod',
+                    instanceUuid: 'uuid-1',
+                    createdAt: '2026-01-01',
+                    snapshotId: 1,
                     id: 1,
-                    device_id: 83,
-                    max_runtime: 3600
+                    maxRuntime: 3600
                 },
                 ...overrides
             };
@@ -1373,7 +1381,7 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             manager['onRceDevices']([
                 rceDevice(),
-                rceDevice({ id: 86, serial_number: 'ESN86', device_type: 'stb', running_device: null })
+                rceDevice({ id: 86, serialNumber: 'ESN86', deviceType: 'stb', runningDevice: null })
             ] as any);
 
             const tvDevice = manager.getAllDevices().find(x => x.key === 's:XY020078HH5S');
@@ -1388,8 +1396,8 @@ describe('DeviceManager', () => {
         it('maps shutdown and pending statuses, and keys by id when the esn is missing', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             manager['onRceDevices']([
-                rceDevice({ id: 84, serial_number: null, status: 'shutdown', running_device: null }),
-                rceDevice({ id: 85, serial_number: 'ESN85', status: 'pending', running_device: null })
+                rceDevice({ id: 84, serialNumber: null, status: 'shutdown', runningDevice: null }),
+                rceDevice({ id: 85, serialNumber: 'ESN85', status: 'pending', runningDevice: null })
             ] as any);
 
             const devices = manager.getAllDevices().filter(x => x.rce);
@@ -1419,7 +1427,7 @@ describe('DeviceManager', () => {
             expect(manager.getDevice('s:XY020078HH5S')?.rce?.id).to.equal(83);
             expect(manager.getDevice({ serialNumber: 'XY020078HH5S' })?.rce?.id).to.equal(83);
 
-            manager['onRceDevices']([rceDevice({ serial_number: null })] as any);
+            manager['onRceDevices']([rceDevice({ serialNumber: null })] as any);
             expect(manager.getDevice('rce:83')?.rce?.id).to.equal(83);
         });
 
@@ -1450,7 +1458,7 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
 
             //a just-booted device that has not reported an esn yet (keyed rce:83)
-            manager['onRceDevices']([rceDevice({ serial_number: null })] as any);
+            manager['onRceDevices']([rceDevice({ serialNumber: null })] as any);
             const device = manager.getAllDevices().find(x => x.rce);
             expect(device.key).to.equal('rce:83');
 
@@ -1458,7 +1466,7 @@ describe('DeviceManager', () => {
             expect(fakeFinder.scan.called).to.be.true;
 
             //the same check reports unhealthy once the rescan shows the device stopped
-            manager['onRceDevices']([rceDevice({ serial_number: null, status: 'shutdown', running_device: null })] as any);
+            manager['onRceDevices']([rceDevice({ serialNumber: null, status: 'shutdown', runningDevice: null })] as any);
             expect(await manager.healthCheckDevice(device)).to.be.false;
         });
 
@@ -1575,8 +1583,8 @@ describe('DeviceManager', () => {
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({} as any);
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             manager['onRceDevices']([
-                rceDevice({ status: 'shutdown', running_device: null }),
-                rceDevice({ id: 99, serial_number: null })
+                rceDevice({ status: 'shutdown', runningDevice: null }),
+                rceDevice({ id: 99, serialNumber: null })
             ] as any);
 
             await manager['resolveRceDevices']();
@@ -1606,7 +1614,7 @@ describe('DeviceManager', () => {
             fakeFinder.getCachedToken = () => 'secret';
             manager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
 
-            manager['onRceDevices']([rceDevice({ id: 84, status: 'shutdown', running_device: null })] as any);
+            manager['onRceDevices']([rceDevice({ id: 84, status: 'shutdown', runningDevice: null })] as any);
 
             const device = manager.getAllDevices().find(x => x.rce);
             expect(device.device).to.eql({ id: 84, rceToken: 'secret' });
@@ -1643,7 +1651,7 @@ describe('DeviceManager', () => {
                 const testManager = new DeviceManager(vscode.context, mockGlobalStateManager, undefined, fakeFinder);
                 testManager['onRceDevices']([
                     rceDevice(),
-                    rceDevice({ id: 84, serial_number: 'ESN84', status: 'shutdown', running_device: null })
+                    rceDevice({ id: 84, serialNumber: 'ESN84', status: 'shutdown', runningDevice: null })
                 ] as any);
                 return testManager;
             }
@@ -1689,7 +1697,6 @@ describe('DeviceManager', () => {
             });
         });
     });
-    /* eslint-enable camelcase */
 
     describe('getDevice', () => {
         it('returns full device with deviceInfo when found', () => {
@@ -2883,6 +2890,140 @@ describe('DeviceManager', () => {
                 // Name should be cleared
                 expect(manager.getAllDevices().length).to.equal(1);
                 expect(manager.getAllDevices()[0].configuredName).to.equal(undefined);
+            });
+        });
+
+        describe('addConfiguredDeviceProvider', () => {
+            function createFakeProvider(devices: Array<{ host: string; name?: string; password?: string }>) {
+                const emitter = new vscode.EventEmitter();
+                return {
+                    emitter: emitter,
+                    devices: devices,
+                    provider: {
+                        onDidChange: emitter.event,
+                        getConfiguredDevices: () => devices.slice(),
+                        refresh: sinon.stub().resolves()
+                    }
+                };
+            }
+
+            it('devices from a registered provider show up in getAllDevices', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                const fake = createFakeProvider([
+                    { host: '192.168.1.70', name: 'Provider Device', password: 'provider-pass' }
+                ]);
+
+                manager.addConfiguredDeviceProvider(fake.provider as any);
+                await manager['loadConfiguredDevices']();
+
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(1);
+                expect(devices[0].ip).to.equal('192.168.1.70');
+                expect(devices[0].isConfigured).to.be.true;
+                expect(devices[0].configuredName).to.equal('Provider Device');
+                expect(devices[0].configuredPassword).to.equal('provider-pass');
+                expect(devices[0].configuredIn).to.deep.equal(['rokuDevConfig']);
+            });
+
+            it('user settings override provider devices for the same host', async () => {
+                (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    get: () => undefined,
+                    inspect: () => ({
+                        workspaceValue: [],
+                        globalValue: [{ host: '192.168.1.71', name: 'From User', password: 'user-pass' }]
+                    }),
+                    deviceDiscovery: {
+                        enabled: false
+                    }
+                } as any);
+
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                const fake = createFakeProvider([
+                    { host: '192.168.1.71', name: 'From Provider', password: 'provider-pass' }
+                ]);
+
+                manager.addConfiguredDeviceProvider(fake.provider as any);
+                await manager['loadConfiguredDevices']();
+
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(1);
+                expect(devices[0].configuredName).to.equal('From User');
+                expect(devices[0].configuredPassword).to.equal('user-pass');
+                expect(devices[0].configuredIn).to.deep.equal(['rokuDevConfig', 'user']);
+            });
+
+            it('reloads devices when the provider fires onDidChange', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                const fake = createFakeProvider([]);
+
+                manager.addConfiguredDeviceProvider(fake.provider as any);
+                await manager['loadConfiguredDevices']();
+                expect(manager.getAllDevices().length).to.equal(0);
+
+                // Provider discovers a new device and notifies
+                fake.devices.push({ host: '192.168.1.72', name: 'Late Arrival' });
+                const loadSpy = sinon.spy(manager as any, 'loadConfiguredDevices');
+                fake.emitter.fire();
+
+                expect(loadSpy.called).to.be.true;
+                await Promise.all(loadSpy.returnValues);
+
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(1);
+                expect(devices[0].configuredName).to.equal('Late Arrival');
+            });
+
+            it('a broken provider does not prevent other providers from loading', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                const broken = createFakeProvider([]);
+                broken.provider.getConfiguredDevices = () => {
+                    throw new Error('boom');
+                };
+                const healthy = createFakeProvider([{ host: '192.168.1.73', name: 'Healthy' }]);
+
+                manager.addConfiguredDeviceProvider(broken.provider as any);
+                manager.addConfiguredDeviceProvider(healthy.provider as any);
+                await manager['loadConfiguredDevices']();
+
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(1);
+                expect(devices[0].configuredName).to.equal('Healthy');
+            });
+
+            it('end-to-end: a device from ~/roku-dev-config.json shows up in getAllDevices', async () => {
+                const fakeHome = path.join(path.sep, 'home', 'test-user');
+                const homeConfigPath = path.join(fakeHome, 'roku-dev-config.json');
+                const files = {
+                    [homeConfigPath]: { devices: [{ ip: '192.168.1.74', name: 'Home Config Device', password: 'home-pass' }] }
+                };
+                sinon.stub(os, 'homedir').returns(fakeHome);
+                sinon.stub(fsExtra, 'existsSync').callsFake((p: any) => p in files);
+                sinon.stub(fsExtra, 'pathExistsSync').callsFake((p: any) => p in files);
+                sinon.stub(fsExtra, 'readJsonSync').callsFake((p: any) => files[p]);
+                sinon.stub(vscode.workspace, 'createFileSystemWatcher').returns({
+                    onDidCreate: () => ({ dispose: () => { } }),
+                    onDidChange: () => ({ dispose: () => { } }),
+                    onDidDelete: () => ({ dispose: () => { } }),
+                    dispose: () => { }
+                } as any);
+                sinon.stub(vscode.workspace, 'onDidChangeWorkspaceFolders').returns({ dispose: () => { } } as any);
+
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                const provider = new RokuDevConfigProvider();
+                try {
+                    manager.addConfiguredDeviceProvider(provider);
+                    await manager['loadConfiguredDevices']();
+
+                    const devices = manager.getAllDevices();
+                    expect(devices.length).to.equal(1);
+                    expect(devices[0].ip).to.equal('192.168.1.74');
+                    expect(devices[0].isConfigured).to.be.true;
+                    expect(devices[0].configuredName).to.equal('Home Config Device');
+                    expect(devices[0].configuredPassword).to.equal('home-pass');
+                    expect(devices[0].configuredIn).to.deep.equal(['rokuDevConfig']);
+                } finally {
+                    provider.dispose();
+                }
             });
         });
 

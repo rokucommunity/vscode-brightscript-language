@@ -52,7 +52,7 @@ export class DeviceManager {
         //so the cached token is expected to be set here
         const rceToken = this.rceFinder?.getCachedToken();
         this.rceDevices = devices.map(device => {
-            const instanceUrl = device.running_device?.instance_api_url ?? undefined;
+            const instanceUrl = device.runningDevice?.instanceApiUrl ?? undefined;
             //same preference order as RceFinder.getDeviceConfig: a live instance url first, then the
             //management-api device id
             const deviceConfig: RceDeviceConfig = instanceUrl
@@ -61,11 +61,11 @@ export class DeviceManager {
             return {
                 id: device.id,
                 name: device.name,
-                esn: device.serial_number ?? undefined,
+                esn: device.serialNumber ?? undefined,
                 status: device.status ?? 'shutdown',
                 instanceUrl: instanceUrl,
-                deviceType: device.device_type,
-                firmwareVersion: device.running_device?.firmware_version_id ?? device.firmware_version_id ?? undefined,
+                deviceType: device.deviceType,
+                firmwareVersion: device.runningDevice?.firmwareVersionId ?? device.firmwareVersionId ?? undefined,
                 device: deviceConfig
             };
         });
@@ -157,6 +157,21 @@ export class DeviceManager {
         applyConfig();
     }
 
+    /**
+     * Register an external source of configured devices (e.g. roku-dev-config.json files).
+     * Devices from these providers are merged in as the lowest-priority scope ('rokuDevConfig'),
+     * so they can be overridden by user/workspace settings.
+     */
+    public addConfiguredDeviceProvider(provider: ConfiguredDeviceProvider) {
+        this.extraDeviceProviders.push(provider);
+        this.context.subscriptions.push(
+            provider.onDidChange(() => {
+                this.loadConfiguredDevices().catch(e => console.error(e));
+            })
+        );
+        this.loadConfiguredDevices().catch(e => console.error(e));
+    }
+
     private setupWindowFocusHandling() {
         this.context.subscriptions.push(
             vscode.window.onDidChangeWindowState((state) => {
@@ -226,6 +241,7 @@ export class DeviceManager {
     // Core state and dependencies
     private configuredDevices: ConfiguredDeviceEntry[] = [];
     private discoveredDevices: DiscoveredDeviceEntry[] = [];
+    private extraDeviceProviders: ConfiguredDeviceProvider[] = [];
     private rceDevices: RceDeviceEntry[] = [];
     private scanNeeded = false;
     private lastUsedDeviceKey: string | undefined = undefined;
@@ -656,6 +672,15 @@ export class DeviceManager {
      * Re-scan the network for devices and health-check existing ones
      */
     public refresh(force = false, doSyntheticDelay = true): boolean {
+        // Refresh external configured-device providers (e.g. roku-dev-config.json discovery).
+        // Each provider's refresh() should fire its onDidChange, which triggers loadConfiguredDevices.
+        for (const provider of this.extraDeviceProviders) {
+            try {
+                void provider.refresh?.();
+            } catch (e) {
+                console.error(e);
+            }
+        }
         this.healthCheckAllDevices(force, doSyntheticDelay).catch(() => { });
         // Block automatic scans when device discovery is disabled
         if (!force && !this.deviceDiscoveryEnabled) {
@@ -755,14 +780,21 @@ export class DeviceManager {
      * Validate a developer password against a device (any roku-deploy device config, including a
      * Roku Cloud Emulator config).
      *
+     * @param port  the port of the device's dev installer web server. Omit to use roku-deploy's default (80)
+     *
      * Returns:
      * - `'ok'` — credentials accepted
      * - `'bad-password'` — device reachable, credentials rejected
      * - `'unreachable'` — device could not be contacted (transient; don't treat as wrong password)
      */
-    public async validateDevicePassword(device: DeviceConfig, password: string): Promise<PasswordValidationResult> {
+    public async validateDevicePassword(device: DeviceConfig, password: string, port?: number): Promise<PasswordValidationResult> {
         try {
-            const accepted = await rokuDeploy.validateDeveloperPassword({ device: device, password: password });
+            const accepted = await rokuDeploy.validateDeveloperPassword({
+                device: device,
+                password: password,
+                //only send a port when the caller has one, so roku-deploy's own default applies otherwise
+                ...(port === undefined ? {} : { port: port })
+            });
             return accepted ? 'ok' : 'bad-password';
         } catch (e) {
             if (e instanceof DeviceUnreachableError) {
@@ -917,6 +949,14 @@ export class DeviceManager {
             }
         }
 
+        // Pull from any externally-registered providers first (lowest priority — user/workspace can override)
+        for (const provider of this.extraDeviceProviders) {
+            try {
+                addDevicesFromScope(provider.getConfiguredDevices(), 'rokuDevConfig');
+            } catch (e) {
+                console.error(e);
+            }
+        }
         addDevicesFromScope(userDevices, 'user');
         addDevicesFromScope(workspaceDevices, 'workspace');
 
@@ -1668,7 +1708,21 @@ export type DeviceState = 'offline' | 'unknown' | 'pending' | 'online';
 
 export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
 
-export type ConfigurationScope = 'user' | 'workspace';
+export type ConfigurationScope = 'user' | 'workspace' | 'rokuDevConfig';
+
+/**
+ * External source of configured devices that can be plugged into DeviceManager.
+ * Used to surface devices defined outside VSCode settings (e.g. rsg's roku-dev-config.json files)
+ * without requiring DeviceManager itself to know about each source.
+ */
+export interface ConfiguredDeviceProvider {
+    /** Synchronously return the current list of configured devices from this source. */
+    getConfiguredDevices(): ConfiguredDevice[];
+    /** Fires when the underlying source has changed and devices should be reloaded. */
+    onDidChange: vscode.Event<void>;
+    /** Optional: force a full re-scan of underlying sources (e.g. on user-initiated refresh). */
+    refresh?(): void | Promise<void>;
+}
 
 /**
  * A resolved host paired with the raw `device-info` gathered while probing it. Returned by the
