@@ -4617,6 +4617,31 @@
             <a href="#extension-settings"><h1 id="extension-settings">Extension Settings</h1></a><p>This extension contributes the following settings:</p>
 <br/>
 
+<a href="#brightscriptbsdk"><h3 id="brightscriptbsdk"><code>brightscript.bsdk</code></h3></a><p>Specifies which version of <a href="https://github.com/rokucommunity/brighterscript">BrighterScript</a> to use for the language server. Supported values:</p>
+<ul>
+<li><code>&quot;embedded&quot;</code> (or omitted) - use the version of BrighterScript bundled with the extension</li>
+<li>a path to a directory containing the <code>brighterscript</code> package (i.e. <code>&quot;node_modules/brighterscript&quot;</code>)</li>
+<li>an npm version, range, or dist-tag (i.e. <code>&quot;0.65.0&quot;</code>, <code>&quot;^0.65.0&quot;</code>, or <code>&quot;@next&quot;</code>), which the extension will download and cache</li>
+<li>a URL or path to a <code>.tgz</code> package (i.e. <code>&quot;https://github.com/rokucommunity/brighterscript/releases/download/v0.0.0-packages/brighterscript-0.65.27.tgz&quot;</code>)</li>
+</ul>
+<p>Relative paths are resolved relative to the file where the setting is defined:</p>
+<ul>
+<li>in a <code>.code-workspace</code> file, relative to the directory containing the <code>.code-workspace</code> file (which does not need to be the project root)</li>
+<li>in a folder&#39;s <code>.vscode/settings.json</code>, relative to that workspace folder</li>
+</ul>
+<p>The path may start with one of these variables:</p>
+<ul>
+<li><code>${workspaceFolder}</code> - in a <code>.code-workspace</code> file, this is the first workspace folder. In a folder&#39;s <code>.vscode/settings.json</code>, this is that folder.</li>
+<li><code>${workspaceFolder:name}</code> - the workspace folder with the given name (i.e. <code>&quot;${workspaceFolder:app}/node_modules/brighterscript&quot;</code>)</li>
+</ul>
+<p>Any other variable (i.e. <code>${env:MY_VAR}</code>) is not supported, and an error will be shown in the BrightScript extension output panel.</p>
+<p>When there are multiple sources, the first match wins:</p>
+<ol>
+<li>the value from the <code>.code-workspace</code> file</li>
+<li>if exactly one workspace folder has a value (or all folders resolve to the same value), use it</li>
+<li>if workspace folders have different values, you will be prompted to pick which one to use</li>
+<li>otherwise, use the embedded version</li>
+</ol>
 <a href="#brightscriptformatkeywordcase"><h3 id="brightscriptformatkeywordcase"><code>brightscript.format.keywordCase</code></h3></a><p>specify case of keywords when formatting</p>
 <a href="#brightscriptformatcompositekeywords"><h3 id="brightscriptformatcompositekeywords"><code>brightscript.format.compositeKeywords</code></h3></a><p>specify whether composite words (ie: &quot;endif&quot;, &quot;endfor&quot;) should be broken apart into their two-word format (ie: &quot;end if&quot;, &quot;end for&quot;)</p>
 <a href="#brightscriptformatremovetrailingwhitespace"><h3 id="brightscriptformatremovetrailingwhitespace"><code>brightscript.format.removeTrailingWhiteSpace</code></h3></a><p>specify whether trailing whitespace should be removed on format</p>
