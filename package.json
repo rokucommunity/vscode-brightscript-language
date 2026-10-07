@@ -145,7 +145,6 @@
     },
     "overrides": {
         "serialize-javascript": "^7.0.5",
-        "qs": "^6.16.0",
         "node-notifier": {
             "uuid": "^11.1.1"
         },
