@@ -2,6 +2,8 @@ import { EventEmitter } from 'eventemitter3';
 import type { SsdpHeaders } from 'node-ssdp';
 import { Client, Server } from 'node-ssdp';
 import type { GlobalStateManager } from '../GlobalStateManager';
+import type { RokuSighting } from './MdnsListener';
+import { MdnsListener } from './MdnsListener';
 
 export class RokuFinder extends EventEmitter {
     constructor(
@@ -27,10 +29,20 @@ export class RokuFinder extends EventEmitter {
         this.server.on('advertise-bye', (headers: SsdpHeaders) => {
             this.processSsdpNotify(headers);
         });
+
+        // Passive mDNS discovery as a second source, feeding the same events as SSDP.
+        this.mdnsListener = new MdnsListener(this.log);
+        this.mdnsListener.on('roku-found', (sighting: RokuSighting) => {
+            this.processMdnsSighting(sighting);
+        });
+        this.mdnsListener.on('roku-lost', (ip: string) => {
+            this.emit('lost', ip);
+        });
     }
 
     private client: Client;
     private server: Server;
+    private mdnsListener: MdnsListener;
     private running = false;
     private scanTimers: ReturnType<typeof setTimeout>[] = [];
     private aliveDebounceMap = new Map<string, number>();
@@ -150,6 +162,8 @@ export class RokuFinder extends EventEmitter {
         if (!this.running) {
             this.running = true;
             await this.server.start();
+            // Best-effort: never rejects, so a busy mDNS port cannot break SSDP discovery.
+            await this.mdnsListener.start();
         }
     }
 
@@ -165,6 +179,23 @@ export class RokuFinder extends EventEmitter {
         if (this.running) {
             this.running = false;
             this.server.stop();
+            this.mdnsListener.stop();
+        }
+    }
+
+    /**
+     * Handle a passive mDNS sighting. mDNS fires irregularly and often, so it feeds the same
+     * `found` event as SSDP (for presence and IP/serial refresh) but deliberately does NOT run
+     * through the ssdp:alive heartbeat-suppression logic in maybeEmitDeviceOnline, which is
+     * tuned to Roku's ~20-minute cadence and has no equivalent in mDNS. The MdnsListener does
+     * its own debouncing, so repeated announcements do not spam `found`.
+     */
+    private processMdnsSighting(sighting: RokuSighting) {
+        this.emit('found', sighting.ip, { serialNumber: sighting.serialNumber });
+
+        // Let mDNS sightings extend an in-progress active scan, same as SSDP responses.
+        if (this.isScanning) {
+            this.resetSettleTimer();
         }
     }
 
@@ -319,6 +350,8 @@ export class RokuFinder extends EventEmitter {
         this.server.removeAllListeners();
         this.server.stop();
         delete this.server;
+
+        this.mdnsListener.dispose();
     }
 }
 
