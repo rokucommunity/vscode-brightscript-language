@@ -1,0 +1,11 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "rootDir": ".",
+        "target": "es2020",
+        "noEmit": true
+    },
+    "include": [
+        "**/*"
+    ]
+}
