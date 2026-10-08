@@ -519,6 +519,14 @@ describe('UserInputManager', () => {
             expect(await credentialStore.getPassword('SN-001')).to.equal('stored-pw');
         });
 
+        it('validates against the given packagePort', async () => {
+            const stub = sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
+
+            await userInputManager.resolveDevicePassword({ device: { host: '127.0.0.1' }, serialNumber: 'SN-001', extraCandidates: ['some-pw'], packagePort: 8084 });
+
+            expect(stub.firstCall.args).to.eql([{ host: '127.0.0.1' }, 'some-pw', 8084]);
+        });
+
         it('moves past bad-password candidates and uses the first accepted one', async () => {
             const stub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
             stub.onCall(0).resolves('bad-password');

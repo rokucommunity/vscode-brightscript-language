@@ -96,17 +96,20 @@ export class UserInputManager {
      * entry when one already exists; callers that keep a global password fallback persist that
      * themselves.
      *
+     * `packagePort` is the port of the device's dev installer web server, for targets that don't use
+     * the default (80), such as the BrightScript Simulator.
+     *
      * @returns `ok` with the accepted password, `unreachable` when the device can't be contacted,
      *          or `cancelled` when the user dismisses the prompt.
      */
-    public async resolveDevicePassword(options: { device: DeviceConfig; serialNumber: string | undefined; extraCandidates?: Array<string | undefined> }): Promise<DevicePasswordResolution> {
-        const { device, serialNumber } = options;
+    public async resolveDevicePassword(options: { device: DeviceConfig; serialNumber: string | undefined; extraCandidates?: Array<string | undefined>; packagePort?: number }): Promise<DevicePasswordResolution> {
+        const { device, serialNumber, packagePort } = options;
         //candidate providers key env/config-derived passwords by LAN host; cloud devices have none
         const host = isLocalDeviceConfig(device) ? device.host : undefined;
         const candidates = await this.collectDevicePasswordCandidates(host, serialNumber, options.extraCandidates);
 
         for (const candidate of candidates) {
-            const validation = await this.deviceManager.validateDevicePassword(device, candidate);
+            const validation = await this.deviceManager.validateDevicePassword(device, candidate, packagePort);
             if (validation === 'ok') {
                 await this.persistDevicePassword(serialNumber, candidate);
                 return { status: 'ok', password: candidate };
@@ -127,7 +130,7 @@ export class UserInputManager {
             if (!value) {
                 return { status: 'cancelled' };
             }
-            const validation = await this.deviceManager.validateDevicePassword(device, value);
+            const validation = await this.deviceManager.validateDevicePassword(device, value, packagePort);
             if (validation === 'ok') {
                 await this.persistDevicePassword(serialNumber, value);
                 return { status: 'ok', password: value };

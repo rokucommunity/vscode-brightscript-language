@@ -780,14 +780,21 @@ export class DeviceManager {
      * Validate a developer password against a device (any roku-deploy device config, including a
      * Roku Cloud Emulator config).
      *
+     * @param port  the port of the device's dev installer web server. Omit to use roku-deploy's default (80)
+     *
      * Returns:
      * - `'ok'` — credentials accepted
      * - `'bad-password'` — device reachable, credentials rejected
      * - `'unreachable'` — device could not be contacted (transient; don't treat as wrong password)
      */
-    public async validateDevicePassword(device: DeviceConfig, password: string): Promise<PasswordValidationResult> {
+    public async validateDevicePassword(device: DeviceConfig, password: string, port?: number): Promise<PasswordValidationResult> {
         try {
-            const accepted = await rokuDeploy.validateDeveloperPassword({ device: device, password: password });
+            const accepted = await rokuDeploy.validateDeveloperPassword({
+                device: device,
+                password: password,
+                //only send a port when the caller has one, so roku-deploy's own default applies otherwise
+                ...(port === undefined ? {} : { port: port })
+            });
             return accepted ? 'ok' : 'bad-password';
         } catch (e) {
             if (e instanceof DeviceUnreachableError) {
