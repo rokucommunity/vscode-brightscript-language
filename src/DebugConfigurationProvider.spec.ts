@@ -15,20 +15,9 @@ import { rokuDeploy } from 'roku-deploy';
 import { CredentialStore } from './managers/CredentialStore';
 
 const sinon = createSandbox();
-const Module = require('module');
 const cwd = s`${path.dirname(__dirname)}`;
 const tempDir = s`${cwd}/.tmp`;
 const rootDir = s`${tempDir}/rootDir`;
-
-//override the "require" call to mock certain items
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
 
 describe('BrightScriptConfigurationProvider', () => {
 

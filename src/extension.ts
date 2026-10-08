@@ -1,8 +1,11 @@
+import 'reflect-metadata';
 import * as vscode from 'vscode';
 import * as prettyBytes from 'pretty-bytes';
 import { extensions } from 'vscode';
 import { isRceDeviceConfig } from 'roku-deploy';
 import type { DeviceConfig } from 'roku-deploy';
+import { container } from 'tsyringe';
+import type { DependencyContainer } from 'tsyringe';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
@@ -45,6 +48,7 @@ import { EXTENSION_ID } from './constants';
 import { UserInputManager } from './managers/UserInputManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
 import { CredentialStore } from './managers/CredentialStore';
+import { ExtensionContextToken } from './injectionTokens';
 import { BrightScriptTaskProvider } from './BrightScriptTaskProvider';
 import { standardizePath as s } from 'brighterscript';
 import { PerfettoEditorProvider } from './editors/PerfettoEditor';
@@ -71,6 +75,8 @@ export class Extension {
     private logOutputManager: LogOutputManager;
     private deviceManager: DeviceManager;
     private extensionContext: vscode.ExtensionContext;
+    //one container per activation. Never disposed: the instances it holds are disposed through their existing owners
+    private dependencyContainer: DependencyContainer;
     private jsDebugProxyManager: JsDebugProxyManager;
     private jsDebugPathTrace: JsDebugPathTrace;
     //authoritative stagingDir per BRS session, keyed by parent session id - see attachJsDebugger's staging-ready wait
@@ -84,6 +90,8 @@ export class Extension {
         //make this entire extension disposable so that all resources will be cleaned up on extension deactivation
         context.subscriptions.push(this);
         this.extensionContext = context;
+        this.dependencyContainer = container.createChildContainer();
+        this.dependencyContainer.registerInstance(ExtensionContextToken, context);
         const currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version as string;
 
         //one-time migration: `remoteHost` workspace state is superseded by `remoteControlDeviceKey`, which
@@ -101,6 +109,7 @@ export class Extension {
 
         this.globalStateManager = new GlobalStateManager(context);
         this.whatsNewManager = new WhatsNewManager(this.globalStateManager, currentExtensionVersion);
+        this.dependencyContainer.registerInstance(WhatsNewManager, this.whatsNewManager);
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
 
         //initialize the analytics manager
@@ -115,6 +124,7 @@ export class Extension {
             s`${context.globalStorageUri.fsPath}/packages`,
             context
         );
+        this.dependencyContainer.registerInstance(LocalPackageManager, localPackageManager);
 
         this.telemetryManager.sendStartupEvent();
         this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
@@ -132,6 +142,7 @@ export class Extension {
         const rceFinder = new RceFinder(rceManager, (message) => this.extensionOutputChannel.appendLine(message));
         context.subscriptions.push(new RceVideoEditorManager(context, rceManager, rceFinder));
         this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel, rceFinder);
+        this.dependencyContainer.registerInstance(DeviceManager, this.deviceManager);
         const rokuDevConfigProvider = new RokuDevConfigProvider();
         context.subscriptions.push(rokuDevConfigProvider);
         const rsgSdkPasswordCandidateProvider = new RsgSdkPasswordCandidateProvider(this.deviceManager, rokuDevConfigProvider);
@@ -140,24 +151,17 @@ export class Extension {
         this.deviceManager.addConfiguredDeviceProvider(rsgSdkPasswordCandidateProvider);
         this.deviceManager.addConfiguredDeviceProvider(rokuDevConfigProvider);
         const credentialStore = new CredentialStore(context);
-        let userInputManager = new UserInputManager(
-            this.deviceManager,
-            credentialStore
-        );
+        this.dependencyContainer.registerInstance(CredentialStore, credentialStore);
+        this.dependencyContainer.registerSingleton(UserInputManager);
+        let userInputManager = this.dependencyContainer.resolve(UserInputManager);
         userInputManager.addPasswordCandidateProvider(rsgSdkPasswordCandidateProvider);
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
-        const deviceTargetManager = new DeviceTargetManager(context, this.deviceManager, userInputManager);
-        this.brightScriptCommands = new BrightScriptCommands(
-            this.remoteControlManager,
-            this.whatsNewManager,
-            context,
-            this.deviceManager,
-            userInputManager,
-            localPackageManager,
-            credentialStore,
-            deviceTargetManager
-        );
+        this.dependencyContainer.registerInstance(RemoteControlManager, this.remoteControlManager);
+        this.dependencyContainer.registerSingleton(DeviceTargetManager);
+        const deviceTargetManager = this.dependencyContainer.resolve(DeviceTargetManager);
+        this.dependencyContainer.registerSingleton(BrightScriptCommands);
+        this.brightScriptCommands = this.dependencyContainer.resolve(BrightScriptCommands);
 
         this.rtaManager = new RtaManager(context, rceManager, this.deviceManager);
         this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, rceManager, rceFinder, this.deviceManager, this.brightScriptCommands, deviceTargetManager);

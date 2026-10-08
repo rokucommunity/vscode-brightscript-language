@@ -12,17 +12,6 @@ import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { icons } from '../icons';
 
-let Module = require('module');
-const { require: oldRequire } = Module.prototype;
-
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
-
 let sinon: sinonImport.SinonSandbox;
 beforeEach(() => {
     sinon = sinonImport.createSandbox();

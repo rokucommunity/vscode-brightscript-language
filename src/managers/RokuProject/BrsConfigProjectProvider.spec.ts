@@ -4,15 +4,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { vscode } from '../../mockVscode.spec';
 
-let Module = require('module');
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    }
-    return oldRequire.apply(this, arguments);
-};
-
 import { BrsConfigProjectProvider } from './BrsConfigProjectProvider';
 
 const sinon = createSandbox();
@@ -28,8 +19,8 @@ describe('BrsConfigProjectProvider', () => {
         sinon.restore();
         provider = new BrsConfigProjectProvider();
 
-        (vscode.workspace as any).asRelativePath = sinon.stub().callsFake((uri: any) => (typeof uri === 'string' ? uri : uri.fsPath));
-        (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(undefined);
+        sinon.stub(vscode.workspace, 'asRelativePath').callsFake((uri: any) => (typeof uri === 'string' ? uri : uri.fsPath));
+        sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(undefined);
     });
 
     afterEach(() => {
@@ -81,7 +72,7 @@ describe('BrsConfigProjectProvider', () => {
         it('calls workspace.findFiles for the brsconfig glob and returns results', async () => {
             const uri1 = makeUri('/project/brsconfig.json');
             const uri2 = makeUri('/project/brsconfig.prod.json');
-            (vscode.workspace as any).findFiles = sinon.stub().resolves([uri1, uri2]);
+            sinon.stub(vscode.workspace, 'findFiles').resolves([uri1, uri2]);
 
             const results = await provider.findProjectConfigs();
 
@@ -89,7 +80,7 @@ describe('BrsConfigProjectProvider', () => {
         });
 
         it('returns an empty array when no config files are found', async () => {
-            (vscode.workspace as any).findFiles = sinon.stub().resolves([]);
+            sinon.stub(vscode.workspace, 'findFiles').resolves([]);
 
             const results = await provider.findProjectConfigs();
 

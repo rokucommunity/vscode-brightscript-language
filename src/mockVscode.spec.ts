@@ -4,6 +4,22 @@ import URI from 'vscode-uri';
 import * as path from 'path';
 import { standardizePath as s } from 'brighterscript';
 
+//Each evaluation of this module publishes its mock in this slot. The require hijack is installed once and
+//always returns the slot's current value, so the mock stays correct when the module is re-evaluated (e.g. mocha --watch).
+const currentMockSlot = Symbol.for('mockVscode.current');
+const hijackMarker = Symbol.for('mockVscode.requireHijacked');
+const moduleConstructor = require('module');
+if (!moduleConstructor.prototype.require[hijackMarker]) {
+    const originalRequire = moduleConstructor.prototype.require;
+    moduleConstructor.prototype.require = function hijackedRequire(file: string) {
+        if (file === 'vscode') {
+            return (globalThis as any)[currentMockSlot];
+        }
+        return originalRequire.apply(this, arguments);
+    };
+    moduleConstructor.prototype.require[hijackMarker] = true;
+}
+
 const cwd = s`${__dirname}/../`;
 const tempDir = s`${cwd}/.tmp`;
 
@@ -13,16 +29,46 @@ enum QuickPickItemKind {
     Default = 0
 }
 
-afterEach(() => {
-    delete vscode.workspace.workspaceFile;
-    delete vscode.workspace._configuration;
-    vscode.workspace.workspaceFolders = [] as any;
-    vscode.workspace.findFiles = () => Promise.resolve([]) as any;
-    vscode.context.globalState['_data'] = {};
-    vscode.context.workspaceState['_data'] = {};
-    vscode.context.secrets['_data'] = {};
-    vscode.context.secrets['_changeHandlers'] = [];
-});
+//root hook plugin: mocha registers this for every test when the module is loaded via `require`
+export const mochaHooks = {
+    afterEach: resetMockVscode
+};
+
+function resetMockVscode() {
+    //mocha keeps the hooks from the first evaluation, so always act on the current mock
+    const currentVscode = (globalThis as any)[currentMockSlot] as typeof vscode;
+    delete currentVscode.workspace.workspaceFile;
+    delete currentVscode.workspace._configuration;
+    currentVscode.workspace.workspaceFolders = [] as any;
+    currentVscode.workspace.findFiles = () => Promise.resolve([]) as any;
+    currentVscode.context.globalState['_data'] = {};
+    currentVscode.context.workspaceState['_data'] = {};
+    currentVscode.context.secrets['_data'] = {};
+    currentVscode.context.secrets['_changeHandlers'] = [];
+    disposeAll(currentVscode.context.subscriptions);
+    disposeAll(currentVscode.subscriptions);
+    currentVscode.window.activeTextEditor = createDefaultActiveTextEditor();
+    currentVscode.debug.activeDebugSession = undefined;
+    currentVscode.window.state = { focused: false };
+    currentVscode.workspace._onDidChangeConfigurationEmitter.removeAllListeners();
+    //required lazily because the module imports 'vscode', which must already resolve to the mock
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    require('./managers/VscodeContextManager').vscodeContextManager['cache'].clear();
+}
+
+function disposeAll(disposables: any[]) {
+    for (const disposable of disposables.splice(0)) {
+        try {
+            disposable?.dispose?.();
+        } catch { }
+    }
+}
+
+function createDefaultActiveTextEditor() {
+    return {
+        document: undefined
+    } as any;
+}
 
 export let vscode = {
     version: '1.89.1',
@@ -40,7 +86,9 @@ export let vscode = {
         Test: 3
     },
     CompletionItem: class { },
-    CodeLens: class { },
+    CodeLens: class {
+        constructor(public range?: Range, public command?: Command) { }
+    },
     CodeAction: class { },
     Diagnostic: class { },
     CallHierarchyItem: class { },
@@ -63,6 +111,7 @@ export let vscode = {
         }
     },
     debug: {
+        activeDebugSession: undefined as any,
         registerDebugConfigurationProvider: () => { },
         registerDebugAdapterTrackerFactory: () => { },
         registerDebugAdapterDescriptorFactory: () => { },
@@ -226,6 +275,7 @@ export let vscode = {
             return Promise.resolve([]) as any;
         },
         fs: {
+            stat: (uri) => Promise.resolve({}),
             writeFile: (uri, buffer) => { },
             readFile: (uri) => {
                 return Buffer.alloc(0);
@@ -236,6 +286,7 @@ export let vscode = {
         onDidCloseTextDocument: () => { }
     },
     window: {
+        state: { focused: false },
         registerCustomEditorProvider: () => { },
         registerWebviewPanelSerializer: () => { },
         withProgress: (options, action) => {
@@ -327,9 +378,7 @@ export let vscode = {
         showErrorMessage: function(message: string, ..._rest: any[]): any {
 
         },
-        activeTextEditor: {
-            document: undefined
-        },
+        activeTextEditor: createDefaultActiveTextEditor(),
         onDidChangeTextEditorSelection: () => { },
         registerUriHandler: () => { },
         registerWebviewViewProvider: () => {
@@ -632,6 +681,11 @@ export let vscode = {
         Initial: 1,
         Dynamic: 2
     },
+    TreeItemCollapsibleState: {
+        None: 0,
+        Collapsed: 1,
+        Expanded: 2
+    },
     ConfigurationTarget: {
         Global: 1,
         Workspace: 2,
@@ -639,18 +693,4 @@ export let vscode = {
     }
 };
 
-export let vscodeLanguageClient = {
-    LanguageClient: class {
-        public start() { }
-        public onReady() {
-            return Promise.resolve<any>(null);
-        }
-        public onNotification() { }
-    },
-    TransportKind: {
-        stdio: 0,
-        ipc: 1,
-        pipe: 2,
-        socket: 3
-    }
-};
+(globalThis as any)[currentMockSlot] = vscode;

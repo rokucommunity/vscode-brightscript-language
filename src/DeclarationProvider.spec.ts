@@ -2,20 +2,8 @@ import { expect } from 'chai';
 import * as fsExtra from 'fs-extra';
 import * as sinon from 'sinon';
 import { standardizePath as s } from 'brighterscript';
-let Module = require('module');
 
 import { vscode } from './mockVscode.spec';
-
-//override the "require" call to mock certain items
-const { require: oldRequire } = Module.prototype;
-
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
 
 import { SymbolKind } from 'vscode';
 import { DeclarationProvider, WorkspaceEncoding } from './DeclarationProvider';

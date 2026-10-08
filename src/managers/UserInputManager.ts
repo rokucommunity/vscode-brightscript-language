@@ -5,8 +5,9 @@ import type {
     QuickPickItem
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { ConfiguredDevice, DeviceManager, HostWithDeviceInfo, RokuDevice } from '../deviceDiscovery/DeviceManager';
-import type { CredentialStore } from './CredentialStore';
+import { injectable } from 'tsyringe';
+import { type ConfiguredDevice, DeviceManager, type HostWithDeviceInfo, type RokuDevice } from '../deviceDiscovery/DeviceManager';
+import { CredentialStore } from './CredentialStore';
 import { icons } from '../icons';
 import { vscodeContextManager } from './VscodeContextManager';
 import { util } from '../util';
@@ -41,6 +42,7 @@ export type DevicePasswordResolution =
     | { status: 'unreachable' }
     | { status: 'cancelled' };
 
+@injectable()
 export class UserInputManager {
 
     public constructor(

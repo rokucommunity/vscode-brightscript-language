@@ -5,15 +5,6 @@ import * as os from 'os';
 import * as path from 'path';
 import { vscode } from '../../mockVscode.spec';
 
-let Module = require('module');
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    }
-    return oldRequire.apply(this, arguments);
-};
-
 import { ManifestProjectProvider } from './ManifestProjectProvider';
 import { BrightScriptDebugConfigurationProvider } from '../../DebugConfigurationProvider';
 

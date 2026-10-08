@@ -2,19 +2,6 @@ import { expect } from 'chai';
 import * as path from 'path';
 import * as sinonImport from 'sinon';
 
-let Module = require('module');
-
-import { vscode } from './mockVscode.spec';
-
-const { require: oldRequire } = Module.prototype;
-
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
 
 import { CustomDocumentLink, LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 

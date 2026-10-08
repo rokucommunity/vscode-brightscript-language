@@ -3,26 +3,13 @@ import { createSandbox } from 'sinon';
 import * as fsExtra from 'fs-extra';
 import * as os from 'os';
 import * as path from 'path';
-let Module = require('module');
 import { Extension } from './extension';
-import { vscode, vscodeLanguageClient } from './mockVscode.spec';
+import { vscode } from './mockVscode.spec';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { languageServerManager } from './LanguageServerManager';
 import { debugSessionManager } from './managers/DebugSessionManager';
 
 const sinon = createSandbox();
-
-//override the "require" call to mock certain items
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else if (file === 'vscode-languageclient') {
-        return vscodeLanguageClient;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
 
 describe('extension', () => {
     let extension: Extension;

@@ -4,16 +4,6 @@ import { vscode } from '../mockVscode.spec';
 import { SolidDevtoolsViewProvider } from './SolidDevtoolsViewProvider';
 import { ViewProviderCommand } from './ViewProviderCommand';
 
-let Module = require('module');
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
-
 let sinon: sinonImport.SinonSandbox;
 let view;
 let callback;
@@ -56,9 +46,6 @@ async function sendRequest(request: Record<string, unknown>) {
 
 describe('SolidDevtoolsViewProvider', () => {
     it('responds no-session when there is no evaluable debug session', async () => {
-        // other specs can leave an activeDebugSession on the shared vscode mock, so
-        // pin the transport to the no-session case instead of relying on global state
-        sinon.stub(provider['transport'], 'getVersion').resolves(undefined);
         const response = await sendRequest({ method: 'version' });
         expect(response).to.eql({ ok: false, reason: 'no-session' });
     });

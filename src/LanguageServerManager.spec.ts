@@ -1,5 +1,5 @@
 import { createSandbox } from 'sinon';
-import { vscode, vscodeLanguageClient } from './mockVscode.spec';
+import { vscode } from './mockVscode.spec';
 import { LanguageServerManager } from './LanguageServerManager';
 import { expect } from 'chai';
 import { DefinitionRepository } from './DefinitionRepository';
@@ -20,20 +20,7 @@ import { GlobalStateManager } from './GlobalStateManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
 import { expectThrowsAsync } from './testHelpers.spec';
 import undent from 'undent';
-const Module = require('module');
 const sinon = createSandbox();
-
-//override the "require" call to mock certain items
-const { require: oldRequire } = Module.prototype;
-Module.prototype.require = function hijacked(file) {
-    if (file === 'vscode') {
-        return vscode;
-    } else if (file === 'vscode-languageclient') {
-        return vscodeLanguageClient;
-    } else {
-        return oldRequire.apply(this, arguments);
-    }
-};
 
 const tempDir = s`${process.cwd()}/.tmp`;
 
