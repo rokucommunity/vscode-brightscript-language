@@ -29,6 +29,15 @@ export class RceVideoEditorManager implements vscode.Disposable {
         extensionContext.subscriptions.push(
             vscode.commands.registerCommand(VscodeCommand.rceWatchDeviceInEditor, async (deviceId: number, deviceName?: string) => {
                 await this.open(deviceId, deviceName);
+            }),
+            //the video tab's own Copy Screenshot (editor title button and webview context menu), kept
+            //separate from the sidebar view's command so each only ever targets its own view
+            vscode.commands.registerCommand(VscodeCommand.rceVideoViewCopyScreenshot, () => {
+                for (const editorPanel of this.editorPanelsByDeviceId.values()) {
+                    if (editorPanel.isActive) {
+                        editorPanel.requestCopyScreenshot();
+                    }
+                }
             })
         );
 
@@ -241,6 +250,22 @@ class RceVideoEditorPanel implements vscode.Disposable {
         this.panel.dispose();
     }
 
+    public get isActive(): boolean {
+        return this.panel.active;
+    }
+
+    /**
+     * Ask the tab's webview to copy a screenshot of its stream to the clipboard; the panel is
+     * focused first since the clipboard write needs the webview to have focus.
+     */
+    public requestCopyScreenshot() {
+        this.panel.reveal(undefined, false);
+        this.postOrQueueMessage({
+            event: ViewProviderEvent.onVscodeCommandReceived,
+            context: { commandName: VscodeCommand.rokuDeviceViewCopyScreenshot }
+        });
+    }
+
     /**
      * Resolve the device's current stream details and start (or restart) the session. A stopped
      * device renders as the tab's device-stopped state (which resumes on its own when the device
@@ -363,6 +388,25 @@ class RceVideoEditorPanel implements vscode.Disposable {
                 return;
             }
             this.postOrQueueMessage({ ...message, response: { success: true } });
+        } else if (command === ViewProviderCommand.getScreenshot) {
+            let response;
+            try {
+                const screenshot = await vscode.commands.executeCommand<{ bytes: ArrayBufferLike; format: string }>(VscodeCommand.rokuDeviceViewCaptureRceScreenshot, this.deviceId, this.deviceName);
+                response = { success: true, bytes: screenshot.bytes, format: screenshot.format };
+            } catch (error) {
+                response = { success: false, message: (error as Error).message };
+            }
+            if (this.disposed) {
+                return;
+            }
+            this.postOrQueueMessage({ ...message, response: response });
+        } else if (command === ViewProviderCommand.showScreenshotMessage) {
+            if (message.context.severity === 'error') {
+                void vscode.window.showErrorMessage(message.context.message);
+            } else {
+                void vscode.window.showInformationMessage(message.context.message);
+            }
+            this.postOrQueueMessage({ ...message, response: {} });
         } else if (command === ViewProviderCommand.startRceDevice) {
             //this tab is pinned to one device, so any deviceId in the message is ignored
             await vscode.commands.executeCommand(VscodeCommand.rceStartDeviceById, this.deviceId);

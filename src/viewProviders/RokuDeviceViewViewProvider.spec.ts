@@ -115,9 +115,10 @@ describe('RokuDeviceViewViewProvider', () => {
     let rceFinder: EventEmitter;
     let resolveTargetDevice: sinonImport.SinonStub;
     let resolveValidatedPassword: sinonImport.SinonStub;
+    let rtaManager: RtaManager;
 
     function createProvider(): TestRokuDeviceViewViewProvider {
-        const rtaManager = new RtaManager(vscode.context, {} as any, {} as any);
+        rtaManager = new RtaManager(vscode.context, {} as any, {} as any);
         sinon.stub(rtaManager, 'setupRtaWithDeviceTarget').resolves();
         getToken = sinon.stub().resolves('management-api-token');
         getDevice = sinon.stub().returns(undefined);
@@ -796,6 +797,186 @@ describe('RokuDeviceViewViewProvider', () => {
             expect(findEventMessages(ViewProviderEvent.onRceStreamError)).to.have.length(0);
             //the waiting loop's own status poll (which resolves running here) reconnected the stream
             expect(findEventMessages(ViewProviderEvent.onRceStreamOffer)).to.have.length(2);
+        });
+    });
+
+    describe('getScreenshot command', () => {
+        let captureScreenshot: sinonImport.SinonStub;
+        let originalConfiguration: unknown;
+        const delayConfigurationKey = 'brightscript.rokuDeviceView.screenshotCaptureDelay';
+
+        beforeEach(() => {
+            originalConfiguration = (vscode.workspace as any)._configuration;
+            (vscode.workspace as any)._configuration = {};
+            captureScreenshot = sinon.stub(rokuDeploy, 'captureScreenshot').resolves({ buffer: Buffer.from([1, 2, 3]), format: 'png' });
+        });
+
+        afterEach(() => {
+            (vscode.workspace as any)._configuration = originalConfiguration;
+        });
+
+        function pointRtaAtLanDevice(host = '1.2.3.4', password = 'lan-password') {
+            rtaManager.device = {
+                getRokuDeployDevice: () => ({ host: host }),
+                getCurrentDeviceConfig: () => ({ password: password })
+            } as any;
+        }
+
+        async function requestScreenshot(context: Record<string, unknown> = {}) {
+            const message = { command: ViewProviderCommand.getScreenshot, context: context };
+            await provider['messageCommandCallbacks'][ViewProviderCommand.getScreenshot](message);
+            const responses = postOrQueueMessage.getCalls().map((call) => call.args[0]).filter((posted) => posted.command === ViewProviderCommand.getScreenshot);
+            return responses[responses.length - 1].response;
+        }
+
+        it('captures the device RTA currently holds with its validated password', async () => {
+            createProvider();
+            pointRtaAtLanDevice();
+
+            const response = await requestScreenshot();
+
+            expect(captureScreenshot.getCall(0).args[0]).to.eql({ device: { host: '1.2.3.4' }, password: 'lan-password' });
+            expect(response.success).to.be.true;
+            expect(Buffer.from(response.bytes)).to.eql(Buffer.from([1, 2, 3]));
+        });
+
+        it('follows RTA to another device and fails once RTA lets go of it', async () => {
+            createProvider();
+            pointRtaAtLanDevice('1.2.3.4');
+            pointRtaAtLanDevice('5.6.7.8', 'other-password');
+
+            await requestScreenshot();
+            expect(captureScreenshot.getCall(0).args[0]).to.eql({ device: { host: '5.6.7.8' }, password: 'other-password' });
+
+            rtaManager.device = undefined;
+            const response = await requestScreenshot();
+            expect(response.success).to.be.false;
+            expect(captureScreenshot.callCount).to.equal(1);
+        });
+
+        it('copies exactly the captured bytes when the buffer is a view into a larger allocation', async () => {
+            createProvider();
+            pointRtaAtLanDevice();
+            captureScreenshot.resolves({ buffer: Buffer.from([9, 9, 1, 2, 3, 9]).subarray(2, 5), format: 'png' });
+
+            const response = await requestScreenshot();
+
+            expect(Array.from(new Uint8Array(response.bytes))).to.eql([1, 2, 3]);
+        });
+
+        it('passes the device reported format through', async () => {
+            createProvider();
+            pointRtaAtLanDevice();
+            captureScreenshot.resolves({ buffer: Buffer.from([1]), format: 'jpg' });
+
+            expect((await requestScreenshot()).format).to.equal('jpg');
+        });
+
+        it('reports a failure message when the capture fails', async () => {
+            createProvider();
+            pointRtaAtLanDevice();
+            captureScreenshot.rejects(new Error('device offline'));
+
+            expect(await requestScreenshot()).to.include({ success: false, message: 'device offline' });
+        });
+
+        it('returns the configured capture delay, defaulting to 500', async () => {
+            createProvider();
+            pointRtaAtLanDevice();
+
+            expect((await requestScreenshot()).nextCaptureDelay).to.equal(500);
+
+            (vscode.workspace as any)._configuration[delayConfigurationKey] = 1200;
+            expect((await requestScreenshot()).nextCaptureDelay).to.equal(1200);
+
+            (vscode.workspace as any)._configuration[delayConfigurationKey] = 0;
+            expect((await requestScreenshot()).nextCaptureDelay).to.equal(0);
+        });
+
+        it('captures the streamed Cloud Emulator device with a fresh token and the resolved password', async () => {
+            createProvider();
+            await startFirstSession();
+            getToken.resolves('fresh-token');
+
+            const response = await requestScreenshot({ streaming: true });
+
+            expect(response.success).to.be.true;
+            expect(resolveValidatedPassword.getCall(0).args[0]).to.eql({ id: 5, rceToken: 'fresh-token' });
+            expect(captureScreenshot.getCall(0).args[0]).to.eql({ device: { id: 5, rceToken: 'fresh-token' }, password: 'aaaa' });
+        });
+
+        it('fails when the password prompt is cancelled', async () => {
+            createProvider();
+            await startFirstSession();
+            resolveValidatedPassword.resolves(undefined);
+
+            const response = await requestScreenshot({ streaming: true });
+
+            expect(response.success).to.be.false;
+            expect(captureScreenshot.called).to.be.false;
+        });
+
+        it('passes the known device serial number and display name to the password flow', async () => {
+            createProvider();
+            await startFirstSession();
+            getDeviceByDeviceConfig.returns({ serialNumber: 'ESN1', key: 's:ESN1', deviceInfo: { 'user-device-name': 'Living Room' } });
+
+            await requestScreenshot({ streaming: true });
+
+            expect(resolveValidatedPassword.getCall(0).args[1]).to.equal('ESN1');
+            expect(resolveValidatedPassword.getCall(0).args[2]).to.equal('Living Room');
+        });
+
+        it('serves the video editor tabs through the internal capture command', async () => {
+            const handlers: Record<string, (...args: any[]) => Promise<any>> = {};
+            sinon.stub(vscode.commands, 'registerCommand').callsFake((command: string, callback: any) => {
+                handlers[command] = callback;
+                return { dispose: () => { } } as any;
+            });
+            createProvider();
+
+            const screenshot = await handlers[VscodeCommand.rokuDeviceViewCaptureRceScreenshot](7, 'tab-device');
+
+            expect(resolveValidatedPassword.getCall(0).args[0].id).to.equal(7);
+            expect(resolveValidatedPassword.getCall(0).args[2]).to.equal('tab-device');
+            expect(screenshot.format).to.equal('png');
+        });
+    });
+
+    describe('screenshot hold while a debug session starts', () => {
+        it('resumes every held request, not just the latest', async () => {
+            sinon.stub(rokuDeploy, 'captureScreenshot').resolves({ buffer: Buffer.from([1]), format: 'png' });
+            createProvider();
+            provider.onDidStartDebugSession({} as any);
+
+            const callback = provider['messageCommandCallbacks'][ViewProviderCommand.getScreenshot];
+            let settledCount = 0;
+            const first = callback({ command: ViewProviderCommand.getScreenshot, context: {} }).then(() => settledCount++);
+            const second = callback({ command: ViewProviderCommand.getScreenshot, context: {} }).then(() => settledCount++);
+            await flushMicrotasks();
+            expect(settledCount).to.equal(0);
+
+            provider.onDidTerminateDebugSession({} as any);
+            await Promise.all([first, second]);
+
+            expect(settledCount).to.equal(2);
+        });
+    });
+
+    describe('copy screenshot command', () => {
+        it('focuses the view instead of throwing when it has not been created yet', async () => {
+            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').callsFake(() => Promise.resolve() as any);
+            const handlers: Record<string, () => Promise<void>> = {};
+            sinon.stub(vscode.commands, 'registerCommand').callsFake((command: string, callback: any) => {
+                handlers[command] = callback;
+                return { dispose: () => { } } as any;
+            });
+            createProvider();
+
+            await handlers[VscodeCommand.rokuDeviceViewCopyScreenshot]();
+
+            expect(executeCommand.calledWith('rokuDeviceView.focus')).to.be.true;
+            expect(findEventMessages(ViewProviderEvent.onVscodeCommandReceived)[0].context.commandName).to.equal(VscodeCommand.rokuDeviceViewCopyScreenshot);
         });
     });
 
