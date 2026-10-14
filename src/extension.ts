@@ -38,6 +38,7 @@ import type { CustomRequestEvent, ProcessCrashEventData } from 'roku-debug';
 import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent, isProcessStagingDirCustomRequest } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { debugSessionManager } from './managers/DebugSessionManager';
+import { DebugMcpManager } from './debugMcp/DebugMcpManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
 import { DiagnosticManager } from './managers/DiagnosticManager';
@@ -379,6 +380,7 @@ export class Extension {
             debugSessionManager.onDidStartSession(this.onDidStartDebugSession.bind(this)),
             debugSessionManager.onDidTerminateSession(this.onDidTerminateDebugSession.bind(this))
         );
+        new DebugMcpManager(context, (message) => this.extensionOutputChannel.appendLine(message)).register();
 
         let brightscriptConfig = util.getConfiguration('brightscript');
         if (brightscriptConfig?.outputPanelStartupBehavior) {

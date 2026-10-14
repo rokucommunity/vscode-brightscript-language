@@ -56,6 +56,7 @@
         "sync-launch-settings": "ts-node scripts/sync-launch-settings.ts"
     },
     "dependencies": {
+        "@modelcontextprotocol/sdk": "~1.17.5",
         "@rokucommunity/logger": "^0.4.2",
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
@@ -1851,6 +1852,30 @@
             }
         ],
         "configuration": [
+            {
+                "id": "debugMcp",
+                "title": "Debugger MCP",
+                "properties": {
+                    "brightscript.debugMcp.enabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Run a local MCP server inside this VS Code window so AI agents (Claude Code, Claude Desktop) can inspect and control BrightScript debug sessions. Use the \"Add Debugger MCP Server to Claude Code\" command to connect an agent.",
+                        "scope": "window"
+                    },
+                    "brightscript.debugMcp.confirmLaunch": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Ask for confirmation in a modal prompt before an agent starts or restarts a debug session through the Debugger MCP server.",
+                        "scope": "window"
+                    },
+                    "brightscript.debugMcp.confirmEvaluate": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Ask for confirmation in a modal prompt, showing the expression, before an agent evaluates an expression in the debugger through the Debugger MCP server.",
+                        "scope": "window"
+                    }
+                }
+            },
             {
                 "id": "formatting",
                 "title": "Formatting",
@@ -3673,6 +3698,21 @@
             }
         ],
         "commands": [
+            {
+                "command": "extension.brightscript.debugMcp.addToClaudeCode",
+                "title": "Add Debugger MCP Server to Claude Code",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.debugMcp.addToClaudeDesktop",
+                "title": "Add Debugger MCP Server to Claude Desktop",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.debugMcp.copyConfig",
+                "title": "Copy Debugger MCP Server Config",
+                "category": "BrightScript"
+            },
             {
                 "command": "extension.brightscript.openSolidDevtoolsInPanel",
                 "title": "Open Solid Devtools In New Window",
