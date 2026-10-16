@@ -19,7 +19,7 @@ Module.prototype.require = function hijacked(file) {
 
 import { LaunchStartEvent, LogOutputEvent } from 'roku-debug';
 import { DeclarationProvider } from '../DeclarationProvider';
-import { BrightScriptLogOutput, MAX_HISTORY_LINES } from './BrightScriptLogOutput';
+import { BrightScriptLogOutput } from './BrightScriptLogOutput';
 
 const tempDir = path.join(process.cwd(), '.tmp', 'BrightScriptLogOutput');
 
@@ -101,7 +101,6 @@ describe('BrightScriptLogOutput', () => {
         it('writes each line once', async () => {
             await log('one\r\ntwo\nthree\n');
             expect(channelLines).to.eql(['one', 'two', 'three']);
-            expect(logOutput['history'].map(x => x.text)).to.eql(['one', 'two', 'three']);
         });
 
         it('keeps empty lines', async () => {
@@ -119,14 +118,6 @@ describe('BrightScriptLogOutput', () => {
             expect(channelLines).to.eql(['crash &hF4 (ERR_RO2: member function not found in object or interface)  here']);
         });
 
-        it('caps the history', () => {
-            const lineCount = MAX_HISTORY_LINES + (MAX_HISTORY_LINES / 10) + 1;
-            for (let i = 0; i < lineCount; i++) {
-                logOutput.appendLine(`line ${i}`);
-            }
-            expect(logOutput['history'].length).to.equal(MAX_HISTORY_LINES);
-            expect(logOutput['history'][MAX_HISTORY_LINES - 1].text).to.equal(`line ${lineCount - 1}`);
-        });
     });
 
     describe('debugger noise', () => {
@@ -170,53 +161,13 @@ describe('BrightScriptLogOutput', () => {
         });
     });
 
-    describe('filters', () => {
-        beforeEach(async () => {
-            await log('[INFO] apple\n[WARN] banana\n[INFO] cherry');
-        });
-
-        it('applies the include filter to existing and new lines', async () => {
-            logOutput.setIncludeFilter('an');
-            expect(channelLines).to.eql(['[WARN] banana']);
-            await log('[INFO] mango');
-            expect(channelLines).to.eql(['[WARN] banana', '[INFO] mango']);
-        });
-
-        it('applies the exclude filter', () => {
-            logOutput.setExcludeFilter('apple');
-            expect(channelLines).to.eql(['[WARN] banana', '[INFO] cherry']);
-        });
-
-        it('applies the level filter', () => {
-            logOutput.setLevelFilter('\\[INFO\\]');
-            expect(channelLines).to.eql(['[INFO] apple', '[INFO] cherry']);
-        });
-
-        it('shows everything again once the filter is cleared', () => {
-            logOutput.setIncludeFilter('banana');
-            logOutput.setIncludeFilter('');
-            expect(channelLines).to.eql(['[INFO] apple', '[WARN] banana', '[INFO] cherry']);
-        });
-
-        it('keeps marks regardless of the include filter, but not the exclude filter', () => {
-            logOutput.markOutput();
-            logOutput.setIncludeFilter('banana');
-            expect(channelLines).to.eql(['[WARN] banana', '---------------------- MARK 0 ----------------------']);
-            logOutput.setExcludeFilter('MARK');
-            expect(channelLines).to.eql(['[WARN] banana']);
-        });
-
-        it('clears the channel when nothing matches', () => {
-            logOutput.setIncludeFilter('nothing matches this');
-            expect(channelLines).to.eql([]);
-        });
-
-        it('rejects an invalid regex without changing the filter', async () => {
-            const errorStub = sinon.stub(vscode.window, 'showErrorMessage' as any);
-            sinon.stub(vscode.window, 'showInputBox').resolves('(' as any);
-            await logOutput['promptForFilter']('', undefined, (text) => logOutput.setIncludeFilter(text));
-            expect(errorStub.calledOnce).to.be.true;
-            expect(channelLines).to.eql(['[INFO] apple', '[WARN] banana', '[INFO] cherry']);
+    describe('filter commands', () => {
+        it('point the user to the Output panel filter', async () => {
+            const showStub = sinon.stub(outputChannel, 'show');
+            const messageStub = sinon.stub(vscode.window, 'showInformationMessage').returns(Promise.resolve(undefined) as any);
+            await logOutput['showFilterHelp']();
+            expect(showStub.calledOnce).to.be.true;
+            expect(messageStub.getCall(0).args[0]).to.include('filter box');
         });
     });
 
@@ -304,21 +255,6 @@ describe('BrightScriptLogOutput', () => {
             expect((declarationProvider.getFunctionBeforeLine as any).called).to.be.false;
         });
 
-        it('only looks up each line once, even when re-filtering', async () => {
-            await log('pkg:/source/main.brs(12) hello');
-            logOutput.setIncludeFilter('hello');
-            logOutput.setIncludeFilter('');
-            expect((declarationProvider.getFunctionBeforeLine as any).callCount).to.equal(1);
-        });
-
-        it('moves links to their new lines when re-filtering', async () => {
-            useFormat('Full');
-            await log('apple\npkg:/source/main.brs(12) hello\npkg:/source/main.brs(13) world');
-            logOutput.setExcludeFilter('apple');
-            expect(channelLines).to.eql(['pkg:/source/main.brs(12) hello', 'pkg:/source/main.brs(13) world']);
-            expect(links().map(x => x.line)).to.eql([0, 1]);
-        });
-
         it('only provides links for the BrightScript Log channel', async () => {
             await log('pkg:/source/main.brs(12) hello');
             expect(logOutput.provideDocumentLinks(document('extension-output-vscode.git-#1-Git'))).to.eql([]);
@@ -373,11 +309,10 @@ describe('BrightScriptLogOutput', () => {
     });
 
     describe('logfile', () => {
-        it('writes the shown lines to the logfile', async () => {
+        it('writes every line to the logfile', async () => {
             const logfilePath = path.join(tempDir, 'log.txt');
             await logOutput.setLaunchConfig({ logfilePath: logfilePath } as any);
-            logOutput.setExcludeFilter('hidden');
-            await log('one\nhidden\ntwo');
+            await log('one\ntwo');
 
             const stream = logOutput['logfile'].stream;
             logOutput.dispose();
