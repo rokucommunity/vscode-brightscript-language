@@ -259,7 +259,7 @@ export class Extension {
         const debugTsEvents = false;
         const logTsEvents = (cb: () => any[]) => {
             if (debugTsEvents) {
-                console.log(...cb());
+                logger.log(...cb());
             }
         }; // set to true to enable debug logging for this feature
         context.subscriptions.push(
@@ -419,7 +419,7 @@ export class Extension {
                 if (target) {
                     return this.attachJsDebugger(debugSession, target);
                 }
-            }).catch(e => console.error(e));
+            }).catch(e => logger.error(e));
             this.diagnosticManager.clear();
         }
     }
@@ -551,7 +551,7 @@ export class Extension {
             // the modal as fast as the user can dismiss it. Bail instead — attach cannot succeed
             // without the rootDir, and it will be retried the next time a debug session starts.
             if (!fsExtra.existsSync(target.rootDir)) {
-                console.error(`Cannot attach node debugger: rootDir does not exist at '${target.rootDir}'`);
+                logger.error(`Cannot attach node debugger: rootDir does not exist at '${target.rootDir}'`);
                 //don't leave the relay listening with nothing left to attach to it
                 this.jsDebugProxyManager.stop(parentSession.id);
                 return false;
@@ -636,7 +636,7 @@ export class Extension {
                     return true;
                 }
             } catch (e) {
-                console.error(e);
+                logger.error(e);
             }
         }
         // Parent session ended while we were trying to attach; stop() is idempotent

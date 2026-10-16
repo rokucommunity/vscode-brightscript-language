@@ -129,7 +129,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
             return; // the view/panel was disposed
         }
         webview?.postMessage(message).then(null, (reason) => {
-            console.log('postMessage failed: ', reason);
+            logger.log('postMessage failed: ', reason);
         });
     }
 

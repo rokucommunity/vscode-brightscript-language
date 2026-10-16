@@ -875,7 +875,7 @@ export class BrightScriptCommands {
 
         const device = await this.resolveActiveDeviceConfig(target);
         if (device) {
-            console.log('sending keypress', key);
+            logger.log('sending keypress', key);
             //keyPress enforces the canonical RemoteKeyText names at the type level, but this sends
             //dynamic keys - command-supplied names and `Lit_`-prefixed literal characters - so cast
             //rather than narrow what we can send

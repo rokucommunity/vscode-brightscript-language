@@ -169,10 +169,10 @@ export class DeviceManager {
         this.extraDeviceProviders.push(provider);
         this.context.subscriptions.push(
             provider.onDidChange(() => {
-                this.loadConfiguredDevices().catch(e => console.error(e));
+                this.loadConfiguredDevices().catch(e => logger.error(e));
             })
         );
-        this.loadConfiguredDevices().catch(e => console.error(e));
+        this.loadConfiguredDevices().catch(e => logger.error(e));
     }
 
     private setupWindowFocusHandling() {
@@ -681,7 +681,7 @@ export class DeviceManager {
             try {
                 void provider.refresh?.();
             } catch (e) {
-                console.error(e);
+                logger.error(e);
             }
         }
         this.healthCheckAllDevices(force, doSyntheticDelay).catch(() => { });
@@ -957,7 +957,7 @@ export class DeviceManager {
             try {
                 addDevicesFromScope(provider.getConfiguredDevices(), 'rokuDevConfig');
             } catch (e) {
-                console.error(e);
+                logger.error(e);
             }
         }
         addDevicesFromScope(userDevices, 'user');
