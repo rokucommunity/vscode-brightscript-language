@@ -11,6 +11,9 @@ import { buildWebviewIndexHtml } from '../viewProviders/webviewHtml';
 import type { RceDevice } from 'roku-deploy';
 import type { RceManager, RceStreamRequestConfig } from './RceManager';
 import type { RceFinder } from '../deviceDiscovery/RceFinder';
+import { createLogger } from '../logging';
+
+const logger = createLogger('RceVideoEditorManager');
 
 /**
  * Owns the Cloud Emulator video editor tabs: one WebviewPanel per device, each rendering that
@@ -378,7 +381,7 @@ class RceVideoEditorPanel implements vscode.Disposable {
             }
             this.postOrQueueMessage({ ...message, response: { success: true } });
         } else {
-            console.warn('Did not handle rce video editor message', message);
+            logger.warn('Did not handle rce video editor message', message);
         }
     }
 
@@ -392,7 +395,7 @@ class RceVideoEditorPanel implements vscode.Disposable {
 
     private postMessage(message) {
         this.panel.webview.postMessage(message).then(null, (reason) => {
-            console.log('postMessage failed: ', reason);
+            logger.log('postMessage failed: ', reason);
         });
     }
 

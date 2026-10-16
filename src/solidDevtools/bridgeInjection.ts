@@ -1,5 +1,8 @@
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
+import { createLogger } from '../logging';
+
+const logger = createLogger('bridgeInjection');
 
 /**
  * Injects the Solid Devtools on-device bridge into a staged RSG/TypeScript app bundle.
@@ -92,7 +95,7 @@ async function getTsBundlePath(stagingDir: string): Promise<string | undefined> 
  * never rejects (a failed injection must not break the launch).
  */
 export async function injectDevtoolsBridge(options: DevtoolsBridgeInjectionOptions): Promise<DevtoolsBridgeInjectionResult> {
-    const log = options.log ?? ((message: string) => console.log(message));
+    const log = options.log ?? ((message: string) => logger.log(message));
     const skip = (reason: string): DevtoolsBridgeInjectionResult => {
         log(`Skipping devtools bridge injection: ${reason}`);
         return { injected: false, connected: false, reason: reason };
@@ -174,7 +177,7 @@ export interface DevtoolsBridgeInjectionOptions {
     stagingDir: string;
     /** Absolute path to the extension-built bridge JS (a self-contained IIFE) */
     devtoolsBridgePath: string;
-    /** Where to log progress/skips (defaults to console.log) */
+    /** Where to log progress/skips (defaults to the extension logger) */
     log?: (message: string) => void;
 }
 

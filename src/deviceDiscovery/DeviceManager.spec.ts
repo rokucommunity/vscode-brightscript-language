@@ -1134,6 +1134,12 @@ describe('DeviceManager', () => {
             expect(validateStub.firstCall.args[0]).to.deep.equal({ device: { host: '192.168.1.100' }, password: 'rokudev' });
         });
 
+        it('forwards the installer port to roku-deploy when one is given', async () => {
+            validateStub.resolves(true);
+            await manager.validateDevicePassword({ host: '127.0.0.1' }, 'rokudev', 8084);
+            expect(validateStub.firstCall.args[0]).to.deep.equal({ device: { host: '127.0.0.1' }, password: 'rokudev', port: 8084 });
+        });
+
         it(`returns 'bad-password' when the device rejects the credentials`, async () => {
             validateStub.resolves(false);
             const result = await manager.validateDevicePassword({ host: '192.168.1.100' }, 'wrong');
