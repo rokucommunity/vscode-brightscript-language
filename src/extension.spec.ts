@@ -1,10 +1,14 @@
 import { expect } from 'chai';
 import { createSandbox } from 'sinon';
+import * as fsExtra from 'fs-extra';
+import * as os from 'os';
+import * as path from 'path';
 let Module = require('module');
 import { Extension } from './extension';
 import { vscode, vscodeLanguageClient } from './mockVscode.spec';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { languageServerManager } from './LanguageServerManager';
+import { debugSessionManager } from './managers/DebugSessionManager';
 
 const sinon = createSandbox();
 
@@ -242,6 +246,233 @@ describe('extension', () => {
             );
 
             expect(executeStub.called).to.be.false;
+        });
+    });
+
+    describe('attachJsDebugger (JS debug proxy staging race)', () => {
+        //`localRoot` is always staging-derived (cb677a2) - `resolveJsDebugTarget` only GUESSES the
+        //stagingDir from launch.json, and roku-debug reports the AUTHORITATIVE one later via the
+        //`processStagingDir` reverse request. Separately, a previous app instance may still be
+        //listening on the device when this session starts, so `attachJsDebugger` must not attempt
+        //the first attach until roku-debug's ChannelPublished event confirms the device is running
+        //THIS session's (newly sideloaded) app - staging-known alone only supplies the authoritative
+        //stagingDir for localRoot, it does not clear the attach to attempt (unless the user has
+        //disabled ChannelPublished entirely - see the `emitChannelPublishedEvent` test below).
+        let tempDir: string;
+        let rootDir: string;
+        let guessedStagingDir: string;
+        let actualStagingDir: string;
+        let parentSession: any;
+
+        //minimal fake - the real LogOutputManager isn't wired up in these tests, and passing null
+        //(as this file used to) throws inside the handler's tail call on every event
+        const fakeLogOutputManager: any = { onDidReceiveDebugSessionCustomEvent: async () => { } };
+
+        function jsDebugTarget(stagingDir: string, kind: 'main' | 'componentLibrary' = 'main') {
+            return { tsPath: parentSession.configuration.tsPath, rootDir: rootDir, stagingDir: stagingDir, kind: kind };
+        }
+
+        function processStagingDirEvent(stagingDir: string) {
+            return {
+                event: 'CustomRequestEvent',
+                body: {
+                    name: 'processStagingDir',
+                    requestId: 1,
+                    projects: [{ type: 'main', stagingDir: stagingDir }]
+                }
+            };
+        }
+
+        function channelPublishedEvent(session: any) {
+            return {
+                event: 'ChannelPublishedEvent',
+                session: session,
+                body: {
+                    launchConfiguration: session.configuration
+                }
+            };
+        }
+
+        //drives the real handler path rather than poking the entry directly; the real handler also
+        //forwards to webviewViewProviderManager -> RtaManager, which would otherwise attempt real
+        //network I/O against the fabricated host, so that call is stubbed away first
+        function fireChannelPublished(session: any) {
+            sinon.stub(extension['webviewViewProviderManager'], 'onChannelPublishedEvent');
+            return extension['debugSessionCustomEventHandler'](channelPublishedEvent(session) as any, vscode.context, {} as any, fakeLogOutputManager, {} as any);
+        }
+
+        function sleep(ms: number) {
+            return new Promise<void>(resolve => {
+                setTimeout(resolve, ms);
+            });
+        }
+
+        beforeEach(() => {
+            tempDir = path.join(os.tmpdir(), `extension-spec-jsdebug-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+            rootDir = path.join(tempDir, 'root');
+            guessedStagingDir = path.join(tempDir, 'staging-guess');
+            actualStagingDir = path.join(tempDir, 'staging-actual');
+            //the retry loop bails when rootDir doesn't exist, so that much always has to be real
+            fsExtra.outputFileSync(path.join(rootDir, 'source', 'compiled', 'index.js'), '//pristine (pre-injection) bundle');
+
+            (vscode.workspace as any).workspaceFolders = [{ uri: { fsPath: rootDir } }];
+
+            parentSession = {
+                id: 'brs-session-1',
+                type: 'brightscript',
+                name: 'Launch',
+                configuration: {
+                    type: 'brightscript',
+                    tsPath: 'pkg:/source/compiled/index.js',
+                    rootDir: rootDir,
+                    stagingDir: guessedStagingDir,
+                    host: '192.168.1.5'
+                },
+                customRequest: () => Promise.resolve()
+            };
+            //`attachJsDebugger`'s retry loop (and its staging-ready wait) is gated on
+            //`debugSessionManager.isLive(parentSession)`; poke the manager's live-session set
+            //directly rather than routing through vscode.debug's (unwired-in-tests) start event,
+            //so this test touches no shared event-emitter state.
+            (debugSessionManager as any).liveSessions.set(parentSession.id, parentSession);
+        });
+
+        afterEach(() => {
+            (debugSessionManager as any).liveSessions.delete(parentSession.id);
+            fsExtra.removeSync(tempDir);
+        });
+
+        it('waits for channel-published before attaching (even once staging is known), and uses the authoritative stagingDir', async () => {
+            await extension.activate(vscode.context);
+
+            const startDebuggingStub = sinon.stub(vscode.debug, 'startDebugging').resolves(true);
+
+            const attachPromise: Promise<boolean> = extension['attachJsDebugger'](parentSession, jsDebugTarget(guessedStagingDir));
+
+            //give the wait loop a few poll cycles to run - it must not attach yet
+            await sleep(120);
+            expect(startDebuggingStub.called).to.be.false;
+
+            //simulate roku-debug's `processStagingDir` reverse request arriving, reporting a
+            //DIFFERENT stagingDir than what `resolveJsDebugTarget` guessed - staging alone must
+            //NOT unblock the attach attempt
+            await extension['processCustomRequestEvent'](processStagingDirEvent(actualStagingDir) as any, parentSession);
+            await sleep(120);
+            expect(startDebuggingStub.called).to.be.false;
+
+            //now simulate the authoritative "device is running THIS session's app" signal
+            await fireChannelPublished(parentSession);
+
+            expect(await attachPromise).to.be.true;
+            expect(startDebuggingStub.calledOnce).to.be.true;
+            const debugConfig = (startDebuggingStub.getCall(0).args as any[])[1];
+            const expectedLocalRoot = path.join(actualStagingDir, 'source', 'compiled');
+            expect(debugConfig.localRoot).to.equal(expectedLocalRoot);
+            expect(debugConfig.outFiles).to.deep.equal([`${expectedLocalRoot.replace(/\\/g, '/')}/*.js`]);
+        });
+
+        it('attaches immediately when channel-published already arrived before attachJsDebugger started waiting', async () => {
+            await extension.activate(vscode.context);
+            const startDebuggingStub = sinon.stub(vscode.debug, 'startDebugging').resolves(true);
+
+            //the pre-created entry (channelPublished already true) must gate the wait open right away
+            await fireChannelPublished(parentSession);
+
+            const attached = await extension['attachJsDebugger'](parentSession, jsDebugTarget(guessedStagingDir));
+
+            expect(attached).to.be.true;
+            expect(startDebuggingStub.calledOnce).to.be.true;
+        });
+
+        it('attaches with the best-known (guessed) stagingDir once the grace period elapses with no channel-published signal', async () => {
+            await extension.activate(vscode.context);
+            //shrink the grace period so the test doesn't actually wait 30s
+            extension['jsAttachStagingGraceMs'] = 100;
+
+            const startDebuggingStub = sinon.stub(vscode.debug, 'startDebugging').resolves(true);
+
+            const attached = await extension['attachJsDebugger'](parentSession, jsDebugTarget(guessedStagingDir));
+
+            expect(attached).to.be.true;
+            expect(startDebuggingStub.calledOnce).to.be.true;
+            const debugConfig = (startDebuggingStub.getCall(0).args as any[])[1];
+            const expectedLocalRoot = path.join(guessedStagingDir, 'source', 'compiled');
+            expect(debugConfig.localRoot).to.equal(expectedLocalRoot);
+        });
+
+        it('picks up a late authoritative stagingDir on the NEXT attempt after the grace timeout, and logs the switch', async () => {
+            await extension.activate(vscode.context);
+            extension['jsAttachStagingGraceMs'] = 100;
+            const appendLineSpy = sinon.spy(extension.extensionOutputChannel, 'appendLine');
+
+            const startDebuggingStub = sinon.stub(vscode.debug, 'startDebugging').callsFake(async () => {
+                if (startDebuggingStub.callCount === 1) {
+                    //the authoritative stagingDir arrives only now - AFTER the grace timeout already
+                    //gave up waiting and the first (failed) attempt went out with the guess
+                    await extension['processCustomRequestEvent'](processStagingDirEvent(actualStagingDir) as any, parentSession);
+                    return false;
+                }
+                return true;
+            });
+
+            const attached = await extension['attachJsDebugger'](parentSession, jsDebugTarget(guessedStagingDir));
+
+            expect(attached).to.be.true;
+            expect(startDebuggingStub.callCount).to.equal(2);
+            const firstConfig = (startDebuggingStub.getCall(0).args as any[])[1];
+            const secondConfig = (startDebuggingStub.getCall(1).args as any[])[1];
+            expect(firstConfig.localRoot).to.equal(path.join(guessedStagingDir, 'source', 'compiled'));
+            expect(secondConfig.localRoot).to.equal(path.join(actualStagingDir, 'source', 'compiled'));
+            expect(appendLineSpy.getCalls().some(call => String(call.args[0]).includes('differed from actual'))).to.be.true;
+        });
+
+        it('does not attempt to attach if the parent session dies while waiting for channel-published', async () => {
+            await extension.activate(vscode.context);
+
+            const startDebuggingStub = sinon.stub(vscode.debug, 'startDebugging').resolves(true);
+            const stopSpy = sinon.spy(extension['jsDebugProxyManager'], 'stop');
+
+            const attachPromise: Promise<boolean> = extension['attachJsDebugger'](parentSession, jsDebugTarget(guessedStagingDir));
+
+            //give the wait loop a poll cycle, then kill the parent session before channel-published arrives
+            await sleep(60);
+            (debugSessionManager as any).liveSessions.delete(parentSession.id);
+
+            expect(await attachPromise).to.be.false;
+            expect(startDebuggingStub.called).to.be.false;
+            expect(stopSpy.calledWith(parentSession.id)).to.be.true;
+        });
+
+        it('removes the staging entry when the BRS session terminates', async () => {
+            await extension.activate(vscode.context);
+
+            await extension['processCustomRequestEvent'](processStagingDirEvent(actualStagingDir) as any, parentSession);
+            expect(extension['stagingReadyByParentSessionId'].has(parentSession.id)).to.be.true;
+
+            extension['onDidTerminateDebugSession'](parentSession);
+
+            expect(extension['stagingReadyByParentSessionId'].has(parentSession.id)).to.be.false;
+        });
+
+        it('attaches once staging is known, without waiting for channel-published, when emitChannelPublishedEvent is disabled', async () => {
+            //documented user escape hatch (package.json brightscript.debug.emitChannelPublishedEvent) -
+            //roku-debug never emits the event, so gate on staging-known instead
+            parentSession.configuration.emitChannelPublishedEvent = false;
+            await extension.activate(vscode.context);
+
+            const startDebuggingStub = sinon.stub(vscode.debug, 'startDebugging').resolves(true);
+
+            const attachPromise: Promise<boolean> = extension['attachJsDebugger'](parentSession, jsDebugTarget(guessedStagingDir));
+
+            //give the wait loop a couple poll cycles - staging isn't known yet, so no attach
+            await sleep(80);
+            expect(startDebuggingStub.called).to.be.false;
+
+            await extension['processCustomRequestEvent'](processStagingDirEvent(actualStagingDir) as any, parentSession);
+
+            expect(await attachPromise).to.be.true;
+            const debugConfig = (startDebuggingStub.getCall(0).args as any[])[1];
+            expect(debugConfig.localRoot).to.equal(path.join(actualStagingDir, 'source', 'compiled'));
         });
     });
 

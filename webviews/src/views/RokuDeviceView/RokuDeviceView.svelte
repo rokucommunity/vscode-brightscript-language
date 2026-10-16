@@ -1,14 +1,15 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
     import { intermediary } from '../../ExtensionIntermediary';
-    import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
+    import ConnectToDeviceButton from '../../shared/ConnectToDeviceButton.svelte';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import type { AppUIResponseChild, AppUIResponse } from 'roku-test-automation';
-    import { utils as rtaUtils } from 'roku-test-automation/client/dist/utils';
+    import { utils as rtaUtils } from 'roku-test-automation/dist/utils';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
+    import RceStreamView from '../../shared/RceStreamView.svelte';
 
     window.vscode = acquireVsCodeApi();
 
@@ -17,6 +18,30 @@
         deviceAvailable = message.context.deviceAvailable;
         requestScreenshot();
     });
+
+    //Roku Cloud Emulator video stream mode: entered when the extension host negotiates a Janus
+    //session and posts its offer here; replaces the screenshot view until Stop is clicked. The
+    //stream itself (peer connection, header, error banner) lives in the shared RceStreamView
+    //component - this view only tracks whether stream mode is active so it can route between the
+    //stream and the screenshot/setup views.
+    let rceStreamActive = false;
+
+    intermediary.observeEvent(ViewProviderEvent.onRceStreamConnecting, () => {
+        rceStreamActive = true;
+    });
+
+    intermediary.observeEvent(ViewProviderEvent.onRceStreamError, () => {
+        //an early failure (before onRceStreamConnecting reached this webview instance) still enters
+        //stream mode so RceStreamView has somewhere to show the error
+        rceStreamActive = true;
+    });
+
+    function onRceStreamStopped() {
+        rceStreamActive = false;
+        if (enableScreenshotCaptureAutoRefresh) {
+            requestScreenshot();
+        }
+    }
 
     let shouldRepositionNodeInfo = false;
 
@@ -230,7 +255,7 @@
 
     let currentlyCapturingScreenshot = false;
     async function requestScreenshot() {
-        if (!deviceAvailable || currentlyCapturingScreenshot) {
+        if (!deviceAvailable || currentlyCapturingScreenshot || rceStreamActive) {
             return;
         }
 
@@ -309,19 +334,62 @@
     #container {
         width: 100%;
         height: 100%;
+        display: flex;
+        flex-direction: column;
     }
 
-    img {
-        max-width: 100vw;
-        max-height: 100vh;
+    /* reserves exactly the space left over in the column for the screenshot/connect box, top-docked
+       like RceStreamView's stage so any leftover space lands below it; container-type: size feeds
+       the cq calc below */
+    .screenshotStage {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        container-type: size;
     }
 
     #screenshotContainer {
-        margin-left: auto;
-        margin-right: auto;
         --overlayStrokeSize: 3px;
         --overlayColor: orange;
         position: relative;
+        aspect-ratio: 16 / 9;
+        /* the largest 16:9 box that fits the stage's height, capped at its width */
+        width: min(100%, calc(100cqh * 16 / 9));
+        background-color: black;
+        overflow: hidden;
+    }
+
+    #screenshot {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+
+    .screenshotPlaceholder {
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        text-align: center;
+        padding: 10px;
+    }
+
+    .connectDeviceBox {
+        aspect-ratio: 16 / 9;
+        /* the largest 16:9 box that fits the stage's height minus the button row below it */
+        width: min(100%, calc((100cqh - 40px) * 16 / 9));
+        background-color: black;
+    }
+
+    .connectDeviceButtonRow {
+        display: flex;
+        justify-content: center;
+        padding: 8px 10px;
     }
 
     .isInspectingNodes {
@@ -376,36 +444,46 @@
 
 <svelte:window on:keydown={onKeydown} />
 <div id="container" on:mouseenter="{onMouseEnter}" on:mouseleave="{onMouseLeave}">
-    {#if deviceAvailable}
-    <div
-        id="screenshotContainer"
-        class:isInspectingNodes="{isInspectingNodes}"
-        bind:clientWidth={screenshotContainerWidth}
-        bind:clientHeight={screenshotContainerHeight}
-        on:mousemove={onImageMouseMove}
-        on:mousedown={onMouseDown}
-        data-vscode-context={'{"preventDefaultContextMenuItems": true}'}>
+    <RceStreamView showCloseButton={true} on:stopped={onRceStreamStopped} />
+    {#if rceStreamActive}
+        <!-- RceStreamView above renders the stream; nothing else shows in stream mode -->
+    {:else if deviceAvailable}
+    <div class="screenshotStage">
+        <div
+            id="screenshotContainer"
+            class:isInspectingNodes="{isInspectingNodes}"
+            bind:clientWidth={screenshotContainerWidth}
+            bind:clientHeight={screenshotContainerHeight}
+            on:mousemove={onImageMouseMove}
+            on:mousedown={onMouseDown}
+            data-vscode-context={'{"preventDefaultContextMenuItems": true}'}>
 
-        <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
-        <div class:hide={!focusedNode} id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
+            <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;"></div>
+            <div class:hide={!focusedNode} id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px"></div>
 
-        <!-- only show image if we have a url to avoid showing as broken image -->
-        {#if screenshotUrl}
-            <img
-                id="screenshot"
-                alt="Screenshot from Roku device"
-                src="{screenshotUrl}" />
-        {/if}
+            <!-- only show image if we have a url to avoid showing as broken image -->
+            {#if screenshotUrl}
+                <img
+                    id="screenshot"
+                    alt="Screenshot from Roku device"
+                    src="{screenshotUrl}" />
+            {:else}
+                <div class="screenshotPlaceholder">Waiting for a screenshot</div>
+            {/if}
 
+        </div>
     </div>
     {:else}
-        <div style="margin: 0 10px">
-            <OdcSetManualIpAddress />
+        <div class="screenshotStage">
+            <div class="connectDeviceBox"></div>
+            <div class="connectDeviceButtonRow">
+                <ConnectToDeviceButton showCaption={false} />
+            </div>
         </div>
     {/if}
 </div>
 
-{#if focusedNode}
+{#if focusedNode && !rceStreamActive}
     <div id="nodeInfo" class:reposition={shouldRepositionNodeInfo}>
         {#if currentPositionMatches.length}
             {currentPositionMatchesIndex + 1} of {currentPositionMatches.length} <span class="note">(use arrow keys to see others)</span><br>

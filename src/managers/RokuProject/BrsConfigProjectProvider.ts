@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { util as bsUtil } from 'brighterscript';
 import { util } from '../../util';
-import { rokuDeploy } from 'roku-deploy';
+import { getDestPath } from 'roku-deploy';
 import type { FileEntry } from 'roku-deploy';
 import type { DiscoveredRokuProject, ProjectBuildResult, ProjectConfigProvider } from './RokuProjectManager';
 
@@ -54,14 +54,16 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
     }
 
     /**
-     * Uses rokuDeploy.getDestPath against each indexed config's files/rootDir.
+     * Uses roku-deploy's getDestPath against each indexed config's files/rootDir.
      * Returns undefined (not owned) when getDestPath returns undefined for all configs.
      */
     public findProjectConfigFromFile(fileUri: vscode.Uri): Promise<vscode.Uri[]> {
         const filePath = bsUtil.driveLetterToLower(fileUri.fsPath);
         const matches: vscode.Uri[] = [];
         for (const entry of this.configByPath.values()) {
-            if (rokuDeploy.getDestPath(filePath, entry.files, entry.rootDir)) {
+            // Drive letters must be normalized on both sides — getDestPath does a case-sensitive
+            // match and vscode lowercases the drive letter in fsPath
+            if (getDestPath(filePath, entry.files, bsUtil.driveLetterToLower(entry.rootDir))) {
                 matches.push(entry.configUri);
             }
         }

@@ -68,10 +68,11 @@ afterEach(() => {
 });
 
 describe('DevicesViewProvider', () => {
-    function makeDevice(overrides: { key: string; ip?: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean; serialNumber?: string; softwareVersion?: string; configuredIn?: string[] }) {
+    function makeDevice(overrides: { key: string; ip?: string; isTv?: boolean; isStick?: boolean; deviceState?: string; lastDeviceState?: string; developerEnabled?: 'true' | 'false' | undefined; isConfigured?: boolean; serialNumber?: string; softwareVersion?: string; configuredIn?: string[]; isRce?: boolean }) {
         return {
             key: overrides.key,
-            ip: overrides.ip ?? '1.2.3.4',
+            ip: overrides.isRce ? undefined : (overrides.ip ?? '1.2.3.4'),
+            rce: overrides.isRce ? { id: 83, status: 'running' } : undefined,
             deviceState: overrides.deviceState ?? 'online',
             lastDeviceState: overrides.lastDeviceState ?? 'unknown',
             isConfigured: overrides.isConfigured ?? false,
@@ -86,6 +87,10 @@ describe('DevicesViewProvider', () => {
         } as any;
     }
 
+    function getDeviceKeys(items: any[]): string[] {
+        return items.filter(item => item.key !== undefined).map(item => item.key);
+    }
+
     function createProvider(devices: any[], options?: { storedPasswords?: Record<string, string> }) {
         const emitter = new EventEmitter();
         const deviceManager: any = {
@@ -93,6 +98,8 @@ describe('DevicesViewProvider', () => {
             getAllDevices: () => devices,
             getDevice: (key: string) => devices.find(d => d.key === key),
             getDeviceDisplayName: (device: any) => device.key,
+            getAddressLabel: (device: any) => (device.rce ? 'cloud emulator' : device.ip),
+            getWebPortalUrl: (device: any) => (device.rce ? `https://developer.roku.com/cloud-emulator-bff/devices/${device.rce.id}/sideload/` : `http://${device.ip}`),
             getIconPath: () => undefined,
             hasDeviceCache: () => false,
             refresh: () => undefined,
@@ -109,8 +116,10 @@ describe('DevicesViewProvider', () => {
     beforeEach(async () => {
         clearFilters();
         (vscode.workspace as any)._onDidChangeConfigurationEmitter?.removeAllListeners();
-        //make sure no active device leaks in from a previous test (the context manager is a module singleton)
-        await vscodeContextManager.set('activeHost', '');
+        //make sure no active device leaks in from a previous test (the context manager is a module
+        //singleton and the provider seeds it from workspaceState)
+        await vscode.context.workspaceState.update('activeDeviceKey', undefined);
+        await vscodeContextManager.set('activeDeviceKey', '');
     });
 
     describe('applyFilters via getChildren', () => {
@@ -124,7 +133,7 @@ describe('DevicesViewProvider', () => {
             ];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['tv-online', 'stick-online', 'stb-online']);
+            expect(getDeviceKeys(items)).to.deep.equal(['tv-online', 'stick-online', 'stb-online']);
         });
 
         it('hides TVs when the TV filter is off', async () => {
@@ -136,7 +145,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ tv: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['stb1', 'stick1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['stb1', 'stick1']);
         });
 
         it('hides offline devices when the offline filter is off (pending with prior online stays visible)', async () => {
@@ -148,7 +157,7 @@ describe('DevicesViewProvider', () => {
             ];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['on1', 'pending-was-online']);
+            expect(getDeviceKeys(items)).to.deep.equal(['on1', 'pending-was-online']);
         });
 
         it('hides online devices when the online filter is off (pending with prior online counts as online)', async () => {
@@ -161,7 +170,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ online: false, offline: true });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['off1', 'pending-first-load']);
+            expect(getDeviceKeys(items)).to.deep.equal(['off1', 'pending-first-load']);
         });
 
         it('treats missing developer-enabled as enabled', async () => {
@@ -173,7 +182,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ devModeEnabled: false, devModeDisabled: true, offline: true });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['explicit-off']);
+            expect(getDeviceKeys(items)).to.deep.equal(['explicit-off']);
         });
 
         it('hides user-defined devices when the userDefined filter is off', async () => {
@@ -184,7 +193,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ userDefined: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['discovered1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['discovered1']);
         });
 
         it('hides auto-detected devices when the autoDetected filter is off', async () => {
@@ -195,14 +204,103 @@ describe('DevicesViewProvider', () => {
             seedFilters({ autoDetected: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['configured1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['configured1']);
         });
 
         it('uses defaults when no filter settings are present', async () => {
             const devices = [makeDevice({ key: 'stb-online' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['stb-online']);
+            expect(getDeviceKeys(items)).to.deep.equal(['stb-online']);
+        });
+    });
+
+    describe('filtered devices group', () => {
+        const mixedDevices = () => [
+            makeDevice({ key: 'off1', deviceState: 'offline' }),
+            makeDevice({ key: 'on1' }),
+            makeDevice({ key: 'off2', deviceState: 'offline' }),
+            makeDevice({ key: 'on2' }),
+            makeDevice({ key: 'nondev', developerEnabled: 'false' })
+        ];
+
+        it('omits the group when nothing is hidden', async () => {
+            const { provider } = createProvider([makeDevice({ key: 'on1' }), makeDevice({ key: 'on2' })]);
+            const items = await provider.getChildren();
+            expect(items).to.have.lengthOf(2);
+            expect(items.every(item => (item as any).contextValue !== 'filteredDevicesGroup')).to.be.true;
+        });
+
+        it('appends a collapsed group as the last root item with the hidden count', async () => {
+            const { provider } = createProvider(mixedDevices());
+            const items = await provider.getChildren();
+            expect(getDeviceKeys(items)).to.deep.equal(['on1', 'on2']);
+            const group = items[items.length - 1];
+            expect(items).to.have.lengthOf(3);
+            expect(group.label).to.equal('Filtered Devices (3)');
+            expect(group.contextValue).to.equal('filteredDevicesGroup');
+            expect(group.id).to.equal('filteredDevicesGroup');
+            expect(group.collapsibleState).to.equal((vscode as any).TreeItemCollapsibleState.Collapsed);
+        });
+
+        it('greys out the group label and icon while leaving device decorations unchanged', async () => {
+            const { provider } = createProvider(mixedDevices());
+            const items = await provider.getChildren();
+            const group = items[items.length - 1];
+            const decorationProvider = provider['decorationProvider'];
+
+            expect(group.label).to.equal('Filtered Devices (3)');
+            expect((group.iconPath as any).id).to.equal('filter');
+            expect((group.iconPath as any).color.id).to.equal('descriptionForeground');
+
+            const groupDecoration = decorationProvider.provideFileDecoration(group.resourceUri);
+            expect((groupDecoration.color as any).id).to.equal('descriptionForeground');
+            expect(groupDecoration.badge).to.be.undefined;
+            expect(groupDecoration.tooltip).to.be.undefined;
+
+            expect(decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/on1' } as any)).to.be.undefined;
+            expect((decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/off1' } as any).color as any).id).to.equal('disabledForeground');
+        });
+
+        it('lists exactly the hidden devices in input order as group children', async () => {
+            const { provider } = createProvider(mixedDevices());
+            const items = await provider.getChildren();
+            const children = await provider.getChildren(items[items.length - 1]);
+            expect(getDeviceKeys(children)).to.deep.equal(['off1', 'off2', 'nondev']);
+        });
+
+        it('builds child rows identical to root rows and parents them to the group', async () => {
+            const { provider } = createProvider(mixedDevices());
+            const group = (await provider.getChildren()).pop();
+            const children = await provider.getChildren(group);
+
+            seedFilters({ offline: true, devModeDisabled: true });
+            const { provider: showAllProvider } = createProvider(mixedDevices());
+            const rootItems = await showAllProvider.getChildren();
+
+            expect(children).to.have.lengthOf(3);
+            for (const child of children) {
+                const rootItem = rootItems.find(item => (item as any).key === (child as any).key);
+                expect(child.contextValue).to.equal(rootItem.contextValue);
+                expect(child.label).to.equal(rootItem.label);
+                expect(child.collapsibleState).to.equal(rootItem.collapsibleState);
+                expect(String(child.resourceUri)).to.equal(String(rootItem.resourceUri));
+                expect(child.iconPath).to.equal(rootItem.iconPath);
+                expect(child.tooltip).to.equal(rootItem.tooltip);
+                expect(provider.getParent(child as any)).to.equal(group);
+            }
+            expect(showAllProvider.getParent(rootItems[0] as any)).to.be.null;
+        });
+
+        it('shows only the group when every device is hidden', async () => {
+            const { provider } = createProvider([
+                makeDevice({ key: 'off1', deviceState: 'offline' }),
+                makeDevice({ key: 'off2', deviceState: 'offline' })
+            ]);
+            const items = await provider.getChildren();
+            expect(items).to.have.lengthOf(1);
+            expect(items[0].label).to.equal('Filtered Devices (2)');
+            expect(getDeviceKeys(await provider.getChildren(items[0]))).to.deep.equal(['off1', 'off2']);
         });
     });
 
@@ -211,21 +309,56 @@ describe('DevicesViewProvider', () => {
             const devices = [makeDevice({ key: 'tv1', isTv: true, softwareVersion: '15.3.4', serialNumber: 'SERIAL1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-notInUser-notInWorkspace-noPassword-isTv-canViewRegistry-canRestart-notActive');
+            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-noPassword-isTv-canViewRegistry-canRestart-notActive');
         });
 
         it('includes hasPassword and configured-in tokens, and gates version-specific tokens', async () => {
             const devices = [makeDevice({ key: 'stb1', softwareVersion: '12.0.0', serialNumber: 'SERIAL2', configuredIn: ['user', 'workspace'] })];
             const { provider } = createProvider(devices, { storedPasswords: { SERIAL2: 'secret' } });
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-inUser-inWorkspace-hasPassword-canViewRegistry-notActive');
+            expect(items[0].contextValue).to.equal('device-local-inUser-inWorkspace-hasPassword-canViewRegistry-notActive');
         });
 
         it('omits password and version-gated tokens when serial number and software version are unknown', async () => {
             const devices = [makeDevice({ key: 'stb1' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items[0].contextValue).to.equal('device-notInUser-notInWorkspace-notActive');
+            expect(items[0].contextValue).to.equal('device-local-notInUser-notInWorkspace-notActive');
+        });
+
+        it('builds a cloud contextValue without the settings tokens', async () => {
+            //an rce tv with a serial + modern firmware: only the save-to-settings tokens are
+            //absent - password, tv-input, registry, and restart capabilities all apply
+            const devices = [makeDevice({ key: 's:ESN1', isRce: true, isTv: true, softwareVersion: '15.2.4', serialNumber: 'ESN1' })];
+            const { provider } = createProvider(devices);
+            const items = await provider.getChildren();
+            expect(items[0].contextValue).to.equal('device-cloud-noPassword-isTv-canViewRegistry-canRestart-notActive');
+        });
+
+        it('lists the cloud action items for an rce device', async () => {
+            const devices = [makeDevice({ key: 's:ESN1', isRce: true, softwareVersion: '15.2.4', serialNumber: 'ESN1' })];
+            const { provider } = createProvider(devices);
+            const [deviceItem] = await provider.getChildren();
+
+            const deviceChildren = await provider.getChildren(deviceItem);
+            expect(deviceChildren.map(child => child.label)).to.deep.equal([
+                '🔗 Open device web portal',
+                '🔁 Restart Device',
+                '🔄 Check for Software Updates',
+                '📋 View Registry',
+                '🔑 Set Device Password',
+                '⭐ Set as Active Device',
+                '📷 Capture Screenshot',
+                '🎥 Watch Device',
+                'Device Info'
+            ]);
+
+            //the web portal points at the developer.roku.com dev-installer page for this device id
+            const webPortalItem = deviceChildren[0] as any;
+            expect(webPortalItem.command.arguments).to.deep.equal(['https://developer.roku.com/cloud-emulator-bff/devices/83/sideload/']);
+            //view registry and set-active address the device by key (there is no ip)
+            expect((deviceChildren[3] as any).command.arguments).to.deep.equal([{ key: 's:ESN1' }]);
+            expect((deviceChildren[5] as any).command.arguments).to.deep.equal([{ key: 's:ESN1' }]);
         });
 
         it('lists the action items followed by an expandable Device Info group holding the info fields', async () => {
@@ -278,7 +411,7 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
                 makeDevice({ key: 'stb2', ip: '2.2.2.2' })
             ];
-            await vscodeContextManager.set('activeHost', '2.2.2.2');
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb2');
             const { provider } = createProvider(devices);
 
             const items = await provider.getChildren();
@@ -292,7 +425,7 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
                 makeDevice({ key: 'stb2', ip: '2.2.2.2' })
             ];
-            await vscodeContextManager.set('activeHost', '2.2.2.2');
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb2');
             const { provider } = createProvider(devices);
             const decorationProvider = provider['decorationProvider'];
 
@@ -309,7 +442,7 @@ describe('DevicesViewProvider', () => {
 
         it('keeps the offline coloring alongside the active badge', async () => {
             const devices = [makeDevice({ key: 'stb1', ip: '1.1.1.1', deviceState: 'offline' })];
-            await vscodeContextManager.set('activeHost', '1.1.1.1');
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb1');
             const { provider } = createProvider(devices);
 
             const decoration = provider['decorationProvider'].provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any);
@@ -322,14 +455,14 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
                 makeDevice({ key: 'stb2', ip: '2.2.2.2' })
             ];
-            await vscodeContextManager.set('activeHost', '1.1.1.1');
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb1');
             const { provider } = createProvider(devices);
             const decorationProvider = provider['decorationProvider'];
 
             let treeChanges = 0;
             provider.onDidChangeTreeData(() => treeChanges++);
 
-            await vscodeContextManager.set('activeHost', '2.2.2.2');
+            await vscodeContextManager.set('activeDeviceKey', 'stb2');
 
             expect(treeChanges).to.equal(1);
             expect(decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any)?.badge).to.be.undefined;
@@ -341,7 +474,7 @@ describe('DevicesViewProvider', () => {
                 makeDevice({ key: 'stb1', ip: '1.1.1.1' }),
                 makeDevice({ key: 'stb2', ip: '2.2.2.2' })
             ];
-            await vscodeContextManager.set('activeHost', '2.2.2.2');
+            await vscode.context.workspaceState.update('activeDeviceKey', 'stb2');
             const { provider } = createProvider(devices);
             const [inactiveItem, activeItem] = await provider.getChildren();
 
@@ -358,7 +491,7 @@ describe('DevicesViewProvider', () => {
 
         it('shows no badge when the active host does not match any device', async () => {
             const devices = [makeDevice({ key: 'stb1', ip: '1.1.1.1' })];
-            await vscodeContextManager.set('activeHost', '9.9.9.9');
+            await vscode.context.workspaceState.update('activeDeviceKey', 's:UNKNOWN');
             const { provider } = createProvider(devices);
 
             const decoration = provider['decorationProvider'].provideFileDecoration({ scheme: 'roku-device', path: '/stb1' } as any);
@@ -428,7 +561,7 @@ describe('DevicesViewProvider', () => {
             const { provider } = createProvider(devices);
             // Confirm seeded override is honored before the reset
             let items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['stb1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['stb1']);
 
             const treeChanged = sinon.spy();
             provider.onDidChangeTreeData(treeChanged);
@@ -437,7 +570,7 @@ describe('DevicesViewProvider', () => {
 
             expect(treeChanged.called).to.be.true;
             items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['tv1', 'stb1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['tv1', 'stb1']);
         });
 
         it('is a no-op on persistence when nothing was overridden', async () => {
@@ -464,7 +597,7 @@ describe('DevicesViewProvider', () => {
 
             expect(treeChanged.called).to.be.true;
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['stb1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['stb1']);
         });
 
         it('ignores changes to unrelated configuration sections', () => {

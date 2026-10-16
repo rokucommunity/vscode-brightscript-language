@@ -111,7 +111,8 @@
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
-     id="layer1">
+     id="layer1"
+     transform="translate(0,-9.5)">
     <rect
        style="fill:none;fill-opacity:0;stroke:#000000;stroke-width:2.12132;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect1372"

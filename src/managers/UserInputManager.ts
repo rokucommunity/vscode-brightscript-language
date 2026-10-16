@@ -1,5 +1,5 @@
 import { Deferred } from 'brighterscript';
-import type { DeviceInfoRaw } from 'roku-deploy';
+import { isLocalDeviceConfig, type DeviceInfoRaw, type DeviceConfig, type DeviceStatus } from 'roku-deploy';
 import type {
     Disposable,
     QuickPickItem
@@ -48,6 +48,17 @@ export class UserInputManager {
         private credentialStore: CredentialStore
     ) { }
 
+    private passwordCandidateProviders: DevicePasswordCandidateProvider[] = [];
+
+    /**
+     * Register an external source of device password candidates (e.g. sdk config files or
+     * environment variables). Provider candidates are tried after the settings-based candidates
+     * and before the default device password.
+     */
+    public addPasswordCandidateProvider(provider: DevicePasswordCandidateProvider) {
+        this.passwordCandidateProviders.push(provider);
+    }
+
     public async promptForHostManual(): Promise<HostWithDeviceInfo | undefined> {
         while (true) {
             const value = await vscode.window.showInputBox({
@@ -65,14 +76,15 @@ export class UserInputManager {
             );
             if (probed) {
                 //probing gathers the device info the same way as the picker; return it alongside the host
-                return { host: probed.ip, deviceInfo: probed.deviceInfo };
+                return { host: probed.ip, deviceInfo: probed.deviceInfo, device: probed.device };
             }
             await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${value}. Check the IP and confirm developer mode is enabled.`);
         }
     }
 
     /**
-     * Resolve a developer password that the device at `host` accepts.
+     * Resolve a developer password that the target device accepts. The target is any roku-deploy
+     * device config, including a Roku Cloud Emulator config.
      *
      * Every known candidate is tried in order (stored credential, configured
      * `brightscript.devices[].password`, the default device password, and any caller-provided
@@ -82,15 +94,20 @@ export class UserInputManager {
      * entry when one already exists; callers that keep a global password fallback persist that
      * themselves.
      *
+     * `packagePort` is the port of the device's dev installer web server, for targets that don't use
+     * the default (80), such as the BrightScript Simulator.
+     *
      * @returns `ok` with the accepted password, `unreachable` when the device can't be contacted,
      *          or `cancelled` when the user dismisses the prompt.
      */
-    public async resolveDevicePassword(options: { host: string; serialNumber: string | undefined; extraCandidates?: Array<string | undefined> }): Promise<DevicePasswordResolution> {
-        const { host, serialNumber } = options;
-        const candidates = await this.collectDevicePasswordCandidates(serialNumber, options.extraCandidates);
+    public async resolveDevicePassword(options: { device: DeviceConfig; serialNumber: string | undefined; extraCandidates?: Array<string | undefined>; packagePort?: number }): Promise<DevicePasswordResolution> {
+        const { device, serialNumber, packagePort } = options;
+        //candidate providers key env/config-derived passwords by LAN host; cloud devices have none
+        const host = isLocalDeviceConfig(device) ? device.host : undefined;
+        const candidates = await this.collectDevicePasswordCandidates(host, serialNumber, options.extraCandidates);
 
         for (const candidate of candidates) {
-            const validation = await this.deviceManager.validateDevicePassword(host, candidate);
+            const validation = await this.deviceManager.validateDevicePassword(device, candidate, packagePort);
             if (validation === 'ok') {
                 await this.persistDevicePassword(serialNumber, candidate);
                 return { status: 'ok', password: candidate };
@@ -111,7 +128,7 @@ export class UserInputManager {
             if (!value) {
                 return { status: 'cancelled' };
             }
-            const validation = await this.deviceManager.validateDevicePassword(host, value);
+            const validation = await this.deviceManager.validateDevicePassword(device, value, packagePort);
             if (validation === 'ok') {
                 await this.persistDevicePassword(serialNumber, value);
                 return { status: 'ok', password: value };
@@ -129,7 +146,7 @@ export class UserInputManager {
      * validation loop only sees real passwords. `extraCandidates` are appended after the
      * standard sources (e.g. launch-config values for a debug session).
      */
-    private async collectDevicePasswordCandidates(serialNumber: string | undefined, extraCandidates?: Array<string | undefined>): Promise<string[]> {
+    private async collectDevicePasswordCandidates(host: string | undefined, serialNumber: string | undefined, extraCandidates?: Array<string | undefined>): Promise<string[]> {
         const candidates: string[] = [];
         const addCandidate = (value: string | undefined | null) => {
             const trimmed = value?.trim();
@@ -156,6 +173,12 @@ export class UserInputManager {
             for (const folder of vscode.workspace.workspaceFolders ?? []) {
                 const folderInspection = vscode.workspace.getConfiguration('brightscript', folder.uri).inspect<ConfiguredDevice[]>('devices');
                 scanScope(folderInspection?.workspaceFolderValue);
+            }
+        }
+
+        for (const provider of this.passwordCandidateProviders) {
+            for (const candidate of provider.getPasswordCandidates(host, serialNumber)) {
+                addCandidate(candidate);
             }
         }
 
@@ -207,7 +230,7 @@ export class UserInputManager {
      */
     public async promptForHost(options?: { defaultValue?: string }): Promise<HostWithDeviceInfo | undefined> {
 
-        const deferred = new Deferred<{ ip: string; deviceInfo: DeviceInfoRaw; manual?: false } | { manual: true }>();
+        const deferred = new Deferred<{ ip: string; deviceInfo: DeviceInfoRaw; device: DeviceConfig; rce?: { status: DeviceStatus }; manual?: false } | { manual: true }>();
         const disposables: Array<Disposable> = [];
 
         //create the quickpick item
@@ -269,16 +292,30 @@ export class UserInputManager {
                         return;
                     } else {
                         const device = (selectedDevice as any).device as RokuDevice;
-                        // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
-                        setBusy(true);
-                        const isHealthy = await this.deviceManager.healthCheckDevice(device, true, false);
-                        setBusy(false);
-                        if (!isHealthy) {
-                            await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
-                            return;
+                        if (device.rce) {
+                            //cloud emulator devices skip the LAN health-check gate below; a pick that
+                            //isn't running yet is allowed through so the caller (DebugConfigurationProvider)
+                            //can show a more specific "start it from the Cloud Emulator panel" message
+                            //instead of the generic "not responding" one
+                            this.deviceManager.setLastUsedDeviceKey(device.key);
+                            deferred.resolve({
+                                ip: device.ip,
+                                deviceInfo: device.deviceInfo,
+                                device: device.device,
+                                rce: { status: device.rce.status }
+                            });
+                        } else {
+                            // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
+                            setBusy(true);
+                            const isHealthy = await this.deviceManager.healthCheckDevice(device, true, false);
+                            setBusy(false);
+                            if (!isHealthy) {
+                                await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
+                                return;
+                            }
+                            this.deviceManager.setLastUsedDeviceKey(device.key);
+                            deferred.resolve({ ip: device.ip, deviceInfo: device.deviceInfo, device: device.device });
                         }
-                        this.deviceManager.setLastUsedDeviceIp(device.ip);
-                        deferred.resolve({ ip: device.ip, deviceInfo: device.deviceInfo });
                     }
                     quickPick.dispose();
                 }
@@ -294,8 +331,8 @@ export class UserInputManager {
                     await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${typedValue}. Check the IP and confirm developer mode is enabled.`);
                     return;
                 }
-                this.deviceManager.setLastUsedDeviceIp(probed.ip);
-                deferred.resolve({ ip: probed.ip, deviceInfo: probed.deviceInfo });
+                this.deviceManager.setLastUsedDeviceKey(probed.key);
+                deferred.resolve({ ip: probed.ip, deviceInfo: probed.deviceInfo, device: probed.device });
                 quickPick.dispose();
             }
         });
@@ -339,7 +376,7 @@ export class UserInputManager {
             const filters = loadDeviceFilters(DEVICE_QUICK_PICK_FILTERS_SECTION);
             const items = this.createHostQuickPickList(
                 applyDeviceFilters(this.deviceManager.getAllDevices(), filters),
-                this.deviceManager.getLastUsedDeviceIp(),
+                this.deviceManager.getLastUsedDeviceKey(),
                 itemCache
             );
             quickPick.items = items;
@@ -435,7 +472,14 @@ export class UserInputManager {
         if (result.manual === true) {
             return this.promptForHostManual();
         } else {
-            return { host: result.ip, deviceInfo: result.deviceInfo };
+            return {
+                host: result.ip,
+                deviceInfo: result.deviceInfo,
+                device: result.device,
+                //omitted entirely (rather than included as undefined) for a LAN pick, so existing
+                //callers that only look at host/deviceInfo/device see the same shape as before
+                ...(result.rce ? { rce: result.rce } : {})
+            };
         }
     }
 
@@ -444,16 +488,22 @@ export class UserInputManager {
      */
     private createHostQuickPickList(
         devices: RokuDevice[],
-        lastUsedDeviceIp: string | undefined,
+        lastUsedDeviceKey: string | undefined,
         cache = new Map<string, QuickPickHostItem>()
     ) {
         //the collection of items we will eventually return
         let items: QuickPickHostItem[] = [];
 
-        //find the lastUsedDevice from the devices list
-        const lastUsedDevice = lastUsedDeviceIp ? devices.find(x => x.ip === lastUsedDeviceIp) : undefined;
+        //find the lastUsedDevice from the devices list. Resolve the stored key through the
+        //DeviceManager first (rather than comparing keys directly) so a cloud emulator key that
+        //drifted from `rce:{id}` to `s:{esn}` after boot still matches its device; fall back to
+        //the stored key itself when the DeviceManager no longer resolves it
+        const resolvedLastUsedKey = lastUsedDeviceKey ? this.deviceManager.getDevice(lastUsedDeviceKey)?.key ?? lastUsedDeviceKey : undefined;
+        const lastUsedDevice = resolvedLastUsedKey ? devices.find(x => x.key === resolvedLastUsedKey) : undefined;
         //remove the lastUsedDevice from the devices list so we can more easily reason with the rest of the list
-        devices = devices.filter(x => x.ip !== lastUsedDeviceIp);
+        if (lastUsedDevice) {
+            devices = devices.filter(x => x !== lastUsedDevice);
+        }
 
         // Ensure the most recently used device is at the top of the list
         if (lastUsedDevice) {
@@ -611,6 +661,16 @@ export class UserInputManager {
             filterPick.show();
         });
     }
+}
+
+/**
+ * External source of device password candidates that can be plugged into UserInputManager.
+ * Mirrors DeviceManager's `ConfiguredDeviceProvider` pattern: sources defined outside VSCode
+ * settings register themselves so this file doesn't need to know about each one.
+ */
+export interface DevicePasswordCandidateProvider {
+    /** Return candidate passwords for the device, ordered most- to least-specific. */
+    getPasswordCandidates(host: string | undefined, serialNumber: string | undefined): Array<string | undefined>;
 }
 
 type QuickPickFilterItem = QuickPickItem & { facetKey?: keyof DeviceFilters };

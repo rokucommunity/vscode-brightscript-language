@@ -17,9 +17,11 @@ afterEach(() => {
     delete vscode.workspace.workspaceFile;
     delete vscode.workspace._configuration;
     vscode.workspace.workspaceFolders = [] as any;
-    vscode.workspace.findFiles = () => [] as any;
+    vscode.workspace.findFiles = () => Promise.resolve([]) as any;
     vscode.context.globalState['_data'] = {};
     vscode.context.workspaceState['_data'] = {};
+    vscode.context.secrets['_data'] = {};
+    vscode.context.secrets['_changeHandlers'] = [];
 });
 
 export let vscode = {
@@ -62,11 +64,13 @@ export let vscode = {
     },
     debug: {
         registerDebugConfigurationProvider: () => { },
+        registerDebugAdapterTrackerFactory: () => { },
         registerDebugAdapterDescriptorFactory: () => { },
         onDidStartDebugSession: () => { },
         onDidTerminateDebugSession: () => { },
         onDidReceiveDebugSessionCustomEvent: () => { },
-        stopDebugging: () => { }
+        stopDebugging: () => { },
+        startDebugging: () => Promise.resolve(true)
     },
     languages: {
         registerCodeLensProvider: () => { },
@@ -86,10 +90,10 @@ export let vscode = {
     },
     subscriptions: [],
     commands: {
-        registerCommand: () => {
+        registerCommand: (command: string, ...args: any[]) => {
 
         },
-        executeCommand: () => {
+        executeCommand: (command: string, ...args: any[]) => {
 
         }
     },
@@ -121,6 +125,38 @@ export let vscode = {
             },
             get: function(key: string) {
                 return this._data[key];
+            }
+        } as any,
+        secrets: {
+            _data: {},
+            _changeHandlers: [] as Array<(event: { key: string }) => void>,
+            store: function(key: string, value: string) {
+                this._data[key] = value;
+                for (const handler of [...this._changeHandlers]) {
+                    handler({ key: key });
+                }
+                return Promise.resolve();
+            },
+            get: function(key: string) {
+                return Promise.resolve(this._data[key]);
+            },
+            delete: function(key: string) {
+                delete this._data[key];
+                for (const handler of [...this._changeHandlers]) {
+                    handler({ key: key });
+                }
+                return Promise.resolve();
+            },
+            onDidChange: function(handler: (event: { key: string }) => void) {
+                this._changeHandlers.push(handler);
+                return {
+                    dispose: () => {
+                        const index = this._changeHandlers.indexOf(handler);
+                        if (index >= 0) {
+                            this._changeHandlers.splice(index, 1);
+                        }
+                    }
+                };
             }
         } as any,
         globalStorageUri: URI.file(tempDir),
@@ -157,7 +193,8 @@ export let vscode = {
                 inspect: (name: string) => {
                     return {
                         key: name,
-                        globalValue: store?.[`${configurationName}.${name}`]
+                        globalValue: store?.[`${configurationName}.${name}`],
+                        workspaceValue: store?.[`${configurationName}.${name}`]
                     } as ReturnType<WorkspaceConfiguration['inspect']>;
                 },
                 update: (name: string, value: any) => {
@@ -186,7 +223,7 @@ export let vscode = {
             return typeof pathOrUri === 'string' ? pathOrUri : pathOrUri.fsPath;
         },
         findFiles: (include, exclude) => {
-            return [] as any;
+            return Promise.resolve([]) as any;
         },
         fs: {
             writeFile: (uri, buffer) => { },
@@ -200,6 +237,7 @@ export let vscode = {
     },
     window: {
         registerCustomEditorProvider: () => { },
+        registerWebviewPanelSerializer: () => { },
         withProgress: (options, action) => {
             return action();
         },
@@ -283,7 +321,7 @@ export let vscode = {
         showInformationMessage: function(message: string) {
 
         },
-        showWarningMessage: function(message: string) {
+        showWarningMessage: function(message: string, ..._rest: any[]): any {
 
         },
         showErrorMessage: function(message: string, ..._rest: any[]): any {
@@ -536,7 +574,17 @@ export let vscode = {
                 }
             } as any;
         },
-        parse: () => { }
+        parse: (value?: string) => {
+            const separatorIndex = value?.indexOf(':') ?? -1;
+            if (separatorIndex < 0) {
+                return undefined;
+            }
+            return {
+                scheme: value.slice(0, separatorIndex),
+                path: value.slice(separatorIndex + 1),
+                toString: () => value
+            } as any;
+        }
     },
     SnippetString: class {
         constructor(value: string = null) {

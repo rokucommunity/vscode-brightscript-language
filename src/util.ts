@@ -7,9 +7,8 @@ import * as vscode from 'vscode';
 import { Cache } from 'brighterscript/dist/Cache';
 import undent from 'undent';
 import { EXTENSION_ID, ROKU_DEBUG_VERSION } from './constants';
-import type { DeviceInfo } from 'roku-deploy';
-import * as request from 'postman-request';
-import type { Response, CoreOptions } from 'request';
+import type { DeviceConfig, DeviceInfo } from 'roku-deploy';
+import { isLocalDeviceConfig, isRceDeviceConfigByUrl, isRceDeviceConfigById, isRceDeviceConfigByEsn } from 'roku-deploy';
 import * as childProcess from 'child_process';
 import * as minimatch from 'minimatch';
 
@@ -122,6 +121,28 @@ class Util {
 
             return manifestValues;
         }
+    }
+
+    /**
+     * Read the `ts_path` manifest entry from a built app's `rootDir`, which identifies a
+     * TypeScript/JS (Solid) app and points at the compiled JS bundle. Returns undefined when the
+     * manifest is missing (e.g. the app hasn't been built yet) or has no `ts_path` (a
+     * BrightScript-only app). Kept synchronous so non-async callers (like `onDidStartDebugSession`)
+     * can use it directly.
+     */
+    public getTsPath(rootDir: string): string | undefined {
+        if (!rootDir) {
+            return undefined;
+        }
+        //strip any trailing slash(es) so we don't produce `rootDir//manifest`
+        const manifestPath = `${rootDir.replace(/[\\/]+$/, '')}/manifest`;
+        if (!fsExtra.existsSync(manifestPath)) {
+            return undefined;
+        }
+        const contents = fsExtra.readFileSync(manifestPath).toString();
+        // https://regex101.com/r/qgLxGh/1
+        const match = /ts_path[ \t]*=[ \t]*(.*)?(?=[\r?\n]|$)/ig.exec(contents);
+        return match?.[1]?.trim() || undefined;
     }
 
     /**
@@ -371,17 +392,6 @@ class Util {
      */
     public escapeRegex(text: string) {
         return text?.toString().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    }
-
-    /**
-     * Do an http GET request
-     */
-    public httpGet(url: string, options?: CoreOptions) {
-        return new Promise<Response>((resolve, reject) => {
-            request.get(url, options, (err, response) => {
-                return err ? reject(err) : resolve(response);
-            });
-        });
     }
 
     public async openIssueReporter(options: { title?: string; body?: string; deviceInfo?: DeviceInfo }) {
@@ -670,6 +680,33 @@ class Util {
             }
         }
         return false;
+    }
+
+    /**
+     * Describe a roku-deploy device config (a local `{host}` config, or a Roku Cloud Emulator
+     * config addressed by instanceUrl/id/esn) by whichever address field it has, for dialogs and
+     * error messages. A Roku Cloud Emulator config has no host, so the host cannot be printed
+     * directly.
+     * @param device the device config to describe
+     * @param fallback the label to use when the config carries no recognizable address
+     */
+    public describeDevice(device: DeviceConfig | undefined, fallback = 'unknown'): string {
+        if (!device) {
+            return fallback;
+        }
+        if (isLocalDeviceConfig(device)) {
+            return device.host;
+        }
+        if (isRceDeviceConfigByUrl(device)) {
+            return device.instanceUrl;
+        }
+        if (isRceDeviceConfigById(device)) {
+            return String(device.id);
+        }
+        if (isRceDeviceConfigByEsn(device)) {
+            return device.esn;
+        }
+        return fallback;
     }
 }
 

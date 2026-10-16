@@ -5,6 +5,12 @@ export enum VscodeCommand {
     rokuDeviceViewCopyScreenshot = 'extension.brightscript.rokuDeviceView.copyScreenshot',
     rokuDeviceViewEnableNodeInspector = 'extension.brightscript.rokuDeviceView.enableNodeInspector',
     rokuDeviceViewDisableNodeInspector = 'extension.brightscript.rokuDeviceView.disableNodeInspector',
+    rokuDeviceViewShowRceStream = 'extension.brightscript.rokuDeviceView.showRceStream',
+    rokuDeviceViewOpenVideoEditor = 'extension.brightscript.rokuDeviceView.openVideoEditor',
+    rceWatchDeviceById = 'extension.brightscript.rce.watchDeviceById',
+    rceWatchDeviceInEditor = 'extension.brightscript.rce.watchDeviceInEditor',
+    rceStartDeviceById = 'extension.brightscript.rce.startDeviceById',
+    rceStopDeviceById = 'extension.brightscript.rce.stopDeviceById',
     devicesViewRestartDevice = 'extension.brightscript.devicesView.restartDevice',
     devicesViewCheckAndInstallUpdates = 'extension.brightscript.devicesView.checkAndInstallUpdates',
     rokuRegistryExportRegistry = 'extension.brightscript.rokuRegistry.exportRegistry',
@@ -24,6 +30,7 @@ export enum VscodeCommand {
     rokuFileSystemViewRefresh = 'extension.brightscript.rokuFileSystemView.refresh',
     disconnectFromDevice = 'extension.brightscript.disconnectFromDevice',
     openSceneGraphInspectorInPanel = 'extension.brightscript.openSceneGraphInspectorInPanel',
+    openSolidDevtoolsInPanel = 'extension.brightscript.openSolidDevtoolsInPanel',
     clearNpmPackageCache = 'extension.brightscript.clearNpmPackageCache',
     debugRokuProject = 'extension.brightscript.debugRokuProject'
 }

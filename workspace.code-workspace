@@ -19,9 +19,13 @@
 		{
             "name": "➰brighterscript-formatter",
 			"path": "../brighterscript-formatter"
+		},
+		{
+            "name": "🧪roku-test-automation",
+			"path": "../roku-test-automation"
 		}
 	],
     "settings": {
-        "js/ts.tsdk.path": "⚡vscode-brightscript-language\\node_modules\\typescript\\lib"
+        "js/ts.tsdk.path": "⚡vscode-brightscript-language/node_modules/typescript/lib"
     }
 }

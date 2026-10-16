@@ -81,12 +81,19 @@ class InstallLocalRunner {
             ]
         },
         {
+            name: 'roku-test-automation',
+            dependencies: [
+                'roku-deploy'
+            ]
+        },
+        {
             name: 'vscode-brightscript-language',
             dependencies: [
                 'roku-deploy',
                 'brighterscript',
                 'roku-debug',
-                'brighterscript-formatter'
+                'brighterscript-formatter',
+                'roku-test-automation'
             ]
         }
     ];
@@ -112,11 +119,12 @@ class InstallLocalRunner {
         }
 
         this.printHeader(project.name);
-        let projectDir = `${cwd}/${project.name}`;
+        let projectDir = path.join(cwd, project.name);
 
         //if the project doesn't exist, clone it from github
         if (!fsExtra.pathExistsSync(projectDir)) {
-            this.execSync(`git clone https://github.com/rokucommunity/${project.name}`);
+            const repositoryUrl = project.repositoryUrl ?? `https://github.com/rokucommunity/${project.name}`;
+            this.execSync(`git clone ${repositoryUrl} ${project.name}`, { cwd: cwd });
 
             //if --pull was provided, fetch and pull latest for each repo
         } else if (pull === true) {
@@ -182,9 +190,9 @@ class InstallLocalRunner {
 
     private execSync(command: string, options?: childProcess.ExecSyncOptions) {
         options = {
-            cwd: cwd,
             stdio: enableVerboseLogging ? 'inherit' : 'ignore',
-            ...options ?? {}
+            ...options ?? {},
+            cwd: options?.cwd ?? cwd
         };
         if (enableVerboseLogging) {
             console.log(command, options);
@@ -199,6 +207,8 @@ class InstallLocalRunner {
 
 interface Project {
     name: string;
+    /** Clone url, when the repo isn't `https://github.com/rokucommunity/<name>` */
+    repositoryUrl?: string;
     dependencies: string[];
     processed?: boolean;
 }

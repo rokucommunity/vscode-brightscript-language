@@ -36,7 +36,7 @@ describe('LogDocumentLinkProvider', () => {
 
     describe('setLaunchConfig', () => {
         it('properly generates pkg paths', async () => {
-            sinon.stub(l.rokuDeploy, 'getFilePaths').returns(Promise.resolve([{
+            sinon.stub(l.rokuDeploy, 'resolveFilesArray').returns(Promise.resolve([{
                 src: path.normalize('C:/project/manifest'),
                 dest: path.normalize('C:/project/out/manifest')
             }, {

@@ -22,6 +22,8 @@ let treeItemKeySequence = 0;
  * URI scheme used for device tree items to enable FileDecorationProvider
  */
 const DEVICE_URI_SCHEME = 'roku-device';
+//device keys are prefixed ("s:" or "i:"), so this path can never match a device
+const FILTERED_DEVICES_GROUP_PATH = 'filteredDevicesGroup';
 
 /**
  * Configuration section that holds each filter's persisted value. Each filter facet
@@ -65,11 +67,14 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
         // Re-render when the active device changes so the indicator moves to the correct row
         const unsubscribeContextChange = vscodeContextManager.onChange((key) => {
-            if (key === 'activeHost') {
+            if (key === 'activeDeviceKey') {
                 this.handleDevicesChanged();
             }
         });
         this.context.subscriptions.push({ dispose: unsubscribeContextChange });
+
+        // Seed the context from the persisted active device so the indicator survives a window reload
+        void vscodeContextManager.set('activeDeviceKey', this.context.workspaceState.get('activeDeviceKey') ?? '');
 
         this.deviceManager.on('scanNeeded-changed', () => {
             if (!this.visible) {
@@ -153,12 +158,13 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     /**
-     * Is this device the active device? The active device is tracked by IP in the
-     * `activeHost` context value (set by the setActiveDevice/clearActiveDevice commands).
+     * Is this device the active device? The active device is tracked by its device key in the
+     * `activeDeviceKey` context value (set by the setActiveDevice/clearActiveDevice commands),
+     * which works for LAN and Cloud Emulator devices alike.
      */
     private isActiveDevice(device: RokuDevice): boolean {
-        const activeHost = vscodeContextManager.get<string>('activeHost');
-        return !!activeHost && device.ip === activeHost;
+        const activeDeviceKey = vscodeContextManager.get<string>('activeDeviceKey');
+        return !!activeDeviceKey && device.key === activeDeviceKey;
     }
 
     /**
@@ -178,6 +184,33 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     private devices: Array<RokuDevice>;
 
+    /**
+     * Devices from the full list that are absent from `visibleDevices`, in the original order
+     */
+    private getHiddenDevices(visibleDevices: RokuDevice[]): RokuDevice[] {
+        const visibleKeys = new Set(visibleDevices.map(device => device.key));
+        return this.devices.filter(device => !visibleKeys.has(device.key));
+    }
+
+    private async createDeviceTreeItem(device: RokuDevice, parent: FilteredDevicesGroupTreeItem | null = null): Promise<DeviceTreeItem> {
+        const treeItem = new DeviceTreeItem(
+            this.deviceManager.getDeviceDisplayName(device),
+            vscode.TreeItemCollapsibleState.Collapsed,
+            device.key,
+            device.deviceInfo,
+            undefined,
+            parent
+        );
+        treeItem.tooltip = `${this.deviceManager.getAddressLabel(device)} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
+
+        // Set resourceUri to enable FileDecorationProvider for text coloring
+        // Use the device key which is serial-based when available, IP-based as fallback
+        treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`);
+        treeItem.iconPath = this.deviceManager.getIconPath(device);
+        treeItem.contextValue = await this.buildDeviceContextValue(device);
+        return treeItem;
+    }
+
     async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
@@ -186,25 +219,16 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
             }
             if (this.devices) {
-                let items: DeviceTreeItem[] = [];
+                const items: vscode.TreeItem[] = [];
                 const visibleDevices = this.applyFilters(this.devices);
                 for (const device of visibleDevices) {
-                    // Make a root item for each device
-                    let treeItem = new DeviceTreeItem(
-                        this.deviceManager.getDeviceDisplayName(device),
-                        vscode.TreeItemCollapsibleState.Collapsed,
-                        device.key,
-                        device.deviceInfo
-                    );
-                    treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
+                    items.push(await this.createDeviceTreeItem(device));
+                }
 
-                    // Set resourceUri to enable FileDecorationProvider for text coloring
-                    // Use the device key which is serial-based when available, IP-based as fallback
-                    treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`);
-                    treeItem.iconPath = this.deviceManager.getIconPath(device);
-                    treeItem.contextValue = await this.buildDeviceContextValue(device);
-
-                    items.push(treeItem);
+                // Devices hidden by the filters stay reachable in a trailing group
+                const hiddenDevices = this.getHiddenDevices(visibleDevices);
+                if (hiddenDevices.length > 0) {
+                    items.push(new FilteredDevicesGroupTreeItem(hiddenDevices.length));
                 }
 
                 // Return the created root items
@@ -213,6 +237,9 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 // No devices
                 return [];
             }
+        } else if (element instanceof FilteredDevicesGroupTreeItem) {
+            const hiddenDevices = this.getHiddenDevices(this.applyFilters(this.devices));
+            return Promise.all(hiddenDevices.map(device => this.createDeviceTreeItem(device, element)));
         } else if (element instanceof DeviceTreeItem) {
             // Build the device's action items (also available in the right-click context menu),
             // followed by the expandable device info group
@@ -223,17 +250,19 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 return;
             }
 
+            //both device kinds share one action list: every action addresses the device by key (or
+            //through DeviceManager helpers), so LAN and cloud emulator devices are interchangeable here
             result.push(
                 this.createDeviceInfoTreeItem({
                     label: '🔗 Open device web portal',
                     parent: element,
                     collapsibleState: vscode.TreeItemCollapsibleState.None,
                     tooltip: 'Open the web portal for this device',
-                    description: device.ip,
+                    description: this.deviceManager.getAddressLabel(device),
                     command: {
                         command: 'extension.brightscript.openUrl',
                         title: 'Open',
-                        arguments: [`http://${device.ip}`]
+                        arguments: [this.deviceManager.getWebPortalUrl(device)]
                     }
                 })
             );
@@ -277,11 +306,11 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         parent: element,
                         collapsibleState: vscode.TreeItemCollapsibleState.None,
                         tooltip: 'View the ECP Registry',
-                        description: device.ip,
+                        description: this.deviceManager.getAddressLabel(device),
                         command: {
                             command: 'extension.brightscript.openRegistryInBrowser',
                             title: 'Open',
-                            arguments: [device.ip]
+                            arguments: [{ key: device.key }]
                         }
                     })
                 );
@@ -342,7 +371,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         command: {
                             command: 'extension.brightscript.setActiveDevice',
                             title: 'Set Active Device',
-                            arguments: [device.ip]
+                            arguments: [{ key: device.key }]
                         }
                     })
                 );
@@ -357,10 +386,26 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     command: {
                         command: 'extension.brightscript.captureScreenshot',
                         title: 'Capture Screenshot',
-                        arguments: [device.ip]
+                        arguments: [{ key: device.key }]
                     }
                 })
             );
+
+            if (device.rce) {
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: '🎥 Watch Device',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'Open this device\'s video stream in an editor tab',
+                        command: {
+                            command: 'extension.brightscript.rce.watchDeviceInEditor',
+                            title: 'Watch Device',
+                            arguments: [device.rce.id, this.deviceManager.getDeviceDisplayName(device)]
+                        }
+                    })
+                );
+            }
 
             if (device.deviceInfo?.['is-tv'] === 'true') {
                 result.push(
@@ -373,7 +418,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         command: {
                             command: 'extension.brightscript.changeTvInput',
                             title: 'Switch TV Input',
-                            arguments: [device.ip]
+                            arguments: [{ key: device.key }]
                         }
                     })
                 );
@@ -421,8 +466,15 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      */
     private async buildDeviceContextValue(device: RokuDevice): Promise<string> {
         const tokens = ['device'];
-        tokens.push(device.configuredIn?.includes('user') ? 'inUser' : 'notInUser');
-        tokens.push(device.configuredIn?.includes('workspace') ? 'inWorkspace' : 'notInWorkspace');
+        //cloud vs local gates the menu entries that only make sense for one device kind. The
+        //configuredIn tokens are LAN-only because `brightscript.devices` settings entries are host
+        //entries a cloud device can never appear in; every other capability token applies to both
+        //kinds, since their commands resolve the device by key rather than by ip
+        tokens.push(device.rce ? 'cloud' : 'local');
+        if (!device.rce) {
+            tokens.push(device.configuredIn?.includes('user') ? 'inUser' : 'notInUser');
+            tokens.push(device.configuredIn?.includes('workspace') ? 'inWorkspace' : 'notInWorkspace');
+        }
         if (device.serialNumber) {
             tokens.push(await this.hasStoredPasswordForSerial(device.serialNumber) ? 'hasPassword' : 'noPassword');
         }
@@ -469,7 +521,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      * Currently we don't modify this element so it is just returned back.
      * @param element the requested element
      */
-    getParent?(element: DeviceTreeItem | DeviceInfoGroupTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<vscode.TreeItem> {
+    getParent?(element: DeviceTreeItem | DeviceInfoGroupTreeItem | DeviceInfoTreeItem | FilteredDevicesGroupTreeItem): vscode.ProviderResult<vscode.TreeItem> {
         return element?.parent;
     }
 
@@ -628,12 +680,28 @@ class DeviceTreeItem extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly key: string,
         public readonly details?: any,
-        public command?: vscode.Command
+        public command?: vscode.Command,
+        public readonly parent: FilteredDevicesGroupTreeItem | null = null
     ) {
         super(label, collapsibleState);
     }
-
+}
+/**
+ * The collapsed "Filtered Devices" group at the end of the root. Its children are the
+ * devices currently hidden by the devices view filters.
+ */
+class FilteredDevicesGroupTreeItem extends vscode.TreeItem {
     public readonly parent = null;
+
+    constructor(hiddenDeviceCount: number) {
+        super(`Filtered Devices (${hiddenDeviceCount})`, vscode.TreeItemCollapsibleState.Collapsed);
+        // Stable id keeps the expansion state when the count in the label changes
+        this.id = 'filteredDevicesGroup';
+        this.contextValue = 'filteredDevicesGroup';
+        this.iconPath = new vscode.ThemeIcon('filter', new vscode.ThemeColor('descriptionForeground'));
+        //resourceUri only feeds DeviceDecorationProvider (muted label); the explicit label and icon still win
+        this.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${FILTERED_DEVICES_GROUP_PATH}`);
+    }
 }
 /**
  * The expandable "Device Info" group shown as the only child of a device. Its children
@@ -702,6 +770,9 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
         }
 
         const deviceKey = uri.path.slice(1); // Remove leading slash (key is "s:..." or "i:...")
+        if (deviceKey === FILTERED_DEVICES_GROUP_PATH) {
+            return { color: new vscode.ThemeColor('descriptionForeground') };
+        }
         const state = this.deviceStates.get(deviceKey);
 
         const decoration: vscode.FileDecoration = {};
