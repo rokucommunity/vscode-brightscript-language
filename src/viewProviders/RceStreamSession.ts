@@ -2,6 +2,9 @@ import type { RceVideoJsep, RceVideoSignalingClient, RceVideoSignalingConfig, Rc
 import { ViewProviderEvent } from './ViewProviderEvent';
 import type { RceStreamRequestConfig } from '../managers/RceManager';
 import { RceDeviceNotRunningError } from '../managers/RceManager';
+import { createLogger } from '../logging';
+
+const logger = createLogger('RceStreamSession');
 
 /**
  * Owns one Cloud Emulator video stream's Janus signaling session on behalf of a webview that
@@ -135,7 +138,7 @@ export class RceStreamSession {
                 return;
             }
             state.lastFailureMessage = (e as Error).message;
-            console.error(`RCE video stream for device '${state.deviceName}' failed to connect, retrying: ${state.lastFailureMessage}`);
+            logger.error(`RCE video stream for device '${state.deviceName}' failed to connect, retrying: ${state.lastFailureMessage}`);
             void this.runRetryLoop(state);
         }
     }
@@ -169,7 +172,7 @@ export class RceStreamSession {
             //reconnect rather than leaving a dead video behind an error banner. Errors before the
             //offer surface through the connect() rejection instead.
             if (this.activeStream === session && session.offerPosted) {
-                console.error(`RCE video stream for device '${session.deviceName}' errored, reconnecting: ${error.message}`);
+                logger.error(`RCE video stream for device '${session.deviceName}' errored, reconnecting: ${error.message}`);
                 this.beginReconnect(session);
             } else {
                 this.postError(`Video stream error for device '${streamRequest.deviceName}': ${error.message}`, streamRequest.deviceId, streamRequest.deviceName);
@@ -180,7 +183,7 @@ export class RceStreamSession {
             //close during negotiation instead surfaces through the connect() rejection; a close
             //from our own stop() never lands here (stop() detaches the client's listeners first).
             if (this.activeStream === session && session.offerPosted) {
-                console.error(`RCE video stream for device '${session.deviceName}' closed unexpectedly, reconnecting`);
+                logger.error(`RCE video stream for device '${session.deviceName}' closed unexpectedly, reconnecting`);
                 this.beginReconnect(session);
                 return;
             }
@@ -386,7 +389,7 @@ export class RceStreamSession {
                     return;
                 }
                 state.lastFailureMessage = (e as Error).message;
-                console.error(`RCE video stream connect attempt ${attempt}/${attemptLimit} for device '${state.deviceName}' failed: ${state.lastFailureMessage}`);
+                logger.error(`RCE video stream connect attempt ${attempt}/${attemptLimit} for device '${state.deviceName}' failed: ${state.lastFailureMessage}`);
             }
         }
         if (state.cancelled) {
@@ -430,7 +433,7 @@ export class RceStreamSession {
      */
     public handleStreamFailure(failureMessage?: string): void {
         if (this.activeStream?.offerPosted) {
-            console.error(`RCE video stream peer failure reported by the webview for device '${this.activeStream.deviceName}', reconnecting: ${failureMessage ?? 'no reason given'}`);
+            logger.error(`RCE video stream peer failure reported by the webview for device '${this.activeStream.deviceName}', reconnecting: ${failureMessage ?? 'no reason given'}`);
             this.beginReconnect(this.activeStream);
         }
     }
@@ -455,7 +458,7 @@ export class RceStreamSession {
             }
             const stream = this.activeStream;
             if (status === 'pending') {
-                console.error(`RCE device '${stream.deviceName}' is restarting; waiting to reconnect its video stream`);
+                logger.error(`RCE device '${stream.deviceName}' is restarting; waiting to reconnect its video stream`);
                 stream.client.stop();
                 this.activeStream = undefined;
                 this.beginWaitingForDevice(stream.deviceId, stream.deviceName);
@@ -469,7 +472,7 @@ export class RceStreamSession {
         //which connects once the device reaches running)
         if (this.stoppedDevice && !this.reconnectState && (status === 'running' || status === 'pending')) {
             const stoppedDevice = this.stoppedDevice;
-            console.log(`RCE device '${stoppedDevice.deviceName}' is starting again; resuming its video stream`);
+            logger.log(`RCE device '${stoppedDevice.deviceName}' is starting again; resuming its video stream`);
             this.beginWaitingForDevice(stoppedDevice.deviceId, stoppedDevice.deviceName);
         }
     }
@@ -582,7 +585,7 @@ export class RceStreamSession {
      * host console so a live signaling failure's real reason is captured there too.
      */
     public postError(message: string, deviceId?: number, deviceName?: string): void {
-        console.error(`RCE video stream error: ${message}`);
+        logger.error(`RCE video stream error: ${message}`);
         this.postEvent(ViewProviderEvent.onRceStreamError, {
             message: message,
             deviceId: deviceId,

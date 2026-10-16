@@ -4,12 +4,15 @@ import stripAnsi from 'strip-ansi';
 import { isLaunchStartEvent, isLogOutputEvent } from 'roku-debug';
 import type { DeclarationProvider } from '../DeclarationProvider';
 import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
+import { createLogger } from '../logging';
 import { util } from '../util';
 import type { LogOutput } from './LogOutput';
 import { isBrightScriptLogDocument } from './LogOutput';
 import type { FileReference } from './logLineUtils';
 import { annotateErrorCodes, findFileReference } from './logLineUtils';
 import { PkgPathResolver } from './PkgPathResolver';
+
+const logger = createLogger('BrightScriptLogOutput');
 
 interface OutputLink {
     /**
@@ -248,7 +251,7 @@ export class BrightScriptLogOutput implements LogOutput, vscode.DocumentLinkProv
             this.closeLogfile();
             const stream = fsExtra.createWriteStream(logfilePath, { flags: 'a' });
             stream.on('error', (error) => {
-                console.error(`Error writing to logfile ${logfilePath}`, error);
+                logger.error(`Error writing to logfile ${logfilePath}`, error);
             });
             this.logfile = { path: logfilePath, stream: stream };
         }
