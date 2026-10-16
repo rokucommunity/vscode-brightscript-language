@@ -26,6 +26,6 @@
 		}
 	],
     "settings": {
-        "js/ts.tsdk.path": "⚡vscode-brightscript-language\\node_modules\\typescript\\lib"
+        "js/ts.tsdk.path": "⚡vscode-brightscript-language/node_modules/typescript/lib"
     }
 }

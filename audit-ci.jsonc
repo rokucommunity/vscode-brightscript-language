@@ -12,6 +12,13 @@
             }
         },
         {
+            "GHSA-vfj7-8cjw-p6xm": {
+                // Added: 2026-10-03
+                "active": true,
+                "notes": "`braces` <=3.0.3 (via micromatch/chokidar/fast-glob from brighterscript, roku-deploy, mocha, eslint tooling): stack exhaustion on deeply nested brace patterns. No patched version is published, so it cannot be upgraded or overridden. Every glob pattern we feed it comes from the user's own workspace config or our own build scripts; nobody untrusted can supply a pattern, and a crash only affects the user's own local process."
+            }
+        },
+        {
             "GHSA-w5hq-g745-h8pq": {
                 // Added: 2026-05-22
                 "active": true,

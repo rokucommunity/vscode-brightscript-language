@@ -21,5 +21,5 @@
     "editor.tabSize": 4,
     "js/ts.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false,
     "html.format.unformatted": "wbr,%",
-    "js/ts.tsdk.path": "node_modules\\typescript\\lib"
+    "js/ts.tsdk.path": "node_modules/typescript/lib"
 }

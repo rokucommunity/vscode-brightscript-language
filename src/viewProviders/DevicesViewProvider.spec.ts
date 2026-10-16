@@ -87,6 +87,10 @@ describe('DevicesViewProvider', () => {
         } as any;
     }
 
+    function getDeviceKeys(items: any[]): string[] {
+        return items.filter(item => item.key !== undefined).map(item => item.key);
+    }
+
     function createProvider(devices: any[], options?: { storedPasswords?: Record<string, string> }) {
         const emitter = new EventEmitter();
         const deviceManager: any = {
@@ -129,7 +133,7 @@ describe('DevicesViewProvider', () => {
             ];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['tv-online', 'stick-online', 'stb-online']);
+            expect(getDeviceKeys(items)).to.deep.equal(['tv-online', 'stick-online', 'stb-online']);
         });
 
         it('hides TVs when the TV filter is off', async () => {
@@ -141,7 +145,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ tv: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['stb1', 'stick1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['stb1', 'stick1']);
         });
 
         it('hides offline devices when the offline filter is off (pending with prior online stays visible)', async () => {
@@ -153,7 +157,7 @@ describe('DevicesViewProvider', () => {
             ];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['on1', 'pending-was-online']);
+            expect(getDeviceKeys(items)).to.deep.equal(['on1', 'pending-was-online']);
         });
 
         it('hides online devices when the online filter is off (pending with prior online counts as online)', async () => {
@@ -166,7 +170,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ online: false, offline: true });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['off1', 'pending-first-load']);
+            expect(getDeviceKeys(items)).to.deep.equal(['off1', 'pending-first-load']);
         });
 
         it('treats missing developer-enabled as enabled', async () => {
@@ -178,7 +182,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ devModeEnabled: false, devModeDisabled: true, offline: true });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['explicit-off']);
+            expect(getDeviceKeys(items)).to.deep.equal(['explicit-off']);
         });
 
         it('hides user-defined devices when the userDefined filter is off', async () => {
@@ -189,7 +193,7 @@ describe('DevicesViewProvider', () => {
             seedFilters({ userDefined: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['discovered1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['discovered1']);
         });
 
         it('hides auto-detected devices when the autoDetected filter is off', async () => {
@@ -200,14 +204,103 @@ describe('DevicesViewProvider', () => {
             seedFilters({ autoDetected: false });
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['configured1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['configured1']);
         });
 
         it('uses defaults when no filter settings are present', async () => {
             const devices = [makeDevice({ key: 'stb-online' })];
             const { provider } = createProvider(devices);
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['stb-online']);
+            expect(getDeviceKeys(items)).to.deep.equal(['stb-online']);
+        });
+    });
+
+    describe('filtered devices group', () => {
+        const mixedDevices = () => [
+            makeDevice({ key: 'off1', deviceState: 'offline' }),
+            makeDevice({ key: 'on1' }),
+            makeDevice({ key: 'off2', deviceState: 'offline' }),
+            makeDevice({ key: 'on2' }),
+            makeDevice({ key: 'nondev', developerEnabled: 'false' })
+        ];
+
+        it('omits the group when nothing is hidden', async () => {
+            const { provider } = createProvider([makeDevice({ key: 'on1' }), makeDevice({ key: 'on2' })]);
+            const items = await provider.getChildren();
+            expect(items).to.have.lengthOf(2);
+            expect(items.every(item => (item as any).contextValue !== 'filteredDevicesGroup')).to.be.true;
+        });
+
+        it('appends a collapsed group as the last root item with the hidden count', async () => {
+            const { provider } = createProvider(mixedDevices());
+            const items = await provider.getChildren();
+            expect(getDeviceKeys(items)).to.deep.equal(['on1', 'on2']);
+            const group = items[items.length - 1];
+            expect(items).to.have.lengthOf(3);
+            expect(group.label).to.equal('Filtered Devices (3)');
+            expect(group.contextValue).to.equal('filteredDevicesGroup');
+            expect(group.id).to.equal('filteredDevicesGroup');
+            expect(group.collapsibleState).to.equal((vscode as any).TreeItemCollapsibleState.Collapsed);
+        });
+
+        it('greys out the group label and icon while leaving device decorations unchanged', async () => {
+            const { provider } = createProvider(mixedDevices());
+            const items = await provider.getChildren();
+            const group = items[items.length - 1];
+            const decorationProvider = provider['decorationProvider'];
+
+            expect(group.label).to.equal('Filtered Devices (3)');
+            expect((group.iconPath as any).id).to.equal('filter');
+            expect((group.iconPath as any).color.id).to.equal('descriptionForeground');
+
+            const groupDecoration = decorationProvider.provideFileDecoration(group.resourceUri);
+            expect((groupDecoration.color as any).id).to.equal('descriptionForeground');
+            expect(groupDecoration.badge).to.be.undefined;
+            expect(groupDecoration.tooltip).to.be.undefined;
+
+            expect(decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/on1' } as any)).to.be.undefined;
+            expect((decorationProvider.provideFileDecoration({ scheme: 'roku-device', path: '/off1' } as any).color as any).id).to.equal('disabledForeground');
+        });
+
+        it('lists exactly the hidden devices in input order as group children', async () => {
+            const { provider } = createProvider(mixedDevices());
+            const items = await provider.getChildren();
+            const children = await provider.getChildren(items[items.length - 1]);
+            expect(getDeviceKeys(children)).to.deep.equal(['off1', 'off2', 'nondev']);
+        });
+
+        it('builds child rows identical to root rows and parents them to the group', async () => {
+            const { provider } = createProvider(mixedDevices());
+            const group = (await provider.getChildren()).pop();
+            const children = await provider.getChildren(group);
+
+            seedFilters({ offline: true, devModeDisabled: true });
+            const { provider: showAllProvider } = createProvider(mixedDevices());
+            const rootItems = await showAllProvider.getChildren();
+
+            expect(children).to.have.lengthOf(3);
+            for (const child of children) {
+                const rootItem = rootItems.find(item => (item as any).key === (child as any).key);
+                expect(child.contextValue).to.equal(rootItem.contextValue);
+                expect(child.label).to.equal(rootItem.label);
+                expect(child.collapsibleState).to.equal(rootItem.collapsibleState);
+                expect(String(child.resourceUri)).to.equal(String(rootItem.resourceUri));
+                expect(child.iconPath).to.equal(rootItem.iconPath);
+                expect(child.tooltip).to.equal(rootItem.tooltip);
+                expect(provider.getParent(child as any)).to.equal(group);
+            }
+            expect(showAllProvider.getParent(rootItems[0] as any)).to.be.null;
+        });
+
+        it('shows only the group when every device is hidden', async () => {
+            const { provider } = createProvider([
+                makeDevice({ key: 'off1', deviceState: 'offline' }),
+                makeDevice({ key: 'off2', deviceState: 'offline' })
+            ]);
+            const items = await provider.getChildren();
+            expect(items).to.have.lengthOf(1);
+            expect(items[0].label).to.equal('Filtered Devices (2)');
+            expect(getDeviceKeys(await provider.getChildren(items[0]))).to.deep.equal(['off1', 'off2']);
         });
     });
 
@@ -468,7 +561,7 @@ describe('DevicesViewProvider', () => {
             const { provider } = createProvider(devices);
             // Confirm seeded override is honored before the reset
             let items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['stb1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['stb1']);
 
             const treeChanged = sinon.spy();
             provider.onDidChangeTreeData(treeChanged);
@@ -477,7 +570,7 @@ describe('DevicesViewProvider', () => {
 
             expect(treeChanged.called).to.be.true;
             items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['tv1', 'stb1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['tv1', 'stb1']);
         });
 
         it('is a no-op on persistence when nothing was overridden', async () => {
@@ -504,7 +597,7 @@ describe('DevicesViewProvider', () => {
 
             expect(treeChanged.called).to.be.true;
             const items = await provider.getChildren();
-            expect(items.map(i => (i as any).key)).to.deep.equal(['stb1']);
+            expect(getDeviceKeys(items)).to.deep.equal(['stb1']);
         });
 
         it('ignores changes to unrelated configuration sections', () => {

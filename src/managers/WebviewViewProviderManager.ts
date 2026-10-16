@@ -15,7 +15,11 @@ import { RokuRegistryViewProvider } from '../viewProviders/RokuRegistryViewProvi
 import { SceneGraphInspectorViewProvider } from '../viewProviders/SceneGraphInspectorViewProvider';
 import { RokuAutomationViewViewProvider } from '../viewProviders/RokuAutomationViewViewProvider';
 import { RokuReplViewProvider } from '../viewProviders/RokuReplViewProvider';
+import { SolidDevtoolsViewProvider } from '../viewProviders/SolidDevtoolsViewProvider';
 import { RceManagementViewProvider } from '../viewProviders/RceManagementViewProvider';
+import { createLogger } from '../logging';
+
+const logger = createLogger('WebviewViewProviderManager');
 
 export class WebviewViewProviderManager {
     constructor(
@@ -69,6 +73,9 @@ export class WebviewViewProviderManager {
         constructor: RokuReplViewProvider,
         provider: undefined as RokuReplViewProvider
     }, {
+        constructor: SolidDevtoolsViewProvider,
+        provider: undefined as SolidDevtoolsViewProvider
+    }, {
         constructor: RceManagementViewProvider,
         provider: undefined as RceManagementViewProvider
     }];
@@ -97,7 +104,7 @@ export class WebviewViewProviderManager {
     // Notification from extension
     public onChannelPublishedEvent(e: ChannelPublishedEvent) {
         const config = e.body.launchConfiguration as BrightScriptLaunchConfiguration;
-        this.rtaManager.setupRtaWithConfig(config).catch((error: Error) => console.error('Failed to set up RTA from the launch config', error));
+        this.rtaManager.setupRtaWithConfig(config).catch((error: Error) => logger.error('Failed to set up RTA from the launch config', error));
 
         for (const webview of this.webviewViews) {
             void webview.provider.onChannelPublishedEvent(e);
@@ -106,7 +113,7 @@ export class WebviewViewProviderManager {
 
     // Mainly for communicating between webviews
     public sendMessageToWebviews(viewIds: string | string[], message) {
-        // console.log(`WebviewViewProviderManager: sendMessageToWebviews: ${viewIds} ${JSON.stringify(message)}`);
+        // logger.log(`WebviewViewProviderManager: sendMessageToWebviews: ${viewIds} ${JSON.stringify(message)}`);
         if (typeof viewIds === 'string') {
             viewIds = [viewIds];
         }

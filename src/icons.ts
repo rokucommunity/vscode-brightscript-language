@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import type { DeviceType } from 'roku-deploy';
 
 export const icons = {
     streamingStick: {
@@ -33,5 +34,11 @@ export const icons = {
         } else {
             return icons.setTopBox;
         }
+    },
+    /**
+     * Get the correct icon for a cloud emulator device's type.
+     */
+    getRceDeviceType: (deviceType?: DeviceType) => {
+        return deviceType === 'tv' ? icons.tv : icons.setTopBox;
     }
 };

@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
+import { debugSessionManager } from '../managers/DebugSessionManager';
 import { isProfilingEnabledEvent, isProfilingStartEvent, isProfilingStopEvent, isProfilingErrorEvent } from 'roku-debug';
+import { createLogger } from '../logging';
+
+const logger = createLogger('ProfilingCommands');
 
 export class ProfilingCommands {
 
@@ -57,10 +61,13 @@ export class ProfilingCommands {
         context.subscriptions.push(
             vscode.commands.registerCommand('extension.brightscript.startTracing',
                 async () => {
-                    const session = vscode.debug.activeDebugSession;
+                    // Resolve the BrightScript session explicitly — never `activeDebugSession`.
+                    // In a dual BRS/JS session the JS session is often the active one, and only
+                    // roku-debug answers `startPerfettoTracing` (see DebugSessionManager).
+                    const session = debugSessionManager.getActiveBrightScriptSession();
 
                     if (!session) {
-                        void vscode.window.showErrorMessage(`Cannot start tracing: there's no active debug session`);
+                        void vscode.window.showErrorMessage(`Cannot start tracing: there's no active BrightScript debug session`);
                         return;
                     }
 
@@ -68,7 +75,7 @@ export class ProfilingCommands {
                         await session.customRequest('startPerfettoTracing');
                         await vscodeContextManager.set('brightscript.tracingActive', true);
                     } catch (e) {
-                        console.error(`Failed to start tracing`, e);
+                        logger.error(`Failed to start tracing`, e);
                     }
                 }
             )
@@ -78,7 +85,7 @@ export class ProfilingCommands {
         context.subscriptions.push(
             vscode.commands.registerCommand('extension.brightscript.stopTracing',
                 async () => {
-                    const session = vscode.debug.activeDebugSession;
+                    const session = debugSessionManager.getActiveBrightScriptSession();
                     if (!session) {
                         return;
                     }
@@ -86,24 +93,24 @@ export class ProfilingCommands {
                     try {
                         await session.customRequest('stopPerfettoTracing');
                     } catch (e) {
-                        console.error(`Failed to stop tracing:`, e);
+                        logger.error(`Failed to stop tracing:`, e);
                     }
                 }
             )
         );
 
         async function captureHeapSnapshot() {
-            const session = vscode.debug.activeDebugSession;
+            const session = debugSessionManager.getActiveBrightScriptSession();
 
             if (!session) {
-                void vscode.window.showErrorMessage(`Cannot capture heap snapshot: there's no active debug session`);
+                void vscode.window.showErrorMessage(`Cannot capture heap snapshot: there's no active BrightScript debug session`);
                 return;
             }
 
             try {
                 await session.customRequest('captureHeapSnapshot');
             } catch (e) {
-                console.error(`Failed to capture snapshot:`, e);
+                logger.error(`Failed to capture snapshot:`, e);
             }
         }
 

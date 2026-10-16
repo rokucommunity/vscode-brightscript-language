@@ -22,6 +22,8 @@ let treeItemKeySequence = 0;
  * URI scheme used for device tree items to enable FileDecorationProvider
  */
 const DEVICE_URI_SCHEME = 'roku-device';
+//device keys are prefixed ("s:" or "i:"), so this path can never match a device
+const FILTERED_DEVICES_GROUP_PATH = 'filteredDevicesGroup';
 
 /**
  * Configuration section that holds each filter's persisted value. Each filter facet
@@ -182,6 +184,33 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     private devices: Array<RokuDevice>;
 
+    /**
+     * Devices from the full list that are absent from `visibleDevices`, in the original order
+     */
+    private getHiddenDevices(visibleDevices: RokuDevice[]): RokuDevice[] {
+        const visibleKeys = new Set(visibleDevices.map(device => device.key));
+        return this.devices.filter(device => !visibleKeys.has(device.key));
+    }
+
+    private async createDeviceTreeItem(device: RokuDevice, parent: FilteredDevicesGroupTreeItem | null = null): Promise<DeviceTreeItem> {
+        const treeItem = new DeviceTreeItem(
+            this.deviceManager.getDeviceDisplayName(device),
+            vscode.TreeItemCollapsibleState.Collapsed,
+            device.key,
+            device.deviceInfo,
+            undefined,
+            parent
+        );
+        treeItem.tooltip = `${this.deviceManager.getAddressLabel(device)} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
+
+        // Set resourceUri to enable FileDecorationProvider for text coloring
+        // Use the device key which is serial-based when available, IP-based as fallback
+        treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`);
+        treeItem.iconPath = this.deviceManager.getIconPath(device);
+        treeItem.contextValue = await this.buildDeviceContextValue(device);
+        return treeItem;
+    }
+
     async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
@@ -190,25 +219,16 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 this.decorationProvider.updateDevices(this.devices, this.getActiveDeviceKey());
             }
             if (this.devices) {
-                let items: DeviceTreeItem[] = [];
+                const items: vscode.TreeItem[] = [];
                 const visibleDevices = this.applyFilters(this.devices);
                 for (const device of visibleDevices) {
-                    // Make a root item for each device
-                    let treeItem = new DeviceTreeItem(
-                        this.deviceManager.getDeviceDisplayName(device),
-                        vscode.TreeItemCollapsibleState.Collapsed,
-                        device.key,
-                        device.deviceInfo
-                    );
-                    treeItem.tooltip = `${this.deviceManager.getAddressLabel(device)} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
+                    items.push(await this.createDeviceTreeItem(device));
+                }
 
-                    // Set resourceUri to enable FileDecorationProvider for text coloring
-                    // Use the device key which is serial-based when available, IP-based as fallback
-                    treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`);
-                    treeItem.iconPath = this.deviceManager.getIconPath(device);
-                    treeItem.contextValue = await this.buildDeviceContextValue(device);
-
-                    items.push(treeItem);
+                // Devices hidden by the filters stay reachable in a trailing group
+                const hiddenDevices = this.getHiddenDevices(visibleDevices);
+                if (hiddenDevices.length > 0) {
+                    items.push(new FilteredDevicesGroupTreeItem(hiddenDevices.length));
                 }
 
                 // Return the created root items
@@ -217,6 +237,9 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 // No devices
                 return [];
             }
+        } else if (element instanceof FilteredDevicesGroupTreeItem) {
+            const hiddenDevices = this.getHiddenDevices(this.applyFilters(this.devices));
+            return Promise.all(hiddenDevices.map(device => this.createDeviceTreeItem(device, element)));
         } else if (element instanceof DeviceTreeItem) {
             // Build the device's action items (also available in the right-click context menu),
             // followed by the expandable device info group
@@ -498,7 +521,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      * Currently we don't modify this element so it is just returned back.
      * @param element the requested element
      */
-    getParent?(element: DeviceTreeItem | DeviceInfoGroupTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<vscode.TreeItem> {
+    getParent?(element: DeviceTreeItem | DeviceInfoGroupTreeItem | DeviceInfoTreeItem | FilteredDevicesGroupTreeItem): vscode.ProviderResult<vscode.TreeItem> {
         return element?.parent;
     }
 
@@ -657,12 +680,28 @@ class DeviceTreeItem extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly key: string,
         public readonly details?: any,
-        public command?: vscode.Command
+        public command?: vscode.Command,
+        public readonly parent: FilteredDevicesGroupTreeItem | null = null
     ) {
         super(label, collapsibleState);
     }
-
+}
+/**
+ * The collapsed "Filtered Devices" group at the end of the root. Its children are the
+ * devices currently hidden by the devices view filters.
+ */
+class FilteredDevicesGroupTreeItem extends vscode.TreeItem {
     public readonly parent = null;
+
+    constructor(hiddenDeviceCount: number) {
+        super(`Filtered Devices (${hiddenDeviceCount})`, vscode.TreeItemCollapsibleState.Collapsed);
+        // Stable id keeps the expansion state when the count in the label changes
+        this.id = 'filteredDevicesGroup';
+        this.contextValue = 'filteredDevicesGroup';
+        this.iconPath = new vscode.ThemeIcon('filter', new vscode.ThemeColor('descriptionForeground'));
+        //resourceUri only feeds DeviceDecorationProvider (muted label); the explicit label and icon still win
+        this.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${FILTERED_DEVICES_GROUP_PATH}`);
+    }
 }
 /**
  * The expandable "Device Info" group shown as the only child of a device. Its children
@@ -731,6 +770,9 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
         }
 
         const deviceKey = uri.path.slice(1); // Remove leading slash (key is "s:..." or "i:...")
+        if (deviceKey === FILTERED_DEVICES_GROUP_PATH) {
+            return { color: new vscode.ThemeColor('descriptionForeground') };
+        }
         const state = this.deviceStates.get(deviceKey);
 
         const decoration: vscode.FileDecoration = {};

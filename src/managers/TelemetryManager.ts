@@ -1,9 +1,10 @@
 import TelemetryReporter from '@vscode/extension-telemetry';
 import type { Disposable } from 'vscode';
-import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
+import type { BrightScriptLaunchConfiguration, DeviceSelectionSource } from '../DebugConfigurationProvider';
 import type { RemoteControlModeInitiator } from './RemoteControlManager';
 import { util } from '../util';
-import type { DeviceInfo } from 'roku-deploy';
+import type { DeviceInfo, DeviceConfig } from 'roku-deploy';
+import { isLocalDeviceConfig, isRceDeviceConfig, isRceDeviceConfigByEsn, isRceDeviceConfigById, isRceDeviceConfigByUrl } from 'roku-deploy';
 
 const APP_INSIGHTS_KEY = '8618f206-4732-4729-88ed-d07dcf17f199';
 
@@ -31,8 +32,10 @@ export class TelemetryManager implements Disposable {
 
     /**
      * Track when a debug session has been started
+     * @param deviceSelectionSource  how the target device ended up being chosen (config, active device, picker, or unresolved)
      */
-    public sendStartDebugSessionEvent(initialConfig: BrightScriptLaunchConfiguration & { preLaunchTask: string }, finalConfig: BrightScriptLaunchConfiguration, deviceInfo?: DeviceInfo) {
+    public sendStartDebugSessionEvent(initialConfig: BrightScriptLaunchConfiguration & { preLaunchTask: string }, finalConfig: BrightScriptLaunchConfiguration, deviceInfo: DeviceInfo | undefined, deviceSelectionSource: DeviceSelectionSource) {
+        const componentLibraries = initialConfig.componentLibraries ?? [];
         let debugConnectionType: 'debugProtocol' | 'telnet';
         let enableDebugProtocol = finalConfig?.enableDebugProtocol ?? initialConfig?.enableDebugProtocol;
         if (enableDebugProtocol === true) {
@@ -65,6 +68,16 @@ export class TelemetryManager implements Disposable {
             isExtensionLogfilePathDefined: isDefined(
                 util.getConfiguration('brightscript').get<string>('extensionLogfilePath')
             ),
+            deviceReferenceKind: getDeviceReferenceKind(initialConfig.device),
+            isProfilingTracingEnabled: boolToString(initialConfig.profiling?.tracing?.enable),
+            isPackageTaskDefined: isDefined(initialConfig.packageTask),
+            isEnvFileDefined: isDefined(initialConfig.envFile),
+            componentLibraryCount: componentLibraries.length.toString(),
+            isComponentLibraryInstallUsed: componentLibraries.some(library => library.install === true) ? 'true' : 'false',
+            isComponentLibraryPostfixDisabled: componentLibraries.some(library => library.enablePostfix === false) ? 'true' : 'false',
+            debugAdapterProtocolLogging: boolToString(initialConfig.debugAdapterProtocolLogging),
+            isCloudDevice: (finalConfig?.device && isRceDeviceConfig(finalConfig.device)) ? 'true' : 'false',
+            deviceSelectionSource: deviceSelectionSource,
             // include some deviceInfo data
             deviceInfoSoftwareVersion: deviceInfo?.softwareVersion,
             deviceInfoSoftwareBuild: deviceInfo?.softwareBuild?.toString(),
@@ -97,4 +110,27 @@ function boolToString(value: boolean | undefined) {
 
 function isDefined(value: any) {
     return value ? 'true' : 'false';
+}
+
+/**
+ * Which field a declared `device` attribute addresses the target by, for telemetry.
+ * `'undefined'` covers both a missing device and one that matches none of the known shapes.
+ */
+function getDeviceReferenceKind(device: DeviceConfig | undefined): 'host' | 'esn' | 'id' | 'instanceUrl' | 'undefined' {
+    if (!device) {
+        return 'undefined';
+    }
+    if (isLocalDeviceConfig(device)) {
+        return 'host';
+    }
+    if (isRceDeviceConfigByEsn(device)) {
+        return 'esn';
+    }
+    if (isRceDeviceConfigById(device)) {
+        return 'id';
+    }
+    if (isRceDeviceConfigByUrl(device)) {
+        return 'instanceUrl';
+    }
+    return 'undefined';
 }

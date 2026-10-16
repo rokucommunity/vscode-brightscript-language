@@ -4,6 +4,9 @@ import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 import BrightscriptFileUtils from './BrightScriptFileUtils';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import { createLogger } from './logging';
+
+const logger = createLogger('LogDocumentLinkProvider');
 
 export class CustomDocumentLink {
     constructor(outputLine: number, startChar: number, length: number, pkgPath: string, lineNumber: number, filename: string) {
@@ -89,7 +92,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
             let uri = vscode.Uri.parse(`vscode://rokucommunity.brightscript/openFile/${customLink.pkgPath}#${customLink.lineNumber}`);
             this.customLinks.push(new DocumentLink(range, uri));
         } else {
-            console.log('could not find matching file for link with path ' + customLink.pkgPath);
+            logger.log('could not find matching file for link with path ' + customLink.pkgPath);
         }
     }
 

@@ -97,6 +97,48 @@ describe('BrightScriptFileUtils ', () => {
         });
     });
 
+    describe('refreshDevice', () => {
+        let localCommands: BrightScriptCommands;
+        let capturedCommands: Record<string, (...args: any[]) => any>;
+        let deviceManager: any;
+
+        beforeEach(() => {
+            deviceManager = {
+                getDevice: sinon.stub(),
+                healthCheckDevice: sinon.stub().resolves(true)
+            };
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, deviceManager, {} as any, {} as any, {} as any, {} as any);
+            capturedCommands = {};
+            sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, callback: any) => {
+                capturedCommands[name] = callback;
+            });
+            localCommands.registerCommands();
+        });
+
+        afterEach(() => {
+            (vscode.commands.registerCommand as any).restore();
+        });
+
+        it('resolves the tree item key to a device and force health-checks it', async () => {
+            const device = { key: 's:SN123', deviceState: 'online' };
+            deviceManager.getDevice.withArgs('s:SN123').returns(device);
+
+            await capturedCommands['extension.brightscript.refreshDevice']({ key: 's:SN123' });
+
+            assert.isTrue(deviceManager.healthCheckDevice.calledOnce);
+            assert.equal(deviceManager.healthCheckDevice.firstCall.args[0], device);
+            assert.isTrue(deviceManager.healthCheckDevice.firstCall.args[1]);
+        });
+
+        it('does nothing when the key no longer matches a device', async () => {
+            deviceManager.getDevice.returns(undefined);
+
+            await capturedCommands['extension.brightscript.refreshDevice']({ key: 'i:1.2.3.4' });
+
+            assert.isTrue(deviceManager.healthCheckDevice.notCalled);
+        });
+    });
+
     describe('setDefaultDevicePassword', () => {
         let localCommands: BrightScriptCommands;
         let capturedCommands: Record<string, (...args: any[]) => any>;
