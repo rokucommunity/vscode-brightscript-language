@@ -766,6 +766,74 @@ describe('RokuFinder', () => {
         });
     });
 
+    describe('mDNS handling', () => {
+        it('emits "found" with IP and serial number for an mDNS sighting', () => {
+            finder = new RokuFinder(mockGlobalStateManager);
+
+            const foundSpy = sinon.spy();
+            finder.on('found', foundSpy);
+
+            (finder['mdnsListener'] as any).emit('roku-found', {
+                ip: '192.168.1.91',
+                serialNumber: 'X01300A3Y71Y',
+                model: 'G220X',
+                name: '65in Hisense Roku TV'
+            });
+
+            expect(foundSpy.calledOnce).to.be.true;
+            expect(foundSpy.firstCall.args[0]).to.equal('192.168.1.91');
+            expect(foundSpy.firstCall.args[1].serialNumber).to.equal('X01300A3Y71Y');
+        });
+
+        it('does not run mDNS sightings through the ssdp:alive heartbeat suppression', () => {
+            finder = new RokuFinder(mockGlobalStateManager);
+
+            const deviceOnlineSpy = sinon.spy();
+            finder.on('device-online', deviceOnlineSpy);
+
+            (finder['mdnsListener'] as any).emit('roku-found', { ip: '192.168.1.91', serialNumber: 'X01300A3Y71Y' });
+
+            // mDNS feeds `found`, not `device-online` (that path is SSDP-cadence specific).
+            expect(deviceOnlineSpy.called).to.be.false;
+        });
+
+        it('emits "lost" when the mDNS listener reports a device gone', () => {
+            finder = new RokuFinder(mockGlobalStateManager);
+
+            const lostSpy = sinon.spy();
+            finder.on('lost', lostSpy);
+
+            (finder['mdnsListener'] as any).emit('roku-lost', '192.168.1.91');
+
+            expect(lostSpy.calledOnce).to.be.true;
+            expect(lostSpy.firstCall.args[0]).to.equal('192.168.1.91');
+        });
+
+        it('resets the scan settle timer when an mDNS sighting arrives during a scan', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+
+                const scanEndedSpy = sinon.spy();
+                finder.on('scan-ended', scanEndedSpy);
+
+                finder.scan();
+
+                // mDNS sighting at 2.9s resets the settle timer to 2.9s + 1.5s = 4.4s
+                clock.tick(2_900);
+                (finder['mdnsListener'] as any).emit('roku-found', { ip: '192.168.1.91', serialNumber: 'X01300A3Y71Y' });
+
+                clock.tick(100); // 3s: min timer fired, settle still pending
+                expect(scanEndedSpy.called).to.be.false;
+
+                clock.tick(1_400); // 4.4s: settle fires
+                expect(scanEndedSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+    });
+
     describe('scan orchestration', () => {
         it('emits scan-started when scan begins', () => {
             finder = new RokuFinder(mockGlobalStateManager);
