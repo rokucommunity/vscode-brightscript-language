@@ -2,8 +2,8 @@ import * as path from 'path';
 import { rokuDeploy } from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
-import BrightscriptFileUtils from './BrightScriptFileUtils';
-import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import BrightscriptFileUtils from '../../BrightScriptFileUtils';
+import type { BrightScriptLaunchConfiguration } from '../../DebugConfigurationProvider';
 
 export class CustomDocumentLink {
     constructor(outputLine: number, startChar: number, length: number, pkgPath: string, lineNumber: number, filename: string) {

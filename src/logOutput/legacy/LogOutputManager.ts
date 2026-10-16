@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import { isChanperfEvent, isLaunchStartEvent, isLogOutputEvent, isRendezvousEvent } from 'roku-debug';
-import type { DeclarationProvider } from './DeclarationProvider';
+import type { DeclarationProvider } from '../../DeclarationProvider';
 import type { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
-import { util } from './util';
+import { util } from '../../util';
 import * as fsExtra from 'fs-extra';
-import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import type { BrightScriptLaunchConfiguration } from '../../DebugConfigurationProvider';
 import stripAnsi from 'strip-ansi';
 
 export class LogLine {

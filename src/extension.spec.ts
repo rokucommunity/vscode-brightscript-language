@@ -172,7 +172,7 @@ describe('extension', () => {
 
             await extension['debugSessionCustomEventHandler'](
                 makeCrashEvent('uncaughtException', 'something went wrong') as any,
-                vscode.context, null as any, null as any, null as any
+                vscode.context, null as any, null as any
             );
 
             expect(stub.calledOnce).to.be.true;
@@ -187,7 +187,7 @@ describe('extension', () => {
 
             await extension['debugSessionCustomEventHandler'](
                 makeCrashEvent('unhandledRejection', 'promise rejected') as any,
-                vscode.context, null as any, null as any, null as any
+                vscode.context, null as any, null as any
             );
 
             expect(stub.calledOnce).to.be.true;
@@ -203,7 +203,7 @@ describe('extension', () => {
 
             await extension['debugSessionCustomEventHandler'](
                 makeCrashEvent('uncaughtException', 'boom', 'Error: boom\n  at foo.ts:1') as any,
-                vscode.context, null as any, null as any, null as any
+                vscode.context, null as any, null as any
             );
 
             expect(executeStub.calledOnce).to.be.true;
@@ -226,7 +226,7 @@ describe('extension', () => {
                     rokuDebugVersion: '1.2.3',
                     developerMode: true
                 }) as any,
-                vscode.context, null as any, null as any, null as any
+                vscode.context, null as any, null as any
             );
 
             const issueBody: string = (executeStub.getCall(0).args as any[])[1].issueBody;
@@ -242,7 +242,7 @@ describe('extension', () => {
 
             await extension['debugSessionCustomEventHandler'](
                 makeCrashEvent('uncaughtException', 'boom') as any,
-                vscode.context, null as any, null as any, null as any
+                vscode.context, null as any, null as any
             );
 
             expect(executeStub.called).to.be.false;
@@ -264,9 +264,9 @@ describe('extension', () => {
         let actualStagingDir: string;
         let parentSession: any;
 
-        //minimal fake - the real LogOutputManager isn't wired up in these tests, and passing null
+        //minimal fake - the real LogOutput isn't wired up in these tests, and passing null
         //(as this file used to) throws inside the handler's tail call on every event
-        const fakeLogOutputManager: any = { onDidReceiveDebugSessionCustomEvent: async () => { } };
+        const fakeLogOutput: any = { onDidReceiveDebugSessionCustomEvent: async () => { } };
 
         function jsDebugTarget(stagingDir: string, kind: 'main' | 'componentLibrary' = 'main') {
             return { tsPath: parentSession.configuration.tsPath, rootDir: rootDir, stagingDir: stagingDir, kind: kind };
@@ -298,7 +298,7 @@ describe('extension', () => {
         //network I/O against the fabricated host, so that call is stubbed away first
         function fireChannelPublished(session: any) {
             sinon.stub(extension['webviewViewProviderManager'], 'onChannelPublishedEvent');
-            return extension['debugSessionCustomEventHandler'](channelPublishedEvent(session) as any, vscode.context, {} as any, fakeLogOutputManager, {} as any);
+            return extension['debugSessionCustomEventHandler'](channelPublishedEvent(session) as any, vscode.context, fakeLogOutput, {} as any);
         }
 
         function sleep(ms: number) {
