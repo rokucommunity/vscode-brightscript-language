@@ -7,6 +7,9 @@ import { BaseRdbViewProvider } from './BaseRdbViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { ViewProviderCommand } from './ViewProviderCommand';
+import { createLogger } from '../logging';
+
+const logger = createLogger('RokuAppOverlaysViewViewProvider');
 
 export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuAppOverlaysView;
@@ -37,7 +40,7 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
                     this.postOrQueueMessage(response);
                     resolve(true);
                 }).catch((e) => {
-                    console.error(`Error loading overlay thumbnails: ${e.message}`);
+                    logger.error(`Error loading overlay thumbnails: ${e.message}`);
                     reject(e);
                 });
             });
@@ -75,7 +78,7 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
             const base64String = `data:image/png;base64, ${contents}`;
             return base64String;
         } catch (error) {
-            console.error(`Error reading or encoding file: ${error.message}`);
+            logger.error(`Error reading or encoding file: ${error.message}`);
             return null;
         }
     }

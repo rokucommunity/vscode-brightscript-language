@@ -17,6 +17,9 @@ import {
 
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
 import { util } from './util';
+import { createLogger } from './logging';
+
+const logger = createLogger('DeclarationProvider');
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CREDIT WHERE CREDIT IS DUE
@@ -273,13 +276,13 @@ export class DeclarationProvider implements Disposable {
         };
 
         for (const [line, text] of iterlines(input)) {
-            // console.log("" + line + ": " + text);
+            // logger.log("" + line + ": " + text);
             funcEndLine = line;
             funcEndChar = text.length;
 
             //FUNCTION START
             let match = /^\s*(?:public|protected|private)*\s*(?:override)*\s*(?:function|sub)\s+(.*[^\(])\s*\((.*)\)/i.exec(text);
-            // console.log("match " + match);
+            // logger.log("match " + match);
             if (match !== null) {
                 // function has started
                 if (currentFunction !== undefined) {
@@ -300,7 +303,7 @@ export class DeclarationProvider implements Disposable {
             //FUNCTION END
             match = /^\s*(end)\s*(function|sub)/i.exec(text);
             if (match !== null) {
-                // console.log("function END");
+                // logger.log("function END");
                 if (currentFunction !== undefined) {
                     currentFunction.bodyRange = currentFunction.bodyRange.with({ end: new Position(funcEndLine, funcEndChar) });
                     //reset so the function's range isn't stretched over whatever follows it (e.g. a nested namespace)
@@ -312,7 +315,7 @@ export class DeclarationProvider implements Disposable {
             // //FIELD
             match = /^(?!.*\()(?: |\t)*(public|private|protected)(?: |\t)*([a-z|\.|_]*).*((?: |\t)*=(?: |\t)*.*)*$/i.exec(text);
             if (match !== null) {
-                // console.log("FOUND VAR " + match);
+                // logger.log("FOUND VAR " + match);
                 const name = match[2].trim();
                 if (mDefs[name] !== true) {
                     mDefs[name] = true;
@@ -324,7 +327,7 @@ export class DeclarationProvider implements Disposable {
                         new Range(line, match[0].length - match[1].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
                     );
-                    // console.log('FOUND VAR ' + varSymbol.name);
+                    // logger.log('FOUND VAR ' + varSymbol.name);
                     symbols.push(varSymbol);
                 }
                 continue;
@@ -346,7 +349,7 @@ export class DeclarationProvider implements Disposable {
                         new Range(line, match[0].length - match[1].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
                     );
-                    // console.log('FOUND NAMESPACES ' + namespaceSymbol.name);
+                    // logger.log('FOUND NAMESPACES ' + namespaceSymbol.name);
                     symbols.push(namespaceSymbol);
                     namespaces.add(name.toLowerCase());
                     containerStack.push(namespaceSymbol);
@@ -373,7 +376,7 @@ export class DeclarationProvider implements Disposable {
                         new Range(line, match[0].length - match[1].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
                     );
-                    // console.log('FOUND enumS ' + enumSymbol.name);
+                    // logger.log('FOUND enumS ' + enumSymbol.name);
                     symbols.push(enumSymbol);
                     enums.add(name.toLowerCase());
                     containerStack.push(enumSymbol);
@@ -400,7 +403,7 @@ export class DeclarationProvider implements Disposable {
                         new Range(line, match[0].length - match[2].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
                     );
-                    // console.log('FOUND CLASS ' + classSymbol.name);
+                    // logger.log('FOUND CLASS ' + classSymbol.name);
                     symbols.push(classSymbol);
                     classes.add(name.toLowerCase());
                     containerStack.push(classSymbol);
@@ -427,7 +430,7 @@ export class DeclarationProvider implements Disposable {
                         new Range(line, match[0].length - match[2].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
                     );
-                    // console.log('FOUND interface ' + interfaceSymbol.name);
+                    // logger.log('FOUND interface ' + interfaceSymbol.name);
                     symbols.push(interfaceSymbol);
                     interfaces.add(name.toLowerCase());
                     containerStack.push(interfaceSymbol);
@@ -468,7 +471,7 @@ export class DeclarationProvider implements Disposable {
                 // if there was no match, then get the declarations now
                 symbols = this.cache.get(filePath);
             } catch (e) {
-                console.error(`error loading symbols for file ${filePath}: ${e.message}`);
+                logger.error(`error loading symbols for file ${filePath}: ${e.message}`);
             }
         }
         //try to load it now

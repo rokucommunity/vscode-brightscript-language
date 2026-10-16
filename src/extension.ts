@@ -51,6 +51,9 @@ import { PerfettoEditorProvider } from './editors/PerfettoEditor';
 import { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
 import { RokuProjectsViewProvider } from './viewProviders/RokuProjectsViewProvider';
 import { injectDevtoolsBridge } from './solidDevtools/bridgeInjection';
+import { attachExtensionOutputChannel, createLogger } from './logging';
+
+const logger = createLogger('Extension');
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -118,6 +121,7 @@ export class Extension {
 
         this.telemetryManager.sendStartupEvent();
         this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
+        attachExtensionOutputChannel(this.extensionOutputChannel);
         this.extensionOutputChannel.appendLine('Extension startup');
         //constructed for its side effects: it publishes the `brightscript.experimental.*` context
         //keys and keeps them following the settings. No feature consumes it today
@@ -255,7 +259,7 @@ export class Extension {
         const debugTsEvents = false;
         const logTsEvents = (cb: () => any[]) => {
             if (debugTsEvents) {
-                console.log(...cb());
+                logger.log(...cb());
             }
         }; // set to true to enable debug logging for this feature
         context.subscriptions.push(
@@ -415,7 +419,7 @@ export class Extension {
                 if (target) {
                     return this.attachJsDebugger(debugSession, target);
                 }
-            }).catch(e => console.error(e));
+            }).catch(e => logger.error(e));
             this.diagnosticManager.clear();
         }
     }
@@ -547,7 +551,7 @@ export class Extension {
             // the modal as fast as the user can dismiss it. Bail instead — attach cannot succeed
             // without the rootDir, and it will be retried the next time a debug session starts.
             if (!fsExtra.existsSync(target.rootDir)) {
-                console.error(`Cannot attach node debugger: rootDir does not exist at '${target.rootDir}'`);
+                logger.error(`Cannot attach node debugger: rootDir does not exist at '${target.rootDir}'`);
                 //don't leave the relay listening with nothing left to attach to it
                 this.jsDebugProxyManager.stop(parentSession.id);
                 return false;
@@ -632,7 +636,7 @@ export class Extension {
                     return true;
                 }
             } catch (e) {
-                console.error(e);
+                logger.error(e);
             }
         }
         // Parent session ended while we were trying to attach; stop() is idempotent
@@ -794,7 +798,7 @@ export class Extension {
         try {
             await logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
         } catch (err) {
-            console.error('Error handling custom event', e, err);
+            logger.error('Error handling custom event', e, err);
         }
     }
 
@@ -854,7 +858,7 @@ export class Extension {
         });
 
         execution = await vscode.tasks.executeTask(targetTask);
-        console.log(execution);
+        logger.log(execution);
         await taskFinished;
     }
 

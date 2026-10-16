@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
+import { createLogger } from '../logging';
+
+const logger = createLogger('webviewHtml');
 
 /**
  * Build the html for a webview from the built webviews bundle's index.html, replacing its
@@ -12,7 +15,7 @@ export function buildWebviewIndexHtml(options: BuildWebviewIndexHtmlOptions): st
     try {
         html = fsExtra.readFileSync(options.webviewBasePath + '/index.html').toString();
     } catch (e) {
-        console.error(e);
+        logger.error(e);
         return '<h1>Error loading webview</h1>';
     }
 

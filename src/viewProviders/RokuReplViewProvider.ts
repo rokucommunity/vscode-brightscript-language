@@ -11,6 +11,9 @@ import * as getPort from 'get-port';
 import * as path from 'path';
 import * as os from 'os';
 import { Parser } from 'brighterscript';
+import { createLogger } from '../logging';
+
+const logger = createLogger('RokuReplViewProvider');
 
 export class RokuReplViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuReplView;
@@ -42,7 +45,7 @@ export class RokuReplViewProvider extends BaseRdbViewProvider {
                     this.componentLibraryServer = new ComponentLibraryServer();
                     this.componentLibraryPort = await getPort();
                     await fsExtra.ensureDir(this.componentLibraryFolder);
-                    await this.componentLibraryServer.startStaticFileHosting(this.componentLibraryFolder, this.componentLibraryPort, console.log);
+                    await this.componentLibraryServer.startStaticFileHosting(this.componentLibraryFolder, this.componentLibraryPort, (line: string) => logger.log(line));
                 }
 
                 const zip = new JSZip();

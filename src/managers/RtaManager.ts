@@ -11,6 +11,9 @@ import type { WebviewViewProviderManager } from './WebviewViewProviderManager';
 import type { RceManager } from './RceManager';
 import type { DeviceManager } from '../deviceDiscovery/DeviceManager';
 import { VscodeCommand } from '../commands/VscodeCommand';
+import { createLogger } from '../logging';
+
+const logger = createLogger('RtaManager');
 
 export class RtaManager {
     constructor(
@@ -59,7 +62,7 @@ export class RtaManager {
             //DebugConfigurationProvider), so RtaManager fetches the token itself
             const rceToken = await this.rceManager.getToken();
             if (!rceToken) {
-                console.warn('RtaManager: no Cloud Emulator token is available; RTA requests to this device will fail authentication');
+                logger.warn('No Cloud Emulator token is available; RTA requests to this device will fail authentication');
             }
             device = {
                 ...resolvedDevice.device,

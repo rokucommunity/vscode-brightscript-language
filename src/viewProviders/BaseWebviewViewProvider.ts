@@ -16,6 +16,9 @@ import type { RceManager } from '../managers/RceManager';
 import type { RceFinder } from '../deviceDiscovery/RceFinder';
 import type { DeviceManager } from '../deviceDiscovery/DeviceManager';
 import type { DeviceTargetManager } from '../managers/DeviceTargetManager';
+import { createLogger } from '../logging';
+
+const logger = createLogger('BaseWebviewViewProvider');
 
 export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(
@@ -126,7 +129,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
             return; // the view/panel was disposed
         }
         webview?.postMessage(message).then(null, (reason) => {
-            console.log('postMessage failed: ', reason);
+            logger.log('postMessage failed: ', reason);
         });
     }
 
@@ -178,7 +181,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 } else {
                     const callback = this.messageCommandCallbacks[command];
                     if (!callback || !await callback(message)) {
-                        console.warn('Did not handle message', message);
+                        logger.warn('Did not handle message', message);
                     }
                 }
             } catch (e) {
@@ -245,7 +248,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 });
             }
         } catch (e) {
-            console.error(e);
+            logger.error(e);
         }
         return this.getIndexHtml(webviewContext);
     }
