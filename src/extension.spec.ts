@@ -301,6 +301,11 @@ describe('extension', () => {
             return extension['debugSessionCustomEventHandler'](channelPublishedEvent(session) as any, vscode.context, {} as any, fakeLogOutputManager, {} as any);
         }
 
+        function fireChannelSideloaded(session: any) {
+            const event = { ...channelPublishedEvent(session), event: 'ChannelSideloadedEvent' };
+            return extension['debugSessionCustomEventHandler'](event as any, vscode.context, {} as any, fakeLogOutputManager, {} as any);
+        }
+
         function sleep(ms: number) {
             return new Promise<void>(resolve => {
                 setTimeout(resolve, ms);
@@ -369,6 +374,47 @@ describe('extension', () => {
             const expectedLocalRoot = path.join(actualStagingDir, 'source', 'compiled');
             expect(debugConfig.localRoot).to.equal(expectedLocalRoot);
             expect(debugConfig.outFiles).to.deep.equal([`${expectedLocalRoot.replace(/\\/g, '/')}/*.js`]);
+        });
+
+        it('attaches on channel-sideloaded without waiting for channel-published, and logs the attach latency', async () => {
+            await extension.activate(vscode.context);
+            const appendLineSpy = sinon.spy(extension.extensionOutputChannel, 'appendLine');
+            const startDebuggingStub = sinon.stub(vscode.debug, 'startDebugging').resolves(true);
+
+            const attachPromise: Promise<boolean> = extension['attachJsDebugger'](parentSession, jsDebugTarget(guessedStagingDir));
+            await extension['processCustomRequestEvent'](processStagingDirEvent(actualStagingDir) as any, parentSession);
+            await sleep(120);
+            expect(startDebuggingStub.called).to.be.false;
+
+            //the device accepted the package - roku-debug is still waiting on the debug protocol, so
+            //channel-published has NOT arrived, but this is the window where Hermes waits for js-debug
+            await fireChannelSideloaded(parentSession);
+
+            expect(await attachPromise).to.be.true;
+            expect(startDebuggingStub.calledOnce).to.be.true;
+            expect((startDebuggingStub.getCall(0).args as any[])[1].localRoot).to.equal(path.join(actualStagingDir, 'source', 'compiled'));
+            expect(appendLineSpy.getCalls().some(x => /^\[js-debug-proxy\] attached \d+ms after channelSideloaded$/.test(x.args[0]))).to.be.true;
+        });
+
+        it('attaches on channel-sideloaded even when emitChannelPublishedEvent is disabled and staging is not yet known', async () => {
+            await extension.activate(vscode.context);
+            parentSession.configuration.emitChannelPublishedEvent = false;
+            const startDebuggingStub = sinon.stub(vscode.debug, 'startDebugging').resolves(true);
+
+            await fireChannelSideloaded(parentSession);
+            const attached = await extension['attachJsDebugger'](parentSession, jsDebugTarget(guessedStagingDir));
+
+            expect(attached).to.be.true;
+            expect(startDebuggingStub.calledOnce).to.be.true;
+        });
+
+        it('ignores channel-sideloaded for a session that already terminated', async () => {
+            await extension.activate(vscode.context);
+            (debugSessionManager as any).liveSessions.delete(parentSession.id);
+
+            await fireChannelSideloaded(parentSession);
+
+            expect(extension['stagingReadyByParentSessionId'].has(parentSession.id)).to.be.false;
         });
 
         it('attaches immediately when channel-published already arrived before attachJsDebugger started waiting', async () => {
