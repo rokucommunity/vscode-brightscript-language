@@ -67,8 +67,12 @@ class FakeWebviewPanel {
         }
     };
 
-    public reveal() {
+    public active = true;
+    public lastRevealArgs: unknown[] = [];
+
+    public reveal(...args: unknown[]) {
         this.revealed++;
+        this.lastRevealArgs = args;
     }
 
     public dispose() {
@@ -663,6 +667,59 @@ describe('RceVideoEditorManager', () => {
 
             expect(resolveStreamRequest.calledOnce).to.be.true;
             expect(manager.createdClients.length).to.equal(1);
+        });
+    });
+
+    describe('screenshots', () => {
+        it('captures the tab device through the sidebar capture command and posts the response', async () => {
+            const executeCommand = sinon.stub(vscode.commands, 'executeCommand').callsFake(() => Promise.resolve({ bytes: new ArrayBuffer(2), format: 'png' }) as any);
+            createManager();
+            await manager.open(5, 'my-device');
+            const fakePanel = manager.createdPanels[0];
+            await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+            await fakePanel.receiveMessage({ id: 'abc', command: ViewProviderCommand.getScreenshot, context: { streaming: true } });
+
+            expect(executeCommand.calledWith(VscodeCommand.rokuDeviceViewCaptureRceScreenshot, 5, 'my-device')).to.be.true;
+            const response = fakePanel.postedMessages.find((message) => message.id === 'abc').response;
+            expect(response.success).to.be.true;
+            expect(response.format).to.equal('png');
+        });
+
+        it('posts the failure message when the capture fails', async () => {
+            sinon.stub(vscode.commands, 'executeCommand').rejects(new Error('no password'));
+            createManager();
+            await manager.open(5, 'my-device');
+            const fakePanel = manager.createdPanels[0];
+            await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+
+            await fakePanel.receiveMessage({ id: 'abc', command: ViewProviderCommand.getScreenshot, context: {} });
+
+            expect(fakePanel.postedMessages.find((message) => message.id === 'abc').response).to.eql({ success: false, message: 'no password' });
+        });
+
+        it('copy command focuses and asks only the active tab to copy', async () => {
+            const handlers: Record<string, () => void> = {};
+            sinon.stub(vscode.commands, 'registerCommand').callsFake((command: string, callback: any) => {
+                handlers[command] = callback;
+                return { dispose: () => { } } as any;
+            });
+            createManager();
+            await manager.open(5, 'my-device');
+            await manager.open(6, 'other-device');
+            const [activePanel, inactivePanel] = manager.createdPanels;
+            inactivePanel.active = false;
+            for (const fakePanel of manager.createdPanels) {
+                await fakePanel.receiveMessage({ command: ViewProviderCommand.viewReady, context: {} });
+            }
+
+            handlers[VscodeCommand.rceVideoViewCopyScreenshot]();
+
+            expect(activePanel.lastRevealArgs).to.eql([undefined, false]);
+            const copyEvents = findEventMessages(activePanel, ViewProviderEvent.onVscodeCommandReceived);
+            expect(copyEvents).to.have.length(1);
+            expect(copyEvents[0].context.commandName).to.equal(VscodeCommand.rokuDeviceViewCopyScreenshot);
+            expect(findEventMessages(inactivePanel, ViewProviderEvent.onVscodeCommandReceived)).to.have.length(0);
         });
     });
 });
