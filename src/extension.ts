@@ -25,7 +25,7 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import type { LogOutput } from './logOutput/LogOutput';
 import { BRIGHTSCRIPT_LOG_CHANNEL_NAME } from './logOutput/LogOutput';
-import { LegacyLogOutput } from './logOutput/legacy/LegacyLogOutput';
+import { createLogOutput } from './logOutput/createLogOutput';
 import { RendezvousViewProvider } from './viewProviders/RendezvousViewProvider';
 import { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
@@ -177,7 +177,7 @@ export class Extension {
         this.outputChannel = vscode.window.createOutputChannel(BRIGHTSCRIPT_LOG_CHANNEL_NAME);
         this.sceneGraphDebugChannel = vscode.window.createOutputChannel('SceneGraph Debug Commands');
 
-        this.logOutput = new LegacyLogOutput(this.outputChannel, context, declarationProvider);
+        this.logOutput = createLogOutput(this.outputChannel, context, declarationProvider);
 
         const definitionRepo = new DefinitionRepository(declarationProvider);
 

@@ -57,6 +57,8 @@ If set to true, will clear the brightscript log when launching
 If set to true, will clear the brightscript log after connecting to the Roku channel after launching
 ### `brightscript.output.hyperlinkFormat`
 specifies the display format for log output `pkg` link
+### `brightscript.output.useLegacyLogOutput`
+If set to true, uses the previous implementation of the brightscript log output and its file links. Only enable this if you run into problems with the current implementation (and please report them). This setting is temporary and will be removed in a future release. Requires a window reload.
 ### `brightscript.deviceDiscovery.showInfoMessages`
 If set to true, an info toast will be shown when a Roku device has been found on the network.
 ### `brightscript.deviceDiscovery.enabled`

@@ -2655,6 +2655,12 @@
                         "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n (Full) pkg:/components/KeyLogTester.brs(24:0) [INFO] retrieving videos for category id 23 \n (Filename) KeyLogTester.brs(24) [INFO] retrieving videos for category id 23 \n (FilenameAndFunction) KeyLogTester.getVideos(24) [INFO] retrieving videos for category id 23 \n (Short) #1 [INFO] retrieving videos for category id 23 \n (Hidden) [INFO] retrieving videos for category id 23",
                         "scope": "resource"
                     },
+                    "brightscript.output.useLegacyLogOutput": {
+                        "type": "boolean",
+                        "default": false,
+                        "markdownDescription": "Use the previous implementation of the BrightScript Log output and its file links. Only enable this if you run into problems with the current implementation (and please report them). This setting is temporary and will be removed in a future release. Requires a window reload.",
+                        "scope": "window"
+                    },
                     "brightscript.output.includeStackTraces": {
                         "type": "boolean",
                         "default": true,
