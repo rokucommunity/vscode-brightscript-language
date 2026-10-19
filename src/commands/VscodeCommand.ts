@@ -9,6 +9,8 @@ export enum VscodeCommand {
     rokuDeviceViewOpenVideoEditor = 'extension.brightscript.rokuDeviceView.openVideoEditor',
     rceWatchDeviceById = 'extension.brightscript.rce.watchDeviceById',
     rceWatchDeviceInEditor = 'extension.brightscript.rce.watchDeviceInEditor',
+    rokuDeviceViewCaptureRceScreenshot = 'extension.brightscript.rokuDeviceView.captureRceScreenshot',
+    rceVideoViewCopyScreenshot = 'extension.brightscript.rceVideoView.copyScreenshot',
     rceStartDeviceById = 'extension.brightscript.rce.startDeviceById',
     rceStopDeviceById = 'extension.brightscript.rce.stopDeviceById',
     devicesViewRestartDevice = 'extension.brightscript.devicesView.restartDevice',

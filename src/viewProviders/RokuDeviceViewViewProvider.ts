@@ -5,6 +5,7 @@ import { isRceDeviceConfig, RceVideoSignalingClient, rokuDeploy } from 'roku-dep
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import type { RceStreamRequestConfig } from '../managers/RceManager';
+import { util } from '../util';
 import { BaseRdbViewProvider } from './BaseRdbViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
@@ -15,7 +16,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuDeviceView;
 
     private temporarilyDisableScreenshotCapture = false;
-    private resumeScreenshotCapture?: () => void;
+    private screenshotCaptureWaiters: Array<() => void> = [];
 
     /**
      * The Cloud Emulator device of the most recent sideload (channel-published event), when there
@@ -63,9 +64,18 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewRefreshScreenshot);
         this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewPauseScreenshotCapture);
         this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewResumeScreenshotCapture);
-        this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewCopyScreenshot, () => {
+        this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewCopyScreenshot, async () => {
+            if (!this.view) {
+                await vscode.commands.executeCommand('rokuDeviceView.focus');
+            }
             // In order for copy to be successful the webview has to have focus
-            this.view.show(false);
+            this.view?.show(false);
+        });
+
+        //internal command (no package.json contribution): the video editor tabs capture through this
+        //so they share the password handling below
+        this.registerCommand(VscodeCommand.rokuDeviceViewCaptureRceScreenshot, (deviceId: number, deviceName: string) => {
+            return this.captureRceScreenshot(deviceId, deviceName);
         });
 
         //internal command (no package.json contribution): RceManagementViewProvider's
@@ -173,21 +183,83 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
                     // Sometimes we need to temporarily stop screenshot capture as it can prevent successful package deployment to the device
                     // Originally was just returning true here but now we just pause until we resume capturing
                     await new Promise<void>((resolve) => {
-                        this.resumeScreenshotCapture = resolve;
+                        this.screenshotCaptureWaiters.push(resolve);
                     });
                 }
-                const result = await this.dependencies.rtaManager.device.getScreenshot();
+                const screenshot = await this.captureScreenshot(!!message.context?.streaming);
                 this.postOrQueueMessage(this.createResponseMessage(message, {
                     success: true,
-                    arrayBuffer: result.buffer.buffer
+                    bytes: screenshot.bytes,
+                    format: screenshot.format,
+                    nextCaptureDelay: this.getScreenshotCaptureDelay()
                 }));
             } catch (e) {
                 this.postOrQueueMessage(this.createResponseMessage(message, {
-                    success: false
+                    success: false,
+                    message: (e as Error).message
                 }));
             }
             return true;
         });
+
+        this.addMessageCommandCallback(ViewProviderCommand.showScreenshotMessage, (message) => {
+            if (message.context.severity === 'error') {
+                void vscode.window.showErrorMessage(message.context.message);
+            } else {
+                void vscode.window.showInformationMessage(message.context.message);
+            }
+            this.postOrQueueMessage(this.createResponseMessage(message));
+            return Promise.resolve(true);
+        });
+    }
+
+    /**
+     * Capture from what the view is showing: the streamed Cloud Emulator device in stream mode
+     * (only an explicit copy captures then, so the password may be prompted for), else the device
+     * RTA currently holds.
+     */
+    private captureScreenshot(streaming: boolean) {
+        if (streaming) {
+            const streamedDeviceId = this.rceStreamSession.deviceId;
+            if (streamedDeviceId === undefined) {
+                throw new Error('No Cloud Emulator device is being streamed.');
+            }
+            return this.captureRceScreenshot(streamedDeviceId, this.rceStreamSession.deviceName);
+        }
+        const rokuDevice = this.dependencies.rtaManager.device;
+        if (!rokuDevice) {
+            throw new Error('No device is connected.');
+        }
+        return util.captureScreenshot(rokuDevice.getRokuDeployDevice(), rokuDevice.getCurrentDeviceConfig().password);
+    }
+
+    private async captureRceScreenshot(deviceId: number, deviceName: string | undefined) {
+        const { deviceManager, deviceTargetManager, rceManager } = this.dependencies;
+        //the token is read per capture since the active account can change while a view stays on a device
+        const device = { id: deviceId, rceToken: await rceManager.getToken() };
+        const knownDevice = deviceManager.getDeviceByDeviceConfig(device);
+        const password = await deviceTargetManager.resolveValidatedPassword(
+            device,
+            knownDevice?.serialNumber,
+            knownDevice ? deviceManager.getDeviceDisplayName(knownDevice) : (deviceName ?? `device ${deviceId}`)
+        );
+        if (password === undefined) {
+            throw new Error('A developer password is required to capture this device.');
+        }
+        return util.captureScreenshot(device, password);
+    }
+
+    private getScreenshotCaptureDelay(): number {
+        const delay = util.getConfiguration('brightscript.rokuDeviceView').get<number>('screenshotCaptureDelay');
+        return typeof delay === 'number' && delay >= 0 ? delay : 500;
+    }
+
+    private resumeScreenshotCaptureWaiters() {
+        const waiters = this.screenshotCaptureWaiters;
+        this.screenshotCaptureWaiters = [];
+        for (const resolveWaiter of waiters) {
+            resolveWaiter();
+        }
     }
 
     public onDidStartDebugSession(e: vscode.DebugSession) {
@@ -197,8 +269,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
     public onDidTerminateDebugSession(e: vscode.DebugSession) {
         // In case we failed to start debugging we want to allow screenshots again
         this.temporarilyDisableScreenshotCapture = false;
-        this.resumeScreenshotCapture?.();
-        delete this.resumeScreenshotCapture;
+        this.resumeScreenshotCaptureWaiters();
     }
 
     /**
@@ -229,8 +300,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
 
     public onChannelPublishedEvent(e: ChannelPublishedEvent) {
         this.temporarilyDisableScreenshotCapture = false;
-        this.resumeScreenshotCapture?.();
-        delete this.resumeScreenshotCapture;
+        this.resumeScreenshotCaptureWaiters();
 
         //this view follows the last sideloaded device, mirroring the LAN screenshot flow (whose RTA
         //device RtaManager repoints on this same event): a cloud sideload starts/retargets the video
