@@ -271,6 +271,15 @@ describe('BsConfigProjectProvider', () => {
             expect(result.taskConfig.command).to.include('"bsconfig.json"');
         });
 
+        it('separates the bsc flags from the npx flags with --', () => {
+            const configUri = makeUri('/workspace/project/bsconfig.json');
+            (vscode.workspace as any).asRelativePath = sinon.stub().returns('project/bsconfig.json');
+
+            const result = provider.createProject(configUri);
+
+            expect(result.taskConfig.command).to.match(/^npx --no bsc -- --project /);
+        });
+
         it('produces a debug config name with no flavor for bsconfig.json', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.json');
             (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
