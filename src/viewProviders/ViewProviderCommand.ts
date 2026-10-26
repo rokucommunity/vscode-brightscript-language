@@ -1,4 +1,5 @@
 export enum ViewProviderCommand {
+    applyMemoryPressure = 'applyMemoryPressure',
     connectToDevice = 'connectToDevice',
     createRceDevice = 'createRceDevice',
     createRceSnapshot = 'createRceSnapshot',
@@ -6,6 +7,7 @@ export enum ViewProviderCommand {
     deleteRokuFile = 'deleteRokuFile',
     enableRceDevMode = 'enableRceDevMode',
     getAppUI = 'getAppUI',
+    getMemoryPressure = 'getMemoryPressure',
     getRceDeviceDetails = 'getRceDeviceDetails',
     getRceState = 'getRceState',
     getStoredAppUI = 'getStoredAppUI',
