@@ -4,7 +4,7 @@ import * as sinonImport from 'sinon';
 
 let Module = require('module');
 
-import { vscode } from './mockVscode.spec';
+import { vscode } from '../../mockVscode.spec';
 
 const { require: oldRequire } = Module.prototype;
 

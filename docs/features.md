@@ -39,9 +39,6 @@ priority: 2
     - **Short** `#1`
     - **Hidden** ``
 - Marking the output log (CTRL+L)
-- Clearing the output log (CTRL+K), which also clears the mark indexes - **be sure to use the extension's command for clearing, or you may find that your hyperlinks and filters get out of sync**
-- Filtering the output log - 3 filters are available:
-  - LogLevel (example `^\[(info|warn|debug\]`)
-  - Include (example `NameOfSomeInterestingComponent`)
-  - Exclude (example `NameOfSomeNoisyComponent`)
+- Clearing the output log (CTRL+K), which also clears the mark indexes - **be sure to use the extension's command for clearing, or you may find that your hyperlinks get out of sync**
+- Filtering the output log with the filter box at the top of the Output panel. (The previous LogLevel, Include and Exclude regex filter commands are only available with the temporary `brightscript.output.useLegacyLogOutput` setting.)
 - Variable `bs_const` values using the `launch.json` (see the [BS_Const](./Debugging/bs-const.html) section for more information)

@@ -14,7 +14,7 @@
         "multi-root-ready"
     ],
     "engines": {
-        "vscode": "^1.81.0",
+        "vscode": "^1.97.0",
         "node": "^12.12.0"
     },
     "repository": {
@@ -111,7 +111,7 @@
         "@types/resolve": "^1.20.6",
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
-        "@types/vscode": "^1.81.0",
+        "@types/vscode": "^1.97.0",
         "@types/xml2js": "^0.4.14",
         "@types/yargs": "^15.0.5",
         "@typescript-eslint/eslint-plugin": "^5.14.0",
@@ -1773,23 +1773,6 @@
                 }
             },
             {
-                "id": "Log",
-                "aliases": [
-                    "log"
-                ],
-                "extensions": [
-                    ".log"
-                ],
-                "configuration": "./log.configuration.json",
-                "mimetypes": [
-                    "log",
-                    "text/log",
-                    "text/x-log",
-                    "text/x-code-output",
-                    "x-code-output"
-                ]
-            },
-            {
                 "id": "perfetto-trace",
                 "extensions": [
                     ".pftrace",
@@ -2671,6 +2654,12 @@
                         "default": "FilenameAndFunction",
                         "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n (Full) pkg:/components/KeyLogTester.brs(24:0) [INFO] retrieving videos for category id 23 \n (Filename) KeyLogTester.brs(24) [INFO] retrieving videos for category id 23 \n (FilenameAndFunction) KeyLogTester.getVideos(24) [INFO] retrieving videos for category id 23 \n (Short) #1 [INFO] retrieving videos for category id 23 \n (Hidden) [INFO] retrieving videos for category id 23",
                         "scope": "resource"
+                    },
+                    "brightscript.output.useLegacyLogOutput": {
+                        "type": "boolean",
+                        "default": false,
+                        "markdownDescription": "Use the previous implementation of the BrightScript Log output, its file links and its regex filter commands. Only enable this if you run into problems with the current implementation (and please report them). This setting is temporary and will be removed in a future release. Requires a window reload.",
+                        "scope": "window"
                     },
                     "brightscript.output.includeStackTraces": {
                         "type": "boolean",
