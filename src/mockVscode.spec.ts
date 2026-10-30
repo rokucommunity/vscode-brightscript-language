@@ -272,6 +272,7 @@ export let vscode = {
                 public busy = false;
                 public buttons: any[] = [];
                 public activeItems: QuickPickItem[] = [];
+                public selectedItems: QuickPickItem[] = [];
 
                 public show() { }
 
