@@ -375,6 +375,118 @@ describe('RceManagementViewProvider', () => {
             expect(startDeviceArgs[0].start.maxRuntime).to.equal(3600);
         });
 
+        describe('free-trial start failures', () => {
+            const startingDevice = { id: 5, name: 'my-device', deviceType: 'tv', lastSnapshotId: 10, snapshots: [10], firmwareVersionId: 'rce-fw:1', status: 'shutdown' };
+
+            function createApiError(statusCode: number, apiCode: string | undefined) {
+                return Object.assign(new Error(`RCE management POST /devices/5/start failed (status ${statusCode}): server text`), {
+                    details: { method: 'POST', path: '/devices/5/start', statusCode: statusCode, apiCode: apiCode }
+                });
+            }
+
+            async function setUpRejectedStart(startError: Error, otherDevices: any[] = []) {
+                rceManager = new TestRceManager(vscode.context as any);
+                await rceManager.addAccount('work', 'token-work');
+                rceManager.fakeManagementClient.listDevices.resolves([startingDevice, ...otherDevices]);
+                rceManager.fakeManagementClient.listSnapshots.resolves([
+                    { id: 10, createdAt: '2026-01-01', firmwareVersionId: 'rce-fw:1' }
+                ]);
+                rceManager.fakeManagementClient.startDevice.rejects(startError);
+                createProvider();
+            }
+
+            async function startAndCaptureError(): Promise<Error> {
+                try {
+                    await provider['startDeviceCore']({
+                        managementClient: rceManager.fakeManagementClient as unknown as RceManagementClient,
+                        device: startingDevice as any,
+                        snapshotId: 10,
+                        firmwareVersionId: 'rce-fw:1',
+                        maxRuntimeSeconds: 3600
+                    });
+                } catch (error) {
+                    return error as Error;
+                }
+                throw new Error('expected startDeviceCore to reject');
+            }
+
+            it('maps trial_exhausted to a friendly message', async () => {
+                await setUpRejectedStart(createApiError(402, 'trial_exhausted'));
+                const thrown = await startAndCaptureError();
+                expect(thrown.message).to.equal('Your Cloud Emulator free trial has been used up. A paid plan is required to start devices.');
+            });
+
+            it('maps trial_exhausted_impersonation to an organisation message', async () => {
+                await setUpRejectedStart(createApiError(402, 'trial_exhausted_impersonation'));
+                const thrown = await startAndCaptureError();
+                expect(thrown.message).to.equal('This organisation\'s Cloud Emulator free trial has been used up. A paid plan is required to start devices.');
+            });
+
+            it('names the running device for trial_device_run_limit', async () => {
+                await setUpRejectedStart(createApiError(429, 'trial_device_run_limit'), [
+                    { id: 6, name: 'busy-device', deviceType: 'tv', status: 'running' }
+                ]);
+                const thrown = await startAndCaptureError();
+                expect(thrown.message).to.equal('Free-trial accounts can run one device at a time. Stop \'busy-device\' first.');
+            });
+
+            it('names a device that is still starting up for trial_device_run_limit', async () => {
+                await setUpRejectedStart(createApiError(429, 'trial_device_run_limit'), [
+                    { id: 7, name: 'idle-device', deviceType: 'tv', status: 'shutdown' },
+                    { id: 6, name: 'starting-device', deviceType: 'tv', status: 'pending' }
+                ]);
+                const thrown = await startAndCaptureError();
+                expect(thrown.message).to.equal('Free-trial accounts can run one device at a time. Stop \'starting-device\' first.');
+            });
+
+            it('falls back to a generic stop message when no running device is found', async () => {
+                await setUpRejectedStart(createApiError(429, 'trial_device_run_limit'));
+                const thrown = await startAndCaptureError();
+                expect(thrown.message).to.equal('Free-trial accounts can run one device at a time. Stop the running device first.');
+            });
+
+            it('falls back to a generic stop message when the device list cannot be fetched', async () => {
+                await setUpRejectedStart(createApiError(429, 'trial_device_run_limit'));
+                rceManager.fakeManagementClient.listDevices.rejects(new Error('offline'));
+                const thrown = await startAndCaptureError();
+                expect(thrown.message).to.equal('Free-trial accounts can run one device at a time. Stop the running device first.');
+            });
+
+            it('maps trial_max_runtime_exceeded to a runtime message', async () => {
+                await setUpRejectedStart(createApiError(400, 'trial_max_runtime_exceeded'));
+                const thrown = await startAndCaptureError();
+                expect(thrown.message).to.equal('The selected runtime is longer than your remaining free-trial time. Choose a shorter runtime.');
+            });
+
+            it('rethrows an unmapped api error unchanged', async () => {
+                const apiError = createApiError(409, 'device_busy');
+                await setUpRejectedStart(apiError);
+                expect(await startAndCaptureError()).to.equal(apiError);
+            });
+
+            it('rethrows an api error without an api code unchanged', async () => {
+                const apiError = createApiError(503, undefined);
+                await setUpRejectedStart(apiError);
+                expect(await startAndCaptureError()).to.equal(apiError);
+            });
+
+            it('rethrows a plain error unchanged', async () => {
+                const plainError = new Error('socket hang up');
+                await setUpRejectedStart(plainError);
+                expect(await startAndCaptureError()).to.equal(plainError);
+            });
+
+            it('carries the friendly message in the panel start response', async () => {
+                await setUpRejectedStart(createApiError(402, 'trial_exhausted'));
+
+                const message = { command: ViewProviderCommand.startRceDevice, context: { deviceId: 5, snapshotId: 10 } };
+                await provider['messageCommandCallbacks'][ViewProviderCommand.startRceDevice](message);
+
+                const responseMessage = findResponseMessage(ViewProviderCommand.startRceDevice);
+                expect(responseMessage.error.message).to.equal('Your Cloud Emulator free trial has been used up. A paid plan is required to start devices.');
+            });
+        });
+
         it('does not call startDevice when a replaces-live-snapshot confirmation is declined', async () => {
             rceManager = new TestRceManager(vscode.context as any);
             await rceManager.addAccount('work', 'token-work');
