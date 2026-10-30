@@ -1,3 +1,4 @@
+import { vscode } from '../mockVscode.spec';
 import * as fsExtra from 'fs-extra';
 import { standardizePath as s } from 'brighterscript';
 import { LanguageServerInfoCommand } from './LanguageServerInfoCommand';
@@ -51,6 +52,53 @@ describe('LanguageServerInfoCommand', () => {
                 '0.64.1',
                 '0.64.0'
             ]);
+        });
+    });
+
+    describe('pickVersionFromNpm', () => {
+        let quickPick: any;
+        beforeEach(() => {
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+        });
+
+        it('shows a busy picker while versions are loading, then shows the filtered versions', async () => {
+            let resolveVersions: (value: Array<{ version: string; date: string }>) => void;
+            const versionsPromise = new Promise<Array<{ version: string; date: string }>>(resolve => {
+                resolveVersions = resolve;
+            });
+            const resultPromise = command['pickVersionFromNpm'](versionsPromise, x => x.version !== '2.0.0-alpha.1');
+
+            expect(quickPick.busy).to.be.true;
+
+            resolveVersions([
+                { version: '2.0.0-alpha.1', date: new Date().toISOString() },
+                { version: '1.0.0', date: new Date().toISOString() }
+            ]);
+            await versionsPromise;
+
+            expect(quickPick.busy).to.be.false;
+            expect(quickPick.items.map(x => x.value)).to.eql(['1.0.0']);
+
+            quickPick.selectedItems = [quickPick.items[0]];
+            quickPick.emitter.emit('didAccept');
+            expect((await resultPromise).value).to.eql('1.0.0');
+        });
+
+        it('returns undefined when the user cancels while versions are loading', async () => {
+            const resultPromise = command['pickVersionFromNpm'](new Promise(() => { }), () => true);
+            quickPick.hide();
+            expect(await resultPromise).to.be.undefined;
+        });
+
+        it('shows an error and returns undefined when loading versions fails', async () => {
+            const errorStub = sinon.stub(vscode.window, 'showErrorMessage');
+            const result = await command['pickVersionFromNpm'](Promise.reject(new Error('npm exploded')), () => true);
+            expect(result).to.be.undefined;
+            expect(errorStub.getCall(0).args[0]).to.include('npm exploded');
         });
     });
 
