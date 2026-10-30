@@ -222,8 +222,8 @@ export class RokuCommandsViewProvider extends BaseRdbViewProvider {
     }
 
     private async waitForTarget(odc: OnDeviceComponent, applied: number, targetMegabytes: number, operationId: number) {
-        let unsubscribe: () => Promise<unknown> = async () => {
-            return undefined;
+        let unsubscribe: () => Promise<unknown> = () => {
+            return Promise.resolve(undefined);
         };
         const result = await new Promise<number>((resolve, reject) => {
             const timer = setTimeout(() => {
