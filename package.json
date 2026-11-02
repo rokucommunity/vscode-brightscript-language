@@ -264,7 +264,8 @@
                 },
                 {
                     "id": "rokuCommandsView",
-                    "name": "Roku Commands",
+                    "contextualTitle": "RTA Tools",
+                    "name": "RTA Tools",
                     "type": "webview"
                 },
                 {

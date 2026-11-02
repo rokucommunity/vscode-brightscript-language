@@ -27,6 +27,7 @@
 
     export let title = '';
     export let step = '1';
+    export let disabled = false;
     $: {
         if (self) {
             self.control.step = step;
@@ -38,9 +39,19 @@
 
 <style>
     vscode-text-field {
-        width: 71px;
+        box-sizing: border-box;
+        max-width: 80px;
+        min-width: 50px;
+        flex: 1 1 auto;
         vertical-align: middle;
+    }
+
+    /* Let the field shrink with its row. */
+    vscode-text-field::part(root) {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
     }
 </style>
 
-<vscode-text-field bind:this={self} {id} class={classProp} {title} {step} {value} on:input={onInputChange} type="number"></vscode-text-field>
+<vscode-text-field bind:this={self} {id} class={classProp} {title} {step} {value} {disabled} on:input={onInputChange} type="number"></vscode-text-field>
