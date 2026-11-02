@@ -128,7 +128,9 @@
                 return;
             }
             appliedMegabytes = response.appliedMegabytes ?? 0;
-            targetMegabytes = String(appliedMegabytes);
+            if (appliedMegabytes > 0) {
+                targetMegabytes = formatMegabytes(appliedMegabytes);
+            }
         } catch (e) {
             if (!odcAvailable || applying) {
                 return;
@@ -145,6 +147,22 @@
         return megabytes;
     }
 
+    function formatMegabytes(megabytes: number) {
+        return String(Math.round(megabytes * 1000) / 1000);
+    }
+
+    function amountsMatch(left: number | undefined, right: number) {
+        return left !== undefined && Math.abs(left - right) < 0.001;
+    }
+
+    $: enteredMegabytes = readMegabytes(targetMegabytes);
+    $: holding = appliedMegabytes > 0;
+    $: allocateLabel = holding && enteredMegabytes > 0 && !amountsMatch(enteredMegabytes, appliedMegabytes)
+        ? `Update to ${formatMegabytes(enteredMegabytes)} MB`
+        : 'Allocate';
+    $: allocateDisabled = applying || !(enteredMegabytes > 0) || amountsMatch(enteredMegabytes, appliedMegabytes);
+    $: freeDisabled = applying || !holding;
+
     async function applyMegabytes(megabytes: number) {
         applying = true;
         errorMessage = '';
@@ -155,8 +173,8 @@
             });
             appliedMegabytes = response.appliedMegabytes;
             errorMessage = response.error ?? '';
-            if (!response.error) {
-                targetMegabytes = String(response.appliedMegabytes);
+            if (!response.error && response.appliedMegabytes > 0) {
+                targetMegabytes = formatMegabytes(response.appliedMegabytes);
             }
         } catch (e) {
             errorMessage = e?.message ?? String(e);
@@ -244,15 +262,34 @@
         width: 180px;
     }
 
-    .row {
+    .holdRow,
+    .statusRow {
         display: flex;
         flex-wrap: nowrap;
         align-items: center;
         gap: 8px;
     }
 
+    .holdRow vscode-button,
+    .statusRow vscode-button {
+        margin: 0;
+        flex: 0 0 auto;
+    }
+
+    .statusRow {
+        justify-content: space-between;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--vscode-panel-border);
+    }
+
+    .held {
+        color: var(--vscode-editorWarning-foreground);
+        font-weight: 600;
+    }
+
     #status {
-        margin: 6px 0 0;
+        margin: 0;
     }
 
     #error {
@@ -267,7 +304,7 @@
     <div id="container">
         <div class="tabs">
             <button class:active={selectedTab === 'command'} on:click={() => selectTab('command')}>Run RTA Command</button>
-            <button class:active={selectedTab === 'memory'} on:click={() => selectTab('memory')}>Apply Memory Pressure</button>
+            <button class:active={selectedTab === 'memory'} on:click={() => selectTab('memory')}>Memory Pressure</button>
         </div>
         <div class="tabContent">
         {#if selectedTab === 'command'}
@@ -310,20 +347,26 @@
                 {commandResponse}
             </pre>
         {:else}
-            <p class="description">Tool to see how the channel behaves when memory is tight.</p>
-            <div class="row">
+            <p class="description">Allocates and holds memory on the device so you can see how your channel behaves under memory pressure.</p>
+            <div class="holdRow">
+                <span>Hold</span>
                 <NumberField id="memoryPressureMegabytes" bind:value={targetMegabytes} disabled={applying} step="any" />
                 <span>MB</span>
-                <button disabled={applying} on:click={applyMemoryPressure}>Apply</button>
-                <button disabled={applying} on:click={releaseMemoryPressure}>Release</button>
+                <vscode-button appearance="primary" disabled={allocateDisabled} on:click={applyMemoryPressure}>{allocateLabel}</vscode-button>
             </div>
-            <p id="status">
-                {#if applying}
-                    Applying {appliedMegabytes} / {progressTarget} MB
-                {:else}
-                    Applied: {appliedMegabytes} MB
-                {/if}
-            </p>
+            <div class="statusRow">
+                <p id="status">
+                    Holding:
+                    {#if applying}
+                        <span class="held">{formatMegabytes(appliedMegabytes)} / {formatMegabytes(progressTarget)} MB</span>
+                    {:else if holding}
+                        <span class="held">{formatMegabytes(appliedMegabytes)} MB</span>
+                    {:else}
+                        nothing
+                    {/if}
+                </p>
+                <vscode-button appearance="secondary" disabled={freeDisabled} on:click={releaseMemoryPressure}>Free</vscode-button>
+            </div>
             {#if errorMessage}
                 <div id="error">{errorMessage}</div>
             {/if}
