@@ -2,9 +2,9 @@ import * as path from 'path';
 import { rokuDeploy } from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
-import BrightscriptFileUtils from './BrightScriptFileUtils';
-import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
-import { createLogger } from './logging';
+import BrightscriptFileUtils from '../../BrightScriptFileUtils';
+import type { BrightScriptLaunchConfiguration } from '../../DebugConfigurationProvider';
+import { createLogger } from '../../logging';
 
 const logger = createLogger('LogDocumentLinkProvider');
 

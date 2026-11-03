@@ -4,7 +4,7 @@ import { createSandbox } from 'sinon';
 const sinon = createSandbox();
 let Module = require('module');
 
-import { vscode } from './mockVscode.spec';
+import { vscode } from '../../mockVscode.spec';
 
 //override the "require" call to mock certain items
 const { require: oldRequire } = Module.prototype;
@@ -17,7 +17,7 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import { DeclarationProvider } from './DeclarationProvider';
+import { DeclarationProvider } from '../../DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogLine, LogOutputManager } from './LogOutputManager';
 import { LaunchStartEvent, LogOutputEvent } from 'roku-debug';
