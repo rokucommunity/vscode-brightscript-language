@@ -1,3 +1,4 @@
+import { isHermesAttachEntryPause } from '../../HermesAttachPauseTracker';
 import { DEBUG_MCP_API_VERSION } from '../core/integration';
 import type { DebugIntegration, DebugSessionInfo, SessionClassification, StopReportContext, StopReportDecision } from '../core/integration';
 
@@ -5,6 +6,9 @@ export const BRIGHTSCRIPT_RUNTIME = 'brs';
 export const JAVASCRIPT_RUNTIME = 'js';
 
 const BRIGHTSCRIPT_FILE_PATTERN = /\.(brs|bs|xml)$/i;
+
+//`stopped` events seen per JS session, counted the way HermesAttachPauseTracker counts them
+const jsStopCounts = new WeakMap<DebugSessionInfo, number>();
 
 /**
  * Roku debugging: a `brightscript` session owns the group, and a TypeScript SDK app adds a node
@@ -48,15 +52,26 @@ export function classifyRokuSession(session: DebugSessionInfo): SessionClassific
  * A JS stop is reported only when its stack has a frame with a source path: the Hermes runtime
  * pauses on attach with source-less frames. That pause is reported, as "entry", only when the
  * attach was configured not to continue (stopOnEntry).
+ * js-debug's script-entry pause (see `isHermesAttachEntryPause`) has source frames but is the same
+ * attach pause: the extension continues it unless stopOnEntry is set, in which case it is "entry".
+ * The stop is counted synchronously so every `stopped` event is counted exactly once, in order.
  */
 export function shouldReportRokuStop(context: StopReportContext): StopReportDecision | Promise<StopReportDecision> {
     if (context.runtime !== JAVASCRIPT_RUNTIME) {
         return true;
     }
-    return judgeJsStop(context);
+    const stopIndex = (jsStopCounts.get(context.session) ?? 0) + 1;
+    jsStopCounts.set(context.session, stopIndex);
+    return judgeJsStop(context, isHermesAttachEntryPause(stopIndex, context.stop.reason));
 }
 
-async function judgeJsStop(context: StopReportContext): Promise<StopReportDecision> {
+async function judgeJsStop(context: StopReportContext, isEntryPause: boolean): Promise<StopReportDecision> {
+    const continueOnAttach = findJsAttachSession(context.session)?.configuration?.continueOnAttach;
+    //decided without the stack: the extension continues this pause whatever its frames hold, so a
+    //stack read racing that continue must not turn it into a reported stop
+    if (isEntryPause && typeof continueOnAttach === 'boolean' && isDirectAttachTarget(context.session)) {
+        return continueOnAttach ? false : 'entry';
+    }
     try {
         const stack = await context.fetchStack();
         if (stack.frames.some((frame) => !!frame.file)) {
@@ -66,7 +81,12 @@ async function judgeJsStop(context: StopReportContext): Promise<StopReportDecisi
         //an unreadable stack cannot be told apart from a real stop, so it is reported
         return true;
     }
-    return findJsAttachSession(context.session)?.configuration?.continueOnAttach === false ? 'entry' : false;
+    return continueOnAttach === false ? 'entry' : false;
+}
+
+/** Matches the sessions the extension's Hermes attach-pause tracker runs on: a pwa-node child directly under the JS attach session. */
+function isDirectAttachTarget(session: DebugSessionInfo): boolean {
+    return session.type === 'pwa-node' && session.parentSession?.configuration?._isBrightscriptJsSession === true;
 }
 
 function findJsAttachSession(session: DebugSessionInfo): DebugSessionInfo | undefined {

@@ -50,7 +50,7 @@ export function createHermesAttachPauseTracker(session: vscode.DebugSession, log
                 stopCount++;
                 log(() => [`stopped event: reason=${message.body.reason} threadId=${threadId} (from event body: ${message.body.threadId})`]);
                 report(`stop #${stopCount}: reason='${message.body.reason}' description='${message.body.description ?? ''}' threadId=${message.body.threadId ?? '(none)'}`);
-                continueCurrentStop = stopCount === 1 && message.body.reason === 'step';
+                continueCurrentStop = isHermesAttachEntryPause(stopCount, message.body.reason);
                 if (continueCurrentStop && threadId !== undefined) {
                     continueCurrentStop = false;
                     continueThread('script-entry pause');
@@ -86,4 +86,12 @@ export function createHermesAttachPauseTracker(session: vscode.DebugSession, log
             }
         }
     };
+}
+
+/**
+ * Whether a stop is js-debug's script-entry pause: the session's first stop, reported as `step`.
+ * @param stopIndex 1-based count of the `stopped` events the js-debug session has sent, including this one
+ */
+export function isHermesAttachEntryPause(stopIndex: number, reason: string): boolean {
+    return stopIndex === 1 && reason === 'step';
 }

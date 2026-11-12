@@ -143,6 +143,59 @@ describe('Roku debug integration', () => {
             expect((await wait.promise as any).stop.reason).to.equal('entry');
         });
 
+        describe('js-debug script-entry pause', () => {
+            const sourceFrames = [{ id: 1, name: 'f', line: 1, column: 1, source: { path: '/p/bundle.js' } }];
+            const stopOnEntryParent = makeSession('node3', 'node', { configuration: { _isBrightscriptJsSession: true, _brightscriptParentSessionId: 'brs3', continueOnAttach: false } });
+
+            it('hides the first step stop, even with source frames, when the attach continues', async () => {
+                const tracker = createStateTrackerFactory(store, registry, () => { }).createDebugAdapterTracker(createChild('child', jsParent, sourceFrames));
+                const wait = store.waitForStop({ groupId: 'brs1', runtime: 'js', timeoutMs: 40 });
+                tracker.onDidSendMessage({ type: 'event', event: 'stopped', body: { reason: 'step', threadId: 1 } });
+                expect((await wait.promise).kind).to.equal('timeout');
+                expect(store.getStatus('child')).to.equal('running');
+            });
+
+            it('hides the first step stop when the stopped event has no threadId', async () => {
+                const tracker = createStateTrackerFactory(store, registry, () => { }).createDebugAdapterTracker(createChild('child', jsParent, sourceFrames));
+                const wait = store.waitForStop({ groupId: 'brs1', runtime: 'js', timeoutMs: 40 });
+                tracker.onDidSendMessage({ type: 'event', event: 'stopped', body: { reason: 'step' } });
+                expect((await wait.promise).kind).to.equal('timeout');
+            });
+
+            it('reports the first step stop as entry when the attach was configured with stopOnEntry', async () => {
+                const tracker = createStateTrackerFactory(store, registry, () => { }).createDebugAdapterTracker(createChild('child3', stopOnEntryParent, sourceFrames));
+                const wait = store.waitForStop({ groupId: 'brs3', runtime: 'js', timeoutMs: 1000 });
+                tracker.onDidSendMessage({ type: 'event', event: 'stopped', body: { reason: 'step', threadId: 1 } });
+                expect((await wait.promise as any).stop.reason).to.equal('entry');
+            });
+
+            it('reports a later step stop normally', async () => {
+                const tracker = createStateTrackerFactory(store, registry, () => { }).createDebugAdapterTracker(createChild('child', jsParent, sourceFrames));
+                tracker.onDidSendMessage({ type: 'event', event: 'stopped', body: { reason: 'step', threadId: 1 } });
+                await new Promise((resolve) => {
+                    setTimeout(resolve, 0);
+                });
+                expect(store.getStatus('child')).to.equal('running');
+                const wait = store.waitForStop({ groupId: 'brs1', runtime: 'js', timeoutMs: 1000 });
+                tracker.onDidSendMessage({ type: 'event', event: 'stopped', body: { reason: 'step', threadId: 1 } });
+                expect((await wait.promise as any).stop.reason).to.equal('step');
+            });
+
+            it('reports a first stop that is not a step normally', async () => {
+                const tracker = createStateTrackerFactory(store, registry, () => { }).createDebugAdapterTracker(createChild('child', jsParent, sourceFrames));
+                const wait = store.waitForStop({ groupId: 'brs1', runtime: 'js', timeoutMs: 1000 });
+                tracker.onDidSendMessage({ type: 'event', event: 'stopped', body: { reason: 'breakpoint', threadId: 1 } });
+                expect((await wait.promise as any).stop.reason).to.equal('breakpoint');
+            });
+
+            it('still hides a source-less first stop that is not a step', async () => {
+                const tracker = createStateTrackerFactory(store, registry, () => { }).createDebugAdapterTracker(createChild('child', jsParent, []));
+                const wait = store.waitForStop({ groupId: 'brs1', runtime: 'js', timeoutMs: 40 });
+                tracker.onDidSendMessage({ type: 'event', event: 'stopped', body: { reason: 'pause', threadId: 1 } });
+                expect((await wait.promise).kind).to.equal('timeout');
+            });
+        });
+
         it('reports the stop when the stack cannot be read', async () => {
             const child = makeSession('child', 'pwa-node', { parentSession: jsParent, customRequest: () => Promise.reject(new Error('boom')) });
             const tracker = createStateTrackerFactory(store, registry, () => { }).createDebugAdapterTracker(child);
