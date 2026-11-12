@@ -353,14 +353,60 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
             throw new Error(`No firmware version is available for device type '${device.deviceType}'`);
         }
 
-        return managementClient.startDevice({
-            deviceId: device.id,
-            start: {
-                snapshotId: snapshotId,
-                firmwareVersionId: resolvedFirmwareVersionId,
-                maxRuntime: maxRuntimeSeconds
+        try {
+            return await managementClient.startDevice({
+                deviceId: device.id,
+                start: {
+                    snapshotId: snapshotId,
+                    firmwareVersionId: resolvedFirmwareVersionId,
+                    maxRuntime: maxRuntimeSeconds
+                }
+            });
+        } catch (error) {
+            const friendlyMessage = await this.getFreeTrialStartFailureMessage(managementClient, device.id, error);
+            //only the message survives the trip to the video tab and Device View, so the friendly
+            //text has to be carried by a new error here
+            throw friendlyMessage ? new Error(friendlyMessage) : error;
+        }
+    }
+
+    /**
+     * A user-facing message for a start rejected for a free-trial reason, or undefined when the
+     * error is anything else (the caller rethrows those unchanged).
+     */
+    private async getFreeTrialStartFailureMessage(managementClient: RceManagementClient, startingDeviceId: number, error: unknown): Promise<string | undefined> {
+        if (!isRceApiErrorLike(error)) {
+            return undefined;
+        }
+        switch (error.details.apiCode) {
+            case 'trial_exhausted':
+                return 'Your Cloud Emulator free trial has been used up. A paid plan is required to start devices.';
+            case 'trial_exhausted_impersonation':
+                return 'This organisation\'s Cloud Emulator free trial has been used up. A paid plan is required to start devices.';
+            case 'trial_device_run_limit': {
+                const runningDeviceName = await this.findRunningDeviceName(managementClient, startingDeviceId);
+                return runningDeviceName
+                    ? `Free-trial accounts can run one device at a time. Stop '${runningDeviceName}' first.`
+                    : 'Free-trial accounts can run one device at a time. Stop the running device first.';
             }
-        });
+            case 'trial_max_runtime_exceeded':
+                return 'The selected runtime is longer than your remaining free-trial time. Choose a shorter runtime.';
+            default:
+                return undefined;
+        }
+    }
+
+    /**
+     * The name of the device holding the free-trial run slot: any other device that is running or
+     * still starting up.
+     */
+    private async findRunningDeviceName(managementClient: RceManagementClient, startingDeviceId: number): Promise<string | undefined> {
+        try {
+            const devices = await managementClient.listDevices();
+            return devices.find((candidateDevice) => candidateDevice.id !== startingDeviceId && candidateDevice.status !== 'shutdown')?.name;
+        } catch {
+            return undefined;
+        }
     }
 
     private async stopDeviceCore(managementClient: RceManagementClient, deviceId: number): Promise<RceDevice> {
@@ -665,6 +711,15 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
     }
 }
 
+/**
+ * Mirrors the `details` of roku-deploy's RceManagementApiError. Checked by shape until roku-deploy
+ * exports `isRceManagementApiError`.
+ */
+function isRceApiErrorLike(error: unknown): error is RceApiErrorLike {
+    const details = (error as RceApiErrorLike | undefined)?.details;
+    return typeof details?.statusCode === 'number' && (details.apiCode === undefined || typeof details.apiCode === 'string');
+}
+
 interface RceManagementViewState {
     accounts: string[];
     activeAccountName: string | undefined;
@@ -681,6 +736,13 @@ interface RceDeviceDetailsPayload {
     snapshots: Snapshot[] | undefined;
     runs: DeviceRun[] | undefined;
     error?: string;
+}
+
+interface RceApiErrorLike extends Error {
+    details: {
+        statusCode: number;
+        apiCode?: string;
+    };
 }
 
 interface StartDeviceCoreOptions {
