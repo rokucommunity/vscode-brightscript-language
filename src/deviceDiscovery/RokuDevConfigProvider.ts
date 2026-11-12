@@ -4,6 +4,9 @@ import * as path from 'path';
 import * as os from 'os';
 import { util } from '../util';
 import type { ConfiguredDevice } from './DeviceManager';
+import { createLogger } from '../logging';
+
+const logger = createLogger('RokuDevConfigProvider');
 
 /**
  * Discovers Roku devices defined in `.roku/roku-dev-config.json` files and exposes them
@@ -163,7 +166,7 @@ export class RokuDevConfigProvider implements vscode.Disposable {
                 const message = e instanceof Error ? e.message : String(e);
                 if (this.loadErrors.get(configPath) !== message) {
                     this.loadErrors.set(configPath, message);
-                    console.warn(`Failed to load roku-dev-config.json from ${configPath}: ${message}`);
+                    logger.warn(`Failed to load roku-dev-config.json from ${configPath}: ${message}`);
                 }
             }
         }

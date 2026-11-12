@@ -115,7 +115,8 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
             // --source-map: generate source maps for debugging
             // --copy-to-staging: copy files to the staging dir even if they don't need to be transformed by bsc, so that the staging dir is a complete set of the files needed for debugging
             // --create-package false: don't create a zip package since the staging dir is used directly as the debug root
-            command: `npx --no bsc --project "${configFilename}" --retain-staging-folder --source-map --copy-to-staging --create-package false`,
+            // the `--` keeps npx from treating the bsc flags as its own (with `--no`, npx otherwise drops them)
+            command: `npx --no bsc -- --project "${configFilename}" --retain-staging-folder --source-map --copy-to-staging --create-package false`,
             cwd: projectDir,
             workspaceFolder: workspaceFolder
         };

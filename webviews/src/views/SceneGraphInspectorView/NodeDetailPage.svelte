@@ -402,6 +402,13 @@
         background-color: var(--vscode-editor-background);
     }
 
+    .inlineFields {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 4px;
+    }
+
     vscode-button, vscode-text-field {
         vertical-align: middle;
     }
@@ -522,6 +529,7 @@
                         {#if field.value === null}
                             Invalid
                         {:else if field.fieldType === 'vector2d'}
+                            <div class="inlineFields">
                             <NumberField
                                 {id}
                                 class="xValue fieldValue"
@@ -545,6 +553,7 @@
                                     <Move />
                                 </vscode-button>
                             {/if}
+                            </div>
                         {:else if field.fieldType === 'color'}
                             <ColorField
                                 {id}

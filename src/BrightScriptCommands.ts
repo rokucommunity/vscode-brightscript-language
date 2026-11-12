@@ -21,6 +21,9 @@ import type { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { DEVICE_FILTER_KEYS } from './deviceFilters';
 import { rokuDeploy, isLocalDeviceConfig } from 'roku-deploy';
 import type { DeviceConfig, RemoteKeyText } from 'roku-deploy';
+import { createLogger } from './logging';
+
+const logger = createLogger('BrightScriptCommands');
 
 export class BrightScriptCommands {
 
@@ -86,7 +89,7 @@ export class BrightScriptCommands {
                 placeholder: 'Press enter to send all typed characters to the Roku',
                 items: items
             });
-            console.log('userInput', stuffUserTyped);
+            logger.log('userInput', stuffUserTyped);
 
             if (stuffUserTyped) {
                 new GlobalStateManager(this.context).addTextHistory(stuffUserTyped);
@@ -99,7 +102,7 @@ export class BrightScriptCommands {
                 //         fallbackToHttp = false;
                 //     }
                 // } catch (error) {
-                //     console.error(error);
+                //     logger.error(error);
                 //     // Let this fallback to the old HTTP based logic
                 // }
 
@@ -872,7 +875,7 @@ export class BrightScriptCommands {
 
         const device = await this.resolveActiveDeviceConfig(target);
         if (device) {
-            console.log('sending keypress', key);
+            logger.log('sending keypress', key);
             //keyPress enforces the canonical RemoteKeyText names at the type level, but this sends
             //dynamic keys - command-supplied names and `Lit_`-prefixed literal characters - so cast
             //rather than narrow what we can send

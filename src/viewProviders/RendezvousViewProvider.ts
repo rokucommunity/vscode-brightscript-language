@@ -3,6 +3,9 @@ import * as vscode from 'vscode';
 import type { RendezvousHistory } from 'roku-debug';
 import { isRendezvousEvent } from 'roku-debug';
 import { ViewProviderId } from './ViewProviderId';
+import { createLogger } from '../logging';
+
+const logger = createLogger('RendezvousViewProvider');
 
 export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -68,7 +71,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
      * Handles the custom events
      */
     public onDidReceiveDebugSessionCustomEvent(e: any) {
-        console.log('received event ' + e.event);
+        logger.log('received event ' + e.event);
         if (isRendezvousEvent(e)) {
             // What changed?
             // let diff = this.objectDiff(e.body, this.viewedData);

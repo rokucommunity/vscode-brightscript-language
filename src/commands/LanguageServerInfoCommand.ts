@@ -136,6 +136,48 @@ export class LanguageServerInfoCommand {
     }
 
     /**
+     * Show a picker of npm versions right away, in a busy (progress bar) state until the versions finish loading.
+     * `npm view` can take several seconds to spin up, so this lets the user know work is happening, and lets them cancel with Esc.
+     * @returns the selected item, or undefined if the user cancelled or the versions failed to load
+     */
+    private async pickVersionFromNpm(
+        versionsPromise: Promise<Array<{ version: string; date: string }>>,
+        filter: (version: { version: string; date: string }) => boolean
+    ): Promise<QuickPickItemEnhanced | undefined> {
+        const quickPick = vscode.window.createQuickPick<QuickPickItemEnhanced>();
+        quickPick.placeholder = 'Loading BrighterScript versions from npm...';
+        quickPick.busy = true;
+        try {
+            return await new Promise<QuickPickItemEnhanced | undefined>(resolve => {
+                quickPick.onDidAccept(() => {
+                    //ignore enter presses while the list is still loading
+                    if (quickPick.selectedItems[0]) {
+                        resolve(quickPick.selectedItems[0]);
+                        quickPick.hide();
+                    }
+                });
+                quickPick.onDidHide(() => resolve(undefined));
+                quickPick.show();
+
+                versionsPromise.then(versions => {
+                    quickPick.items = versions.filter(filter).map(x => ({
+                        label: x.version,
+                        value: x.version,
+                        description: `${dayjs(x.date).fromNow(true)} ago`
+                    }));
+                    quickPick.placeholder = 'Select the BrighterScript version used for BrightScript and BrighterScript language features';
+                    quickPick.busy = false;
+                }, (error) => {
+                    quickPick.hide();
+                    void vscode.window.showErrorMessage(`Failed to load BrighterScript versions from npm: ${error?.message ?? error}`);
+                });
+            });
+        } finally {
+            quickPick.dispose();
+        }
+    }
+
+    /**
      * If this changes the user/folder/workspace settings, that will trigger a reload of the language server so there's no need to
      * call the reload manually
      */
@@ -146,22 +188,15 @@ export class LanguageServerInfoCommand {
 
         //start the request right now, we will leverage it later
         const versionsFromNpmPromise = this.getBscVersionsFromNpm();
+        //the npm picker reports failures. This keeps a failed request from becoming an unhandled rejection when the user never opens that picker
+        versionsFromNpmPromise.catch(() => { });
 
         //get the full list of versions from npm
         quickPickItems.push({
             label: '$(package) Install from npm',
             description: '',
             detail: '',
-            command: async () => {
-                let versionsFromNpm: QuickPickItemEnhanced[] = (await versionsFromNpmPromise).filter(x => !semver.prerelease(x.version)).map(x => {
-                    return {
-                        label: x.version,
-                        value: x.version,
-                        description: `${dayjs(x.date).fromNow(true)} ago`
-                    };
-                });
-                return await vscode.window.showQuickPick(versionsFromNpm, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
-            }
+            command: () => this.pickVersionFromNpm(versionsFromNpmPromise, x => !semver.prerelease(x.version))
         } as any);
 
         //get the full list of versions from npm
@@ -169,16 +204,7 @@ export class LanguageServerInfoCommand {
             label: '$(package) Install from npm (insider builds)',
             description: '',
             detail: '',
-            command: async () => {
-                let versionsFromNpm: QuickPickItemEnhanced[] = (await versionsFromNpmPromise).filter(x => semver.prerelease(x.version)).map(x => {
-                    return {
-                        label: x.version,
-                        value: x.version,
-                        description: `${dayjs(x.date).fromNow(true)} ago`
-                    };
-                });
-                return await vscode.window.showQuickPick(versionsFromNpm, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
-            }
+            command: () => this.pickVersionFromNpm(versionsFromNpmPromise, x => !!semver.prerelease(x.version))
         } as any);
 
         let selection: QuickPickItemEnhanced = await vscode.window.showQuickPick(quickPickItems, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;

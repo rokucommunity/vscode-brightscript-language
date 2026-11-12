@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import { createLogger } from '../logging';
+
+const logger = createLogger('DebugSessionManager');
 
 /**
  * Single source of truth for the debug sessions this extension cares about.
@@ -84,7 +87,7 @@ export class DebugSessionManager {
         for (const member of this.groupSessionsFor(session)) {
             if (member.id !== session.id && this.isLive(member)) {
                 void vscode.debug.stopDebugging(member).then(undefined, (e) => {
-                    console.error(`Error stopping linked debug session with id ${member.id}`, e);
+                    logger.error(`Error stopping linked debug session with id ${member.id}`, e);
                 });
             }
         }

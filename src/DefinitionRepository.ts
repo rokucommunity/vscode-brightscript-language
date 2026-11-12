@@ -7,6 +7,9 @@ import type {
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
 import type { DeclarationProvider } from './DeclarationProvider';
 import { getExcludeGlob } from './DeclarationProvider';
+import { createLogger } from './logging';
+
+const logger = createLogger('DefinitionRepository');
 
 export class DefinitionRepository {
 
@@ -126,7 +129,7 @@ export class DefinitionRepository {
         }
         const fresh = new Set<string>([document.uri.fsPath]);
         for (const doc of vscode.workspace.textDocuments) {
-            console.log('>>>>>doc ' + doc.uri.path);
+            logger.log('>>>>>doc ' + doc.uri.path);
 
             if (!doc.isDirty) {
                 continue;

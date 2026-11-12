@@ -9,6 +9,9 @@ import { VscodeCommand } from '../commands/VscodeCommand';
 import type { RceManager } from '../managers/RceManager';
 import type { RceStateDevice } from './RceManagementViewContract';
 import type { RceFinder } from '../deviceDiscovery/RceFinder';
+import { createLogger } from '../logging';
+
+const logger = createLogger('RceManagementViewProvider');
 
 export type { RceStateDevice } from './RceManagementViewContract';
 
@@ -426,7 +429,7 @@ export class RceManagementViewProvider extends BaseWebviewViewProvider {
         try {
             await this.pushState();
         } catch (error) {
-            console.error('Failed to push RCE state', error);
+            logger.error('Failed to push RCE state', error);
         }
     }
 

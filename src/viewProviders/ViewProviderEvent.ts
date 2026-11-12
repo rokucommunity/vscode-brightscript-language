@@ -1,4 +1,5 @@
 export enum ViewProviderEvent {
+    onMemoryPressureProgress = 'onMemoryPressureProgress',
     onNodeFocused = 'onNodeFocused',
     onDeviceAvailabilityChange = 'onDeviceAvailabilityChange',
     onVscodeCommandReceived = 'onVscodeCommandReceived',

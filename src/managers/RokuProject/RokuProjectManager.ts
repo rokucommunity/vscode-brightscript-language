@@ -8,6 +8,9 @@ import { ManifestProjectProvider } from './ManifestProjectProvider';
 import { VscodeCommand } from '../../commands/VscodeCommand';
 import { util } from '../../util';
 import { RokuConfigProjectProvider } from './RokuConfigProjectProvider';
+import { createLogger } from '../../logging';
+
+const logger = createLogger('RokuProjectManager');
 
 export class RokuProjectManager {
 
@@ -52,7 +55,7 @@ export class RokuProjectManager {
                     watcher.onDidCreate(uri => {
                         if (!isExcluded(uri)) {
                             this.registerProject(uri).catch(err => {
-                                console.error('Error registering Roku project:', err);
+                                logger.error('Error registering Roku project:', err);
                             });
                         }
                     }),
@@ -70,7 +73,7 @@ export class RokuProjectManager {
                             // rebuilds the project from the updated file
                             this.unregisterProject(uri);
                             this.registerProject(uri).catch(err => {
-                                console.error('Error registering Roku project after change:', err);
+                                logger.error('Error registering Roku project after change:', err);
                             });
                         }
                     })
@@ -85,7 +88,7 @@ export class RokuProjectManager {
                         this.unregisterProject(project.configUri);
                     }
                     this.syncProjects().catch(err => {
-                        console.error('Error resyncing Roku projects after exclude change:', err);
+                        logger.error('Error resyncing Roku projects after exclude change:', err);
                     });
                 }
             }),
@@ -110,7 +113,7 @@ export class RokuProjectManager {
                                 }
                             }
                         }).catch((err: unknown) => {
-                            console.error('Error syncing Roku projects for added workspace folder:', err);
+                            logger.error('Error syncing Roku projects for added workspace folder:', err);
                         });
                     }
                 }
@@ -119,7 +122,7 @@ export class RokuProjectManager {
 
         // Populate the task registry with whatever is currently in the workspace
         this.syncProjects().catch(err => {
-            console.error('Error syncing Roku projects:', err);
+            logger.error('Error syncing Roku projects:', err);
         });
     }
 
@@ -213,7 +216,7 @@ export class RokuProjectManager {
         this.resyncTimer = setTimeout(() => {
             this.resyncTimer = undefined;
             this.syncProjects().catch(err => {
-                console.error('Error during scheduled resync of Roku projects:', err);
+                logger.error('Error during scheduled resync of Roku projects:', err);
             });
         }, RokuProjectManager.resyncDebounceMs);
     }
