@@ -148,7 +148,10 @@
         "node-notifier": {
             "uuid": "^11.1.1"
         },
-        "istanbul-lib-processinfo": "^3.0.1"
+        "istanbul-lib-processinfo": {
+            ".": "^3.0.1",
+            "rimraf": "^6.1.4"
+        }
     },
     "optionalDependencies": {
         "fsevents": "~2.3.2"
