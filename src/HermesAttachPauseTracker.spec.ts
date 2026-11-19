@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
-import { createHermesAttachPauseTracker } from './HermesAttachPauseTracker';
+import { createHermesAttachPauseTracker, isHermesAttachEntryPause } from './HermesAttachPauseTracker';
 
 describe('createHermesAttachPauseTracker', () => {
     let customRequest: sinon.SinonStub;
@@ -125,5 +125,14 @@ describe('createHermesAttachPauseTracker', () => {
         stackTrace(undefined);
 
         expect(reported).to.include('auto-continued empty-stack pause');
+    });
+});
+
+describe('isHermesAttachEntryPause', () => {
+    it('matches only the first stop when it is a step', () => {
+        expect(isHermesAttachEntryPause(1, 'step')).to.be.true;
+        expect(isHermesAttachEntryPause(2, 'step')).to.be.false;
+        expect(isHermesAttachEntryPause(1, 'breakpoint')).to.be.false;
+        expect(isHermesAttachEntryPause(1, 'pause')).to.be.false;
     });
 });

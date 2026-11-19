@@ -9,6 +9,10 @@
         "inlineSourceMap": false,
         "sourceMap": true,
         "rootDir": "./src",
+        "skipLibCheck": true,
+        "paths": {
+            "@modelcontextprotocol/sdk/*": ["./node_modules/@modelcontextprotocol/sdk/dist/cjs/*"]
+        },
         "outDir": "dist",
         "preserveConstEnums": true,
         "strictNullChecks": false,
