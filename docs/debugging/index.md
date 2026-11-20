@@ -1,7 +1,4 @@
----
-priority: 1
----
-# Setup
+# Debugging Setup
 
 This extension supports launching and debugging your local project on a Roku device. In order to do this, you will need to create a `launch.json` configuration file.
 
@@ -63,4 +60,4 @@ When launching a debug session, this extension will first read all configuration
 
 Roku devices currently do not have a way to dynamically insert breakpoints during a running application. So, in order to use breakpoints, this extension will inject a `STOP` statement into the code for each breakpoint before the app is deployed. This means that anytime you add/remove a breakpoint, you will need to stop your current debug session and start a new one.
 
-When injecting `STOP` statements, the extension will also generate a source map for each affected file so we can convert the debugger locations back into source locations. See the [SourceMaps](#SourceMaps) section for more information
+When injecting `STOP` statements, the extension will also generate a source map for each affected file so we can convert the debugger locations back into source locations. See the [SourceMaps](source-maps.md) page for more information

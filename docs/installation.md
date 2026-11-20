@@ -1,9 +1,5 @@
----
-priority: 3
-title: How to Install
----
-## Installation
-### From VSCode
+# Installation
+## From VSCode
 1. Search for "BrightScript" in the vscode extensions tab
 2. Click "Install"
 
@@ -11,7 +7,7 @@ title: How to Install
         <img src="https://user-images.githubusercontent.com/2544493/160644565-cdb1770d-bd12-4d1f-9749-50705ea9fdd8.png" />
     </a>
 
-### From GitHub
+## From GitHub
 1. Navigate our github releases page: https://github.com/rokucommunity/vscode-brightscript-language/releases
 2. Download the latest release version `vsix`. For example:
 

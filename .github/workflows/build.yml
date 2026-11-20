@@ -30,3 +30,9 @@ jobs:
           COVERALLS_REPO_TOKEN: "Ysqq6q68DgojDzv3gvl5Yv029HXZYwGxq"
         with:
           path-to-lcov: ./coverage/lcov.info
+      # make sure the docs site builds (deploying it is docs.yml's job)
+      - if: matrix.os == 'ubuntu-latest'
+        run: npm ci
+        working-directory: docs
+      - if: matrix.os == 'ubuntu-latest'
+        run: npm run build-docs

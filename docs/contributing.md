@@ -1,6 +1,3 @@
----
-priority: 1001
----
 # Contributing
 
 This extension depends on several other RokuCommunity projects.

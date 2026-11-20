@@ -1,7 +1,4 @@
----
-priority: 2
----
-# Setup
+# Editing Setup
 ## Standard Projct Structure
 If your project is structured the way that Roku expects, then the language features will work with no configuration needed. Here are the default file patterns we use to find files:
 ```javascript

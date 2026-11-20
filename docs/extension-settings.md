@@ -1,6 +1,3 @@
----
-priority: 4
----
 # Extension Settings
 
 This extension contributes the following settings:

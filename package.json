@@ -50,8 +50,8 @@
         "install-local": "npm i && ts-node scripts/install-local.ts",
         "install-pull-local": "node scripts/install-local.js --pull",
         "uninstall-local": "node scripts/uninstall-local.js",
-        "build-docs": "cd docs && npm install && npm run build",
-        "watch-docs": "cd docs && npm install && npm run watch",
+        "docs": "cd docs && npm install --no-audit --no-fund && node scripts/site.mjs start",
+        "build-docs": "cd docs && npm install --no-audit --no-fund && node scripts/site.mjs build",
         "releases": "ts-node scripts/releases.ts",
         "sync-launch-settings": "ts-node scripts/sync-launch-settings.ts"
     },

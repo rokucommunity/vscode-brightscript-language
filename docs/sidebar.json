@@ -1,0 +1,57 @@
+{
+    "items": [
+        { "file": "index.md" },
+        {
+            "label": "Getting Started",
+            "items": [
+                { "file": "installation.md" },
+                { "file": "features.md" },
+                { "file": "extension-settings.md" },
+                { "file": "keyboard-shortcuts.md" },
+                { "file": "prerelease-versions.md" }
+            ]
+        },
+        {
+            "label": "Debugging",
+            "items": [
+                { "file": "debugging/index.md", "label": "Setup" },
+                { "file": "debugging/advanced-project-setup.md" },
+                { "file": "variable-substitutions.md" },
+                { "file": "debugging/env-file.md" },
+                { "file": "debugging/bs-const.md" },
+                { "file": "debugging/source-maps.md" },
+                { "file": "debugging/component-libraries.md" },
+                { "file": "debugging/deep-linking.md" },
+                { "file": "debugging/remote-control-mode.md" },
+                { "file": "debugging/rale.md", "label": "RALE" },
+                { "file": "brightscript-tasks.md" },
+                { "file": "device-discovery.md", "label": "Device Discovery" }
+            ]
+        },
+        {
+            "label": "Editing",
+            "items": [
+                { "file": "editing/index.md", "label": "Setup" },
+                { "file": "editing/code-formatting.md" },
+                { "file": "editing/error-handling.md", "label": "Ignoring Errors and Warnings" },
+                { "file": "editing/snippets.md" },
+                { "file": "editing/word-separators.md" }
+            ]
+        },
+        {
+            "label": "Community",
+            "items": [
+                { "file": "contributing.md" },
+                { "file": "telemetry.md" }
+            ]
+        },
+        {
+            "label": "Release Notes",
+            "items": [
+                { "file": "release-notes/index.md", "label": "Overview" },
+                { "file": "release-notes/v2.31.0.md", "label": "v2.31.0" },
+                { "file": "release-notes/v2.0.0.md", "label": "v2.0.0" }
+            ]
+        }
+    ]
+}

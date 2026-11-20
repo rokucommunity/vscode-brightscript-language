@@ -1,6 +1,3 @@
----
-priority: 1
----
 # Introduction
 The popular BrightScript plugin for [VSCode](https://code.visualstudio.com/) used by thousands of Roku developers around the world. Revolutionize your Roku development workflow by using this powerful tool. 
 
@@ -14,4 +11,4 @@ The extension is packed with features, but here are some highlights:
  - Integrated telnet logs and interactive console
  - client-side syntax checking powered by the [BrighterScript](https://github.com/rokucommunity/brighterscript) language server
  - Powerful task system with interactive folder selection and advanced configuration
- - syntax highlighting, code formatting, symbol navigation, and [much more](features.html)
+ - syntax highlighting, code formatting, symbol navigation, and [much more](features.md)

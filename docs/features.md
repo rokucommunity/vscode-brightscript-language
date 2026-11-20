@@ -1,6 +1,3 @@
----
-priority: 2
----
 # Features
 
 - Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode
@@ -15,21 +12,21 @@ priority: 2
 - Code formatting
 - Injection of the Roku Advanced Layout Editor(RALE) task from a single user managed version
   - This helps avoid committing the tracker to you repo and also lets you manage what version you want installed rather then other users on the project
-  - See ([Extension Settings](./extension-settings.html) and [RALE Support](./Debugging/rale.html) for more information)
-- BrightScript tasks with advanced features ([learn more](./brightscript-tasks.html))
+  - See ([Extension Settings](./extension-settings.md) and [RALE Support](./debugging/rale.md) for more information)
+- BrightScript tasks with advanced features ([learn more](./brightscript-tasks.md))
   - Interactive folder selection with `${folderForFile: <glob>}` variable
   - Support for custom shells, environment variables, and working directories
   - Problem matcher integration for error detection
   - Background task support for watchers and dev servers
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/RokuCommunity/roku-deploy))
-  - Also supports zipping and static file hosting for Component Libraries ([click here](./Debugging/component-libraries.html) for more information)
+  - Also supports zipping and static file hosting for Component Libraries ([click here](./debugging/component-libraries.md) for more information)
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
 - Goto definition (F12)
 - Peek definition (Alt+F12)
 - Find usages (Shift+F12)
 - XML goto definition support which navigates to xml component, code behind function, or brs script import (F12)
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
-- Roku remote control from keyboard ([click here](./Debugging/remote-control-mode.html) for more information)
+- Roku remote control from keyboard ([click here](./debugging/remote-control-mode.md) for more information)
 - Brightscript output log (which is searchable and can be colorized with a plugin like [IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
 - Navigate to source files (by clicking while holding alt key) referenced as `pkg:/` paths from output log, with various output formats.
   - Configure `brightscript.output.hyperlinkFormat` as follows:
@@ -44,4 +41,4 @@ priority: 2
   - LogLevel (example `^\[(info|warn|debug\]`)
   - Include (example `NameOfSomeInterestingComponent`)
   - Exclude (example `NameOfSomeNoisyComponent`)
-- Variable `bs_const` values using the `launch.json` (see the [BS_Const](./Debugging/bs-const.html) section for more information)
+- Variable `bs_const` values using the `launch.json` (see the [BS_Const](./debugging/bs-const.md) section for more information)
