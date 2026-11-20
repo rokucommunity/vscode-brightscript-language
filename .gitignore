@@ -11,6 +11,9 @@ brsconfig.schema.json
 .tmp
 .env
 .vsix-building
+docs/build
+docs/.docusaurus
+docs/.dev
 
 # Network captures (may contain live session data); never commit
 *.har

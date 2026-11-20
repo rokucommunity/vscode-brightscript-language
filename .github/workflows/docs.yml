@@ -1,22 +1,43 @@
-name: publish-docs
+#builds the docs site and deploys it to GitHub Pages
+name: docs
 on:
   push:
     branches:
-      - 'master'
+      - master
+      #TEMPORARY: publish from the docs website PR branch so the new site can be compared before merging. Remove before merging.
+      #- docs-website
+  workflow_dispatch:
+
 jobs:
-  publish-docs:
+  deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-node@master
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20.19.4"
-      - run: npm install
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - run: npm ci
+        working-directory: docs
+
       - run: npm run build-docs
-      - name: Deploy
-        uses: JamesIves/github-pages-deploy-action@3.7.1
+
+      - uses: actions/upload-pages-artifact@v5
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: gh-pages
-          FOLDER: .tmp/docs
-          CLEAN: true # Automatically remove deleted files from the deploy branch
+          path: docs/build
+
+      - id: deployment
+        uses: actions/deploy-pages@v5
