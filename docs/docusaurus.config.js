@@ -149,6 +149,8 @@ const config = {
             metadata: [
                 { name: 'description', content: 'Documentation for the BrightScript Language extension for VS Code: debugging, language features and tooling for Roku development.' }
             ],
+            //the preview image when a link to the site is shared (Slack, Discord, social media, ...). See static/img/social-card.svg
+            image: 'img/social-card.png',
             colorMode: {
                 defaultMode: 'light',
                 respectPrefersColorScheme: true

@@ -1,4 +1,4 @@
-# .env file
+# .env File
 
 If you change your `launch.json` settings regularly, or don't want to check certain values into version control, then another option is to store those values in a `.env` file. Then, reference it in your `launch.json` and use `${env:YOUR_VAR_NAME}` in `launch.json` settings. Here's an example.
 

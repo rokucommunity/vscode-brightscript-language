@@ -11,6 +11,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { docsDir, repoDir, websiteDir } from '../config.mjs';
 import { syncSidebarFile, otherCategoryLabel, isExcluded } from '../sidebar.mjs';
+import { syncReferencePages } from './reference.mjs';
 
 const buildDir = path.join(websiteDir, 'build');
 //`npm run docs`: files that change while the dev server runs (pages.json, search-index.json), served next to the live docs.
@@ -159,6 +160,30 @@ function syncSidebar() {
 }
 
 /**
+ * Regenerate the reference pages from package.json (see scripts/reference.mjs).
+ * Locally, they're rewritten. In CI, it fails instead if they're out of date (or a setting has no description).
+ */
+function syncReference() {
+    const result = syncReferencePages({ write: !process.env.CI });
+    if (process.env.CI) {
+        const problems = [
+            ...result.outOfDate.map(x => `  - docs/${x} is out of date with package.json`),
+            ...result.problems.map(x => `  - ${x}`)
+        ];
+        if (problems.length > 0) {
+            throw new Error(`The reference docs need attention:\n${problems.join('\n')}\nRun \`npm run build-docs\` locally (it regenerates them for you), fix anything above, and commit the result.`);
+        }
+        return;
+    }
+    for (const file of result.outOfDate) {
+        console.log(`[site] regenerated docs/${file} from package.json`);
+    }
+    for (const problem of result.problems) {
+        console.warn(`[site] WARNING: ${problem} (CI fails until this is fixed)`);
+    }
+}
+
+/**
  * A file's size, and its gzipped size (what browsers actually download from GitHub Pages), i.e. `660 KB, 140 KB gzipped`
  */
 function describeFileSize(filePath) {
@@ -170,6 +195,7 @@ function describeFileSize(filePath) {
 const [command, ...rest] = process.argv.slice(2);
 try {
     if (command === 'start') {
+        syncReference();
         syncSidebar();
         fs.rmSync(devLiveDir, { recursive: true, force: true });
         fs.mkdirSync(devLiveDir, { recursive: true });
@@ -179,6 +205,7 @@ try {
         //docusaurus.config.js serves this folder next to the live docs
         await docusaurusAsync(['start', ...rest], { DOCS_DEV_LIVE_DIR: devLiveDir });
     } else if (command === 'build') {
+        syncReference();
         syncSidebar();
         fs.rmSync(buildDir, { recursive: true, force: true });
         docusaurus(['build', '--out-dir', buildDir, ...rest]);

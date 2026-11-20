@@ -1,14 +1,15 @@
 {
     "items": [
-        { "file": "index.md" },
+        { "file": "index.md", "label": "Introduction" },
         {
             "label": "Getting Started",
             "items": [
                 { "file": "installation.md" },
+                { "file": "quick-start.md" },
                 { "file": "features.md" },
-                { "file": "extension-settings.md" },
                 { "file": "keyboard-shortcuts.md" },
-                { "file": "prerelease-versions.md" }
+                { "file": "prerelease-versions.md" },
+                { "file": "telemetry.md" }
             ]
         },
         {
@@ -24,8 +25,7 @@
                 { "file": "debugging/deep-linking.md" },
                 { "file": "debugging/remote-control-mode.md" },
                 { "file": "debugging/rale.md", "label": "RALE" },
-                { "file": "brightscript-tasks.md" },
-                { "file": "device-discovery.md", "label": "Device Discovery" }
+                { "file": "brightscript-tasks.md" }
             ]
         },
         {
@@ -39,10 +39,18 @@
             ]
         },
         {
-            "label": "Community",
+            "label": "Reference",
             "items": [
-                { "file": "contributing.md" },
-                { "file": "telemetry.md" }
+                { "file": "extension-settings.md" },
+                { "file": "debugging/launch-configuration.md" }
+            ]
+        },
+        {
+            "label": "Contributing",
+            "items": [
+                { "file": "contributing/index.md", "label": "Getting Started" },
+                { "file": "contributing/developer-guidelines.md" },
+                { "file": "contributing/device-discovery.md", "label": "Device Discovery Internals" }
             ]
         },
         {

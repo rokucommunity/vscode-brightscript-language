@@ -244,7 +244,7 @@ Users can turn the whole automatic-discovery system off in settings. When discov
 - No SSDP broadcasts are sent.
 - The passive listener for `ssdp:alive` / `ssdp:byebye` stops.
 - Network-change and sleep-wake monitoring stop.
-- The "device online" popup no longer appears
+- The "device online" popup no longer appears.
 - Only **configured devices** appear in the UI.
 
 This is the escape hatch for users on locked-down networks, users who only use a single fixed IP, or anyone who doesn't want the extension making *any* network calls it doesn't have to.

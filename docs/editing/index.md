@@ -1,5 +1,5 @@
 # Editing Setup
-## Standard Projct Structure
+## Standard Project Structure
 If your project is structured the way that Roku expects, then the language features will work with no configuration needed. Here are the default file patterns we use to find files:
 ```javascript
 [
@@ -26,10 +26,10 @@ C:/Projects/YourAwesomeApp/
 
 
 ## bsconfig.json
-In all other situations, you will need to create a `bsconfig.json` file at the root of your project. The following sections describe the various settings you can utilize to help VSCode to better understand your project
+In all other situations, you will need to create a `bsconfig.json` file at the root of your project. The following sections describe the various settings you can utilize to help VSCode to better understand your project.
 
 ## Extra folders
-If your project has folders not part of the standard Roku structure, then you will need to specify all of the necessary files in the 
+If your project has folders not part of the standard Roku structure, then you will need to specify all of the necessary files in the `files` array of your `bsconfig.json`.
 
 Consider this project that includes a `config/` folder:
 ```text
@@ -90,7 +90,7 @@ You would have the following `bsconfig.json`:
 
 ## Subdirectory and Extra Folders
 
-If your code is in a subdirectory and you have extra folders
+If your code is in a subdirectory and you have extra folders:
 ```text
 C:/Projects/YourAwesomeApp/
   ├─ docs/

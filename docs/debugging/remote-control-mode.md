@@ -1,26 +1,26 @@
 # Remote Control Mode
 **Remote Control Mode** is a convenient way to send remote control commands to a Roku entirely from your keyboard in vscode without needing to pick up a physical Roku remote. 
 
-##
+## Turning it on and off
 ### From the status bar
-Click the remote icon in the status bar to toggle remote mode on or off
+Click the remote icon in the status bar to toggle remote mode on or off.
 
-![remote-mode](https://user-images.githubusercontent.com/2544493/162752275-e60dea72-cc78-4818-aa99-6c3a354157ce.gif)
+![remote-mode](../images/remote-control-mode-status-bar.gif)
 
 ### From the command palette
-![image](https://user-images.githubusercontent.com/2544493/162752967-a152dfd7-89a3-4072-aa10-b8d918cd10ff.png)
+![](../images/remote-control-mode-command-palette.png)
 
 ### From the keyboard
-Press `ctrl+k` on windows or `cmd+k` on mac.
+Press `ctrl+k` on Windows or `cmd+k` on Mac.
 
 ## How it works
-When Remote Control Mode is activated, we enable about 100 key bindings that capture most of the standard US keyboard keys. At this point, you may use your keyboard to send text input, use the arrow keys to send left/right/up/down button presses, etc. Most keyboard strokes will be sent to the Roku device as input rather then to your editor. Some notable exceptions include when: the command pallet is open, an input box is open, or you are focused on other input areas like a search box. Once you're finished, simply disable **remote control mode**.
+When Remote Control Mode is activated, we enable about 100 key bindings that capture most of the standard US keyboard keys. At this point, you may use your keyboard to send text input, use the arrow keys to send left/right/up/down button presses, etc. Most keyboard strokes will be sent to the Roku device as input rather than to your editor. Some notable exceptions include when: the command palette is open, an input box is open, or you are focused on other input areas like a search box. Once you're finished, simply disable **remote control mode**.
 
 **Remote Control Mode** has support for full text input from the keyboard. For example, if you pressed `shift+b` while **Remote Control Mode** is active we will send `B` to the device. We support all the single press and shift press ascii characters on the keyboard (excluding the num pad). For example: `a-z`, `A-Z`, `0-9`, and all the primary symbols such as `!`, `@`, `#`, `'`, `"`, etc...
 
 Here are many of the registered key bindings. You can see the full list in the [package.json](https://github.com/rokucommunity/vscode-brightscript-language/blob/master/package.json) under `keybindings`.
 
-**Note: We do not support sending alt charters directly from the keyboard.** This can be done via the `extension.brightscript.sendRemoteText` command.
+**Note: We do not support sending alt characters directly from the keyboard.** This can be done via the `extension.brightscript.sendRemoteText` command.
 
 | Keybinding (Windows) | Keybinding (Mac) | Roku Button     | Description                                                                                         |
 | -------------------- | -------------------- | --------------- | ----------------------------------------------------------------------------------------------- |
@@ -33,7 +33,7 @@ Here are many of the registered key bindings. You can see the full list in the [
 | `Delete`             | `Delete`             | Back            |                                                                                                 |
 | `Home`               | `Home`               | Home            |                                                                                                 |
 | `Shift+Escape`       | `Shift+Escape`       | Home            |                                                                                                 |
-| `Ctrl+Escape`        | `Cmt+Escape`         | Home            |                                                                                                 |
+| `Ctrl+Escape`        | `Cmd+Escape`         | Home            |                                                                                                 |
 | `Backspace`          | `Backspace`          | Instant Replay  | Can also be used to delete the character to the left of the cursor in an input box              |
 | `Ctrl+Backspace`     | `Cmd+Backspace`      | Backspace       | Delete the character to the left of the cursor in an input box                                  |
 | `Ctrl+Enter`         | `Cmd+Enter`          | Play/Pause      |                                                                                                 |

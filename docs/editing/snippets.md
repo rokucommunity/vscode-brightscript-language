@@ -35,4 +35,4 @@ Typing `<field<tab>` generates
 ```xml
 <field id="id" type="integer" />
 ```
-with "name" editable, and the type is a dropdown of possible values
+with "id" editable, and the type is a dropdown of possible values

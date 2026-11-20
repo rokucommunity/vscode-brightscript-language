@@ -1,5 +1,7 @@
-# Ignore errors and warnings on a per-line basis
-In addition to disabling an entire class of errors in the `ignoreErrorCodes` array in `bsconfig.json`, you may also disable errors for a subset of the complier rules within a file with the following comment flags:
+# Ignoring Errors and Warnings
+
+## Ignore errors and warnings on a per-line basis
+In addition to disabling an entire class of errors in the `ignoreErrorCodes` array in `bsconfig.json`, you may also disable errors for a subset of the compiler rules within a file with the following comment flags:
  - `bs:disable-next-line`
  - `bs:disable-next-line: code1 code2 code3`
  - `bs:disable-line`
@@ -16,16 +18,16 @@ sub Main()
     DoSomething( 'bs:disable-line
 
     'disable errors about wrong parameter count
-    DoSomething(1,2,3) 'bs:disable-next-line
+    DoSomething(1,2,3) 'bs:disable-line
 
-    DoSomething(1,2,3) 'bs:disable-next-line:1002
+    DoSomething(1,2,3) 'bs:disable-line:1002
 end sub
 
 sub DoSomething()
 end sub
 ```
 
-# Ignore errors and warnings for a block of code or whole file
+## Ignore errors and warnings for a block of code or whole file
 Use `bs:disable` and `bs:enable` to suppress diagnostics for a span of code. A `bs:disable` opens a suppression block, and a matching `bs:enable` closes it. If no `bs:enable` follows, the block runs to the end of the file, so a bare `bs:disable` at the top of a file suppresses the whole file.
 
  - `bs:disable`: suppress all diagnostics from this line until the next `bs:enable`
@@ -60,7 +62,7 @@ sub Main()
 end sub
 ```
 
-# Quick fixes for disabling diagnostics
+## Quick fixes for disabling diagnostics
 Every diagnostic surfaced in the editor has two quick fixes for suppressing it without leaving the file:
  - **Disable {code} for this line: {message}**: appends the code to an existing `bs:disable-line` or `bs:disable-next-line` directive on or above the diagnostic line if there is one, otherwise inserts a new `bs:disable-next-line: {code}` directive above the diagnostic.
  - **Disable {code} for this file: {message}**: appends the code to an existing header-level `bs:disable` directive if there is one, otherwise inserts a new `bs:disable: {code}` directive at the top of the file.

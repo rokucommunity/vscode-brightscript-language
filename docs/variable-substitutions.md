@@ -1,6 +1,6 @@
 # Variable Substitutions
 
-BrightScript extension supports variable substitutions in launch.json configurations to make your debugging workflow more flexible and dynamic.
+The BrightScript extension supports variable substitutions in launch.json configurations to make your debugging workflow more flexible and dynamic.
 
 ## Overview
 

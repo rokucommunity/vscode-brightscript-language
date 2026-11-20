@@ -8,7 +8,7 @@ To do this you need a few simple things:
   - This is optional as you can still include the code to create the tracker task yourself.
   - We recommend adding it to the end of your `screen.show()` call. For example: `screen.show() ' vscode_rale_tracker_entry`
   - This can be added anywhere in the channel including source files but it must be on or after the call to `screen.show()`
-- Set the `injectRaleTrackerTask` value to true in `launch.json`. For example:
+- Set the [`injectRaleTrackerTask`](launch-configuration.md#injectraletrackertask) value to true in `launch.json`. For example:
 
 ```json
 {

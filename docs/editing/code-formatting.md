@@ -1,5 +1,4 @@
-
-# Code formatting
+# Code Formatting
 The extension provides code formatting for BrightScript and BrighterScript files. If you don't like the default formatter settings, you can customize them in several ways:
 1. Update your user or workspace settings with various `brightscript.format.*` options (see the [extension settings](../extension-settings.md) page for more info).
 

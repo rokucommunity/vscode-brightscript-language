@@ -1,6 +1,6 @@
 # Deep Linking (ECP)
 
-You can launch a debug session with a deep link by setting the `deepLinkUrl` property in your `launch.json` configuration.
+You can launch a debug session with a deep link by setting the [`deepLinkUrl`](launch-configuration.md#deeplinkurl) property in your `launch.json` configuration.
 
 ```json
 {
@@ -18,4 +18,4 @@ There are several string placeholders you can use when defining your deep link u
 - `${promptForQueryParams}` - will pop up an input box at debug launch time, asking for the URL-encoded query parameters to pass to the deep link. 
   - example: `"deepLinkUrl": "http://${host}:8060/launch/dev?${promptForQueryParams}"`
 - `${promptForDeepLinkUrl}` - if the entire `deepLinkUrl` is set to this, then at debug launch time, an input box will appear asking you to input the full deep link url. 
-  - example: `"deepLinkUrl": "${promptForQueryParams}"`
+  - example: `"deepLinkUrl": "${promptForDeepLinkUrl}"`

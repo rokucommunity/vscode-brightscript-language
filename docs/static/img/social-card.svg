@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+    <!-- The link preview image (Slack, Discord, social media, ...). Rendered to social-card.png, which is what the site uses:
+         most link previews don't support svg. If you change this, re-render the png at 1200x630, i.e. with Chrome:
+         chrome --headless=new --hide-scrollbars --window-size=1200,630 --screenshot=social-card.png social-card.svg -->
+    <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#2a1140"/>
+            <stop offset="0.55" stop-color="#4a2069"/>
+            <stop offset="1" stop-color="#662d91"/>
+        </linearGradient>
+        <linearGradient id="stripe" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#4a2069"/>
+            <stop offset="0.5" stop-color="#9b5fd0"/>
+            <stop offset="1" stop-color="#d4b3f2"/>
+        </linearGradient>
+        <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="1.6" fill="#ffffff" fill-opacity="0.07"/>
+        </pattern>
+    </defs>
+
+    <rect width="1200" height="630" fill="url(#bg)"/>
+    <rect width="1200" height="630" fill="url(#dots)"/>
+    <!-- a soft glow behind the logo -->
+    <circle cx="1010" cy="250" r="260" fill="#9b5fd0" fill-opacity="0.18"/>
+
+    <!-- the extension's logo: purple BRS on a white tile -->
+    <g transform="translate(860 110)">
+        <rect width="300" height="300" rx="40" fill="#ffffff"/>
+        <text x="150" y="196" text-anchor="middle" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-weight="900" font-size="122" letter-spacing="-2" fill="#662d91">BRS</text>
+    </g>
+
+    <g font-family="Segoe UI, Arial, Helvetica, sans-serif" fill="#ffffff">
+        <text x="80" y="150" font-size="30" font-weight="600" fill="#d4b3f2" letter-spacing="3">ROKUCOMMUNITY</text>
+        <text x="80" y="250" font-size="76" font-weight="700">BrightScript</text>
+        <text x="80" y="340" font-size="76" font-weight="700">Language</text>
+        <text x="80" y="420" font-size="34" fill="#e9dcf7">The Roku development extension for VS Code</text>
+        <text x="80" y="540" font-size="26" fill="#cbb5e3">Debugging · Language features · Device tools</text>
+    </g>
+
+    <rect y="618" width="1200" height="12" fill="url(#stripe)"/>
+</svg>
