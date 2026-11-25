@@ -141,7 +141,7 @@ jobs:
 
             let body = 'Hey there! I just built a new version of the vscode extension based on [' + sha.substring(0, 7) + '](https://github.com/' + '${{ steps.info.outputs.prOwner }}' + '/' + '${{ steps.info.outputs.prRepo }}' + '/commit/' + sha + ').\n\n';
             body += '### 📦 [Download the .vsix](' + prod.url + ')\n';
-            body += 'See the [install instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html) if you need them. This replaces your marketplace version of the extension until you reinstall it.\n\n';
+            body += 'See the [install instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions) if you need them. This replaces your marketplace version of the extension until you reinstall it.\n\n';
 
             body += '_Prefer to keep the marketplace version installed? There\'s also a [side-by-side build](' + temp.url + ') that installs as a separate extension. Be sure to disable the marketplace version while testing it, otherwise the two will conflict._\n\n';
 

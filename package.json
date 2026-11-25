@@ -50,8 +50,8 @@
         "install-local": "npm i && ts-node scripts/install-local.ts",
         "install-pull-local": "node scripts/install-local.js --pull",
         "uninstall-local": "node scripts/uninstall-local.js",
-        "build-docs": "cd docs && npm install && npm run build",
-        "watch-docs": "cd docs && npm install && npm run watch",
+        "docs": "cd docs && npm install --no-audit --no-fund && node scripts/site.mjs start",
+        "build-docs": "cd docs && npm install --no-audit --no-fund && node scripts/site.mjs build",
         "releases": "ts-node scripts/releases.ts",
         "sync-launch-settings": "ts-node scripts/sync-launch-settings.ts"
     },
@@ -1252,6 +1252,7 @@
                                 }
                             },
                             "autoRunSgDebugCommands": {
+                                "description": "SceneGraph debug commands to run on port 8080 of the device at the start of a debug session. Supports the shorthands `chanperf`, `fpsdisplay`, `logrendezvous` and `brightscript_warnings 0`, or any other SceneGraph debug command (i.e. `chanperf -r 10` or `clear_launch_caches`).",
                                 "type": "array",
                                 "items": {
                                     "anyOf": [
@@ -1291,6 +1292,7 @@
                                 }
                             },
                             "fileLogging": {
+                                "description": "Write the device output and the RokuCommunity debugger logs to files. `true` uses the default settings, or pass an object to configure each log.",
                                 "oneOf": [
                                     {
                                         "type": "object",
@@ -1688,6 +1690,7 @@
                                 "description": "Port for sending SceneGraph debug commands"
                             },
                             "remoteControlMode": {
+                                "description": "Turn remote control mode on when a debug session starts and off when it ends. `true` does both, or pass an object to choose.",
                                 "oneOf": [
                                     {
                                         "type": "object",
@@ -2934,6 +2937,7 @@
                         "scope": "resource"
                     },
                     "brightscript.debug.autoRunSgDebugCommands": {
+                        "description": "SceneGraph debug commands to run on port 8080 of the device at the start of a debug session. Supports the shorthands `chanperf`, `fpsdisplay`, `logrendezvous` and `brightscript_warnings 0`, or any other SceneGraph debug command (i.e. `chanperf -r 10` or `clear_launch_caches`).",
                         "type": "array",
                         "items": {
                             "anyOf": [
@@ -3408,6 +3412,7 @@
                         "scope": "resource"
                     },
                     "brightscript.debug.fileLogging": {
+                        "description": "Write the device output and the RokuCommunity debugger logs to files. `true` uses the default settings, or pass an object to configure each log.",
                         "oneOf": [
                             {
                                 "type": "object",
@@ -3557,6 +3562,7 @@
                         "scope": "resource"
                     },
                     "brightscript.debug.remoteControlMode": {
+                        "description": "Turn remote control mode on when a debug session starts and off when it ends. `true` does both, or pass an object to choose.",
                         "oneOf": [
                             {
                                 "type": "object",

@@ -1,5 +1,8 @@
-# BrightScript Language extension for VSCode
+# BrightScript Language extension for VS Code
 
+Write, run and debug Roku apps without leaving VS Code.
+
+[![docs](https://img.shields.io/badge/docs-rokucommunity.github.io-662d91)](https://rokucommunity.github.io/vscode-brightscript-language/)
 [![build status](https://img.shields.io/github/actions/workflow/status/rokucommunity/vscode-brightscript-language/build.yml?logo=github&branch=master)](https://github.com/rokucommunity/vscode-brightscript-language/actions/workflows/build.yml)
 [![security](https://img.shields.io/github/actions/workflow/status/rokucommunity/vscode-brightscript-language/security-audit.yml?branch=master&label=security&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHJlY3QgeD0iMyIgeT0iOCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjciIHJ4PSIxIiBmaWxsPSJ3aGl0ZSIvPjxwYXRoIGQ9Ik01IDhWNWEzIDMgMCAwIDEgNiAwdjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==)](https://github.com/rokucommunity/vscode-brightscript-language/actions/workflows/security-audit.yml)
 [![coverage status](https://img.shields.io/coveralls/github/rokucommunity/vscode-brightscript-language?logo=coveralls)](https://coveralls.io/github/rokucommunity/vscode-brightscript-language?branch=master)
@@ -9,57 +12,33 @@
 [![license](https://img.shields.io/github/license/rokucommunity/vscode-brightscript-language.svg)](LICENSE)
 [![Slack](https://img.shields.io/badge/Slack-RokuCommunity-4A154B?logo=slack)](https://join.slack.com/t/rokudevelopers/shared_invite/zt-4vw7rg6v-NH46oY7hTktpRIBM_zGvwA)
 
-The popular [BrightScript Language](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript) extension for [VSCode](https://code.visualstudio.com/) is used by thousands of Roku developers around the world. Revolutionize your Roku development workflow by using this powerful tool.
+BrightScript Language packages your app, installs it on a Roku device and attaches a debugger, all with one press of **F5**. Stop on breakpoints, step through code, inspect variables and run BrightScript in the debug console while the app is paused. While it runs, the sidebar shows its live screen, its SceneGraph node tree, its registry and the files on the device.
 
----
+As you type, it checks your BrightScript and [BrighterScript](https://github.com/rokucommunity/brighterscript) code across your whole project, and catches syntax errors, calls to functions that don't exist and wrong argument counts. It also gives you go to definition, find references, code formatting, snippets and [much more](https://rokucommunity.github.io/vscode-brightscript-language/features).
 
-## Notable features
-
-The extension is packed with features, but here are some highlights:
-
-- Side-load directly to a roku device from VSCode
-- In editor debugging support including breakpoints, variable inspection, and more...
-- Integrated device logs and interactive console (see image below)
-- Catch errors in VSCode with the built in syntax checking. (Powered by the [BrighterScript](https://github.com/rokucommunity/brighterscript) language server)
-- Automatic rendezvous tracking when `logrendezvous` is enabled on the Roku device.
-- Powerful task system with interactive folder selection and advanced configuration options
-- Syntax highlighting, code formatting, symbol navigation, and [much more](https://rokucommunity.github.io/vscode-brightscript-language/features.html)
-
-![Debugger Demo](https://user-images.githubusercontent.com/2544493/78854455-5e08c880-79ef-11ea-8eb4-1f2d74230842.gif)
+![Debugging a Roku app in VS Code](https://user-images.githubusercontent.com/2544493/78854455-5e08c880-79ef-11ea-8eb4-1f2d74230842.gif)
 
 ## Documentation
 
-For a full list of features and settings, please see our [documentation website](https://rokucommunity.github.io/vscode-brightscript-language), or click one of the links below.
+The full documentation is at **[rokucommunity.github.io/vscode-brightscript-language](https://rokucommunity.github.io/vscode-brightscript-language/)**.
 
-### Extension
+- [Introduction](https://rokucommunity.github.io/vscode-brightscript-language/): what the extension is, how it works, and what you need.
+- [Quick Start](https://rokucommunity.github.io/vscode-brightscript-language/quick-start): from install to your first breakpoint in a few minutes.
+- [Features](https://rokucommunity.github.io/vscode-brightscript-language/features): everything the extension can do.
+- [Extension Settings](https://rokucommunity.github.io/vscode-brightscript-language/extension-settings) and [Launch Configuration](https://rokucommunity.github.io/vscode-brightscript-language/debugging/launch-configuration): every setting and every `launch.json` option.
 
-- [Features](https://rokucommunity.github.io/vscode-brightscript-language/features.html) - The full list of features provided by [BrightScript Language](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
-- [KeyBindings](https://rokucommunity.github.io/vscode-brightscript-language/keyboard-shortcuts.html) - A full list of pre included keybindings
-- [Extension Settings](https://rokucommunity.github.io/vscode-brightscript-language/extension-settings.html) - The full list of possible VS Code settings
+## Quick start
 
-### Code Editing
+1. Install **BrightScript Language** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript) or [Open VSX](https://open-vsx.org/extension/RokuCommunity/brightscript).
+2. Put your Roku device in [developer mode](https://developer.roku.com/docs/developer-program/getting-started/developer-setup.md).
+3. Open the folder that contains your project's `manifest` file.
+4. Open the **Run and Debug** panel and click **Debug Roku Project**.
 
-- [Language Server Errors and Warnings](https://rokucommunity.github.io/vscode-brightscript-language/Editing/error-handling.html) - Ways to handle different errors show by the language server
-- [Code formatting](https://rokucommunity.github.io/vscode-brightscript-language/Editing/code-formatting.html) - How to set up code formatting and the different formatting options.
-- [Code Snippets](https://rokucommunity.github.io/vscode-brightscript-language/Editing/snippets.html) - A collection of useful code snippets
-
-### Tasks
-
-- [BrightScript Tasks](https://rokucommunity.github.io/vscode-brightscript-language/brightscript-tasks.html) - Automate your development workflow with BrightScript tasks
-
-### Debugging
-
-- [Basic project setup](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/index.html) - Launching and debugging your local project on a Roku device.
-- [Component Libraries](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/component-libraries.html) - How to define custom component libraries in your `launch.json`
-- [Deeplinking](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/deep-linking.html) - Sending deeplinks from the `launch.json`
-- [Remote control emulation](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/remote-control-mode.html) - How to emulate the Roku remote control
-- [Rale](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/rale.html) - Inject Rale into your application without committing the TrackerTask to your repository
-- [BS_Consts](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/bs-const.html) - Changing `bs_const` values from the `launch.json`
-- [Advanced Project Setup](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/advanced-project-setup.html) - Setting up your project with complex use cases such as custom build scripts or source files located in multiple different directories.
+The extension finds the Roku devices on your network and asks which one to use. See the [Quick Start](https://rokucommunity.github.io/vscode-brightscript-language/quick-start) to save your settings in a `launch.json` file.
 
 ## Contributing
 
-The majority of this extension's language feature support depends on the [BrighterScript](https://github.com/RokuCommunity/brighterscript) project, which contributes the language server. The debugging functionality comes from the [roku-debug](https://github.com/RokuCommunity/roku-debug) project. If you would like to contribute please see our [contributing guide](https://rokucommunity.github.io/vscode-brightscript-language/contributing.html)
+The language features come from [BrighterScript](https://github.com/rokucommunity/brighterscript), and debugging comes from [roku-debug](https://github.com/rokucommunity/roku-debug). To work on the extension itself, see the [contributing guide](https://rokucommunity.github.io/vscode-brightscript-language/contributing).
 
 ## Accepted security advisories
 
