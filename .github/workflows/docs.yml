@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+      #TEMPORARY: publish from the docs website PR branch to test the deploy. Remove before merging.
+      - docs-website
   workflow_dispatch:
 
 jobs:
