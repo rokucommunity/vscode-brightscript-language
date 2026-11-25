@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - master
-      #TEMPORARY: publish from the docs website PR branch so the new site can be compared before merging. Remove before merging.
-      #- docs-website
   workflow_dispatch:
 
 jobs:
