@@ -24,6 +24,7 @@ export enum ViewProviderCommand {
     sendMessageToWebviews = 'sendMessageToWebviews',
     sendReplRequest = 'sendReplRequest',
     sendSolidDevtoolsRequest = 'sendSolidDevtoolsRequest',
+    showScreenshotMessage = 'showScreenshotMessage',
     sendRceStreamAnswer = 'sendRceStreamAnswer',
     sendRceStreamIceCandidate = 'sendRceStreamIceCandidate',
     setRceActiveAccount = 'setRceActiveAccount',

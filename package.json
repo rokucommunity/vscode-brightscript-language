@@ -308,6 +308,11 @@
                     "when": "resourcePath in brightscript.rokuProjectConfigFiles",
                     "command": "extension.brightscript.debugRokuProject",
                     "group": "navigation"
+                },
+                {
+                    "command": "extension.brightscript.rceVideoView.copyScreenshot",
+                    "when": "activeWebviewPanelId == rceVideoView",
+                    "group": "navigation"
                 }
             ],
             "editor/title/context": [
@@ -634,6 +639,10 @@
                 {
                     "command": "extension.brightscript.rokuDeviceView.copyScreenshot",
                     "when": "webviewId == rokuDeviceView"
+                },
+                {
+                    "command": "extension.brightscript.rceVideoView.copyScreenshot",
+                    "when": "webviewId == rceVideoView"
                 }
             ],
             "brightscript.devicesView.filters": [
@@ -753,6 +762,10 @@
                 }
             ],
             "commandPalette": [
+                {
+                    "command": "extension.brightscript.rceVideoView.copyScreenshot",
+                    "when": "false"
+                },
                 {
                     "command": "extension.brightscript.devicesView.toggleFilter.devModeEnabled",
                     "when": "false"
@@ -3644,6 +3657,13 @@
                         "description": "Sets the maximum number of 'extension.brightscript.sendRemoteText' commands to remember for future use",
                         "scope": "application"
                     },
+                    "brightscript.rokuDeviceView.screenshotCaptureDelay": {
+                        "type": "number",
+                        "default": 500,
+                        "minimum": 0,
+                        "description": "The delay in milliseconds between consecutive Device View screenshots for LAN devices",
+                        "scope": "application"
+                    },
                     "brightscript.remoteControlMode.enableActiveAnimation": {
                         "type": "boolean",
                         "default": true,
@@ -4574,6 +4594,12 @@
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.copyScreenshot",
+                "title": "Copy Screenshot",
+                "category": "BrightScript",
+                "icon": "$(clippy)"
+            },
+            {
+                "command": "extension.brightscript.rceVideoView.copyScreenshot",
                 "title": "Copy Screenshot",
                 "category": "BrightScript",
                 "icon": "$(clippy)"

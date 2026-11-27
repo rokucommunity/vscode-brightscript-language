@@ -8,7 +8,7 @@ import { Cache } from 'brighterscript/dist/Cache';
 import undent from 'undent';
 import { EXTENSION_ID, ROKU_DEBUG_VERSION } from './constants';
 import type { DeviceConfig, DeviceInfo } from 'roku-deploy';
-import { isLocalDeviceConfig, isRceDeviceConfigByUrl, isRceDeviceConfigById, isRceDeviceConfigByEsn } from 'roku-deploy';
+import { isLocalDeviceConfig, isRceDeviceConfigByUrl, isRceDeviceConfigById, isRceDeviceConfigByEsn, rokuDeploy } from 'roku-deploy';
 import * as childProcess from 'child_process';
 import * as minimatch from 'minimatch';
 
@@ -566,6 +566,18 @@ class Util {
     */
     public getConfiguration(section?: string, scope?: vscode.ConfigurationScope): vscode.WorkspaceConfiguration {
         return vscode.workspace.getConfiguration(section, scope ?? null);
+    }
+
+    /**
+     * Capture a screenshot from a device. The bytes are copied out of the buffer's backing store
+     * exactly (a Node Buffer is often a view into a larger shared allocation).
+     */
+    public async captureScreenshot(device: DeviceConfig, password: string) {
+        const { buffer, format } = await rokuDeploy.captureScreenshot({ device: device, password: password });
+        return {
+            bytes: buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),
+            format: format
+        };
     }
 
     public getConfigurationValueIfDefined(key: string, defaultValue = undefined) {

@@ -3,7 +3,9 @@
 
     import { intermediary } from '../../ExtensionIntermediary';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
+    import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import RceStreamView from '../../shared/RceStreamView.svelte';
+    import { copyRceStreamScreenshot } from '../../shared/screenshotClipboard';
 
     //A Cloud Emulator device's video stream in its own editor tab. The extension-side
     //RceVideoEditorManager owns the tab and its signaling session; this view is nothing but the
@@ -19,8 +21,16 @@
         });
     });
 
+    let rceStreamView: RceStreamView;
+
+    intermediary.observeEvent(ViewProviderEvent.onVscodeCommandReceived, async (message) => {
+        if (message.context.commandName === VscodeCommand.rokuDeviceViewCopyScreenshot) {
+            await copyRceStreamScreenshot(() => rceStreamView.captureFrame());
+        }
+    });
+
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
 </script>
 
-<RceStreamView />
+<RceStreamView bind:this={rceStreamView} />

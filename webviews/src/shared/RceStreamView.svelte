@@ -48,6 +48,23 @@
         clearInterval(runtimeTickIntervalId);
     });
 
+    /**
+     * Snapshot of the video element's current frame as a PNG, or undefined when no frame has been
+     * decoded yet (not streaming, or the video has not produced its first frame).
+     */
+    export async function captureFrame(): Promise<Blob | undefined> {
+        if (!rceVideoElement || rceVideoElement.readyState < 2 || rceVideoElement.videoWidth <= 0) {
+            return undefined;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = rceVideoElement.videoWidth;
+        canvas.height = rceVideoElement.videoHeight;
+        canvas.getContext('2d').drawImage(rceVideoElement, 0, 0);
+        return new Promise<Blob | undefined>((resolve) => {
+            canvas.toBlob((frameBlob) => resolve(frameBlob ?? undefined), 'image/png');
+        });
+    }
+
     $: if (rceVideoElement) {
         rceVideoElement.srcObject = rceMediaStream ?? null;
     }

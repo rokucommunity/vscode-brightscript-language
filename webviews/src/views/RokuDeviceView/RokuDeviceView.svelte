@@ -1,5 +1,6 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
+    import { onDestroy } from 'svelte';
     import { intermediary } from '../../ExtensionIntermediary';
     import ConnectToDeviceButton from '../../shared/ConnectToDeviceButton.svelte';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
@@ -10,12 +11,15 @@
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
     import RceStreamView from '../../shared/RceStreamView.svelte';
+    import { copyImageToClipboard, copyRceStreamScreenshot, reportScreenshotMessage, requestScreenshot as requestScreenshotFromHost } from '../../shared/screenshotClipboard';
 
     window.vscode = acquireVsCodeApi();
 
     let deviceAvailable = false;
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         deviceAvailable = message.context.deviceAvailable;
+        //the held image may be of a previous device, so every availability change starts over
+        resetScreenshotState();
         requestScreenshot();
     });
 
@@ -25,15 +29,18 @@
     //component - this view only tracks whether stream mode is active so it can route between the
     //stream and the screenshot/setup views.
     let rceStreamActive = false;
+    let rceStreamView: RceStreamView;
 
     intermediary.observeEvent(ViewProviderEvent.onRceStreamConnecting, () => {
         rceStreamActive = true;
+        resetScreenshotState();
     });
 
     intermediary.observeEvent(ViewProviderEvent.onRceStreamError, () => {
         //an early failure (before onRceStreamConnecting reached this webview instance) still enters
         //stream mode so RceStreamView has somewhere to show the error
         rceStreamActive = true;
+        resetScreenshotState();
     });
 
     function onRceStreamStopped() {
@@ -217,7 +224,7 @@
         isInspectingNodes = false;
     }
 
-    let currentScreenshot: Blob;
+    let currentScreenshot: Blob | undefined;
 
     intermediary.observeEvent(ViewProviderEvent.onVscodeCommandReceived, async (message) => {
         const name = message.context.commandName;
@@ -233,65 +240,127 @@
             isInspectingNodes = false;
         } else if (name === VscodeCommand.rokuDeviceViewPauseScreenshotCapture) {
             enableScreenshotCaptureAutoRefresh = false;
+            clearTimeout(nextCaptureTimer);
+            nextCaptureTimer = undefined;
         } else if (name === VscodeCommand.rokuDeviceViewResumeScreenshotCapture) {
             enableScreenshotCaptureAutoRefresh = true;
             await requestScreenshot();
         } else if (name === VscodeCommand.rokuDeviceViewRefreshScreenshot) {
             await requestScreenshot();
         } else if (name === VscodeCommand.rokuDeviceViewCopyScreenshot) {
-            if(!currentScreenshot) {
-                await requestScreenshot();
-            }
-
-            // Need time for the DOM to become focused before clipboard seems to work
-            setTimeout(async () => {
-                const clipboardItem = new ClipboardItem({
-                    [currentScreenshot.type]: currentScreenshot
-                });
-                await navigator.clipboard.write([clipboardItem]);
-            }, 100);
+            await copyScreenshot();
         }
     });
 
-    let currentlyCapturingScreenshot = false;
-    async function requestScreenshot() {
-        if (!deviceAvailable || currentlyCapturingScreenshot || rceStreamActive) {
+    async function copyScreenshot() {
+        if (rceStreamActive) {
+            await copyRceStreamScreenshot(() => rceStreamView.captureFrame());
             return;
         }
 
-        try {
-            currentlyCapturingScreenshot = true;
-            const {success, arrayBuffer} = await intermediary.sendCommand(ViewProviderCommand.getScreenshot);
-            currentlyCapturingScreenshot = false;
+        if (!currentScreenshot) {
+            // Joins the capture already in flight, or starts one
+            await requestScreenshot();
+        }
 
-            if (success) {
+        const screenshotToCopy = currentScreenshot;
+        if (!screenshotToCopy) {
+            reportScreenshotMessage('error', lastCaptureFailureMessage ? `Unable to copy a screenshot: ${lastCaptureFailureMessage}` : 'No screenshot is available to copy yet.');
+            return;
+        }
+        await copyImageToClipboard(screenshotToCopy);
+    }
+
+    const defaultCaptureDelayMs = 500;
+    const retryCaptureDelayMs = 200;
+
+    //the capture in progress, shared so a copy can join it rather than start a competing one
+    let inFlightCapture: Promise<void> | undefined;
+    //bumped whenever in-flight work is abandoned (stream mode, device gone) so its result is discarded
+    let captureSequence = 0;
+    let nextCaptureTimer: ReturnType<typeof setTimeout> | undefined;
+    let lastCaptureFailureMessage: string | undefined;
+
+    onDestroy(() => {
+        abandonCaptures();
+    });
+
+    function abandonCaptures() {
+        captureSequence++;
+        inFlightCapture = undefined;
+        clearTimeout(nextCaptureTimer);
+        nextCaptureTimer = undefined;
+    }
+
+    function resetScreenshotState() {
+        abandonCaptures();
+        currentScreenshot = undefined;
+        URL.revokeObjectURL(screenshotUrl);
+        screenshotUrl = '';
+    }
+
+    function scheduleNextCapture(delayMs: number) {
+        clearTimeout(nextCaptureTimer);
+        nextCaptureTimer = setTimeout(() => {
+            nextCaptureTimer = undefined;
+            void requestScreenshot();
+        }, delayMs);
+    }
+
+    function requestScreenshot(): Promise<void> {
+        if (!deviceAvailable || rceStreamActive) {
+            return Promise.resolve();
+        }
+        if (inFlightCapture) {
+            return inFlightCapture;
+        }
+
+        clearTimeout(nextCaptureTimer);
+        nextCaptureTimer = undefined;
+        const sequence = ++captureSequence;
+        const capture = captureScreenshot(sequence).finally(() => {
+            if (captureSequence === sequence) {
+                inFlightCapture = undefined;
+            }
+        });
+        inFlightCapture = capture;
+        return capture;
+    }
+
+    async function captureScreenshot(sequence: number) {
+        try {
+            const result = await requestScreenshotFromHost({ streaming: false });
+            if (sequence !== captureSequence) {
+                return;
+            }
+
+            lastCaptureFailureMessage = result.success ? undefined : result.message;
+            if (result.success) {
                 if (isInspectingNodes) {
-                    lastAppUiResponse = await intermediary.getAppUI();
+                    const appUiResponse = await intermediary.getAppUI();
+                    if (sequence !== captureSequence) {
+                        return;
+                    }
+                    lastAppUiResponse = appUiResponse;
                 }
 
-                currentScreenshot = new Blob(
-                    [new Uint8Array(arrayBuffer)],
-                    { type: 'image/png' } // jpg isn't supported for clipboard and png seems to work for both so ¯\_(ツ)_/¯
-                );
+                currentScreenshot = result.blob;
                 const newScreenshotUrl = URL.createObjectURL(currentScreenshot);
                 URL.revokeObjectURL(screenshotUrl);
                 screenshotUrl = newScreenshotUrl;
 
                 if (enableScreenshotCaptureAutoRefresh) {
-                    requestScreenshot();
+                    scheduleNextCapture(result.nextCaptureDelay ?? defaultCaptureDelayMs);
                 }
             } else {
-                setTimeout(() => {
-                    requestScreenshot();
-                }, 200);
+                scheduleNextCapture(retryCaptureDelayMs);
             }
         } catch(e) {
-            currentlyCapturingScreenshot = false;
             console.error('Error requesting screenshot', e);
 
-            setTimeout(() => {
-                requestScreenshot();
-            }, 200);
+            if (sequence === captureSequence) {
+                scheduleNextCapture(retryCaptureDelayMs);
+            }
         }
     }
 
@@ -444,7 +513,7 @@
 
 <svelte:window on:keydown={onKeydown} />
 <div id="container" on:mouseenter="{onMouseEnter}" on:mouseleave="{onMouseLeave}">
-    <RceStreamView showCloseButton={true} on:stopped={onRceStreamStopped} />
+    <RceStreamView bind:this={rceStreamView} showCloseButton={true} on:stopped={onRceStreamStopped} />
     {#if rceStreamActive}
         <!-- RceStreamView above renders the stream; nothing else shows in stream mode -->
     {:else if deviceAvailable}
