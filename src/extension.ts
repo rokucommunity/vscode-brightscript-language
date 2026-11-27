@@ -23,8 +23,9 @@ import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProv
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
-import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
-import { LogOutputManager } from './LogOutputManager';
+import type { LogOutput } from './logOutput/LogOutput';
+import { BRIGHTSCRIPT_LOG_CHANNEL_NAME } from './logOutput/LogOutput';
+import { createLogOutput } from './logOutput/createLogOutput';
 import { RendezvousViewProvider } from './viewProviders/RendezvousViewProvider';
 import { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
@@ -72,7 +73,7 @@ export class Extension {
     private rtaManager: RtaManager;
     private webviewViewProviderManager: WebviewViewProviderManager;
     private diagnosticManager = new DiagnosticManager();
-    private logOutputManager: LogOutputManager;
+    private logOutput: LogOutput;
     private deviceManager: DeviceManager;
     private extensionContext: vscode.ExtensionContext;
     private jsDebugProxyManager: JsDebugProxyManager;
@@ -178,12 +179,10 @@ export class Extension {
         context.subscriptions.push(declarationProvider);
 
         //create channels
-        this.outputChannel = vscode.window.createOutputChannel('BrightScript Log');
+        this.outputChannel = vscode.window.createOutputChannel(BRIGHTSCRIPT_LOG_CHANNEL_NAME);
         this.sceneGraphDebugChannel = vscode.window.createOutputChannel('SceneGraph Debug Commands');
 
-        let docLinkProvider = new LogDocumentLinkProvider();
-
-        this.logOutputManager = new LogOutputManager(this.outputChannel, context, docLinkProvider, declarationProvider);
+        this.logOutput = createLogOutput(this.outputChannel, context, declarationProvider);
 
         const definitionRepo = new DefinitionRepository(declarationProvider);
 
@@ -309,11 +308,6 @@ export class Extension {
             })
         );
 
-        //register a link provider for this extension's "BrightScript Log" output
-        context.subscriptions.push(
-            vscode.languages.registerDocumentLinkProvider({ language: 'Log', scheme: 'output' }, docLinkProvider)
-        );
-
         vscode.window.registerUriHandler({
             handleUri: async (uri: vscode.Uri) => {
                 if (uri.path.startsWith('/openFile/')) {
@@ -333,7 +327,7 @@ export class Extension {
 
         //give the launch config to the link provider any time we launch the app
         vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
-            return this.debugSessionCustomEventHandler(e, context, docLinkProvider, this.logOutputManager, rendezvousViewProvider);
+            return this.debugSessionCustomEventHandler(e, context, this.logOutput, rendezvousViewProvider);
         });
 
         //register all commands for this extension
@@ -376,7 +370,7 @@ export class Extension {
         //session tracking + BRS<->JS linking is owned by debugSessionManager; react only to
         //the brightscript session here for our domain-specific startup work.
         if (debugSession.type === 'brightscript') {
-            this.logOutputManager.onDidStartDebugSession();
+            this.logOutput.onDidStartDebugSession();
             this.webviewViewProviderManager.onDidStartDebugSession(debugSession);
             const configuration = debugSession.configuration as BrightScriptLaunchConfiguration;
 
@@ -687,12 +681,11 @@ export class Extension {
         }
     }
 
-    private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
+    private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, logOutput: LogOutput, rendezvousViewProvider: RendezvousViewProvider) {
 
         if (isLaunchStartEvent(e)) {
             const config = e.body as BrightScriptLaunchConfiguration;
-            await docLinkProvider.setLaunchConfig(config);
-            logOutputManager.setLaunchConfig(config);
+            await logOutput.setLaunchConfig(config);
             if (config.remoteControlMode?.activateOnSessionStart) {
                 void this.remoteControlManager.setRemoteControlMode(true, 'launch');
             }
@@ -808,7 +801,7 @@ export class Extension {
         }
 
         try {
-            await logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
+            await logOutput.onDidReceiveDebugSessionCustomEvent(e);
         } catch (err) {
             logger.error('Error handling custom event', e, err);
         }
