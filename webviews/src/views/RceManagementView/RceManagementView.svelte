@@ -9,6 +9,7 @@
     import Loader from '../../shared/Loader.svelte';
     import VscodeDropdown from '../../shared/vscode-ui-toolkit/VscodeDropdown.svelte';
     import DeviceTypeIcon from './DeviceTypeIcon.svelte';
+    import { buildRuntimeOptions, formatRuntimeOption, resolveRuntimeSeconds } from './RuntimeOptions';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
 
@@ -30,37 +31,10 @@
     let deviceActionError: string | undefined = undefined;
     let deviceActionsInFlight: Record<number, boolean> = {};
 
-    //max-runtime choices offered when starting a device, capped by the org's runtime limit; the
-    //limit itself becomes the top choice when the presets don't land on it exactly. Picks are kept
-    //outside DeviceDetailsState so a details refetch does not reset them
-    const runtimeHourPresets = [1, 2, 4, 8, 16, 24, 48];
-    const defaultRuntimeHours = 1;
-    let selectedRuntimeHoursByDeviceId: Record<number, number> = {};
+    //runtime picks are kept outside DeviceDetailsState so a details refetch does not reset them
+    let selectedRuntimeSecondsByDeviceId: Record<number, number> = {};
     let maxProjectRuntimeSeconds: number | undefined = undefined;
-    $: runtimeHourOptions = buildRuntimeHourOptions(maxProjectRuntimeSeconds);
-
-    function buildRuntimeHourOptions(orgMaxRuntimeSeconds: number | undefined): number[] {
-        if (!orgMaxRuntimeSeconds) {
-            return runtimeHourPresets;
-        }
-        const maxHours = orgMaxRuntimeSeconds / 3600;
-        const options = runtimeHourPresets.filter((hours) => hours <= maxHours);
-        if (!options.includes(maxHours)) {
-            options.push(maxHours);
-        }
-        return options;
-    }
-
-    /**
-     * Resolves the hours a start request should use: the user's pick when the current option list
-     * still offers it (an account switch can lower the cap), otherwise the default.
-     */
-    function resolveRuntimeHours(pickedHours: number | undefined, availableOptions: number[]): number {
-        if (pickedHours !== undefined && availableOptions.includes(pickedHours)) {
-            return pickedHours;
-        }
-        return availableOptions.includes(defaultRuntimeHours) ? defaultRuntimeHours : availableOptions[0];
-    }
+    $: runtimeOptions = buildRuntimeOptions(maxProjectRuntimeSeconds);
 
     //firmware choices offered when starting a device, filtered per device type at render time.
     //Like the runtime picks, firmware picks live outside DeviceDetailsState so a details refetch
@@ -248,7 +222,7 @@
                 deviceId: device.id,
                 snapshotId: snapshotId,
                 firmwareVersionId: firmwareVersionId,
-                maxRuntimeSeconds: resolveRuntimeHours(selectedRuntimeHoursByDeviceId[device.id], runtimeHourOptions) * 3600,
+                maxRuntimeSeconds: resolveRuntimeSeconds(selectedRuntimeSecondsByDeviceId[device.id], runtimeOptions),
                 snapshotName: confirmation?.snapshotName,
                 replacesLiveSnapshot: confirmation?.replacesLiveSnapshot
             });
@@ -444,8 +418,8 @@
         return !detailsState || (detailsState.loading && detailsState.snapshots === undefined && detailsState.error === undefined);
     }
 
-    function updateSelectedRuntimeHours(deviceId: number, rawHours: string) {
-        selectedRuntimeHoursByDeviceId = { ...selectedRuntimeHoursByDeviceId, [deviceId]: Number(rawHours) };
+    function updateSelectedRuntimeSeconds(deviceId: number, rawSeconds: string) {
+        selectedRuntimeSecondsByDeviceId = { ...selectedRuntimeSecondsByDeviceId, [deviceId]: Number(rawSeconds) };
     }
 
     /**
@@ -1147,10 +1121,10 @@
                                 <vscode-single-select
                                     class="runtimeDropdown"
                                     title="Maximum runtime"
-                                    value={String(resolveRuntimeHours(selectedRuntimeHoursByDeviceId[device.id], runtimeHourOptions))}
-                                    on:change={(event) => updateSelectedRuntimeHours(device.id, event.target.value)}>
-                                    {#each runtimeHourOptions as hours}
-                                        <vscode-option value={String(hours)}>{hours}h</vscode-option>
+                                    value={String(resolveRuntimeSeconds(selectedRuntimeSecondsByDeviceId[device.id], runtimeOptions))}
+                                    on:change={(event) => updateSelectedRuntimeSeconds(device.id, event.target.value)}>
+                                    {#each runtimeOptions as runtimeSeconds}
+                                        <vscode-option value={String(runtimeSeconds)}>{formatRuntimeOption(runtimeSeconds)}</vscode-option>
                                     {/each}
                                 </vscode-single-select>
                                 <div class="splitButtonWrapper" bind:this={splitButtonElementsByDeviceId[device.id]}>
